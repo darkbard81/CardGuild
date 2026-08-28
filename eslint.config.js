@@ -13,4 +13,20 @@ export default defineConfig(
       globals: globals.browser,
     },
   },
+  {
+    files: ["src/game/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            "pixi.js",
+            "../pixi/**",
+            "../dom/**",
+            "../app/**",
+          ],
+        },
+      ],
+    },
+  },
 );

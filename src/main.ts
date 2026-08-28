@@ -1,42 +1,47 @@
 import { Application } from "pixi.js";
 
+import { BattleController } from "./app/battle-controller";
 import "./style.css";
 
-function getRequiredElement<T extends Element>(selector: string): T {
+function required<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
-
-  if (!element) {
-    throw new Error(`Required element was not found: ${selector}`);
-  }
-
+  if (!element) throw new Error(`Required element was not found: ${selector}`);
   return element;
 }
 
 async function bootstrap(): Promise<void> {
-  const pixiRoot = getRequiredElement<HTMLDivElement>("#pixi-root");
-  const pixiStatus = getRequiredElement<HTMLElement>("#pixi-status");
+  const pixiRoot = required<HTMLDivElement>("#pixi-root");
+  const pixiStatus = required<HTMLElement>("#pixi-status");
   const app = new Application();
 
   await app.init({
     resizeTo: pixiRoot,
-    background: "#101722",
+    background: "#111820",
     antialias: true,
     autoDensity: true,
     resolution: Math.min(window.devicePixelRatio, 2),
     preference: "webgl",
+    eventFeatures: {
+      click: true,
+      move: true,
+      globalMove: false,
+      wheel: false,
+    },
   });
 
   app.canvas.id = "pixi-canvas";
-  app.canvas.setAttribute("aria-label", "CardGuild battlefield renderer");
+  app.canvas.setAttribute("aria-label", "CardGuild M0 tactical battle board");
   pixiRoot.append(app.canvas);
   app.resize();
+  const controller = new BattleController(app);
 
   pixiRoot.dataset.ready = "true";
-  pixiStatus.textContent = "Ready";
+  pixiStatus.textContent = "Deterministic core ready";
 
   window.addEventListener(
     "beforeunload",
     () => {
+      controller.destroy();
       app.destroy(
         { removeView: true, releaseGlobalResources: true },
         { children: true },
@@ -48,10 +53,8 @@ async function bootstrap(): Promise<void> {
 
 void bootstrap().catch((error: unknown) => {
   const pixiStatus = document.querySelector<HTMLElement>("#pixi-status");
-
-  if (pixiStatus) {
-    pixiStatus.textContent = "Failed to start";
-  }
-
+  const app = document.querySelector<HTMLElement>("#app");
+  if (pixiStatus) pixiStatus.textContent = "Failed to start";
+  if (app) app.dataset.ready = "error";
   console.error("CardGuild bootstrap failed", error);
 });

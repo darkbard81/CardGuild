@@ -5,43 +5,133 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="CardGuild development environment for PixiJS and DOM UI"
+      content="CardGuild deterministic PF2e tactical combat vertical slice"
     />
-    <title>CardGuild</title>
+    <title>CardGuild — M0 Gatehouse</title>
   </head>
   <body>
-    <main id="app" class="app-shell">
-      <section class="battlefield-shell" aria-labelledby="battlefield-title">
-        <header class="shell-heading">
-          <p class="eyebrow">PixiJS renderer</p>
-          <h1 id="battlefield-title">CardGuild Battlefield</h1>
-        </header>
-        <div
-          id="pixi-root"
-          class="pixi-root"
-          data-ready="false"
-          aria-label="PixiJS battlefield canvas container"
-        ></div>
+    <main
+      id="app"
+      class="app-shell"
+      data-ready="false"
+      data-outcome="ongoing"
+      data-state-hash=""
+    >
+      <header class="topbar">
+        <div class="brand-block">
+          <p class="eyebrow">PF2e Tactical Adventure</p>
+          <h1>CardGuild</h1>
+        </div>
+        <div class="objective-block">
+          <span>Objective</span>
+          <strong id="objective-text">Loading encounter…</strong>
+        </div>
+        <div class="round-block">
+          <span>Round</span>
+          <strong id="round-value">1</strong>
+        </div>
+        <ol id="initiative-list" class="initiative-list" aria-label="Initiative order"></ol>
+      </header>
+
+      <section class="battle-layout">
+        <aside class="side-panel hero-panel" aria-labelledby="hero-heading">
+          <div class="panel-heading">
+            <p class="eyebrow">Active hero</p>
+            <h2 id="hero-heading">Aerin</h2>
+          </div>
+          <div id="hero-stats" class="actor-stats"></div>
+          <section class="action-economy" aria-label="Actions remaining">
+            <span>Actions</span>
+            <div id="action-pips" class="action-pips"></div>
+          </section>
+          <section>
+            <h3>Basic</h3>
+            <div id="basic-actions" class="action-grid"></div>
+          </section>
+          <section>
+            <h3>Context</h3>
+            <div id="context-actions" class="action-grid context-grid"></div>
+          </section>
+          <button id="end-turn" class="end-turn-button" type="button">End Turn</button>
+        </aside>
+
+        <section class="board-panel" aria-labelledby="battlefield-title">
+          <div class="board-header">
+            <div>
+              <p class="eyebrow">M0 Encounter</p>
+              <h2 id="battlefield-title">The Webbed Gatehouse</h2>
+            </div>
+            <div class="runtime-chip">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span id="pixi-status" role="status" aria-live="polite">Starting…</span>
+            </div>
+          </div>
+          <div
+            id="pixi-root"
+            class="pixi-root"
+            data-ready="false"
+            aria-label="CardGuild tactical battlefield canvas"
+          ></div>
+          <p id="board-prompt" class="board-prompt" aria-live="polite">
+            행동을 선택하세요.
+          </p>
+        </section>
+
+        <aside class="side-panel detail-panel" aria-label="Combat details">
+          <section>
+            <h2>Opponents</h2>
+            <div id="enemy-list" class="enemy-list"></div>
+          </section>
+          <section class="selection-panel">
+            <h2>Action Detail</h2>
+            <div id="selected-detail" class="selected-detail">
+              카드나 행동을 선택하면 규칙 근거가 표시됩니다.
+            </div>
+          </section>
+          <section class="log-panel">
+            <div class="log-heading">
+              <h2>Combat Log</h2>
+              <span id="state-hash-short" title="Deterministic state hash"></span>
+            </div>
+            <ol id="combat-log" class="combat-log" aria-live="polite"></ol>
+          </section>
+        </aside>
       </section>
 
-      <aside class="dom-shell" aria-labelledby="dom-title">
-        <p class="eyebrow">DOM interface</p>
-        <h2 id="dom-title">Development shell</h2>
-        <p>
-          전장 렌더러와 정보 UI가 분리된 상태로 초기화되었습니다. 게임 규칙과
-          콘텐츠는 아직 포함하지 않습니다.
-        </p>
-        <dl class="runtime-status">
+      <footer class="hand-dock">
+        <div class="hand-heading">
           <div>
-            <dt>PixiJS</dt>
-            <dd id="pixi-status" role="status" aria-live="polite">Starting…</dd>
+            <p class="eyebrow">Tactical deck</p>
+            <h2>Your Hand <span id="hand-count">0</span></h2>
           </div>
-          <div>
-            <dt>DOM</dt>
-            <dd>Ready</dd>
+          <div class="pile-counts">
+            <span>Deck <strong id="deck-count">0</strong></span>
+            <span>Discard <strong id="discard-count">0</strong></span>
           </div>
-        </dl>
-      </aside>
+        </div>
+        <div id="hand-cards" class="hand-cards"></div>
+      </footer>
+
+      <div id="reaction-modal" class="modal-backdrop" hidden>
+        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reaction-title">
+          <p class="eyebrow">Reaction window</p>
+          <h2 id="reaction-title">Reactive Strike?</h2>
+          <p id="reaction-description"></p>
+          <div class="modal-actions">
+            <button id="reaction-pass" class="secondary-button" type="button">Pass</button>
+            <button id="reaction-use" class="primary-button" type="button">Use Reaction</button>
+          </div>
+        </section>
+      </div>
+
+      <div id="result-modal" class="modal-backdrop" hidden>
+        <section class="modal-card result-card" role="dialog" aria-modal="true" aria-labelledby="result-title">
+          <p class="eyebrow">Encounter complete</p>
+          <h2 id="result-title">Victory</h2>
+          <p id="result-description"></p>
+          <button id="restart-battle" class="primary-button" type="button">Replay Same Seed</button>
+        </section>
+      </div>
     </main>
 
     <script type="module" src="/src/main.ts"></script>
