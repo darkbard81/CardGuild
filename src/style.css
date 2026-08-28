@@ -1,0 +1,124 @@
+:root {
+  color: #e8edf5;
+  background: #090d13;
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 22rem);
+  min-height: 100vh;
+}
+
+.battlefield-shell,
+.dom-shell {
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.battlefield-shell {
+  display: grid;
+  grid-template-rows: auto minmax(24rem, 1fr);
+  gap: 1rem;
+  min-width: 0;
+}
+
+.shell-heading h1,
+.dom-shell h2 {
+  margin: 0;
+}
+
+.eyebrow {
+  margin: 0 0 0.4rem;
+  color: #8da2bd;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.pixi-root {
+  min-width: 0;
+  min-height: 24rem;
+  overflow: hidden;
+  border: 1px solid #26364a;
+  border-radius: 0.75rem;
+  background: #101722;
+  box-shadow: 0 1rem 3rem rgb(0 0 0 / 25%);
+}
+
+.pixi-root canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.dom-shell {
+  border-left: 1px solid #1d2938;
+  background: #0d131c;
+}
+
+.dom-shell > p:not(.eyebrow) {
+  color: #aebcce;
+  line-height: 1.65;
+}
+
+.runtime-status {
+  display: grid;
+  gap: 0.75rem;
+  margin: 2rem 0 0;
+}
+
+.runtime-status div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #26364a;
+  border-radius: 0.6rem;
+  background: #121b27;
+}
+
+.runtime-status dt {
+  color: #8da2bd;
+}
+
+.runtime-status dd {
+  margin: 0;
+  color: #8de1b3;
+  font-weight: 700;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .battlefield-shell {
+    grid-template-rows: auto minmax(20rem, 55vh);
+  }
+
+  .dom-shell {
+    border-top: 1px solid #1d2938;
+    border-left: 0;
+  }
+}
