@@ -20,6 +20,7 @@ import type {
   CardInstance,
   CardZones,
   CombatCommand,
+  CombatDefinition,
   CombatContent,
   CombatEvent,
   CombatSetupResult,
@@ -30,14 +31,15 @@ import type {
   MapObjectState,
   PendingReaction,
   RngState,
-  ScenarioDefinition,
   TileState,
   TurnState,
 } from "./types";
 
 interface CombatDraft {
-  version: 1;
+  version: 2;
   scenarioId: string;
+  seed: number;
+  contentIdentity: CombatState["contentIdentity"];
   round: number;
   turn: TurnState;
   actors: Record<string, ActorState>;
@@ -89,6 +91,7 @@ function cloneCard(card: CardInstance): CardInstance {
 function cloneState(state: CombatState): CombatDraft {
   return {
     ...state,
+    contentIdentity: { ...state.contentIdentity },
     turn: {
       ...state.turn,
       initiativeOrder: [...state.turn.initiativeOrder],
@@ -162,17 +165,14 @@ function makeCardInstances(actor: ActorState, content: CombatContent): readonly 
   return instances;
 }
 
-export function createCombat(
-  scenario: ScenarioDefinition,
-  content: CombatContent,
-  seed: number,
-): CombatSetupResult {
+export function createCombat(definition: CombatDefinition, seed: number): CombatSetupResult {
+  const { scenario, content, contentIdentity } = definition;
   let rng = createRng(seed);
   const actors = Object.fromEntries(
     scenario.actors.map((setup) => [
       setup.id,
       {
-        ...cloneActor({ ...setup, reactionAvailable: true, shieldRaised: false, defeated: false }),
+        ...cloneActor({ ...setup, reactionAvailable: false, shieldRaised: false, defeated: false }),
       },
     ]),
   );
@@ -207,10 +207,14 @@ export function createCombat(
   const initiativeOrder = initiatives.map((entry) => entry.actorId);
   const activeActorId = initiativeOrder[0];
   if (!activeActorId) throw new Error("A combat scenario requires at least one actor.");
+  const activeActor = actors[activeActorId];
+  if (activeActor) actors[activeActorId] = { ...activeActor, reactionAvailable: true };
 
   const state: CombatState = {
-    version: 1,
+    version: 2,
     scenarioId: scenario.id,
+    seed,
+    contentIdentity: { ...contentIdentity },
     round: 1,
     turn: {
       initiativeOrder,
@@ -568,33 +572,10 @@ function executeRemoveCondition(
   draft: CombatDraft,
   actorId: string,
   definition: ActionDefinition,
-  content: CombatContent,
   events: CombatEvent[],
-  mapPenalty: number,
 ): void {
   if (definition.effect.kind !== "remove-condition") return;
-  if (definition.effect.condition === "prone") {
-    removeCondition(draft, actorId, "prone", events);
-    return;
-  }
-  const actor = draft.actors[actorId];
-  if (!actor) return;
-  const modifier = actor.athleticsModifier + mapPenalty;
-  const check = rollCheck(draft.rng, modifier, 15);
-  draft.rng = check.rng;
-  events.push({
-    type: "CHECK_ROLLED",
-    actorId,
-    label: definition.name,
-    roll: check.roll,
-    modifier,
-    dc: 15,
-    baseDegree: check.baseDegree,
-    degree: check.degree,
-    modifierSources: [`Athletics +${actor.athleticsModifier}`, ...(mapPenalty ? [`MAP ${mapPenalty}`] : [])],
-  });
-  if (isSuccessful(check.degree)) removeCondition(draft, actorId, "grabbed", events);
-  void content;
+  removeCondition(draft, actorId, definition.effect.condition, events);
 }
 
 function executeRecoveryCheck(
@@ -721,7 +702,7 @@ function executeAction(
       if (target.kind === "actor") performTrip(draft, actorId, target.actorId, definition, content, events, mapPenalty);
       break;
     case "remove-condition":
-      executeRemoveCondition(draft, actorId, definition, content, events, mapPenalty);
+      executeRemoveCondition(draft, actorId, definition, events);
       break;
     case "recovery-check":
       executeRecoveryCheck(draft, actorId, definition, events, mapPenalty);

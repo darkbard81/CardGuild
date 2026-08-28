@@ -8,12 +8,13 @@ import {
   type Ticker,
 } from "pixi.js";
 
-import { positionKey, terrainLabel } from "../game";
+import { positionKey } from "../game";
 import type {
   CombatEvent,
   CombatState,
   Direction,
   GridPosition,
+  TileState,
 } from "../game";
 
 const CELL_SIZE = 72;
@@ -54,6 +55,14 @@ function tileColor(label: string): number {
     default:
       return 0x465743;
   }
+}
+
+function terrainLabel(tile: TileState): string {
+  if (tile.traits.some((entry) => entry.id === "blocked")) return "Wall";
+  if (tile.traits.some((entry) => entry.id === "impassable")) return "Chasm";
+  if (tile.traits.some((entry) => entry.id === "web")) return "Web";
+  if (tile.traits.some((entry) => entry.id === "difficult")) return "Rubble";
+  return "Open";
 }
 
 function directionRotation(direction: Direction): number {
@@ -155,7 +164,7 @@ export class BattleView {
     for (const tile of Object.values(state.map.tiles).sort(
       (left, right) => left.position.y - right.position.y || left.position.x - right.position.x,
     )) {
-      const label = terrainLabel(tile.position);
+      const label = terrainLabel(tile);
       const group = new Container({
         x: tile.position.x * CELL_SIZE,
         y: tile.position.y * CELL_SIZE,

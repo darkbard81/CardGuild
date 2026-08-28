@@ -1,0 +1,399 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CardGuild Content Pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenario"],
+  "properties": {
+    "manifest": { "$ref": "#/$defs/manifest" },
+    "traits": { "type": "array", "items": { "$ref": "#/$defs/traitDefinition" } },
+    "conditions": { "type": "array", "items": { "$ref": "#/$defs/conditionDefinition" } },
+    "actions": { "type": "array", "items": { "$ref": "#/$defs/actionDefinition" } },
+    "cards": { "type": "array", "items": { "$ref": "#/$defs/cardDefinition" } },
+    "equipment": { "type": "array", "items": { "$ref": "#/$defs/equipmentDefinition" } },
+    "actors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/actorSetup" } },
+    "scenario": { "$ref": "#/$defs/scenario" }
+  },
+  "$defs": {
+    "nonEmptyString": { "type": "string", "minLength": 1 },
+    "gridPosition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "integer", "minimum": 0 },
+        "y": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "traitInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
+        "params": {
+          "type": "object",
+          "additionalProperties": {
+            "anyOf": [
+              { "type": "string" },
+              { "type": "number" },
+              { "type": "boolean" }
+            ]
+          }
+        }
+      }
+    },
+    "conditionInstance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "sourceId"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "sourceId": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "damageDie": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["count", "sides", "modifier", "damageType"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "sides": { "type": "integer", "minimum": 2 },
+        "modifier": { "type": "integer" },
+        "damageType": { "enum": ["slashing", "piercing", "bludgeoning", "force"] }
+      }
+    },
+    "weaponProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "attackModifier", "rangeFeet", "damage"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "attackModifier": { "type": "integer" },
+        "rangeFeet": { "type": "integer", "minimum": 1 },
+        "damage": { "$ref": "#/$defs/damageDie" }
+      }
+    },
+    "cardGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cardDefinitionId", "count", "sourceId"],
+      "properties": {
+        "cardDefinitionId": { "$ref": "#/$defs/nonEmptyString" },
+        "count": { "type": "integer", "minimum": 1 },
+        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
+        "traitId": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "actionTiming": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "actions"],
+          "properties": {
+            "kind": { "const": "turn" },
+            "actions": { "enum": [1, 2, 3] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "reaction" } }
+        }
+      ]
+    },
+    "degreeOutcomeEffect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "condition"],
+          "properties": {
+            "kind": { "const": "remove-condition" },
+            "condition": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "actionId"],
+          "properties": {
+            "kind": { "const": "lock-action" },
+            "actionId": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      ]
+    },
+    "degreeOutcomeMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical-success", "success", "failure", "critical-failure"],
+      "properties": {
+        "critical-success": { "type": "array", "items": { "$ref": "#/$defs/degreeOutcomeEffect" } },
+        "success": { "type": "array", "items": { "$ref": "#/$defs/degreeOutcomeEffect" } },
+        "failure": { "type": "array", "items": { "$ref": "#/$defs/degreeOutcomeEffect" } },
+        "critical-failure": { "type": "array", "items": { "$ref": "#/$defs/degreeOutcomeEffect" } }
+      }
+    },
+    "actionEffect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "movementMode", "step", "triggersReactions"],
+          "properties": {
+            "kind": { "const": "move" },
+            "movementMode": { "enum": ["land", "fly"] },
+            "step": { "type": "boolean" },
+            "triggersReactions": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "damageMultiplier"],
+          "properties": {
+            "kind": { "const": "weapon-attack" },
+            "damageMultiplier": { "type": "number", "exclusiveMinimum": 0 },
+            "applyCondition": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "trip" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "condition"],
+          "properties": {
+            "kind": { "const": "remove-condition" },
+            "condition": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "condition", "modifier", "dc", "outcomes"],
+          "properties": {
+            "kind": { "const": "recovery-check" },
+            "condition": { "$ref": "#/$defs/nonEmptyString" },
+            "modifier": { "const": "athletics" },
+            "dc": { "type": "integer", "minimum": 1 },
+            "outcomes": { "$ref": "#/$defs/degreeOutcomeMap" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "raise-shield" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "interact" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "effectName"],
+          "properties": {
+            "kind": { "const": "create-sustained-effect" },
+            "effectName": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "sustain-effect" } }
+        }
+      ]
+    },
+    "actionDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description", "timing", "traits", "targeting", "effect"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "description": { "type": "string" },
+        "timing": { "$ref": "#/$defs/actionTiming" },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
+        "targeting": { "enum": ["none", "self", "enemy", "tile", "object", "effect"] },
+        "effect": { "$ref": "#/$defs/actionEffect" }
+      }
+    },
+    "cardDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "actionId", "traits"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "actionId": { "$ref": "#/$defs/nonEmptyString" },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
+      }
+    },
+    "traitCardGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["cardDefinitionId", "count"],
+      "properties": {
+        "cardDefinitionId": { "$ref": "#/$defs/nonEmptyString" },
+        "count": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "traitActionGrant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actionId", "contextGroup"],
+      "properties": {
+        "actionId": { "$ref": "#/$defs/nonEmptyString" },
+        "contextGroup": { "enum": ["escape", "interact", "shield", "sustain"] }
+      }
+    },
+    "traitDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "cardGrants", "actionGrants"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "cardGrants": { "type": "array", "items": { "$ref": "#/$defs/traitCardGrant" } },
+        "actionGrants": { "type": "array", "items": { "$ref": "#/$defs/traitActionGrant" } }
+      }
+    },
+    "conditionDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "traits"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
+      }
+    },
+    "statModifier": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["selector", "value", "label"],
+      "properties": {
+        "selector": { "enum": ["ac", "reflex"] },
+        "value": { "type": "integer" },
+        "label": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "equipmentDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "traits", "statModifiers"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
+        "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } },
+        "weaponProfile": { "$ref": "#/$defs/weaponProfile" },
+        "shieldBonus": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "actorSetup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "team", "position", "facing", "hp", "maxHp", "baseAc", "reflexModifier", "athleticsModifier", "initiativeModifier", "speedFeet", "fallbackWeapon", "conditions", "traits", "equipmentIds", "innateActionIds", "baseCardGrants"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "team": { "enum": ["heroes", "enemies"] },
+        "position": { "$ref": "#/$defs/gridPosition" },
+        "facing": { "enum": ["north", "east", "south", "west"] },
+        "hp": { "type": "integer", "minimum": 0 },
+        "maxHp": { "type": "integer", "minimum": 1 },
+        "baseAc": { "type": "integer", "minimum": 0 },
+        "reflexModifier": { "type": "integer" },
+        "athleticsModifier": { "type": "integer" },
+        "initiativeModifier": { "type": "integer" },
+        "speedFeet": { "type": "integer", "minimum": 0 },
+        "fallbackWeapon": { "$ref": "#/$defs/weaponProfile" },
+        "conditions": { "type": "array", "items": { "$ref": "#/$defs/conditionInstance" } },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
+        "equipmentIds": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "innateActionIds": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "baseCardGrants": { "type": "array", "items": { "$ref": "#/$defs/cardGrant" } }
+      }
+    },
+    "tileDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "position", "traits"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "position": { "$ref": "#/$defs/gridPosition" },
+        "traits": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/traitInstance" } }
+      }
+    },
+    "mapInteraction": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "targetTileId"],
+      "properties": {
+        "kind": { "const": "open-gate" },
+        "targetTileId": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "mapObjectDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "position", "traits", "interaction", "used"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "position": { "$ref": "#/$defs/gridPosition" },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
+        "interaction": { "$ref": "#/$defs/mapInteraction" },
+        "used": { "type": "boolean" }
+      }
+    },
+    "battleMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["width", "height", "tiles", "objects"],
+      "properties": {
+        "width": { "type": "integer", "minimum": 1 },
+        "height": { "type": "integer", "minimum": 1 },
+        "tiles": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/tileDefinition" } },
+        "objects": { "type": "array", "items": { "$ref": "#/$defs/mapObjectDefinition" } }
+      }
+    },
+    "scenario": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "objective", "actorIds", "map"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "objective": { "$ref": "#/$defs/nonEmptyString" },
+        "actorIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "map": { "$ref": "#/$defs/battleMap" }
+      }
+    },
+    "manifest": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemaVersion", "id", "version", "rulesetId"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "version": { "$ref": "#/$defs/nonEmptyString" },
+        "rulesetId": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    }
+  }
+}

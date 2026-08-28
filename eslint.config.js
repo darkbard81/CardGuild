@@ -15,6 +15,7 @@ export default defineConfig(
   },
   {
     files: ["src/game/**/*.ts"],
+    ignores: ["src/game/**/*.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -24,6 +25,9 @@ export default defineConfig(
             "../pixi/**",
             "../dom/**",
             "../app/**",
+            "../content/**",
+            "ajv",
+            "node:*",
           ],
         },
       ],

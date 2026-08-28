@@ -1,5 +1,5 @@
 import { createCombat, dispatchCombatCommand } from "./engine";
-import type { CombatCommand, CombatContent, CombatEvent, CombatState, ScenarioDefinition } from "./types";
+import type { CombatDefinition, CombatEvent, CombatReplay, CombatState, ContentIdentity } from "./types";
 
 function canonicalize(value: unknown): string {
   if (value === null || typeof value !== "object") return JSON.stringify(value);
@@ -23,17 +23,41 @@ export function hashCombatState(state: CombatState): string {
   return hash.toString(16).padStart(16, "0");
 }
 
+function sameContentIdentity(left: ContentIdentity, right: ContentIdentity): boolean {
+  return left.packId === right.packId &&
+    left.packVersion === right.packVersion &&
+    left.fingerprint === right.fingerprint;
+}
+
+export function createCombatReplay(state: CombatState): CombatReplay {
+  return {
+    scenarioId: state.scenarioId,
+    seed: state.seed,
+    contentIdentity: { ...state.contentIdentity },
+    commands: [...state.commandLog],
+  };
+}
+
 export function replayCombat(
-  scenario: ScenarioDefinition,
-  content: CombatContent,
-  seed: number,
-  commands: readonly CombatCommand[],
+  definition: CombatDefinition,
+  replay: CombatReplay,
 ): { readonly state: CombatState; readonly events: readonly CombatEvent[] } {
-  const setup = createCombat(scenario, content, seed);
+  if (replay.scenarioId !== definition.scenario.id) {
+    throw new Error(`Replay scenario mismatch: expected ${replay.scenarioId}, loaded ${definition.scenario.id}.`);
+  }
+  if (!sameContentIdentity(replay.contentIdentity, definition.contentIdentity)) {
+    throw new Error(
+      `Replay content mismatch: expected ${replay.contentIdentity.packId}@${replay.contentIdentity.packVersion} ` +
+      `(${replay.contentIdentity.fingerprint}), loaded ${definition.contentIdentity.packId}@${definition.contentIdentity.packVersion} ` +
+      `(${definition.contentIdentity.fingerprint}).`,
+    );
+  }
+
+  const setup = createCombat(definition, replay.seed);
   let state = setup.state;
   const events = [...setup.events];
-  for (const command of commands) {
-    const result = dispatchCombatCommand(state, command, content);
+  for (const command of replay.commands) {
+    const result = dispatchCombatCommand(state, command, definition.content);
     if (!result.accepted) throw new Error(`Replay rejected ${command.id}: ${result.error}`);
     state = result.state;
     events.push(...result.events);

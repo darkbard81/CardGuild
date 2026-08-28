@@ -18,6 +18,12 @@ export type DegreeOfSuccess =
   | "critical-failure";
 export type CombatOutcome = "victory" | "defeat";
 
+export interface ContentIdentity {
+  readonly packId: string;
+  readonly packVersion: string;
+  readonly fingerprint: string;
+}
+
 export interface GridPosition {
   readonly x: number;
   readonly y: number;
@@ -212,8 +218,10 @@ export interface PendingReaction {
 }
 
 export interface CombatState {
-  readonly version: 1;
+  readonly version: 2;
   readonly scenarioId: string;
+  readonly seed: number;
+  readonly contentIdentity: ContentIdentity;
   readonly round: number;
   readonly turn: TurnState;
   readonly actors: Readonly<Record<EntityId, ActorState>>;
@@ -244,7 +252,7 @@ export type ActionEffect =
   | {
       readonly kind: "weapon-attack";
       readonly damageMultiplier: number;
-      readonly applyCondition?: "prone";
+      readonly applyCondition?: ConditionId;
     }
   | { readonly kind: "trip" }
   | { readonly kind: "remove-condition"; readonly condition: ConditionId }
@@ -353,6 +361,19 @@ export interface CombatContent {
   readonly equipment: Readonly<Record<EquipmentId, EquipmentDefinition>>;
   readonly traits: Readonly<Record<TraitId, TraitDefinition>>;
   readonly conditions: Readonly<Record<ConditionId, ConditionDefinition>>;
+}
+
+export interface CombatDefinition {
+  readonly scenario: ScenarioDefinition;
+  readonly content: CombatContent;
+  readonly contentIdentity: ContentIdentity;
+}
+
+export interface CombatReplay {
+  readonly scenarioId: string;
+  readonly seed: number;
+  readonly contentIdentity: ContentIdentity;
+  readonly commands: readonly CombatCommand[];
 }
 
 export type CombatEvent =

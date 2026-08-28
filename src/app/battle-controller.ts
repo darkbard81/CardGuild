@@ -1,14 +1,17 @@
 import {
   chooseAiCommand,
-  cloneM0Scenario,
   createCombat,
   dispatchCombatCommand,
   hashCombatState,
   listLegalTargets,
-  M0_CONTENT,
-  M0_DEFAULT_SEED,
   previewAction,
 } from "../game";
+import {
+  cloneM0Scenario,
+  M0_COMBAT_DEFINITION,
+  M0_CONTENT,
+  M0_DEFAULT_SEED,
+} from "../content/load-m0-content";
 import type {
   ActionPreview,
   ActionTarget,
@@ -57,7 +60,7 @@ export class BattleController {
   private readonly ui: BattleUi;
 
   public constructor(app: Application) {
-    const setup = createCombat(cloneM0Scenario(), M0_CONTENT, M0_DEFAULT_SEED);
+    const setup = createCombat(M0_COMBAT_DEFINITION, M0_DEFAULT_SEED);
     this.state = setup.state;
     this.history = [...setup.events];
     this.view = new BattleView(app, {
@@ -280,7 +283,7 @@ export class BattleController {
 
   private restart(): void {
     if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
-    const setup = createCombat(cloneM0Scenario(), M0_CONTENT, M0_DEFAULT_SEED);
+    const setup = createCombat(M0_COMBAT_DEFINITION, M0_DEFAULT_SEED);
     this.state = setup.state;
     this.history = [...setup.events];
     this.clearSelection();

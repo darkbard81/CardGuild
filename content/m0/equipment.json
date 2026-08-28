@@ -1,0 +1,27 @@
+[
+  {
+    "id": "halberd",
+    "name": "Halberd",
+    "traits": [{ "id": "weapon" }, { "id": "trip" }, { "id": "reach" }],
+    "statModifiers": [],
+    "weaponProfile": {
+      "name": "Halberd",
+      "attackModifier": 8,
+      "rangeFeet": 10,
+      "damage": { "count": 1, "sides": 12, "modifier": 4, "damageType": "slashing" }
+    }
+  },
+  {
+    "id": "shield",
+    "name": "Steel Shield",
+    "traits": [{ "id": "shield" }],
+    "statModifiers": [],
+    "shieldBonus": 2
+  },
+  {
+    "id": "boots-of-fly",
+    "name": "Boots of Fly",
+    "traits": [{ "id": "fly" }],
+    "statModifiers": [{ "selector": "reflex", "value": 1, "label": "Boots of Fly" }]
+  }
+]
