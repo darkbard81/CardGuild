@@ -309,6 +309,7 @@ export function validateContentPackSemantics(
 }
 
 export function formatContentValidationIssue(issue: ContentValidationIssue): string {
-  const definition = issue.definitionId ? `\nDefinition "${issue.definitionId}"` : "";
-  return `${issue.source}${definition}\n${issue.path}\n${issue.code}: ${issue.message}`;
+  const pack = issue.packId ?? "unknown";
+  const definition = issue.definitionId ? `\nDefinition: ${issue.definitionId}` : "";
+  return `Pack: ${pack}\nSource: ${issue.source}${definition}\nPath: ${issue.path}\n${issue.code}: ${issue.message}`;
 }

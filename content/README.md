@@ -30,9 +30,10 @@ npm run content:check
 원본 파일, definition, JSON path와 원인을 출력합니다.
 
 ```text
-content/m0/equipment.json
-Definition "halberd"
-[0].traits[1].id
+Pack: cardguild.m0
+Source: content/m0/equipment.json
+Definition: halberd
+Path: [0].traits[1].id
 UNKNOWN_TRAIT: Trait "tirp" is not defined.
 ```
 

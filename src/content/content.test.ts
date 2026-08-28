@@ -9,7 +9,7 @@ import type { ContentPackSource } from "./content-types";
 import { fingerprintContentPack } from "./fingerprint";
 import { M0_CONTENT_SOURCE, M0_SCENARIO_ID } from "./load-m0-content";
 import { validateContentPackStructure } from "./validate-content";
-import { validateContentPackSemantics } from "./validate-semantics";
+import { formatContentValidationIssue, validateContentPackSemantics } from "./validate-semantics";
 
 function sourceCopy(): ContentPackSource {
   return structuredClone(M0_CONTENT_SOURCE);
@@ -44,6 +44,26 @@ describe("content structural validation", () => {
       actors: [{ ...source.actors[0], maxHp: 0 }, ...source.actors.slice(1)],
     };
     expect(validateContentPackStructure(invalidRange, contentPackSchema).some((issue) => issue.path.includes("maxHp"))).toBe(true);
+  });
+
+  it("formats structural issues with pack identity and source context", () => {
+    const source = sourceCopy();
+    const missingVersion = {
+      ...source,
+      manifest: {
+        schemaVersion: source.manifest.schemaVersion,
+        id: source.manifest.id,
+        rulesetId: source.manifest.rulesetId,
+      },
+    };
+    const issue = validateContentPackStructure(missingVersion, contentPackSchema, {
+      manifest: "content/test/manifest.json",
+    })[0];
+    expect(issue).toBeDefined();
+    expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain(
+      "Pack: cardguild.m0\nSource: content/test/manifest.json",
+    );
+    expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain("Path: /manifest/version");
   });
 });
 
@@ -83,6 +103,30 @@ describe("content semantic validation and compilation", () => {
           definitionId: "halberd",
         }),
       ]),
+    );
+  });
+
+  it("formats semantic issues with pack, source, definition, path, code, and reason", () => {
+    const source = sourceCopy();
+    const halberd = source.equipment.find((item) => item.id === "halberd") as NonNullable<typeof source.equipment[0]>;
+    const invalid: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((item) =>
+        item.id === halberd.id ? { ...item, traits: [{ id: "tirp" }] } : item,
+      ),
+    };
+    const issue = validateContentPackSemantics(invalid, {
+      equipment: "content/test/equipment.json",
+    }).find((candidate) => candidate.code === "UNKNOWN_TRAIT");
+    expect(issue).toBeDefined();
+    expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toBe(
+      [
+        "Pack: cardguild.m0",
+        "Source: content/test/equipment.json",
+        "Definition: halberd",
+        "Path: [0].traits[0].id",
+        'UNKNOWN_TRAIT: Trait "tirp" is not defined.',
+      ].join("\n"),
     );
   });
 
