@@ -84,6 +84,8 @@ function formatEvent(state: CombatState, event: CombatEvent): string | null {
       return `${actorName(state, event.actorId)} gained ${event.condition}.`;
     case "CONDITION_REMOVED":
       return `${actorName(state, event.actorId)} removed ${event.condition}.`;
+    case "ACTION_LOCKED":
+      return `${actorName(state, event.actorId)} cannot use ${event.actionId} again this turn.`;
     case "SHIELD_RAISED":
       return `${actorName(state, event.actorId)} raised a shield (AC +${event.bonus}).`;
     case "EFFECT_CREATED":
@@ -114,6 +116,7 @@ function formatEvent(state: CombatState, event: CombatEvent): string | null {
 }
 
 export class BattleUi {
+  private escapeMenuOpen = false;
   private readonly app = required<HTMLElement>("#app");
   private readonly objective = required<HTMLElement>("#objective-text");
   private readonly round = required<HTMLElement>("#round-value");
@@ -182,8 +185,7 @@ export class BattleUi {
       actions.filter((action) => action.source.kind === "basic"),
       presentation.selectedAction,
     );
-    this.renderActionGroup(
-      this.contextActions,
+    this.renderContextActions(
       actions.filter((action) => action.source.kind === "context"),
       presentation.selectedAction,
     );
@@ -274,6 +276,45 @@ export class BattleUi {
       return;
     }
     for (const action of actions) root.append(this.actionButton(action, selected, false));
+  }
+
+  private renderContextActions(
+    actions: readonly LegalAction[],
+    selected: LegalAction | null,
+  ): void {
+    this.contextActions.replaceChildren();
+    const recoveryActions = actions.filter((action) => action.contextGroup === "escape");
+    const directActions = actions.filter((action) => action.contextGroup !== "escape");
+    if (recoveryActions.length === 0) this.escapeMenuOpen = false;
+
+    if (recoveryActions.length > 0) {
+      const wrapper = element("div", "escape-context");
+      const toggle = element("button", "action-button escape-toggle") as HTMLButtonElement;
+      toggle.type = "button";
+      toggle.dataset.contextGroup = "escape";
+      toggle.setAttribute("aria-expanded", String(this.escapeMenuOpen));
+      toggle.append(
+        element("strong", undefined, "Escape"),
+        element("span", "action-cost", `${recoveryActions.length} option${recoveryActions.length === 1 ? "" : "s"}`),
+      );
+      const menu = element("div", "escape-options");
+      menu.hidden = !this.escapeMenuOpen;
+      for (const action of recoveryActions) menu.append(this.actionButton(action, selected, false));
+      toggle.addEventListener("click", () => {
+        this.escapeMenuOpen = !this.escapeMenuOpen;
+        toggle.setAttribute("aria-expanded", String(this.escapeMenuOpen));
+        menu.hidden = !this.escapeMenuOpen;
+      });
+      wrapper.append(toggle, menu);
+      this.contextActions.append(wrapper);
+    }
+
+    for (const action of directActions) {
+      this.contextActions.append(this.actionButton(action, selected, false));
+    }
+    if (actions.length === 0) {
+      this.contextActions.append(element("p", "empty-message", "No action available"));
+    }
   }
 
   private actionButton(action: LegalAction, selected: LegalAction | null, card: boolean): HTMLButtonElement {

@@ -6,6 +6,7 @@ export type EquipmentId = string;
 export type EffectId = string;
 export type ObjectId = string;
 export type TraitId = string;
+export type ConditionId = string;
 
 export type TeamId = "heroes" | "enemies";
 export type Direction = "north" | "east" | "south" | "west";
@@ -29,7 +30,7 @@ export interface TraitInstance {
 }
 
 export interface ConditionInstance {
-  readonly id: "prone" | "grabbed";
+  readonly id: ConditionId;
   readonly sourceId: string;
 }
 
@@ -136,6 +137,7 @@ export interface TurnState {
   readonly actionsRemaining: number;
   readonly attacksThisTurn: number;
   readonly turnNumber: number;
+  readonly lockedActionIds: readonly ActionId[];
 }
 
 export type ActionSource =
@@ -237,6 +239,7 @@ export type ActionEffect =
       readonly kind: "move";
       readonly movementMode: MovementMode;
       readonly step: boolean;
+      readonly triggersReactions: boolean;
     }
   | {
       readonly kind: "weapon-attack";
@@ -244,7 +247,14 @@ export type ActionEffect =
       readonly applyCondition?: "prone";
     }
   | { readonly kind: "trip" }
-  | { readonly kind: "remove-condition"; readonly condition: "prone" | "grabbed" }
+  | { readonly kind: "remove-condition"; readonly condition: ConditionId }
+  | {
+      readonly kind: "recovery-check";
+      readonly condition: ConditionId;
+      readonly modifier: "athletics";
+      readonly dc: number;
+      readonly outcomes: DegreeOutcomeMap;
+    }
   | { readonly kind: "raise-shield" }
   | { readonly kind: "interact" }
   | { readonly kind: "create-sustained-effect"; readonly effectName: string }
@@ -274,6 +284,44 @@ export interface CardGrant {
   readonly traitId?: TraitId;
 }
 
+export type ContextActionGroup = "escape" | "interact" | "shield" | "sustain";
+
+export interface TraitCardGrant {
+  readonly cardDefinitionId: CardDefinitionId;
+  readonly count: number;
+}
+
+export interface TraitActionGrant {
+  readonly actionId: ActionId;
+  readonly contextGroup: ContextActionGroup;
+}
+
+export interface ContextActionOption {
+  readonly source: ActionSource;
+  readonly group: ContextActionGroup;
+}
+
+export interface TraitDefinition {
+  readonly id: TraitId;
+  readonly name: string;
+  readonly cardGrants: readonly TraitCardGrant[];
+  readonly actionGrants: readonly TraitActionGrant[];
+}
+
+export interface ConditionDefinition {
+  readonly id: ConditionId;
+  readonly name: string;
+  readonly traits: readonly TraitInstance[];
+}
+
+export type DegreeOutcomeEffect =
+  | { readonly kind: "remove-condition"; readonly condition: ConditionId }
+  | { readonly kind: "lock-action"; readonly actionId: ActionId };
+
+export type DegreeOutcomeMap = Readonly<
+  Record<DegreeOfSuccess, readonly DegreeOutcomeEffect[]>
+>;
+
 export interface StatModifier {
   readonly selector: "ac" | "reflex";
   readonly value: number;
@@ -285,8 +333,6 @@ export interface EquipmentDefinition {
   readonly name: string;
   readonly traits: readonly TraitInstance[];
   readonly statModifiers: readonly StatModifier[];
-  readonly cardGrants: readonly CardGrant[];
-  readonly actionGrants: readonly ActionId[];
   readonly weaponProfile?: WeaponProfile;
   readonly shieldBonus?: number;
 }
@@ -305,6 +351,8 @@ export interface CombatContent {
   readonly actions: Readonly<Record<ActionId, ActionDefinition>>;
   readonly cards: Readonly<Record<CardDefinitionId, CardDefinition>>;
   readonly equipment: Readonly<Record<EquipmentId, EquipmentDefinition>>;
+  readonly traits: Readonly<Record<TraitId, TraitDefinition>>;
+  readonly conditions: Readonly<Record<ConditionId, ConditionDefinition>>;
 }
 
 export type CombatEvent =
@@ -362,8 +410,9 @@ export type CombatEvent =
   | {
       readonly type: "CONDITION_REMOVED";
       readonly actorId: EntityId;
-      readonly condition: ConditionInstance["id"];
+      readonly condition: ConditionId;
     }
+  | { readonly type: "ACTION_LOCKED"; readonly actorId: EntityId; readonly actionId: ActionId }
   | { readonly type: "SHIELD_RAISED"; readonly actorId: EntityId; readonly bonus: number }
   | { readonly type: "EFFECT_CREATED"; readonly effectId: EffectId; readonly actorId: EntityId; readonly name: string }
   | { readonly type: "EFFECT_SUSTAINED"; readonly effectId: EffectId; readonly actorId: EntityId }
@@ -405,6 +454,12 @@ export interface LegalAction {
   readonly enabled: boolean;
   readonly reason?: string;
   readonly sourceLabel?: string;
+  readonly contextGroup?: ContextActionGroup;
+}
+
+export interface ActionValidationResult {
+  readonly legal: boolean;
+  readonly reason?: string;
 }
 
 export type LegalTarget =

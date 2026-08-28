@@ -10,6 +10,8 @@ import type {
   ScenarioDefinition,
   TileState,
   TraitInstance,
+  TraitDefinition,
+  ConditionDefinition,
 } from "./types";
 
 export const M0_DEFAULT_SEED = 1;
@@ -24,7 +26,7 @@ const actions: readonly ActionDefinition[] = [
     timing: { kind: "turn", actions: 1 },
     traits: [trait("move")],
     targeting: "tile",
-    effect: { kind: "move", movementMode: "land", step: true },
+    effect: { kind: "move", movementMode: "land", step: true, triggersReactions: false },
   },
   {
     id: "stride",
@@ -33,7 +35,7 @@ const actions: readonly ActionDefinition[] = [
     timing: { kind: "turn", actions: 1 },
     traits: [trait("move")],
     targeting: "tile",
-    effect: { kind: "move", movementMode: "land", step: false },
+    effect: { kind: "move", movementMode: "land", step: false, triggersReactions: true },
   },
   {
     id: "strike",
@@ -60,7 +62,18 @@ const actions: readonly ActionDefinition[] = [
     timing: { kind: "turn", actions: 1 },
     traits: [trait("attack")],
     targeting: "self",
-    effect: { kind: "remove-condition", condition: "grabbed" },
+    effect: {
+      kind: "recovery-check",
+      condition: "grabbed",
+      modifier: "athletics",
+      dc: 15,
+      outcomes: {
+        "critical-success": [{ kind: "remove-condition", condition: "grabbed" }],
+        success: [{ kind: "remove-condition", condition: "grabbed" }],
+        failure: [],
+        "critical-failure": [{ kind: "lock-action", actionId: "escape-grab" }],
+      },
+    },
   },
   {
     id: "interact-lever",
@@ -105,7 +118,7 @@ const actions: readonly ActionDefinition[] = [
     timing: { kind: "turn", actions: 1 },
     traits: [trait("move"), trait("fly")],
     targeting: "tile",
-    effect: { kind: "move", movementMode: "fly", step: false },
+    effect: { kind: "move", movementMode: "fly", step: false, triggersReactions: true },
   },
   {
     id: "spirit-beacon",
@@ -153,16 +166,50 @@ const cards: readonly CardDefinition[] = [
   },
 ];
 
+const traits: readonly TraitDefinition[] = [
+  {
+    id: "trip",
+    name: "Trip",
+    cardGrants: [{ cardDefinitionId: "card.trip", count: 3 }],
+    actionGrants: [],
+  },
+  {
+    id: "fly",
+    name: "Fly",
+    cardGrants: [{ cardDefinitionId: "card.fly", count: 2 }],
+    actionGrants: [],
+  },
+  {
+    id: "shield",
+    name: "Shield",
+    cardGrants: [],
+    actionGrants: [{ actionId: "raise-shield", contextGroup: "shield" }],
+  },
+  {
+    id: "prone",
+    name: "Prone Recovery",
+    cardGrants: [],
+    actionGrants: [{ actionId: "stand", contextGroup: "escape" }],
+  },
+  {
+    id: "grabbed",
+    name: "Grabbed Recovery",
+    cardGrants: [],
+    actionGrants: [{ actionId: "escape-grab", contextGroup: "escape" }],
+  },
+];
+
+const conditions: readonly ConditionDefinition[] = [
+  { id: "prone", name: "Prone", traits: [trait("condition"), trait("prone")] },
+  { id: "grabbed", name: "Grabbed", traits: [trait("condition"), trait("grabbed")] },
+];
+
 const equipment: readonly EquipmentDefinition[] = [
   {
     id: "halberd",
     name: "Halberd",
     traits: [trait("weapon"), trait("trip"), trait("reach")],
     statModifiers: [],
-    actionGrants: [],
-    cardGrants: [
-      { cardDefinitionId: "card.trip", count: 3, sourceId: "halberd", traitId: "trip" },
-    ],
     weaponProfile: {
       name: "Halberd",
       attackModifier: 8,
@@ -175,8 +222,6 @@ const equipment: readonly EquipmentDefinition[] = [
     name: "Steel Shield",
     traits: [trait("shield")],
     statModifiers: [],
-    cardGrants: [],
-    actionGrants: ["raise-shield"],
     shieldBonus: 2,
   },
   {
@@ -184,10 +229,6 @@ const equipment: readonly EquipmentDefinition[] = [
     name: "Boots of Fly",
     traits: [trait("fly")],
     statModifiers: [{ selector: "reflex", value: 1, label: "Boots of Fly" }],
-    cardGrants: [
-      { cardDefinitionId: "card.fly", count: 2, sourceId: "boots-of-fly", traitId: "fly" },
-    ],
-    actionGrants: [],
   },
 ];
 
@@ -195,6 +236,8 @@ export const M0_CONTENT: CombatContent = {
   actions: Object.fromEntries(actions.map((action) => [action.id, action])),
   cards: Object.fromEntries(cards.map((card) => [card.id, card])),
   equipment: Object.fromEntries(equipment.map((item) => [item.id, item])),
+  traits: Object.fromEntries(traits.map((item) => [item.id, item])),
+  conditions: Object.fromEntries(conditions.map((item) => [item.id, item])),
 };
 
 function createMap(): BattleMapState {

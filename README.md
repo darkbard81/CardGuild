@@ -26,10 +26,17 @@ npm run dev
   이동 및 LOS/LOE 판정에 서로 다른 Trait으로 참여합니다.
 - 적 AI와 모든 동률, 판정, 셔플은 기본 seed `1`에서 결정론적으로 처리됩니다.
 
+### CardGuild Rules Override
+
+M0의 Facing은 PF2e Remaster 기본 규칙이 아니라 CardGuild 고유 전술 규칙입니다.
+이동을 마칠 때 네 방향 중 하나를 정하고, Strike와 Reactive Strike는 전방/측면만
+대상으로 삼습니다. 바로 뒤에서 가하는 근접 공격은 대상 AC를 2 낮춥니다. 이는
+PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 분리할 규칙입니다.
+
 ## 구조
 
 ```text
-src/game   순수 CombatState + Command + Event, grid, cards, traits, AI, replay
+src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
 src/app    세션과 입력 상태, 적 AI 턴 orchestration
 src/pixi   격자·토큰·highlight·Facing·전투 feedback
 src/dom    행동·카드·HUD·로그·Reaction·결과 UI
@@ -39,6 +46,10 @@ src/dom    행동·카드·HUD·로그·Reaction·결과 UI
 `listLegalActions`, `listLegalTargets`, `previewAction`의 결과를 표시하고
 `CombatCommand`만 전송합니다. 같은 seed와 command log는 같은 event sequence와
 state hash를 만듭니다.
+
+장비와 Condition은 개별 ID 분기 대신 `TraitDefinition` provider를 통해 카드와
+Context Action을 공급합니다. `Escape` UI는 Condition이 공급한 Stand/Escape 같은
+Recovery Action을 하나의 메뉴로 묶습니다.
 
 설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), 구현
 범위는 GitHub 이슈 `#1`을 따릅니다.

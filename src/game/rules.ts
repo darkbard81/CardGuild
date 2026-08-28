@@ -1,6 +1,8 @@
 import type {
+  CardGrant,
   ActorState,
   CombatContent,
+  ConditionDefinition,
   Direction,
   EquipmentDefinition,
   GridPosition,
@@ -23,6 +25,50 @@ export function getEquipment(
     const equipment = content.equipment[id];
     return equipment ? [equipment] : [];
   });
+}
+
+export function getEquipmentCardGrants(
+  actor: ActorState,
+  content: CombatContent,
+): readonly CardGrant[] {
+  return getEquipment(actor, content).flatMap((equipment) =>
+    equipment.traits.flatMap((trait) => {
+      const definition = content.traits[trait.id];
+      return (definition?.cardGrants ?? []).map((grant) => ({
+        ...grant,
+        sourceId: equipment.id,
+        traitId: trait.id,
+      }));
+    }),
+  );
+}
+
+export function getEquipmentActionGrants(
+  actor: ActorState,
+  content: CombatContent,
+) {
+  return getEquipment(actor, content).flatMap((equipment) =>
+    equipment.traits.flatMap((trait) => content.traits[trait.id]?.actionGrants ?? []),
+  );
+}
+
+export function getConditionDefinitions(
+  actor: ActorState,
+  content: CombatContent,
+): readonly ConditionDefinition[] {
+  return actor.conditions.flatMap((condition) => {
+    const definition = content.conditions[condition.id];
+    return definition ? [definition] : [];
+  });
+}
+
+export function getConditionActionGrants(
+  actor: ActorState,
+  content: CombatContent,
+) {
+  return getConditionDefinitions(actor, content).flatMap((condition) =>
+    condition.traits.flatMap((trait) => content.traits[trait.id]?.actionGrants ?? []),
+  );
 }
 
 export function getWeaponProfile(actor: ActorState, content: CombatContent): WeaponProfile {

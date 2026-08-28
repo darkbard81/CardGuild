@@ -1,9 +1,10 @@
 import { rollCheck } from "./checks";
 import { findPath, getTile, gridDistance, hasLineOfSight, positionKey } from "./grid";
-import { listLegalTargets, resolveActionSource, targetIsLegal } from "./queries";
+import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
   getEquipment,
+  getEquipmentCardGrants,
   getStatistic,
   getWeaponProfile,
   hasTrait,
@@ -88,7 +89,11 @@ function cloneCard(card: CardInstance): CardInstance {
 function cloneState(state: CombatState): CombatDraft {
   return {
     ...state,
-    turn: { ...state.turn, initiativeOrder: [...state.turn.initiativeOrder] },
+    turn: {
+      ...state.turn,
+      initiativeOrder: [...state.turn.initiativeOrder],
+      lockedActionIds: [...state.turn.lockedActionIds],
+    },
     actors: Object.fromEntries(Object.values(state.actors).map((actor) => [actor.id, cloneActor(actor)])),
     map: {
       ...state.map,
@@ -139,7 +144,7 @@ function fail(state: CombatState, error: string): CommandResult {
 function makeCardInstances(actor: ActorState, content: CombatContent): readonly CardInstance[] {
   const grants = [
     ...actor.baseCardGrants,
-    ...getEquipment(actor, content).flatMap((equipment) => equipment.cardGrants),
+    ...getEquipmentCardGrants(actor, content),
   ];
   const instances: CardInstance[] = [];
   let sequence = 1;
@@ -214,6 +219,7 @@ export function createCombat(
       actionsRemaining: 3,
       attacksThisTurn: 0,
       turnNumber: 1,
+      lockedActionIds: [],
     },
     actors,
     map: {
@@ -535,7 +541,9 @@ function executeMove(
     facing: target.facing,
     movementMode: definition.effect.movementMode,
   };
-  const candidates = eligibleMoveReactions(draft, actor, content);
+  const candidates = definition.effect.triggersReactions
+    ? eligibleMoveReactions(draft, actor, content)
+    : [];
   if (candidates.length > 0) {
     const triggerId = `reaction-${draft.sequence}`;
     draft.pendingReaction = {
@@ -587,6 +595,47 @@ function executeRemoveCondition(
   });
   if (isSuccessful(check.degree)) removeCondition(draft, actorId, "grabbed", events);
   void content;
+}
+
+function executeRecoveryCheck(
+  draft: CombatDraft,
+  actorId: string,
+  definition: ActionDefinition,
+  events: CombatEvent[],
+  mapPenalty: number,
+): void {
+  if (definition.effect.kind !== "recovery-check") return;
+  const actor = draft.actors[actorId];
+  if (!actor) return;
+  const modifier = actor.athleticsModifier + mapPenalty;
+  const check = rollCheck(draft.rng, modifier, definition.effect.dc);
+  draft.rng = check.rng;
+  events.push({
+    type: "CHECK_ROLLED",
+    actorId,
+    label: definition.name,
+    roll: check.roll,
+    modifier,
+    dc: definition.effect.dc,
+    baseDegree: check.baseDegree,
+    degree: check.degree,
+    modifierSources: [
+      `Athletics +${actor.athleticsModifier}`,
+      ...(mapPenalty ? [`MAP ${mapPenalty}`] : []),
+    ],
+  });
+
+  for (const outcome of definition.effect.outcomes[check.degree]) {
+    if (outcome.kind === "remove-condition") {
+      removeCondition(draft, actorId, outcome.condition, events);
+    } else if (!draft.turn.lockedActionIds.includes(outcome.actionId)) {
+      draft.turn = {
+        ...draft.turn,
+        lockedActionIds: [...draft.turn.lockedActionIds, outcome.actionId],
+      };
+      events.push({ type: "ACTION_LOCKED", actorId, actionId: outcome.actionId });
+    }
+  }
 }
 
 function executeInteract(
@@ -674,6 +723,9 @@ function executeAction(
     case "remove-condition":
       executeRemoveCondition(draft, actorId, definition, content, events, mapPenalty);
       break;
+    case "recovery-check":
+      executeRecoveryCheck(draft, actorId, definition, events, mapPenalty);
+      break;
     case "raise-shield": {
       const actor = draft.actors[actorId];
       const shield = actor ? getEquipment(actor, content).find((equipment) => equipment.shieldBonus) : undefined;
@@ -734,6 +786,7 @@ function advanceTurn(draft: CombatDraft, events: CombatEvent[]): void {
     actionsRemaining: 3,
     attacksThisTurn: 0,
     turnNumber: draft.turn.turnNumber + 1,
+    lockedActionIds: [],
   };
   drawCard(draft, activeActorId, events);
   events.push({ type: "TURN_STARTED", actorId: activeActorId, round: draft.round });
@@ -757,17 +810,19 @@ function useAction(
   command: Extract<CombatCommand, { type: "use-action" }>,
   content: CombatContent,
 ): CommandResult {
-  if (state.outcome) return fail(state, "Combat has ended.");
-  if (state.pendingReaction) return fail(state, "Resolve the pending reaction first.");
-  if (state.turn.activeActorId !== command.actorId) return fail(state, "Actor is not active.");
+  const validation = validateActionIntent(
+    state,
+    command.actorId,
+    command.action,
+    command.target,
+    content,
+  );
+  if (!validation.legal) return fail(state, validation.reason ?? "Action is not legal.");
   const actor = state.actors[command.actorId];
-  if (!actor || actor.defeated) return fail(state, "Actor cannot act.");
+  if (!actor) return fail(state, "Unknown actor.");
   const resolved = resolveActionSource(state, actor, command.action, content);
   if (!resolved) return fail(state, "Action source is unavailable.");
   if (resolved.definition.timing.kind !== "turn") return fail(state, "Reaction cards require a trigger.");
-  if (resolved.definition.timing.actions > state.turn.actionsRemaining) return fail(state, "Not enough actions remaining.");
-  const legalTargets = listLegalTargets(state, actor.id, command.action, content);
-  if (!targetIsLegal(legalTargets, command.target)) return fail(state, "Target is not legal.");
 
   const draft = cloneState(state);
   const events: CombatEvent[] = [];

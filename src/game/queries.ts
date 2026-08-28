@@ -9,7 +9,8 @@ import {
   positionKey,
 } from "./grid";
 import {
-  getEquipment,
+  getConditionActionGrants,
+  getEquipmentActionGrants,
   getStatistic,
   getWeaponProfile,
   isDirectlyBehind,
@@ -20,10 +21,12 @@ import type {
   ActionPreview,
   ActionSource,
   ActionTarget,
+  ActionValidationResult,
   ActorState,
   CardInstance,
   CombatContent,
   CombatState,
+  ContextActionOption,
   LegalAction,
   LegalTarget,
 } from "./types";
@@ -40,30 +43,36 @@ function hasCondition(actor: ActorState, condition: "prone" | "grabbed"): boolea
   return actor.conditions.some((entry) => entry.id === condition);
 }
 
-export function getContextActionSources(
+export function getContextActionOptions(
   state: CombatState,
   actor: ActorState,
   content: CombatContent,
-): readonly ActionSource[] {
-  const sources: ActionSource[] = [];
-  if (hasCondition(actor, "prone")) sources.push({ kind: "context", id: "stand" });
-  if (hasCondition(actor, "grabbed")) sources.push({ kind: "context", id: "escape-grab" });
+): readonly ContextActionOption[] {
+  const options: ContextActionOption[] = [];
+  for (const grant of getConditionActionGrants(actor, content)) {
+    options.push({ source: { kind: "context", id: grant.actionId }, group: grant.contextGroup });
+  }
 
   const hasAdjacentObject = Object.values(state.map.objects).some(
     (object) => !object.used && gridDistance(actor.position, object.position) === 5,
   );
-  if (hasAdjacentObject) sources.push({ kind: "context", id: "interact-lever" });
+  if (hasAdjacentObject) {
+    options.push({ source: { kind: "context", id: "interact-lever" }, group: "interact" });
+  }
 
-  const equipmentActions = getEquipment(actor, content).flatMap((equipment) => equipment.actionGrants);
-  if (equipmentActions.includes("raise-shield")) {
-    sources.push({ kind: "context", id: "raise-shield" });
+  for (const grant of getEquipmentActionGrants(actor, content)) {
+    options.push({ source: { kind: "context", id: grant.actionId }, group: grant.contextGroup });
   }
 
   const hasSustainedEffect = Object.values(state.effects).some(
     (effect) => effect.targetActorId === actor.id && effect.traits.some((trait) => trait.id === "sustained"),
   );
-  if (hasSustainedEffect) sources.push({ kind: "context", id: "sustain-spell" });
-  return sources;
+  if (hasSustainedEffect) {
+    options.push({ source: { kind: "context", id: "sustain-spell" }, group: "sustain" });
+  }
+
+  const unique = new Map(options.map((option) => [option.source.id, option]));
+  return [...unique.values()];
 }
 
 function getCardFromHand(state: CombatState, actorId: string, cardId: string): CardInstance | undefined {
@@ -98,7 +107,7 @@ export function resolveActionSource(
   }
   if (
     source.kind === "context" &&
-    !getContextActionSources(state, actor, content).some((candidate) => candidate.id === source.id)
+    !getContextActionOptions(state, actor, content).some((candidate) => candidate.source.id === source.id)
   ) {
     return null;
   }
@@ -159,18 +168,12 @@ function enemyTargets(
     .map((target) => ({ kind: "actor" as const, actorId: target.id, label: target.name }));
 }
 
-export function listLegalTargets(
+function listCandidateTargets(
   state: CombatState,
-  actorId: string,
-  source: ActionSource,
+  actor: ActorState,
+  definition: ActionDefinition,
   content: CombatContent,
 ): readonly LegalTarget[] {
-  const actor = state.actors[actorId];
-  if (!actor || actor.defeated || state.outcome) return [];
-  const resolved = resolveActionSource(state, actor, source, content);
-  if (!resolved) return [];
-  const definition = resolved.definition;
-
   if (definition.effect.kind === "move") return movementTargets(state, actor, definition);
   if (definition.targeting === "enemy") return enemyTargets(state, actor, definition, content);
   if (definition.targeting === "object") {
@@ -200,23 +203,80 @@ export function targetIsLegal(targets: readonly LegalTarget[], target: ActionTar
   });
 }
 
-function actionAvailabilityReason(
+interface BaseActionValidation extends ActionValidationResult {
+  readonly actor?: ActorState;
+  readonly resolved?: ResolvedAction;
+}
+
+function validateActionBase(
   state: CombatState,
-  actor: ActorState,
+  actorId: string,
   source: ActionSource,
-  definition: ActionDefinition,
   content: CombatContent,
-): string | undefined {
-  if (state.outcome) return "Combat has ended.";
-  if (state.pendingReaction) return "A reaction decision is pending.";
-  if (definition.timing.kind === "reaction") return "Requires a reaction trigger.";
-  if (state.turn.activeActorId !== actor.id) return "Not this actor's turn.";
-  if (definition.timing.actions > state.turn.actionsRemaining) return "Not enough actions remaining.";
-  if (source.kind === "context" && source.id === "raise-shield" && actor.shieldRaised) {
-    return "Shield is already raised.";
+): BaseActionValidation {
+  const actor = state.actors[actorId];
+  if (!actor) return { legal: false, reason: "Unknown actor." };
+  if (actor.defeated) return { legal: false, reason: "Actor cannot act." };
+  if (state.outcome) return { legal: false, reason: "Combat has ended." };
+  if (state.pendingReaction) return { legal: false, reason: "A reaction decision is pending." };
+  if (state.turn.activeActorId !== actor.id) return { legal: false, reason: "Not this actor's turn." };
+  const resolved = resolveActionSource(state, actor, source, content);
+  if (!resolved) return { legal: false, reason: "Action source is unavailable." };
+  const definition = resolved.definition;
+  if (definition.timing.kind === "reaction") {
+    return { legal: false, reason: "Requires a reaction trigger.", actor, resolved };
   }
-  if (listLegalTargets(state, actor.id, source, content).length === 0) return "No legal target.";
-  return undefined;
+  if (definition.timing.actions > state.turn.actionsRemaining) {
+    return { legal: false, reason: "Not enough actions remaining.", actor, resolved };
+  }
+  if (state.turn.lockedActionIds.includes(definition.id)) {
+    return { legal: false, reason: `${definition.name} is locked until the next turn.`, actor, resolved };
+  }
+  if (source.kind === "context" && source.id === "raise-shield" && actor.shieldRaised) {
+    return { legal: false, reason: "Shield is already raised.", actor, resolved };
+  }
+  return { legal: true, actor, resolved };
+}
+
+export function validateActionIntent(
+  state: CombatState,
+  actorId: string,
+  source: ActionSource,
+  target: ActionTarget,
+  content: CombatContent,
+): ActionValidationResult {
+  const base = validateActionBase(state, actorId, source, content);
+  if (!base.legal || !base.actor || !base.resolved) return { legal: false, reason: base.reason };
+  const targets = listCandidateTargets(state, base.actor, base.resolved.definition, content);
+  if (targets.length === 0) return { legal: false, reason: "No legal target." };
+  if (!targetIsLegal(targets, target)) return { legal: false, reason: "Target is not legal." };
+  return { legal: true };
+}
+
+function targetIntent(target: LegalTarget, actor: ActorState): ActionTarget {
+  switch (target.kind) {
+    case "none":
+      return { kind: "none" };
+    case "actor":
+      return { kind: "actor", actorId: target.actorId };
+    case "tile":
+      return { kind: "tile", position: target.position, facing: actor.facing };
+    case "object":
+      return { kind: "object", objectId: target.objectId };
+    case "effect":
+      return { kind: "effect", effectId: target.effectId };
+  }
+}
+
+export function listLegalTargets(
+  state: CombatState,
+  actorId: string,
+  source: ActionSource,
+  content: CombatContent,
+): readonly LegalTarget[] {
+  const base = validateActionBase(state, actorId, source, content);
+  if (!base.legal || !base.actor || !base.resolved) return [];
+  return listCandidateTargets(state, base.actor, base.resolved.definition, content);
 }
 
 export function listLegalActions(
@@ -226,9 +286,10 @@ export function listLegalActions(
 ): readonly LegalAction[] {
   const actor = state.actors[actorId];
   if (!actor) return [];
+  const contextOptions = getContextActionOptions(state, actor, content);
   const sources: ActionSource[] = [
     ...BASIC_ACTION_IDS.map((id) => ({ kind: "basic" as const, id })),
-    ...getContextActionSources(state, actor, content),
+    ...contextOptions.map((option) => option.source),
     ...actor.innateActionIds.map((id) => ({ kind: "innate" as const, id })),
     ...(state.cardZones[actor.id]?.hand.map((card) => ({ kind: "card" as const, id: card.id })) ?? []),
   ];
@@ -236,7 +297,14 @@ export function listLegalActions(
   return sources.flatMap((source) => {
     const resolved = resolveActionSource(state, actor, source, content);
     if (!resolved) return [];
-    const reason = actionAvailabilityReason(state, actor, source, resolved.definition, content);
+    const candidate = listCandidateTargets(state, actor, resolved.definition, content)[0];
+    const validation = validateActionIntent(
+      state,
+      actor.id,
+      source,
+      candidate ? targetIntent(candidate, actor) : { kind: "none" },
+      content,
+    );
     return [
       {
         source,
@@ -245,9 +313,10 @@ export function listLegalActions(
         description: resolved.definition.description,
         timing: resolved.definition.timing,
         traits: resolved.definition.traits.map((trait) => trait.id),
-        enabled: !reason,
-        reason,
+        enabled: validation.legal,
+        reason: validation.reason,
         sourceLabel: resolved.sourceLabel,
+        contextGroup: contextOptions.find((option) => option.source.id === source.id)?.group,
       },
     ];
   });
@@ -268,12 +337,11 @@ export function previewAction(
 ): ActionPreview {
   const actor = state.actors[actorId];
   if (!actor) return { legal: false, reason: "Unknown actor.", notes: [] };
+  const validation = validateActionIntent(state, actorId, source, target, content);
+  if (!validation.legal) return { legal: false, reason: validation.reason, notes: [] };
   const resolved = resolveActionSource(state, actor, source, content);
   if (!resolved) return { legal: false, reason: "Unknown action source.", notes: [] };
-  const legalTargets = listLegalTargets(state, actorId, source, content);
-  if (!targetIsLegal(legalTargets, target)) {
-    return { legal: false, reason: "Illegal target.", notes: [] };
-  }
+  const legalTargets = listCandidateTargets(state, actor, resolved.definition, content);
 
   if (target.kind === "tile") {
     const legal = legalTargets.find(
