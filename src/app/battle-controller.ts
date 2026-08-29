@@ -7,15 +7,14 @@ import {
   previewAction,
 } from "../game";
 import {
-  cloneM0Scenario,
   M0_COMBAT_DEFINITION,
-  M0_CONTENT,
   M0_DEFAULT_SEED,
 } from "../content/load-m0-content";
 import type {
   ActionPreview,
   ActionTarget,
   CombatCommand,
+  CombatDefinition,
   CombatEvent,
   CombatState,
   Direction,
@@ -24,10 +23,17 @@ import type {
   LegalTarget,
 } from "../game";
 import { BattleUi } from "../dom/battle-ui";
+import type { AssetCatalog } from "../presentation";
 import { BattleView, type BoardHighlights } from "../pixi/BattleView";
 import type { Application } from "pixi.js";
 
 const AI_DELAY_MS = 260;
+
+export interface BattleControllerOptions {
+  readonly definition?: CombatDefinition;
+  readonly seed?: number;
+  readonly onComplete?: (state: CombatState, stateHash: string) => void;
+}
 
 function samePosition(left: GridPosition, right: GridPosition): boolean {
   return left.x === right.x && left.y === right.y;
@@ -49,6 +55,9 @@ function legalTargetToActionTarget(target: LegalTarget, fallbackFacing: Directio
 }
 
 export class BattleController {
+  private readonly definition: CombatDefinition;
+  private readonly seed: number;
+  private readonly onComplete: ((state: CombatState, stateHash: string) => void) | undefined;
   private state: CombatState;
   private history: CombatEvent[];
   private selectedAction: LegalAction | null = null;
@@ -59,17 +68,20 @@ export class BattleController {
   private readonly view: BattleView;
   private readonly ui: BattleUi;
 
-  public constructor(app: Application) {
-    const setup = createCombat(M0_COMBAT_DEFINITION, M0_DEFAULT_SEED);
+  public constructor(app: Application, catalog: AssetCatalog, options: BattleControllerOptions = {}) {
+    this.definition = options.definition ?? M0_COMBAT_DEFINITION;
+    this.seed = options.seed ?? M0_DEFAULT_SEED;
+    this.onComplete = options.onComplete;
+    const setup = createCombat(this.definition, this.seed);
     this.state = setup.state;
     this.history = [...setup.events];
-    this.view = new BattleView(app, {
+    this.view = new BattleView(app, catalog, {
       onTile: (position) => this.handleTile(position),
       onActor: (actorId) => this.handleActor(actorId),
       onObject: (objectId) => this.handleObject(objectId),
       onFacing: (facing) => this.handleFacing(facing),
     });
-    this.ui = new BattleUi(M0_CONTENT, cloneM0Scenario(), {
+    this.ui = new BattleUi(this.definition.content, this.definition.scenario, {
       onAction: (action) => this.handleAction(action),
       onActionHover: (action) => this.handleActionHover(action),
       onEndTurn: () => this.endTurn(),
@@ -96,7 +108,7 @@ export class BattleController {
 
   private targetsFor(action: LegalAction | null): readonly LegalTarget[] {
     if (!action) return [];
-    return listLegalTargets(this.state, this.heroId(), action.source, M0_CONTENT);
+    return listLegalTargets(this.state, this.heroId(), action.source, this.definition.content);
   }
 
   private highlights(): BoardHighlights {
@@ -116,7 +128,7 @@ export class BattleController {
     const actor = this.state.actors[this.heroId()];
     const target = targets.length === 1 && actor ? legalTargetToActionTarget(targets[0] as LegalTarget, actor.facing) : null;
     if (!target) return null;
-    return previewAction(this.state, this.heroId(), action.source, target, M0_CONTENT);
+    return previewAction(this.state, this.heroId(), action.source, target, this.definition.content);
   }
 
   private render(events: readonly CombatEvent[] = []): void {
@@ -250,7 +262,7 @@ export class BattleController {
   }
 
   private dispatch(command: CombatCommand): void {
-    const result = dispatchCombatCommand(this.state, command, M0_CONTENT);
+    const result = dispatchCombatCommand(this.state, command, this.definition.content);
     if (!result.accepted) {
       this.prompt = result.error ?? "행동을 실행할 수 없습니다.";
       this.render();
@@ -276,14 +288,18 @@ export class BattleController {
     if (this.state.outcome || this.state.pendingReaction || this.activeHeroId()) return;
     this.aiTimer = window.setTimeout(() => {
       this.aiTimer = null;
-      const command = chooseAiCommand(this.state, M0_CONTENT);
+      const command = chooseAiCommand(this.state, this.definition.content);
       if (command) this.dispatch(command);
     }, AI_DELAY_MS);
   }
 
   private restart(): void {
+    if (this.state.outcome && this.onComplete) {
+      this.onComplete(this.state, hashCombatState(this.state));
+      return;
+    }
     if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
-    const setup = createCombat(M0_COMBAT_DEFINITION, M0_DEFAULT_SEED);
+    const setup = createCombat(this.definition, this.seed);
     this.state = setup.state;
     this.history = [...setup.events];
     this.clearSelection();
@@ -294,6 +310,7 @@ export class BattleController {
 
   public destroy(): void {
     if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
+    this.ui.destroy();
     this.view.destroy();
   }
 }

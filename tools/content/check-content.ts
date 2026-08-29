@@ -21,7 +21,8 @@ const CATEGORIES: readonly ContentSourceCategory[] = [
   "cards",
   "equipment",
   "actors",
-  "scenario",
+  "scenarios",
+  "adventures",
 ];
 
 async function readJson(filePath: string): Promise<unknown> {

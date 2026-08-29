@@ -1,6 +1,7 @@
 import { Application } from "pixi.js";
 
-import { BattleController } from "./app/battle-controller";
+import { AdventureController } from "./app/adventure-controller";
+import { createPresentationCatalog } from "./presentation";
 import "./style.css";
 
 function required<T extends Element>(selector: string): T {
@@ -30,18 +31,20 @@ async function bootstrap(): Promise<void> {
   });
 
   app.canvas.id = "pixi-canvas";
-  app.canvas.setAttribute("aria-label", "CardGuild M0 tactical battle board");
+  app.canvas.setAttribute("aria-label", "CardGuild M2 isometric tactical battle board");
   pixiRoot.append(app.canvas);
   app.resize();
-  const controller = new BattleController(app);
+  const catalog = createPresentationCatalog();
+  const controller = new AdventureController(app, catalog, required<HTMLElement>("#app"));
 
   pixiRoot.dataset.ready = "true";
-  pixiStatus.textContent = "Deterministic core ready";
+  pixiStatus.textContent = "Isometric presentation ready";
 
   window.addEventListener(
     "beforeunload",
     () => {
       controller.destroy();
+      void catalog.unload();
       app.destroy(
         { removeView: true, releaseGlobalResources: true },
         { children: true },

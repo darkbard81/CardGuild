@@ -13,20 +13,25 @@ export function normalizeContentPack(source: ContentPackSource): ContentPackSour
     cards: byId(source.cards),
     equipment: byId(source.equipment),
     actors: byId(source.actors),
-    scenario: {
-      ...source.scenario,
-      actorIds: [...source.scenario.actorIds],
+    scenarios: byId(source.scenarios).map((scenario) => ({
+      ...scenario,
+      placements: [...scenario.placements].sort((left, right) => left.instanceId.localeCompare(right.instanceId)),
       map: {
-        ...source.scenario.map,
-        tiles: [...source.scenario.map.tiles].sort(
+        ...scenario.map,
+        tiles: [...scenario.map.tiles].sort(
           (left, right) =>
             left.position.y - right.position.y ||
             left.position.x - right.position.x ||
             left.id.localeCompare(right.id),
         ),
-        objects: byId(source.scenario.map.objects),
+        objects: byId(scenario.map.objects),
       },
-    },
+    })),
+    adventures: byId(source.adventures).map((adventure) => ({
+      ...adventure,
+      encounterIds: [...adventure.encounterIds],
+      rewards: byId(adventure.rewards).map((reward) => ({ ...reward, choices: [...reward.choices] })),
+    })),
   };
 }
 

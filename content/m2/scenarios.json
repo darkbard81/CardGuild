@@ -1,8 +1,44 @@
+[
 {
-  "id": "m0-gatehouse",
-  "name": "The Webbed Gatehouse",
-  "objective": "레버로 문을 열고 두 고블린을 쓰러뜨리세요.",
-  "actorIds": ["hero", "goblin-skirmisher", "goblin-brute"],
+  "id": "encounter.road-ambush",
+  "name": "Road Ambush",
+  "objective": {
+    "kind": "defeat-all-enemies",
+    "description": "폐허로 가는 길을 막은 고블린 척후병을 쓰러뜨리세요."
+  },
+  "placements": [
+    { "instanceId": "hero", "actorDefinitionId": "hero.aerin", "partyMemberId": "party.hero-1", "team": "heroes", "position": { "x": 0, "y": 1 }, "facing": "east" },
+    { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 2, "y": 1 }, "facing": "west" }
+  ],
+  "map": {
+    "width": 3,
+    "height": 3,
+    "tiles": [
+      { "id": "road-0,0", "position": { "x": 0, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "road-1,0", "position": { "x": 1, "y": 0 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "road-2,0", "position": { "x": 2, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "road-0,1", "position": { "x": 0, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "road-1,1", "position": { "x": 1, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "road-2,1", "position": { "x": 2, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "road-0,2", "position": { "x": 0, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "road-1,2", "position": { "x": 1, "y": 2 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "road-2,2", "position": { "x": 2, "y": 2 }, "traits": [{ "id": "open" }] }
+    ],
+    "objects": []
+  }
+},
+{
+  "id": "encounter.ruined-gate",
+  "name": "Ruined Gate",
+  "objective": {
+    "kind": "defeat-all-enemies",
+    "description": "레버로 문을 열고 두 고블린을 쓰러뜨리세요."
+  },
+  "placements": [
+    { "instanceId": "hero", "actorDefinitionId": "hero.aerin", "partyMemberId": "party.hero-1", "team": "heroes", "position": { "x": 1, "y": 3 }, "facing": "east" },
+    { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 7, "y": 2 }, "facing": "west" },
+    { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 7, "y": 4 }, "facing": "west" }
+  ],
   "map": {
     "width": 9,
     "height": 7,
@@ -88,4 +124,40 @@
       }
     ]
   }
+},
+{
+  "id": "encounter.goblin-chief",
+  "name": "Goblin Chief",
+  "objective": {
+    "kind": "defeat-all-enemies",
+    "description": "폐허 안뜰의 고블린 대장을 쓰러뜨리세요."
+  },
+  "placements": [
+    { "instanceId": "hero", "actorDefinitionId": "hero.aerin", "partyMemberId": "party.hero-1", "team": "heroes", "position": { "x": 0, "y": 1 }, "facing": "east" },
+    { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 4, "y": 0 }, "facing": "west" },
+    { "instanceId": "goblin-chief", "actorDefinitionId": "enemy.goblin-chief", "team": "enemies", "position": { "x": 4, "y": 2 }, "facing": "west" }
+  ],
+  "map": {
+    "width": 5,
+    "height": 3,
+    "tiles": [
+      { "id": "chief-0,0", "position": { "x": 0, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-1,0", "position": { "x": 1, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-2,0", "position": { "x": 2, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-3,0", "position": { "x": 3, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-4,0", "position": { "x": 4, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-0,1", "position": { "x": 0, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-1,1", "position": { "x": 1, "y": 1 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "chief-2,1", "position": { "x": 2, "y": 1 }, "traits": [{ "id": "impassable" }] },
+      { "id": "chief-3,1", "position": { "x": 3, "y": 1 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "chief-4,1", "position": { "x": 4, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-0,2", "position": { "x": 0, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-1,2", "position": { "x": 1, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-2,2", "position": { "x": 2, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-3,2", "position": { "x": 3, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-4,2", "position": { "x": 4, "y": 2 }, "traits": [{ "id": "open" }] }
+    ],
+    "objects": []
+  }
 }
+]

@@ -1,8 +1,9 @@
 # CardGuild
 
 Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Adventure입니다.
-M0 전투 코어 수직 슬라이스 위에 M1 JSON Content Pipeline을 연결했습니다. 한 명의
-플레이어와 두 고블린이 정사각형 격자에서 승리 또는 패배까지 전투할 수 있습니다.
+결정론적 전투 코어와 JSON Content Pipeline 위에 M2 Adventure Flow와 responsive
+isometric presentation을 연결했습니다. 같은 파티가 세 Encounter를 순서대로 진행하고
+선택한 Reward를 AdventureState의 Collection에 유지합니다.
 
 ## 요구 환경과 실행
 
@@ -14,7 +15,12 @@ npm install
 npm run dev
 ```
 
-## M0 플레이
+## M2 플레이
+
+- `Goblin Trouble`은 Road Ambush → Ruined Gate → Goblin Chief의 linear Adventure입니다.
+- 전투 승리 후 두 Reward 중 하나를 획득하며, 획득과 Loadout 변경은 분리됩니다.
+- 각 Encounter는 영속 party identity/loadout으로 새 CombatState와 파생 seed를 만듭니다.
+- 전투 HP, Condition, Reaction, 손패와 지속 효과는 다음 Encounter로 이월하지 않습니다.
 
 - `Step`, `Stride`, `Strike`는 손패와 무관한 고정 Basic Action입니다.
 - 이동은 상하좌우만 가능하며 목적지를 고른 뒤 최종 Facing을 선택합니다.
@@ -28,7 +34,7 @@ npm run dev
 
 ### CardGuild Rules Override
 
-M0의 Facing은 PF2e Remaster 기본 규칙이 아니라 CardGuild 고유 전술 규칙입니다.
+Facing은 PF2e Remaster 기본 규칙이 아니라 CardGuild 고유 전술 규칙입니다.
 이동을 마칠 때 네 방향 중 하나를 정하고, Strike와 Reactive Strike는 전방/측면만
 대상으로 삼습니다. 바로 뒤에서 가하는 근접 공격은 대상 AC를 2 낮춥니다. 이는
 PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 분리할 규칙입니다.
@@ -37,11 +43,13 @@ PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 
 
 ```text
 src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
-src/content JSON authoring DTO, semantic compiler, canonical fingerprint, M0 loader
+src/content JSON authoring DTO, semantic compiler, canonical fingerprint, M2 loader
 content    JSON Schema와 versioned Content Pack authoring source
-src/app    세션과 입력 상태, 적 AI 턴 orchestration
-src/pixi   격자·토큰·highlight·Facing·전투 feedback
-src/dom    행동·카드·HUD·로그·Reaction·결과 UI
+src/adventure 순수 AdventureState/Command/Event와 Combat bridge
+src/app    Adventure/전투 세션과 입력 상태, 적 AI 턴 orchestration
+src/pixi   isometric projection/camera/depth/renderers와 tactical overlay
+src/presentation WebP atlas AssetCatalog와 layered tilemap mapping
+src/dom    Adventure/Reward, 행동·카드·HUD·로그·Reaction·결과 UI
 ```
 
 `src/game`은 PixiJS, DOM, 브라우저 API, Ajv, 파일 경로에 의존하지 않습니다. UI는
@@ -54,30 +62,40 @@ state hash를 만듭니다. CombatState와 replay는 pack ID/version/fingerprint
 Context Action을 공급합니다. `Escape` UI는 Condition이 공급한 Stand/Escape 같은
 Recovery Action을 하나의 메뉴로 묶습니다.
 
-M0 콘텐츠의 source of truth는 [`content/m0`](content/m0) JSON이며, Schema와
+M2 콘텐츠의 source of truth는 [`content/m2`](content/m2) JSON이며, Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.
 
-설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M1 구현
-범위는 GitHub 이슈 `#2`를 따릅니다.
+Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
+`art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
+`art/processed`, 2048² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
+layer mapping은 `presentation/m2`에 있습니다. 캐릭터 원본은 8방향을 보존하지만 현재
+GameCore의 Facing 계약은 cardinal 4방향만 사용합니다.
+
+설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M2 구현
+범위는 GitHub 이슈 `#3`을 따릅니다.
 
 ## 검증
 
 ```bash
 npm run content:check # Schema, references, compile, fingerprint
-npm run check         # Content, TypeScript, core 경계, ESLint, Vitest
-npm run build         # Content 검증 후 production bundle
-npm run test:smoke  # 실제 Chromium/PixiJS/DOM 상호작용
+npm run assets        # raw PNG cleanup -> normalized frames -> atlas/tilemap -> validation
+npm run assets:build  # 위 pipeline 산출물 재생성
+npm run assets:check  # alpha, anchors, 8방향, atlas, layered tilemap 검증
+npm run check         # Content/asset, TypeScript, core 경계, ESLint, Vitest
+npm run build         # Content/asset 검증 후 production bundle
+npm run test:smoke    # 짧은 Chromium/PixiJS/DOM 입력·responsive smoke
 npm test            # Vitest + Playwright
 ```
 
-Vitest는 Content Schema/reference/fingerprint, RNG, 4단계 성공도, 3-Action/MAP,
+Vitest는 Content v2 Schema/reference/fingerprint, Adventure 3전/Reward/실패/seed/Combat bridge,
+isometric projection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
-Reaction lifecycle, replay identity/hash, victory/defeat를 검증합니다. Playwright는 실제 캔버스 입력으로 이동 후 Facing,
-레버, Shield, Sustain, AI 턴, Reaction과 전투 결과 화면을 검증합니다.
+Reaction lifecycle, replay identity/hash, victory/defeat를 검증합니다. Playwright는 Adventure shell,
+지연 WebP atlas 로딩, 실제 isometric 캔버스 이동/Facing, 좁은 화면과 ultrawide reflow를 검증합니다.
 
-## M1 범위 밖
+## M2 범위 밖
 
-전체 PF2e 규칙, 손 점유/그립, deck builder, adventure/loot, 신규 게임 아트,
-완성형 VFX/audio, 서버·온라인 협동·저장은 후속 단계입니다.
+전체 PF2e 규칙, 손 점유/그립, deck/loadout editor, branch Adventure, 랜덤 loot economy,
+sprite animation, 완성형 VFX/audio, 서버·온라인 협동·저장은 후속 단계입니다.

@@ -7,6 +7,9 @@ export type EffectId = string;
 export type ObjectId = string;
 export type TraitId = string;
 export type ConditionId = string;
+export type ActorDefinitionId = string;
+export type ScenarioId = string;
+export type AdventureId = string;
 
 export type TeamId = "heroes" | "enemies";
 export type Direction = "north" | "east" | "south" | "west";
@@ -56,6 +59,7 @@ export interface WeaponProfile {
 
 export interface ActorState {
   readonly id: EntityId;
+  readonly definitionId: ActorDefinitionId;
   readonly name: string;
   readonly team: TeamId;
   readonly position: GridPosition;
@@ -218,7 +222,7 @@ export interface PendingReaction {
 }
 
 export interface CombatState {
-  readonly version: 2;
+  readonly version: 3;
   readonly scenarioId: string;
   readonly seed: number;
   readonly contentIdentity: ContentIdentity;
@@ -347,10 +351,15 @@ export interface EquipmentDefinition {
 
 export type ActorSetup = Omit<ActorState, "reactionAvailable" | "shieldRaised" | "defeated">;
 
+export interface ObjectiveDefinition {
+  readonly kind: "defeat-all-enemies";
+  readonly description: string;
+}
+
 export interface ScenarioDefinition {
-  readonly id: string;
+  readonly id: ScenarioId;
   readonly name: string;
-  readonly objective: string;
+  readonly objective: ObjectiveDefinition;
   readonly actors: readonly ActorSetup[];
   readonly map: BattleMapState;
 }

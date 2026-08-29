@@ -25,6 +25,7 @@ function mapWith(overrides: Readonly<Record<string, readonly TraitInstance[]>> =
 
 const actor: ActorState = {
   id: "actor",
+  definitionId: "test.actor",
   name: "Actor",
   team: "heroes",
   position: { x: 0, y: 0 },

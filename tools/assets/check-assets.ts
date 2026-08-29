@@ -1,0 +1,203 @@
+import { access, readFile } from "node:fs/promises";
+import path from "node:path";
+
+import sharp from "sharp";
+
+interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+
+interface AssetEntry {
+  readonly frame: string;
+  readonly kind: "actor" | "terrain" | "object" | "ui";
+  readonly anchor: Point;
+  readonly displayWidth?: number;
+  readonly displayHeight?: number;
+  readonly footprint?: { readonly width: number; readonly height: number };
+}
+
+interface AssetManifest {
+  readonly version: number;
+  readonly atlas: { readonly path: string };
+  readonly assets: Readonly<Record<string, AssetEntry>>;
+  readonly actorVisuals: Readonly<Record<string, Readonly<Record<string, string>>>>;
+}
+
+interface AtlasFrame {
+  readonly frame: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+  readonly anchor: Point;
+}
+
+interface AtlasData {
+  readonly frames: Readonly<Record<string, AtlasFrame>>;
+  readonly meta: {
+    readonly image: string;
+    readonly size: { readonly w: number; readonly h: number };
+    readonly scale: string;
+  };
+}
+
+interface Tilemap {
+  readonly width: number;
+  readonly height: number;
+  readonly palettes: Readonly<Record<"ground" | "transitions" | "objects", readonly string[]>>;
+  readonly layers: Readonly<Record<"ground" | "transitions" | "objects", readonly number[]>>;
+  readonly meta: Readonly<Record<"tileIds" | "objectIds" | "type" | "walkable" | "cost", readonly unknown[]>>;
+}
+
+interface TilemapPack {
+  readonly version: number;
+  readonly maps: Readonly<Record<string, Tilemap>>;
+}
+
+function isPowerOfTwo(value: number): boolean {
+  return value > 0 && (value & (value - 1)) === 0;
+}
+
+function assertUnitPoint(id: string, point: Point): void {
+  if (point.x < 0 || point.x > 1 || point.y < 0 || point.y > 1) {
+    throw new Error(`Asset "${id}" anchor must be within 0..1.`);
+  }
+}
+
+async function readJson<T>(filePath: string): Promise<T> {
+  return JSON.parse(await readFile(filePath, "utf8")) as T;
+}
+
+function assertAtlasFrame(id: string, frame: AtlasFrame, atlas: AtlasData): void {
+  const { x, y, w, h } = frame.frame;
+  if (![x, y, w, h].every(Number.isInteger) || x < 0 || y < 0 || w <= 0 || h <= 0) {
+    throw new Error(`Atlas frame "${id}" has invalid geometry.`);
+  }
+  if (x + w > atlas.meta.size.w || y + h > atlas.meta.size.h) {
+    throw new Error(`Atlas frame "${id}" extends outside the atlas.`);
+  }
+  assertUnitPoint(id, frame.anchor);
+}
+
+async function assertCleanAlpha(id: string, filePath: string, kind: AssetEntry["kind"]): Promise<void> {
+  const image = sharp(filePath, { failOn: "error" });
+  const metadata = await image.metadata();
+  if (metadata.format !== "png" || !metadata.width || !metadata.height || !metadata.hasAlpha) {
+    throw new Error(`Processed asset "${id}" must be a readable straight-alpha PNG.`);
+  }
+  const { data, info } = await image.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  const cornerOffsets = [
+    3,
+    (info.width - 1) * 4 + 3,
+    (info.height - 1) * info.width * 4 + 3,
+    (info.height * info.width - 1) * 4 + 3,
+  ];
+  if (cornerOffsets.some((offset) => (data[offset] ?? 255) !== 0)) {
+    throw new Error(`Processed asset "${id}" has background pixels in a canvas corner.`);
+  }
+  let visible = 0;
+  let contaminated = 0;
+  for (let offset = 0; offset < data.length; offset += 4) {
+    const alpha = data[offset + 3] ?? 0;
+    if (alpha === 0) continue;
+    visible += 1;
+    const red = data[offset] ?? 0;
+    const green = data[offset + 1] ?? 0;
+    const blue = data[offset + 2] ?? 0;
+    if (alpha < 250 && red > 150 && blue > 150 && (red + blue) / 2 - green > 80) contaminated += 1;
+  }
+  if (visible === 0) throw new Error(`Processed asset "${id}" is empty.`);
+  if (contaminated / visible > 0.002) throw new Error(`Processed asset "${id}" retains magenta edge contamination.`);
+  if ((kind === "actor" || kind === "object") && (metadata.width !== (kind === "actor" ? 320 : 256))) {
+    throw new Error(`Processed ${kind} "${id}" has the wrong normalized canvas.`);
+  }
+}
+
+function assertTilemapPack(pack: TilemapPack, manifest: AssetManifest): void {
+  if (pack.version !== 1) throw new Error("Presentation tilemap version must be 1.");
+  for (const [scenarioId, map] of Object.entries(pack.maps)) {
+    const length = map.width * map.height;
+    if (!Number.isInteger(map.width) || map.width <= 0 || !Number.isInteger(map.height) || map.height <= 0) {
+      throw new Error(`Tilemap "${scenarioId}" dimensions must be positive integers.`);
+    }
+    for (const layerName of ["ground", "transitions", "objects"] as const) {
+      const palette = map.palettes[layerName];
+      const layer = map.layers[layerName];
+      if (layer.length !== length) throw new Error(`Tilemap "${scenarioId}" layer "${layerName}" has the wrong length.`);
+      for (const assetId of palette) {
+        if (!manifest.assets[assetId]) throw new Error(`Tilemap "${scenarioId}" references missing asset "${assetId}".`);
+      }
+      for (const value of layer) {
+        const minimum = layerName === "ground" ? 0 : -1;
+        if (!Number.isInteger(value) || value < minimum || value >= palette.length) {
+          throw new Error(`Tilemap "${scenarioId}" layer "${layerName}" contains invalid index ${value}.`);
+        }
+      }
+    }
+    for (const [name, values] of Object.entries(map.meta)) {
+      if (values.length !== length) throw new Error(`Tilemap "${scenarioId}" metadata "${name}" has the wrong length.`);
+    }
+  }
+}
+
+async function main(): Promise<void> {
+  const root = process.cwd();
+  const presentationRoot = path.join(root, "presentation", "m2");
+  const manifest = await readJson<AssetManifest>(path.join(presentationRoot, "asset-manifest.json"));
+  const sources = await readJson<Readonly<Record<string, string>>>(path.join(presentationRoot, "asset-sources.json"));
+  const tilemaps = await readJson<TilemapPack>(path.join(presentationRoot, "tilemaps.json"));
+  if (manifest.version !== 2) throw new Error("Presentation asset manifest version must be 2.");
+  if (manifest.atlas.path !== "/assets/m2-atlas.json") throw new Error("Presentation atlas path is not canonical.");
+
+  const atlasDataPath = path.join(root, "public", manifest.atlas.path.slice(1));
+  const atlas = await readJson<AtlasData>(atlasDataPath);
+  const atlasImagePath = path.join(path.dirname(atlasDataPath), atlas.meta.image);
+  await access(atlasImagePath);
+  const atlasMetadata = await sharp(atlasImagePath).metadata();
+  if (atlasMetadata.format !== "webp" || !atlasMetadata.hasAlpha || !atlasMetadata.width || !atlasMetadata.height) {
+    throw new Error("Runtime atlas must be a readable alpha WebP image.");
+  }
+  if (!isPowerOfTwo(atlasMetadata.width) || atlasMetadata.width !== atlasMetadata.height) {
+    throw new Error("Runtime atlas must be square and power-of-two.");
+  }
+  if (atlas.meta.size.w !== atlasMetadata.width || atlas.meta.size.h !== atlasMetadata.height || atlas.meta.scale !== "1") {
+    throw new Error("Runtime atlas metadata does not match its image.");
+  }
+
+  const ids = Object.keys(manifest.assets).sort();
+  if (JSON.stringify(ids) !== JSON.stringify(Object.keys(sources).sort())) {
+    throw new Error("Asset source IDs and manifest asset IDs must match exactly.");
+  }
+  if (JSON.stringify(ids) !== JSON.stringify(Object.keys(atlas.frames).sort())) {
+    throw new Error("Atlas frame IDs and manifest asset IDs must match exactly.");
+  }
+  for (const id of ids) {
+    const asset = manifest.assets[id];
+    const frame = atlas.frames[id];
+    const source = sources[id];
+    if (!asset || !frame || !source) throw new Error(`Asset "${id}" is incomplete.`);
+    if (asset.frame !== id) throw new Error(`Asset "${id}" must use its ID as the atlas frame name.`);
+    assertUnitPoint(id, asset.anchor);
+    assertAtlasFrame(id, frame, atlas);
+    if (JSON.stringify(asset.anchor) !== JSON.stringify(frame.anchor)) {
+      throw new Error(`Asset "${id}" anchor drifted between manifest and atlas.`);
+    }
+    if (asset.displayWidth !== undefined && asset.displayWidth <= 0) throw new Error(`Asset "${id}" displayWidth must be positive.`);
+    if (asset.displayHeight !== undefined && asset.displayHeight <= 0) throw new Error(`Asset "${id}" displayHeight must be positive.`);
+    if (asset.footprint && (asset.footprint.width !== 64 || asset.footprint.height !== 32)) {
+      throw new Error(`Terrain asset "${id}" must declare the 64x32 logical footprint.`);
+    }
+    await assertCleanAlpha(id, path.join(root, source), asset.kind);
+  }
+
+  const directions = ["south", "south-west", "west", "north-west", "north", "north-east", "east", "south-east"];
+  for (const [definitionId, visual] of Object.entries(manifest.actorVisuals)) {
+    for (const direction of directions) {
+      const id = visual[direction];
+      if (!id || manifest.assets[id]?.kind !== "actor") {
+        throw new Error(`Actor visual "${definitionId}" is missing a valid ${direction} asset.`);
+      }
+    }
+  }
+  assertTilemapPack(tilemaps, manifest);
+  process.stdout.write(`Assets OK: ${ids.length} atlas frames, ${Object.keys(manifest.actorVisuals).length} eight-facing actors, ${Object.keys(tilemaps.maps).length} layered tilemaps\n`);
+}
+
+await main();

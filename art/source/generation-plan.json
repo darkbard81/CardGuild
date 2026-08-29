@@ -1,0 +1,180 @@
+{
+  "version": 1,
+  "styleSheet": "art/STYLE.md",
+  "promptConvention": "documents/ImageGen_Prompt.md",
+  "background": "#FF00FF",
+  "atlas": {
+    "size": 2048,
+    "padding": 2,
+    "image": "public/assets/m2-atlas.webp",
+    "data": "public/assets/m2-atlas.json"
+  },
+  "sources": [
+    {
+      "input": "art/source/terrain/stone-floor.png",
+      "mode": "terrain-block",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 128, "height": 96 },
+      "frames": [
+        { "assetId": "terrain.stone-floor", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.333333 }, "displaySize": { "width": 64, "height": 48 }, "footprint": { "width": 64, "height": 32 } }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one full mossy ancient stone-floor block tile, true 2:1 dimetric diamond, shared thick base, upper-left light, isolated on solid #FF00FF; no props, scenery, text, UI, or multiple tiles."
+    },
+    {
+      "input": "art/source/terrain/rubble.png",
+      "mode": "terrain-block",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 128, "height": 96 },
+      "frames": [
+        { "assetId": "terrain.rubble", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.333333 }, "displaySize": { "width": 64, "height": 48 }, "footprint": { "width": 64, "height": 32 } }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one full cracked stone-and-compact-rubble block tile, true 2:1 dimetric diamond, shared thick base, upper-left light, isolated on solid #FF00FF; no props outside the surface, scenery, text, UI, or multiple tiles."
+    },
+    {
+      "input": "art/source/terrain/chasm.png",
+      "mode": "terrain-block",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 128, "height": 96 },
+      "frames": [
+        { "assetId": "terrain.chasm", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.333333 }, "displaySize": { "width": 64, "height": 48 }, "footprint": { "width": 64, "height": 32 } }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one full bottomless dark chasm block tile, true 2:1 dimetric diamond, shared thick base, upper-left light, isolated on solid #FF00FF; no water, props, scenery, text, UI, or multiple tiles."
+    },
+    {
+      "input": "art/source/terrain/web-overlay.png",
+      "mode": "terrain-overlay",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 128, "height": 64 },
+      "frames": [
+        { "assetId": "transition.web", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 32 }, "footprint": { "width": 64, "height": 32 } }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one pale floor-web transition overlay filling one true 2:1 diamond footprint, isolated on solid #FF00FF; no stone floor, base, spider, props, scenery, text, UI, or multiple tiles."
+    },
+    {
+      "input": "art/source/objects/wall.png",
+      "mode": "grounded-object",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 256, "height": 256 },
+      "frames": [
+        { "assetId": "object.wall", "kind": "object", "anchor": { "x": 0.5, "y": 0.92 }, "displaySize": { "height": 76 } }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one isolated ruined mossy stone wall segment, one-tile bottom-center contact, true 2:1 dimetric view, upper-left light, solid #FF00FF; no floor tile, second object, scenery, text, or UI."
+    },
+    {
+      "input": "art/source/objects/gate-closed.png",
+      "mode": "grounded-object",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 256, "height": 256 },
+      "frames": [
+        { "assetId": "object.gate.closed", "kind": "object", "anchor": { "x": 0.5, "y": 0.92 }, "displaySize": { "height": 92 } }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one isolated closed ruined stone-and-timber gate, one-tile bottom-center contact, true 2:1 dimetric view, upper-left light, solid #FF00FF; no floor tile, second object, scenery, text, or UI."
+    },
+    {
+      "input": "art/source/objects/gate-open.png",
+      "mode": "grounded-object",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 256, "height": 256 },
+      "frames": [
+        { "assetId": "object.gate.open", "kind": "object", "anchor": { "x": 0.5, "y": 0.92 }, "displaySize": { "height": 92 } }
+      ],
+      "prompt": "Reference art/STYLE.md and the accepted closed gate. Preserve the exact arch, camera, scale, palette, anchor, and light; open both leaves so passage is clear; one isolated object on solid #FF00FF with no floor, scenery, text, or UI."
+    },
+    {
+      "input": "art/source/objects/lever.png",
+      "mode": "grounded-object",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 256, "height": 256 },
+      "frames": [
+        { "assetId": "object.lever", "kind": "object", "anchor": { "x": 0.5, "y": 0.92 }, "displaySize": { "height": 52 } }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one isolated ancient timber-and-brass floor lever, one-tile bottom-center contact, true 2:1 dimetric view, upper-left light, solid #FF00FF; no floor tile, second object, scenery, text, or UI."
+    },
+    {
+      "input": "art/source/actors/aerin-directions-2x4.png",
+      "mode": "directional-actor",
+      "definitionId": "hero.aerin",
+      "grid": { "rows": 4, "cols": 2 },
+      "canvas": { "width": 320, "height": 320 },
+      "frames": [
+        { "assetId": "actor.hero.aerin.south", "direction": "south", "sourceIndex": 0, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
+        { "assetId": "actor.hero.aerin.south-west", "direction": "south-west", "sourceIndex": 1, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
+        { "assetId": "actor.hero.aerin.west", "direction": "west", "sourceIndex": 2, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
+        { "assetId": "actor.hero.aerin.north-west", "direction": "north-west", "sourceIndex": 3, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
+        { "assetId": "actor.hero.aerin.north", "direction": "north", "sourceIndex": 4, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
+        { "assetId": "actor.hero.aerin.north-east", "direction": "north-east", "sourceIndex": 3, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
+        { "assetId": "actor.hero.aerin.east", "direction": "east", "sourceIndex": 6, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
+        { "assetId": "actor.hero.aerin.south-east", "direction": "south-east", "sourceIndex": 1, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } }
+      ],
+      "prompt": "Reference art/STYLE.md, documents/ui_mockup.png, and the accepted Aerin identity. Exactly one borderless 2-column by 4-row sheet ordered south, south-west, west, north-west, north, north-east, east, south-east; fixed identity, scale, body root, and feet line on solid #FF00FF."
+    },
+    {
+      "input": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "mode": "directional-actor",
+      "definitionId": "enemy.goblin-skirmisher",
+      "grid": { "rows": 4, "cols": 2 },
+      "canvas": { "width": 320, "height": 320 },
+      "frames": [
+        { "assetId": "actor.goblin-skirmisher.south", "direction": "south", "sourceIndex": 0, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
+        { "assetId": "actor.goblin-skirmisher.south-west", "direction": "south-west", "sourceIndex": 2, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
+        { "assetId": "actor.goblin-skirmisher.west", "direction": "west", "sourceIndex": 4, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
+        { "assetId": "actor.goblin-skirmisher.north-west", "direction": "north-west", "sourceIndex": 3, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
+        { "assetId": "actor.goblin-skirmisher.north", "direction": "north", "sourceIndex": 1, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
+        { "assetId": "actor.goblin-skirmisher.north-east", "direction": "north-east", "sourceIndex": 3, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
+        { "assetId": "actor.goblin-skirmisher.east", "direction": "east", "sourceIndex": 5, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
+        { "assetId": "actor.goblin-skirmisher.south-east", "direction": "south-east", "sourceIndex": 7, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } }
+      ],
+      "prompt": "Reference art/STYLE.md, documents/ui_mockup.png, and the accepted Aerin sheet. One wiry green goblin skirmisher in exactly the same borderless 2-column by 4-row direction order, fixed identity, scale, body root, and feet line on solid #FF00FF."
+    },
+    {
+      "input": "art/source/actors/goblin-brute-directions-2x4.png",
+      "mode": "directional-actor",
+      "definitionId": "enemy.goblin-brute",
+      "grid": { "rows": 4, "cols": 2 },
+      "canvas": { "width": 320, "height": 320 },
+      "frames": [
+        { "assetId": "actor.goblin-brute.south", "direction": "south", "sourceIndex": 0, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
+        { "assetId": "actor.goblin-brute.south-west", "direction": "south-west", "sourceIndex": 6, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
+        { "assetId": "actor.goblin-brute.west", "direction": "west", "sourceIndex": 2, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
+        { "assetId": "actor.goblin-brute.north-west", "direction": "north-west", "sourceIndex": 5, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
+        { "assetId": "actor.goblin-brute.north", "direction": "north", "sourceIndex": 4, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
+        { "assetId": "actor.goblin-brute.north-east", "direction": "north-east", "sourceIndex": 5, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
+        { "assetId": "actor.goblin-brute.east", "direction": "east", "sourceIndex": 1, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
+        { "assetId": "actor.goblin-brute.south-east", "direction": "south-east", "sourceIndex": 7, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } }
+      ],
+      "prompt": "Reference art/STYLE.md, documents/ui_mockup.png, and the accepted Aerin sheet. One broad olive goblin brute in exactly the same borderless 2-column by 4-row direction order, fixed identity, scale, body root, and feet line on solid #FF00FF."
+    },
+    {
+      "input": "art/source/actors/goblin-chief-directions-2x4.png",
+      "mode": "directional-actor",
+      "definitionId": "enemy.goblin-chief",
+      "grid": { "rows": 4, "cols": 2 },
+      "canvas": { "width": 320, "height": 320 },
+      "frames": [
+        { "assetId": "actor.goblin-chief.south", "direction": "south", "sourceIndex": 0, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
+        { "assetId": "actor.goblin-chief.south-west", "direction": "south-west", "sourceIndex": 1, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
+        { "assetId": "actor.goblin-chief.west", "direction": "west", "sourceIndex": 2, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
+        { "assetId": "actor.goblin-chief.north-west", "direction": "north-west", "sourceIndex": 3, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
+        { "assetId": "actor.goblin-chief.north", "direction": "north", "sourceIndex": 4, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
+        { "assetId": "actor.goblin-chief.north-east", "direction": "north-east", "sourceIndex": 3, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
+        { "assetId": "actor.goblin-chief.east", "direction": "east", "sourceIndex": 5, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
+        { "assetId": "actor.goblin-chief.south-east", "direction": "south-east", "sourceIndex": 1, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } }
+      ],
+      "prompt": "Reference art/STYLE.md, documents/ui_mockup.png, and the accepted Aerin sheet. One crowned dark-green goblin commander in exactly the same borderless 2-column by 4-row direction order, fixed identity, scale, body root, and feet line on solid #FF00FF."
+    }
+  ],
+  "presentation": {
+    "terrainVisuals": {
+      "open": "terrain.stone-floor",
+      "difficult": "terrain.rubble",
+      "impassable": "terrain.chasm",
+      "web": "transition.web",
+      "blocked": "object.wall"
+    },
+    "objectVisuals": {
+      "lever": "object.lever",
+      "gateClosed": "object.gate.closed",
+      "gateOpen": "object.gate.open"
+    }
+  }
+}

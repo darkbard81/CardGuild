@@ -89,7 +89,7 @@ describe("M0 combat core", () => {
     const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     const second = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("5fa9d0a7d69322a5");
+    expect(hashCombatState(first)).toBe("c416128a1f3c5319");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),

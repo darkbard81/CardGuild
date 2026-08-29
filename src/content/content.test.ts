@@ -61,7 +61,7 @@ describe("content structural validation", () => {
     })[0];
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain(
-      "Pack: cardguild.m0\nSource: content/test/manifest.json",
+      "Pack: cardguild.m2\nSource: content/test/manifest.json",
     );
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain("Path: /manifest/version");
   });
@@ -121,7 +121,7 @@ describe("content semantic validation and compilation", () => {
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toBe(
       [
-        "Pack: cardguild.m0",
+        "Pack: cardguild.m2",
         "Source: content/test/equipment.json",
         "Definition: halberd",
         "Path: [0].traits[0].id",
@@ -174,12 +174,12 @@ describe("content semantic validation and compilation", () => {
         },
       ],
       actors: source.actors.map((actor) =>
-        actor.id === "hero"
+        actor.id === "hero.aerin"
           ? {
               ...actor,
               initiativeModifier: 100,
               equipmentIds: ["trait-only-kit"],
-              conditions: [{ id: "custom-condition", sourceId: "test" }],
+              initialConditions: [{ id: "custom-condition", sourceId: "test" }],
             }
           : { ...actor, initiativeModifier: -100 },
       ),
@@ -234,7 +234,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 1,
+        schemaVersion: 2,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),
@@ -242,14 +242,25 @@ describe("content fingerprint", () => {
       cards: [...source.cards].reverse(),
       equipment: [...source.equipment].reverse(),
       actors: [...source.actors].reverse(),
-      scenario: {
-        ...source.scenario,
-        map: {
-          ...source.scenario.map,
-          tiles: [...source.scenario.map.tiles].reverse(),
-          objects: [...source.scenario.map.objects].reverse(),
-        },
-      },
+      scenarios: [...source.scenarios]
+        .reverse()
+        .map((scenario) => ({
+          ...scenario,
+          placements: [...scenario.placements].reverse(),
+          map: {
+            ...scenario.map,
+            tiles: [...scenario.map.tiles].reverse(),
+            objects: [...scenario.map.objects].reverse(),
+          },
+        })),
+      adventures: [...source.adventures]
+        .reverse()
+        .map((adventure) => ({
+          ...adventure,
+          rewards: [...adventure.rewards]
+            .reverse()
+            .map((reward) => ({ ...reward, choices: [...reward.choices] })),
+        })),
     };
     expect(fingerprintContentPack(reordered)).toBe(fingerprintContentPack(source));
 

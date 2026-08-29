@@ -1,22 +1,60 @@
 import type {
   ActionDefinition,
-  ActorSetup,
+  ActionId,
+  ActorDefinitionId,
   BattleMapState,
   CardDefinition,
+  CardDefinitionId,
+  CardGrant,
   CombatContent,
   ConditionDefinition,
+  ConditionInstance,
+  Direction,
   EquipmentDefinition,
+  EquipmentId,
   MapObjectState,
+  ObjectiveDefinition,
   ScenarioDefinition,
+  ScenarioId,
+  TeamId,
   TileState,
   TraitDefinition,
+  TraitInstance,
+  WeaponProfile,
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 2;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
+}
+
+export interface ActorDefinition {
+  readonly id: ActorDefinitionId;
+  readonly name: string;
+  readonly hp: number;
+  readonly maxHp: number;
+  readonly baseAc: number;
+  readonly reflexModifier: number;
+  readonly athleticsModifier: number;
+  readonly initiativeModifier: number;
+  readonly speedFeet: number;
+  readonly fallbackWeapon: WeaponProfile;
+  readonly traits: readonly TraitInstance[];
+  readonly equipmentIds: readonly EquipmentId[];
+  readonly innateActionIds: readonly ActionId[];
+  readonly baseCardGrants: readonly CardGrant[];
+  readonly initialConditions?: readonly ConditionInstance[];
+}
+
+export interface EncounterActorPlacement {
+  readonly instanceId: string;
+  readonly actorDefinitionId: ActorDefinitionId;
+  readonly team: TeamId;
+  readonly position: { readonly x: number; readonly y: number };
+  readonly facing: Direction;
+  readonly partyMemberId?: string;
 }
 
 export interface BattleMapSource {
@@ -27,11 +65,29 @@ export interface BattleMapSource {
 }
 
 export interface ScenarioSource {
+  readonly id: ScenarioId;
+  readonly name: string;
+  readonly objective: ObjectiveDefinition;
+  readonly placements: readonly EncounterActorPlacement[];
+  readonly map: BattleMapSource;
+}
+
+export type RewardGrant =
+  | { readonly kind: "equipment"; readonly definitionId: EquipmentId }
+  | { readonly kind: "card"; readonly definitionId: CardDefinitionId };
+
+export interface AdventureRewardDefinition {
+  readonly id: string;
+  readonly afterEncounterId: ScenarioId;
+  readonly choices: readonly RewardGrant[];
+}
+
+export interface AdventureDefinition {
   readonly id: string;
   readonly name: string;
-  readonly objective: string;
-  readonly actorIds: readonly string[];
-  readonly map: BattleMapSource;
+  readonly description: string;
+  readonly encounterIds: readonly ScenarioId[];
+  readonly rewards: readonly AdventureRewardDefinition[];
 }
 
 export interface ContentPackSource {
@@ -41,15 +97,19 @@ export interface ContentPackSource {
   readonly actions: readonly ActionDefinition[];
   readonly cards: readonly CardDefinition[];
   readonly equipment: readonly EquipmentDefinition[];
-  readonly actors: readonly ActorSetup[];
-  readonly scenario: ScenarioSource;
+  readonly actors: readonly ActorDefinition[];
+  readonly scenarios: readonly ScenarioSource[];
+  readonly adventures: readonly AdventureDefinition[];
 }
 
 export interface CompiledContentPack {
   readonly manifest: ContentPackManifest;
   readonly fingerprint: string;
   readonly combatContent: CombatContent;
-  readonly scenarios: Readonly<Record<string, ScenarioDefinition>>;
+  readonly actorDefinitions: Readonly<Record<ActorDefinitionId, ActorDefinition>>;
+  readonly scenarioSources: Readonly<Record<ScenarioId, ScenarioSource>>;
+  readonly scenarios: Readonly<Record<ScenarioId, ScenarioDefinition>>;
+  readonly adventures: Readonly<Record<string, AdventureDefinition>>;
 }
 
 export type ContentSourceCategory =
@@ -60,7 +120,8 @@ export type ContentSourceCategory =
   | "cards"
   | "equipment"
   | "actors"
-  | "scenario";
+  | "scenarios"
+  | "adventures";
 
 export type ContentSourceLocations = Readonly<Partial<Record<ContentSourceCategory, string>>>;
 
@@ -81,7 +142,8 @@ export interface ContentPackFiles {
   readonly cards: unknown;
   readonly equipment: unknown;
   readonly actors: unknown;
-  readonly scenario: unknown;
+  readonly scenarios: unknown;
+  readonly adventures: unknown;
 }
 
 export function assembleContentPackSource(files: ContentPackFiles): unknown {
@@ -93,7 +155,8 @@ export function assembleContentPackSource(files: ContentPackFiles): unknown {
     cards: files.cards,
     equipment: files.equipment,
     actors: files.actors,
-    scenario: files.scenario,
+    scenarios: files.scenarios,
+    adventures: files.adventures,
   };
 }
 

@@ -14,8 +14,9 @@ conditions.json  Condition과 recovery provider Trait
 actions.json     GameCore가 이해하는 ActionEffect primitive
 cards.json       Action을 참조하는 전술 카드
 equipment.json   능력치, 무기 profile, Trait
-actors.json      전투 Actor setup
-scenario.json    Actor ID 목록, map tiles와 objects
+actors.json      재사용 가능한 ActorDefinition
+scenarios.json   Encounter placement, objective, map tiles와 objects
+adventures.json  linear Encounter 순서와 fixed reward offer
 ```
 
 Schema는 `schema/content-pack.schema.json`의 JSON Schema Draft 2020-12가
@@ -30,8 +31,8 @@ npm run content:check
 원본 파일, definition, JSON path와 원인을 출력합니다.
 
 ```text
-Pack: cardguild.m0
-Source: content/m0/equipment.json
+Pack: cardguild.m2
+Source: content/m2/equipment.json
 Definition: halberd
 Path: [0].traits[1].id
 UNKNOWN_TRAIT: Trait "tirp" is not defined.
@@ -52,7 +53,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `1`입니다.
+- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `2`입니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면
   version을 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key,
@@ -63,3 +64,5 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 Schema shape를 호환되지 않게 바꿀 때는 기존 schema를 덮어써서 조용히 해석하지
 말고 `schemaVersion`을 올리고 명시적인 migration 또는 새 loader를 추가합니다.
+현재 pre-release repository에는 v1 runtime compatibility layer가 없으며 v2가
+authoritative contract입니다.

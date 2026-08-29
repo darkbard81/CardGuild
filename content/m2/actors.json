@@ -1,10 +1,7 @@
 [
   {
-    "id": "hero",
+    "id": "hero.aerin",
     "name": "Aerin",
-    "team": "heroes",
-    "position": { "x": 1, "y": 3 },
-    "facing": "east",
     "hp": 32,
     "maxHp": 32,
     "baseAc": 18,
@@ -18,7 +15,7 @@
       "rangeFeet": 5,
       "damage": { "count": 1, "sides": 4, "modifier": 2, "damageType": "bludgeoning" }
     },
-    "conditions": [],
+    "initialConditions": [],
     "traits": [{ "id": "actor" }, { "id": "hero" }],
     "equipmentIds": ["halberd", "shield", "boots-of-fly"],
     "innateActionIds": [],
@@ -28,11 +25,8 @@
     ]
   },
   {
-    "id": "goblin-skirmisher",
+    "id": "enemy.goblin-skirmisher",
     "name": "Goblin Skirmisher",
-    "team": "enemies",
-    "position": { "x": 7, "y": 2 },
-    "facing": "west",
     "hp": 18,
     "maxHp": 18,
     "baseAc": 16,
@@ -46,18 +40,15 @@
       "rangeFeet": 5,
       "damage": { "count": 1, "sides": 6, "modifier": 2, "damageType": "slashing" }
     },
-    "conditions": [],
+    "initialConditions": [],
     "traits": [{ "id": "actor" }, { "id": "goblin" }],
     "equipmentIds": [],
     "innateActionIds": [],
     "baseCardGrants": []
   },
   {
-    "id": "goblin-brute",
+    "id": "enemy.goblin-brute",
     "name": "Goblin Brute",
-    "team": "enemies",
-    "position": { "x": 7, "y": 4 },
-    "facing": "west",
     "hp": 24,
     "maxHp": 24,
     "baseAc": 17,
@@ -71,7 +62,29 @@
       "rangeFeet": 5,
       "damage": { "count": 1, "sides": 8, "modifier": 3, "damageType": "bludgeoning" }
     },
-    "conditions": [],
+    "initialConditions": [],
+    "traits": [{ "id": "actor" }, { "id": "goblin" }],
+    "equipmentIds": [],
+    "innateActionIds": ["knockdown"],
+    "baseCardGrants": []
+  },
+  {
+    "id": "enemy.goblin-chief",
+    "name": "Goblin Chief",
+    "hp": 34,
+    "maxHp": 34,
+    "baseAc": 18,
+    "reflexModifier": 5,
+    "athleticsModifier": 8,
+    "initiativeModifier": 6,
+    "speedFeet": 25,
+    "fallbackWeapon": {
+      "name": "Chief's Glaive",
+      "attackModifier": 9,
+      "rangeFeet": 10,
+      "damage": { "count": 1, "sides": 10, "modifier": 4, "damageType": "slashing" }
+    },
+    "initialConditions": [],
     "traits": [{ "id": "actor" }, { "id": "goblin" }],
     "equipmentIds": [],
     "innateActionIds": ["knockdown"],

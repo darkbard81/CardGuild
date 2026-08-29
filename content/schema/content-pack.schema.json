@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v1",
+  "title": "CardGuild Content Pack v2",
   "type": "object",
   "additionalProperties": false,
-  "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenario"],
+  "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures"],
   "properties": {
     "manifest": { "$ref": "#/$defs/manifest" },
     "traits": { "type": "array", "items": { "$ref": "#/$defs/traitDefinition" } },
@@ -11,8 +11,9 @@
     "actions": { "type": "array", "items": { "$ref": "#/$defs/actionDefinition" } },
     "cards": { "type": "array", "items": { "$ref": "#/$defs/cardDefinition" } },
     "equipment": { "type": "array", "items": { "$ref": "#/$defs/equipmentDefinition" } },
-    "actors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/actorSetup" } },
-    "scenario": { "$ref": "#/$defs/scenario" }
+    "actors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/actorDefinition" } },
+    "scenarios": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/scenario" } },
+    "adventures": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/adventure" } }
   },
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
@@ -304,16 +305,13 @@
         "shieldBonus": { "type": "integer", "minimum": 1 }
       }
     },
-    "actorSetup": {
+    "actorDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "team", "position", "facing", "hp", "maxHp", "baseAc", "reflexModifier", "athleticsModifier", "initiativeModifier", "speedFeet", "fallbackWeapon", "conditions", "traits", "equipmentIds", "innateActionIds", "baseCardGrants"],
+      "required": ["id", "name", "hp", "maxHp", "baseAc", "reflexModifier", "athleticsModifier", "initiativeModifier", "speedFeet", "fallbackWeapon", "initialConditions", "traits", "equipmentIds", "innateActionIds", "baseCardGrants"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
-        "team": { "enum": ["heroes", "enemies"] },
-        "position": { "$ref": "#/$defs/gridPosition" },
-        "facing": { "enum": ["north", "east", "south", "west"] },
         "hp": { "type": "integer", "minimum": 0 },
         "maxHp": { "type": "integer", "minimum": 1 },
         "baseAc": { "type": "integer", "minimum": 0 },
@@ -322,11 +320,24 @@
         "initiativeModifier": { "type": "integer" },
         "speedFeet": { "type": "integer", "minimum": 0 },
         "fallbackWeapon": { "$ref": "#/$defs/weaponProfile" },
-        "conditions": { "type": "array", "items": { "$ref": "#/$defs/conditionInstance" } },
+        "initialConditions": { "type": "array", "items": { "$ref": "#/$defs/conditionInstance" } },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
         "equipmentIds": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
         "innateActionIds": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
         "baseCardGrants": { "type": "array", "items": { "$ref": "#/$defs/cardGrant" } }
+      }
+    },
+    "encounterActorPlacement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["instanceId", "actorDefinitionId", "team", "position", "facing"],
+      "properties": {
+        "instanceId": { "$ref": "#/$defs/nonEmptyString" },
+        "actorDefinitionId": { "$ref": "#/$defs/nonEmptyString" },
+        "partyMemberId": { "$ref": "#/$defs/nonEmptyString" },
+        "team": { "enum": ["heroes", "enemies"] },
+        "position": { "$ref": "#/$defs/gridPosition" },
+        "facing": { "enum": ["north", "east", "south", "west"] }
       }
     },
     "tileDefinition": {
@@ -375,13 +386,65 @@
     "scenario": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "objective", "actorIds", "map"],
+      "required": ["id", "name", "objective", "placements", "map"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
-        "objective": { "$ref": "#/$defs/nonEmptyString" },
-        "actorIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "objective": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "description"],
+          "properties": {
+            "kind": { "const": "defeat-all-enemies" },
+            "description": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        "placements": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/encounterActorPlacement" } },
         "map": { "$ref": "#/$defs/battleMap" }
+      }
+    },
+    "rewardGrant": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "definitionId"],
+          "properties": {
+            "kind": { "const": "equipment" },
+            "definitionId": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "definitionId"],
+          "properties": {
+            "kind": { "const": "card" },
+            "definitionId": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        }
+      ]
+    },
+    "adventureReward": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "afterEncounterId", "choices"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "afterEncounterId": { "$ref": "#/$defs/nonEmptyString" },
+        "choices": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/rewardGrant" } }
+      }
+    },
+    "adventure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "description", "encounterIds", "rewards"],
+      "properties": {
+        "id": { "$ref": "#/$defs/nonEmptyString" },
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "description": { "type": "string" },
+        "encounterIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "rewards": { "type": "array", "items": { "$ref": "#/$defs/adventureReward" } }
       }
     },
     "manifest": {
@@ -389,7 +452,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": { "const": 1 },
+        "schemaVersion": { "const": 2 },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

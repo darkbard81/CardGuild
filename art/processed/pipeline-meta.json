@@ -1,0 +1,697 @@
+{
+  "version": 1,
+  "styleSheet": "art/STYLE.md",
+  "promptConvention": "documents/ImageGen_Prompt.md",
+  "backgroundCleanup": {
+    "method": "edge-connected chroma matte with soft defringe",
+    "coreDistance": 105,
+    "edgeDistance": 190,
+    "outputAlpha": "straight"
+  },
+  "atlas": {
+    "size": 2048,
+    "padding": 2
+  },
+  "assets": {
+    "terrain.stone-floor": {
+      "source": "art/source/terrain/stone-floor.png",
+      "output": "art/processed/terrain/stone-floor.png",
+      "sourceBox": {
+        "left": 81,
+        "top": 172,
+        "width": 1095,
+        "height": 903
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.106312,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.333333
+      }
+    },
+    "terrain.rubble": {
+      "source": "art/source/terrain/rubble.png",
+      "output": "art/processed/terrain/rubble.png",
+      "sourceBox": {
+        "left": 47,
+        "top": 150,
+        "width": 1161,
+        "height": 995
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.096482,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.333333
+      }
+    },
+    "terrain.chasm": {
+      "source": "art/source/terrain/chasm.png",
+      "output": "art/processed/terrain/chasm.png",
+      "sourceBox": {
+        "left": 73,
+        "top": 158,
+        "width": 1107,
+        "height": 962
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.099792,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.333333
+      }
+    },
+    "transition.web": {
+      "source": "art/source/terrain/web-overlay.png",
+      "output": "art/processed/terrain/web.png",
+      "sourceBox": {
+        "left": 64,
+        "top": 209,
+        "width": 1126,
+        "height": 807
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.068203,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "object.wall": {
+      "source": "art/source/objects/wall.png",
+      "output": "art/processed/objects/wall.png",
+      "sourceBox": {
+        "left": 228,
+        "top": 329,
+        "width": 758,
+        "height": 674
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.290449,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.92
+      }
+    },
+    "object.gate.closed": {
+      "source": "art/source/objects/gate-closed.png",
+      "output": "art/processed/objects/gate-closed.png",
+      "sourceBox": {
+        "left": 278,
+        "top": 208,
+        "width": 696,
+        "height": 837
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.263035,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.92
+      }
+    },
+    "object.gate.open": {
+      "source": "art/source/objects/gate-open.png",
+      "output": "art/processed/objects/gate-open.png",
+      "sourceBox": {
+        "left": 279,
+        "top": 210,
+        "width": 693,
+        "height": 835
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.263665,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.92
+      }
+    },
+    "object.lever": {
+      "source": "art/source/objects/lever.png",
+      "output": "art/processed/objects/lever.png",
+      "sourceBox": {
+        "left": 289,
+        "top": 206,
+        "width": 643,
+        "height": 890
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.247371,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.92
+      }
+    },
+    "actor.hero.aerin.south": {
+      "source": "art/source/actors/aerin-directions-2x4.png",
+      "output": "art/processed/actors/aerin/south.png",
+      "sourceBox": {
+        "left": 96,
+        "top": 32,
+        "width": 319,
+        "height": 265
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.814545,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.hero.aerin.south-west": {
+      "source": "art/source/actors/aerin-directions-2x4.png",
+      "output": "art/processed/actors/aerin/south-west.png",
+      "sourceBox": {
+        "left": 44,
+        "top": 33,
+        "width": 316,
+        "height": 264
+      },
+      "sourceIndex": 1,
+      "flipX": true,
+      "processingScale": 0.814545,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.hero.aerin.west": {
+      "source": "art/source/actors/aerin-directions-2x4.png",
+      "output": "art/processed/actors/aerin/west.png",
+      "sourceBox": {
+        "left": 169,
+        "top": 18,
+        "width": 227,
+        "height": 273
+      },
+      "sourceIndex": 2,
+      "flipX": false,
+      "processingScale": 0.814545,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.hero.aerin.north-west": {
+      "source": "art/source/actors/aerin-directions-2x4.png",
+      "output": "art/processed/actors/aerin/north-west.png",
+      "sourceBox": {
+        "left": 147,
+        "top": 19,
+        "width": 330,
+        "height": 268
+      },
+      "sourceIndex": 3,
+      "flipX": true,
+      "processingScale": 0.814545,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.hero.aerin.north": {
+      "source": "art/source/actors/aerin-directions-2x4.png",
+      "output": "art/processed/actors/aerin/north.png",
+      "sourceBox": {
+        "left": 214,
+        "top": 13,
+        "width": 273,
+        "height": 264
+      },
+      "sourceIndex": 4,
+      "flipX": false,
+      "processingScale": 0.814545,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.hero.aerin.north-east": {
+      "source": "art/source/actors/aerin-directions-2x4.png",
+      "output": "art/processed/actors/aerin/north-east.png",
+      "sourceBox": {
+        "left": 147,
+        "top": 19,
+        "width": 330,
+        "height": 268
+      },
+      "sourceIndex": 3,
+      "flipX": false,
+      "processingScale": 0.814545,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.hero.aerin.east": {
+      "source": "art/source/actors/aerin-directions-2x4.png",
+      "output": "art/processed/actors/aerin/east.png",
+      "sourceBox": {
+        "left": 239,
+        "top": 0,
+        "width": 258,
+        "height": 267
+      },
+      "sourceIndex": 6,
+      "flipX": false,
+      "processingScale": 0.814545,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.hero.aerin.south-east": {
+      "source": "art/source/actors/aerin-directions-2x4.png",
+      "output": "art/processed/actors/aerin/south-east.png",
+      "sourceBox": {
+        "left": 44,
+        "top": 33,
+        "width": 316,
+        "height": 264
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.814545,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-skirmisher.south": {
+      "source": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "output": "art/processed/actors/goblin-skirmisher/south.png",
+      "sourceBox": {
+        "left": 193,
+        "top": 46,
+        "width": 244,
+        "height": 250
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 1.045418,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-skirmisher.south-west": {
+      "source": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "output": "art/processed/actors/goblin-skirmisher/south-west.png",
+      "sourceBox": {
+        "left": 186,
+        "top": 33,
+        "width": 246,
+        "height": 251
+      },
+      "sourceIndex": 2,
+      "flipX": false,
+      "processingScale": 1.045418,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-skirmisher.west": {
+      "source": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "output": "art/processed/actors/goblin-skirmisher/west.png",
+      "sourceBox": {
+        "left": 208,
+        "top": 16,
+        "width": 213,
+        "height": 249
+      },
+      "sourceIndex": 4,
+      "flipX": false,
+      "processingScale": 1.045418,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-skirmisher.north-west": {
+      "source": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "output": "art/processed/actors/goblin-skirmisher/north-west.png",
+      "sourceBox": {
+        "left": 162,
+        "top": 38,
+        "width": 249,
+        "height": 243
+      },
+      "sourceIndex": 3,
+      "flipX": true,
+      "processingScale": 1.045418,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-skirmisher.north": {
+      "source": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "output": "art/processed/actors/goblin-skirmisher/north.png",
+      "sourceBox": {
+        "left": 150,
+        "top": 52,
+        "width": 248,
+        "height": 241
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 1.045418,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-skirmisher.north-east": {
+      "source": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "output": "art/processed/actors/goblin-skirmisher/north-east.png",
+      "sourceBox": {
+        "left": 162,
+        "top": 38,
+        "width": 249,
+        "height": 243
+      },
+      "sourceIndex": 3,
+      "flipX": false,
+      "processingScale": 1.045418,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-skirmisher.east": {
+      "source": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "output": "art/processed/actors/goblin-skirmisher/east.png",
+      "sourceBox": {
+        "left": 168,
+        "top": 17,
+        "width": 209,
+        "height": 246
+      },
+      "sourceIndex": 5,
+      "flipX": false,
+      "processingScale": 1.045418,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-skirmisher.south-east": {
+      "source": "art/source/actors/goblin-skirmisher-directions-2x4.png",
+      "output": "art/processed/actors/goblin-skirmisher/south-east.png",
+      "sourceBox": {
+        "left": 149,
+        "top": 4,
+        "width": 232,
+        "height": 248
+      },
+      "sourceIndex": 7,
+      "flipX": false,
+      "processingScale": 1.045418,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-brute.south": {
+      "source": "art/source/actors/goblin-brute-directions-2x4.png",
+      "output": "art/processed/actors/goblin-brute/south.png",
+      "sourceBox": {
+        "left": 201,
+        "top": 38,
+        "width": 244,
+        "height": 255
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 1.005364,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-brute.south-west": {
+      "source": "art/source/actors/goblin-brute-directions-2x4.png",
+      "output": "art/processed/actors/goblin-brute/south-west.png",
+      "sourceBox": {
+        "left": 207,
+        "top": 9,
+        "width": 238,
+        "height": 261
+      },
+      "sourceIndex": 6,
+      "flipX": false,
+      "processingScale": 1.005364,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-brute.west": {
+      "source": "art/source/actors/goblin-brute-directions-2x4.png",
+      "output": "art/processed/actors/goblin-brute/west.png",
+      "sourceBox": {
+        "left": 201,
+        "top": 25,
+        "width": 211,
+        "height": 260
+      },
+      "sourceIndex": 2,
+      "flipX": false,
+      "processingScale": 1.005364,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-brute.north-west": {
+      "source": "art/source/actors/goblin-brute-directions-2x4.png",
+      "output": "art/processed/actors/goblin-brute/north-west.png",
+      "sourceBox": {
+        "left": 198,
+        "top": 22,
+        "width": 232,
+        "height": 252
+      },
+      "sourceIndex": 5,
+      "flipX": true,
+      "processingScale": 1.005364,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-brute.north": {
+      "source": "art/source/actors/goblin-brute-directions-2x4.png",
+      "output": "art/processed/actors/goblin-brute/north.png",
+      "sourceBox": {
+        "left": 207,
+        "top": 22,
+        "width": 207,
+        "height": 252
+      },
+      "sourceIndex": 4,
+      "flipX": false,
+      "processingScale": 1.005364,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-brute.north-east": {
+      "source": "art/source/actors/goblin-brute-directions-2x4.png",
+      "output": "art/processed/actors/goblin-brute/north-east.png",
+      "sourceBox": {
+        "left": 198,
+        "top": 22,
+        "width": 232,
+        "height": 252
+      },
+      "sourceIndex": 5,
+      "flipX": false,
+      "processingScale": 1.005364,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-brute.east": {
+      "source": "art/source/actors/goblin-brute-directions-2x4.png",
+      "output": "art/processed/actors/goblin-brute/east.png",
+      "sourceBox": {
+        "left": 187,
+        "top": 40,
+        "width": 249,
+        "height": 254
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 1.005364,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-brute.south-east": {
+      "source": "art/source/actors/goblin-brute-directions-2x4.png",
+      "output": "art/processed/actors/goblin-brute/south-east.png",
+      "sourceBox": {
+        "left": 183,
+        "top": 9,
+        "width": 253,
+        "height": 261
+      },
+      "sourceIndex": 7,
+      "flipX": false,
+      "processingScale": 1.005364,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-chief.south": {
+      "source": "art/source/actors/goblin-chief-directions-2x4.png",
+      "output": "art/processed/actors/goblin-chief/south.png",
+      "sourceBox": {
+        "left": 162,
+        "top": 40,
+        "width": 335,
+        "height": 261
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.783673,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-chief.south-west": {
+      "source": "art/source/actors/goblin-chief-directions-2x4.png",
+      "output": "art/processed/actors/goblin-chief/south-west.png",
+      "sourceBox": {
+        "left": 71,
+        "top": 40,
+        "width": 343,
+        "height": 261
+      },
+      "sourceIndex": 1,
+      "flipX": true,
+      "processingScale": 0.783673,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-chief.west": {
+      "source": "art/source/actors/goblin-chief-directions-2x4.png",
+      "output": "art/processed/actors/goblin-chief/west.png",
+      "sourceBox": {
+        "left": 170,
+        "top": 38,
+        "width": 307,
+        "height": 261
+      },
+      "sourceIndex": 2,
+      "flipX": false,
+      "processingScale": 0.783673,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-chief.north-west": {
+      "source": "art/source/actors/goblin-chief-directions-2x4.png",
+      "output": "art/processed/actors/goblin-chief/north-west.png",
+      "sourceBox": {
+        "left": 129,
+        "top": 38,
+        "width": 317,
+        "height": 260
+      },
+      "sourceIndex": 3,
+      "flipX": true,
+      "processingScale": 0.783673,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-chief.north": {
+      "source": "art/source/actors/goblin-chief-directions-2x4.png",
+      "output": "art/processed/actors/goblin-chief/north.png",
+      "sourceBox": {
+        "left": 216,
+        "top": 40,
+        "width": 337,
+        "height": 256
+      },
+      "sourceIndex": 4,
+      "flipX": false,
+      "processingScale": 0.783673,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-chief.north-east": {
+      "source": "art/source/actors/goblin-chief-directions-2x4.png",
+      "output": "art/processed/actors/goblin-chief/north-east.png",
+      "sourceBox": {
+        "left": 129,
+        "top": 38,
+        "width": 317,
+        "height": 260
+      },
+      "sourceIndex": 3,
+      "flipX": false,
+      "processingScale": 0.783673,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-chief.east": {
+      "source": "art/source/actors/goblin-chief-directions-2x4.png",
+      "output": "art/processed/actors/goblin-chief/east.png",
+      "sourceBox": {
+        "left": 135,
+        "top": 40,
+        "width": 310,
+        "height": 260
+      },
+      "sourceIndex": 5,
+      "flipX": false,
+      "processingScale": 0.783673,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    },
+    "actor.goblin-chief.south-east": {
+      "source": "art/source/actors/goblin-chief-directions-2x4.png",
+      "output": "art/processed/actors/goblin-chief/south-east.png",
+      "sourceBox": {
+        "left": 71,
+        "top": 40,
+        "width": 343,
+        "height": 261
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.783673,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      }
+    }
+  }
+}

@@ -116,6 +116,7 @@ function formatEvent(state: CombatState, event: CombatEvent): string | null {
 }
 
 export class BattleUi {
+  private readonly abortController = new AbortController();
   private escapeMenuOpen = false;
   private readonly app = required<HTMLElement>("#app");
   private readonly objective = required<HTMLElement>("#objective-text");
@@ -141,16 +142,29 @@ export class BattleUi {
   private readonly resultModal = required<HTMLElement>("#result-modal");
   private readonly resultTitle = required<HTMLElement>("#result-title");
   private readonly resultDescription = required<HTMLElement>("#result-description");
+  private readonly battlefieldTitle = required<HTMLElement>("#battlefield-title");
+  private readonly encounterLabel = required<HTMLElement>("#encounter-label");
+  private readonly resultAction = required<HTMLButtonElement>("#restart-battle");
 
   public constructor(
     private readonly content: CombatContent,
     private readonly scenario: ScenarioDefinition,
     private readonly handlers: BattleUiHandlers,
   ) {
-    this.endTurn.addEventListener("click", handlers.onEndTurn);
-    required<HTMLButtonElement>("#reaction-use").addEventListener("click", handlers.onUseReaction);
-    required<HTMLButtonElement>("#reaction-pass").addEventListener("click", handlers.onPassReaction);
-    required<HTMLButtonElement>("#restart-battle").addEventListener("click", handlers.onRestart);
+    this.battlefieldTitle.textContent = scenario.name;
+    this.encounterLabel.textContent = "M2 Encounter";
+    this.resultAction.textContent = "Return to Adventure";
+    const listenerOptions = { signal: this.abortController.signal };
+    this.endTurn.addEventListener("click", handlers.onEndTurn, listenerOptions);
+    required<HTMLButtonElement>("#reaction-use").addEventListener("click", handlers.onUseReaction, listenerOptions);
+    required<HTMLButtonElement>("#reaction-pass").addEventListener("click", handlers.onPassReaction, listenerOptions);
+    required<HTMLButtonElement>("#restart-battle").addEventListener("click", handlers.onRestart, listenerOptions);
+  }
+
+  public destroy(): void {
+    this.abortController.abort();
+    this.reactionModal.hidden = true;
+    this.resultModal.hidden = true;
   }
 
   public render(
@@ -170,7 +184,7 @@ export class BattleUi {
     this.app.dataset.ready = "true";
     this.app.dataset.outcome = state.outcome ?? "ongoing";
     this.app.dataset.stateHash = presentation.stateHash;
-    this.objective.textContent = this.scenario.objective;
+    this.objective.textContent = this.scenario.objective.description;
     this.round.textContent = String(state.round);
     this.heroHeading.textContent = hero.name;
     this.boardPrompt.textContent = presentation.prompt;

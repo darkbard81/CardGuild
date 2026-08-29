@@ -1,0 +1,443 @@
+{
+  "version": 2,
+  "bundle": "m2-encounter",
+  "atlas": {
+    "path": "/assets/m2-atlas.json"
+  },
+  "assets": {
+    "terrain.stone-floor": {
+      "frame": "terrain.stone-floor",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.333333
+      },
+      "displayWidth": 64,
+      "displayHeight": 48,
+      "footprint": {
+        "width": 64,
+        "height": 32
+      }
+    },
+    "terrain.rubble": {
+      "frame": "terrain.rubble",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.333333
+      },
+      "displayWidth": 64,
+      "displayHeight": 48,
+      "footprint": {
+        "width": 64,
+        "height": 32
+      }
+    },
+    "terrain.chasm": {
+      "frame": "terrain.chasm",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.333333
+      },
+      "displayWidth": 64,
+      "displayHeight": 48,
+      "footprint": {
+        "width": 64,
+        "height": 32
+      }
+    },
+    "transition.web": {
+      "frame": "transition.web",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 32,
+      "footprint": {
+        "width": 64,
+        "height": 32
+      }
+    },
+    "object.wall": {
+      "frame": "object.wall",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.92
+      },
+      "displayHeight": 76
+    },
+    "object.gate.closed": {
+      "frame": "object.gate.closed",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.92
+      },
+      "displayHeight": 92
+    },
+    "object.gate.open": {
+      "frame": "object.gate.open",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.92
+      },
+      "displayHeight": 92
+    },
+    "object.lever": {
+      "frame": "object.lever",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.92
+      },
+      "displayHeight": 52
+    },
+    "actor.hero.aerin.south": {
+      "frame": "actor.hero.aerin.south",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 88
+    },
+    "actor.hero.aerin.south-west": {
+      "frame": "actor.hero.aerin.south-west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 88
+    },
+    "actor.hero.aerin.west": {
+      "frame": "actor.hero.aerin.west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 88
+    },
+    "actor.hero.aerin.north-west": {
+      "frame": "actor.hero.aerin.north-west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 88
+    },
+    "actor.hero.aerin.north": {
+      "frame": "actor.hero.aerin.north",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 88
+    },
+    "actor.hero.aerin.north-east": {
+      "frame": "actor.hero.aerin.north-east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 88
+    },
+    "actor.hero.aerin.east": {
+      "frame": "actor.hero.aerin.east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 88
+    },
+    "actor.hero.aerin.south-east": {
+      "frame": "actor.hero.aerin.south-east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 88
+    },
+    "actor.goblin-skirmisher.south": {
+      "frame": "actor.goblin-skirmisher.south",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 67
+    },
+    "actor.goblin-skirmisher.south-west": {
+      "frame": "actor.goblin-skirmisher.south-west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 67
+    },
+    "actor.goblin-skirmisher.west": {
+      "frame": "actor.goblin-skirmisher.west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 67
+    },
+    "actor.goblin-skirmisher.north-west": {
+      "frame": "actor.goblin-skirmisher.north-west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 67
+    },
+    "actor.goblin-skirmisher.north": {
+      "frame": "actor.goblin-skirmisher.north",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 67
+    },
+    "actor.goblin-skirmisher.north-east": {
+      "frame": "actor.goblin-skirmisher.north-east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 67
+    },
+    "actor.goblin-skirmisher.east": {
+      "frame": "actor.goblin-skirmisher.east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 67
+    },
+    "actor.goblin-skirmisher.south-east": {
+      "frame": "actor.goblin-skirmisher.south-east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 67
+    },
+    "actor.goblin-brute.south": {
+      "frame": "actor.goblin-brute.south",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 76
+    },
+    "actor.goblin-brute.south-west": {
+      "frame": "actor.goblin-brute.south-west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 76
+    },
+    "actor.goblin-brute.west": {
+      "frame": "actor.goblin-brute.west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 76
+    },
+    "actor.goblin-brute.north-west": {
+      "frame": "actor.goblin-brute.north-west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 76
+    },
+    "actor.goblin-brute.north": {
+      "frame": "actor.goblin-brute.north",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 76
+    },
+    "actor.goblin-brute.north-east": {
+      "frame": "actor.goblin-brute.north-east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 76
+    },
+    "actor.goblin-brute.east": {
+      "frame": "actor.goblin-brute.east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 76
+    },
+    "actor.goblin-brute.south-east": {
+      "frame": "actor.goblin-brute.south-east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 76
+    },
+    "actor.goblin-chief.south": {
+      "frame": "actor.goblin-chief.south",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 82
+    },
+    "actor.goblin-chief.south-west": {
+      "frame": "actor.goblin-chief.south-west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 82
+    },
+    "actor.goblin-chief.west": {
+      "frame": "actor.goblin-chief.west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 82
+    },
+    "actor.goblin-chief.north-west": {
+      "frame": "actor.goblin-chief.north-west",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 82
+    },
+    "actor.goblin-chief.north": {
+      "frame": "actor.goblin-chief.north",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 82
+    },
+    "actor.goblin-chief.north-east": {
+      "frame": "actor.goblin-chief.north-east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 82
+    },
+    "actor.goblin-chief.east": {
+      "frame": "actor.goblin-chief.east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 82
+    },
+    "actor.goblin-chief.south-east": {
+      "frame": "actor.goblin-chief.south-east",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.9
+      },
+      "displayHeight": 82
+    }
+  },
+  "actorVisuals": {
+    "hero.aerin": {
+      "south": "actor.hero.aerin.south",
+      "south-west": "actor.hero.aerin.south-west",
+      "west": "actor.hero.aerin.west",
+      "north-west": "actor.hero.aerin.north-west",
+      "north": "actor.hero.aerin.north",
+      "north-east": "actor.hero.aerin.north-east",
+      "east": "actor.hero.aerin.east",
+      "south-east": "actor.hero.aerin.south-east"
+    },
+    "enemy.goblin-skirmisher": {
+      "south": "actor.goblin-skirmisher.south",
+      "south-west": "actor.goblin-skirmisher.south-west",
+      "west": "actor.goblin-skirmisher.west",
+      "north-west": "actor.goblin-skirmisher.north-west",
+      "north": "actor.goblin-skirmisher.north",
+      "north-east": "actor.goblin-skirmisher.north-east",
+      "east": "actor.goblin-skirmisher.east",
+      "south-east": "actor.goblin-skirmisher.south-east"
+    },
+    "enemy.goblin-brute": {
+      "south": "actor.goblin-brute.south",
+      "south-west": "actor.goblin-brute.south-west",
+      "west": "actor.goblin-brute.west",
+      "north-west": "actor.goblin-brute.north-west",
+      "north": "actor.goblin-brute.north",
+      "north-east": "actor.goblin-brute.north-east",
+      "east": "actor.goblin-brute.east",
+      "south-east": "actor.goblin-brute.south-east"
+    },
+    "enemy.goblin-chief": {
+      "south": "actor.goblin-chief.south",
+      "south-west": "actor.goblin-chief.south-west",
+      "west": "actor.goblin-chief.west",
+      "north-west": "actor.goblin-chief.north-west",
+      "north": "actor.goblin-chief.north",
+      "north-east": "actor.goblin-chief.north-east",
+      "east": "actor.goblin-chief.east",
+      "south-east": "actor.goblin-chief.south-east"
+    }
+  },
+  "terrainVisuals": {
+    "open": "terrain.stone-floor",
+    "difficult": "terrain.rubble",
+    "impassable": "terrain.chasm",
+    "web": "transition.web",
+    "blocked": "object.wall"
+  },
+  "objectVisuals": {
+    "lever": "object.lever",
+    "gateClosed": "object.gate.closed",
+    "gateOpen": "object.gate.open"
+  }
+}

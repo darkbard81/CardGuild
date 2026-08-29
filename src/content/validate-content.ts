@@ -14,7 +14,8 @@ const CATEGORIES = new Set<ContentSourceCategory>([
   "cards",
   "equipment",
   "actors",
-  "scenario",
+  "scenarios",
+  "adventures",
 ]);
 
 function asRecord(value: unknown): Readonly<Record<string, unknown>> | undefined {
@@ -37,10 +38,6 @@ function definitionIdFor(value: unknown, category: ContentSourceCategory, instan
   if (Array.isArray(categoryValue) && indexText !== undefined) {
     const definition = asRecord(categoryValue[Number(indexText)]);
     return typeof definition?.id === "string" ? definition.id : undefined;
-  }
-  if (category === "scenario") {
-    const scenario = asRecord(categoryValue);
-    return typeof scenario?.id === "string" ? scenario.id : undefined;
   }
   return undefined;
 }

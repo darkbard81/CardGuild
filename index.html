@@ -7,7 +7,7 @@
       name="description"
       content="CardGuild deterministic PF2e tactical combat vertical slice"
     />
-    <title>CardGuild — M0 Gatehouse</title>
+    <title>CardGuild — Goblin Trouble</title>
   </head>
   <body>
     <main
@@ -17,7 +17,17 @@
       data-outcome="ongoing"
       data-state-hash=""
     >
-      <header class="topbar">
+      <section id="adventure-screen" class="adventure-screen" aria-labelledby="adventure-title">
+        <div class="adventure-map-card">
+          <p class="eyebrow">PF2e Tactical Adventure</p>
+          <h2 id="adventure-title">Adventure Progress</h2>
+          <ol id="adventure-progress" class="adventure-progress"></ol>
+          <div id="adventure-collection" class="adventure-collection"></div>
+        </div>
+        <article id="adventure-content" class="adventure-content"></article>
+      </section>
+
+      <header class="topbar combat-only">
         <div class="brand-block">
           <p class="eyebrow">PF2e Tactical Adventure</p>
           <h1>CardGuild</h1>
@@ -33,7 +43,7 @@
         <ol id="initiative-list" class="initiative-list" aria-label="Initiative order"></ol>
       </header>
 
-      <section class="battle-layout">
+      <section class="battle-layout combat-only">
         <aside class="side-panel hero-panel" aria-labelledby="hero-heading">
           <div class="panel-heading">
             <p class="eyebrow">Active hero</p>
@@ -58,7 +68,7 @@
         <section class="board-panel" aria-labelledby="battlefield-title">
           <div class="board-header">
             <div>
-              <p class="eyebrow">M0 Encounter</p>
+              <p id="encounter-label" class="eyebrow">M2 Encounter</p>
               <h2 id="battlefield-title">The Webbed Gatehouse</h2>
             </div>
             <div class="runtime-chip">
@@ -98,7 +108,7 @@
         </aside>
       </section>
 
-      <footer class="hand-dock">
+      <footer class="hand-dock combat-only">
         <div class="hand-heading">
           <div>
             <p class="eyebrow">Tactical deck</p>

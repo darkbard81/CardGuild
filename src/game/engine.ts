@@ -36,7 +36,7 @@ import type {
 } from "./types";
 
 interface CombatDraft {
-  version: 2;
+  version: 3;
   scenarioId: string;
   seed: number;
   contentIdentity: CombatState["contentIdentity"];
@@ -211,7 +211,7 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
   if (activeActor) actors[activeActorId] = { ...activeActor, reactionAvailable: true };
 
   const state: CombatState = {
-    version: 2,
+    version: 3,
     scenarioId: scenario.id,
     seed,
     contentIdentity: { ...contentIdentity },

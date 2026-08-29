@@ -1,0 +1,30 @@
+[
+  {
+    "id": "adventure.goblin-trouble",
+    "name": "Goblin Trouble",
+    "description": "길목의 매복을 뚫고 폐허의 문을 연 뒤 고블린 대장을 쓰러뜨리세요.",
+    "encounterIds": [
+      "encounter.road-ambush",
+      "encounter.ruined-gate",
+      "encounter.goblin-chief"
+    ],
+    "rewards": [
+      {
+        "id": "reward.road-ambush",
+        "afterEncounterId": "encounter.road-ambush",
+        "choices": [
+          { "kind": "equipment", "definitionId": "boots-of-fly" },
+          { "kind": "card", "definitionId": "card.fly" }
+        ]
+      },
+      {
+        "id": "reward.ruined-gate",
+        "afterEncounterId": "encounter.ruined-gate",
+        "choices": [
+          { "kind": "equipment", "definitionId": "shield" },
+          { "kind": "card", "definitionId": "card.spirit-beacon" }
+        ]
+      }
+    ]
+  }
+]

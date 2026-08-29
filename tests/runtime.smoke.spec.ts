@@ -1,8 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 
-const BOARD_COLUMNS = 9;
-const BOARD_ROWS = 7;
-const CELL_SIZE = 72;
+const ROAD_MAP = { width: 3, height: 3 };
 
 function captureRuntimeErrors(page: Page): string[] {
   const errors: string[] = [];
@@ -13,164 +11,110 @@ function captureRuntimeErrors(page: Page): string[] {
   return errors;
 }
 
-async function openBattle(page: Page): Promise<void> {
+async function openAdventure(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
-  await expect(page.locator("#pixi-root")).toHaveAttribute("data-ready", "true");
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
+}
+
+async function openBattle(page: Page): Promise<void> {
+  await openAdventure(page);
+  await page.getByRole("button", { name: "Begin Adventure" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 });
+  await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.road-ambush");
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
 }
 
-async function boardGeometry(page: Page): Promise<{
-  readonly scale: number;
-  readonly worldX: number;
-  readonly worldY: number;
-}> {
+async function clickIsoPoint(
+  page: Page,
+  gridX: number,
+  gridY: number,
+  offset: { readonly x: number; readonly y: number } = { x: 0, y: 0 },
+): Promise<void> {
   const box = await page.locator("#pixi-canvas").boundingBox();
   if (!box) throw new Error("Pixi canvas does not have a bounding box.");
-  const boardWidth = BOARD_COLUMNS * CELL_SIZE;
-  const boardHeight = BOARD_ROWS * CELL_SIZE;
-  const scale = Math.max(0.2, Math.min((box.width - 24) / boardWidth, (box.height - 24) / boardHeight));
-  return {
-    scale,
-    worldX: Math.max(12, (box.width - boardWidth * scale) / 2),
-    worldY: Math.max(12, (box.height - boardHeight * scale) / 2),
-  };
-}
-
-async function clickBoardTile(page: Page, x: number, y: number): Promise<void> {
-  const geometry = await boardGeometry(page);
+  const minX = -(ROAD_MAP.height - 1) * 32 - 48;
+  const maxX = (ROAD_MAP.width - 1) * 32 + 48;
+  const minY = -112;
+  const maxY = (ROAD_MAP.width + ROAD_MAP.height - 2) * 16 + 58;
+  const zoom = Math.max(
+    0.55,
+    Math.min(1.5, Math.min((box.width - 32) / (maxX - minX), (box.height - 32) / (maxY - minY))),
+  );
+  const worldX = box.width / 2 - ((minX + maxX) / 2) * zoom;
+  const worldY = box.height / 2 - ((minY + maxY) / 2) * zoom;
   await page.locator("#pixi-canvas").click({
     position: {
-      x: geometry.worldX + (x * CELL_SIZE + CELL_SIZE / 2) * geometry.scale,
-      y: geometry.worldY + (y * CELL_SIZE + CELL_SIZE / 2) * geometry.scale,
+      x: worldX + ((gridX - gridY) * 32 + offset.x) * zoom,
+      y: worldY + ((gridX + gridY) * 16 + offset.y) * zoom,
     },
   });
 }
 
-async function clickFacing(
-  page: Page,
-  x: number,
-  y: number,
-  direction: "north" | "east" | "south" | "west",
-): Promise<void> {
-  const geometry = await boardGeometry(page);
-  const offsets = {
-    north: { x: 0, y: -22 },
-    east: { x: 22, y: 0 },
-    south: { x: 0, y: 22 },
-    west: { x: -22, y: 0 },
-  } as const;
-  const offset = offsets[direction];
-  await page.locator("#pixi-canvas").click({
-    position: {
-      x: geometry.worldX + (x * CELL_SIZE + CELL_SIZE / 2 + offset.x) * geometry.scale,
-      y: geometry.worldY + (y * CELL_SIZE + CELL_SIZE / 2 + offset.y) * geometry.scale,
-    },
-  });
-}
-
-test("initializes the deterministic PixiJS battle beside the DOM HUD", async ({ page }, testInfo) => {
+test("shows the Adventure shell before loading encounter WebP assets", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
+  const webpRequests: string[] = [];
+  page.on("request", (request) => {
+    if (request.url().endsWith(".webp")) webpRequests.push(request.url());
+  });
+  await openAdventure(page);
+
+  await expect(page.locator("#adventure-content h1")).toHaveText("Goblin Trouble");
+  await expect(page.locator("#adventure-progress li")).toHaveCount(3);
+  await expect(page.locator("#adventure-collection")).toContainText("No rewards yet");
+  expect(webpRequests).toEqual([]);
+  expect(runtimeErrors).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-adventure.png"), fullPage: true });
+});
+
+test("loads the isometric WebP atlas and records explicit movement facing", async ({ page }, testInfo) => {
+  const runtimeErrors = captureRuntimeErrors(page);
+  const webpResponses: string[] = [];
+  page.on("response", (response) => {
+    if (response.url().endsWith(".webp") && response.ok()) webpResponses.push(response.url());
+  });
   await openBattle(page);
 
-  const canvas = page.locator("#pixi-canvas");
-  await expect(canvas).toBeVisible();
-  await expect(page.locator("#pixi-status")).toHaveText("Deterministic core ready");
+  await expect(page.locator("#pixi-canvas")).toBeVisible();
+  await expect(page.locator("#pixi-status")).toHaveText("Isometric presentation ready");
   await expect(page.locator("#action-pips .available")).toHaveCount(3);
   await expect(page.locator("#hand-cards .tactical-card")).toHaveCount(6);
   await expect(page.locator("#app")).toHaveAttribute("data-state-hash", /^[0-9a-f]{16}$/);
+  expect(new Set(webpResponses).size).toBe(1);
+  expect(webpResponses.some((url) => url.endsWith("/assets/m2-atlas.webp"))).toBe(true);
 
-  const canvasSize = await canvas.evaluate((element) => ({
-    cssHeight: element.clientHeight,
-    cssWidth: element.clientWidth,
-    pixelHeight: element.height,
-    pixelWidth: element.width,
-  }));
-  expect(canvasSize.cssWidth).toBeGreaterThan(500);
-  expect(canvasSize.cssHeight).toBeGreaterThan(400);
-  expect(canvasSize.pixelWidth).toBeGreaterThanOrEqual(canvasSize.cssWidth);
-  expect(canvasSize.pixelHeight).toBeGreaterThanOrEqual(canvasSize.cssHeight);
-  expect(runtimeErrors).toEqual([]);
-
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m0-initial.png"), fullPage: true });
-});
-
-test("selects an orthogonal destination and records explicit final facing", async ({ page }) => {
-  const runtimeErrors = captureRuntimeErrors(page);
-  await openBattle(page);
   const initialHash = await page.locator("#app").getAttribute("data-state-hash");
-
   await page.locator('#basic-actions button[data-action-id="step"]').click();
-  await expect(page.locator("#board-prompt")).toContainText("파란 타일");
-  await clickBoardTile(page, 1, 4);
+  await clickIsoPoint(page, 1, 1);
   await expect(page.locator("#board-prompt")).toContainText("바라볼 방향");
-  await clickFacing(page, 1, 4, "south");
+  await clickIsoPoint(page, 1, 1, { x: -25, y: 15 });
 
   await expect(page.locator("#hero-stats")).toContainText("south");
   await expect(page.locator("#action-pips .available")).toHaveCount(2);
   await expect(page.locator("#combat-log")).toContainText("now faces south");
   await expect(page.locator("#app")).not.toHaveAttribute("data-state-hash", initialHash ?? "");
   expect(runtimeErrors).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-isometric.png"), fullPage: true });
 });
 
-test("plays context cards through AI turns and resolves a movement reaction", async ({ page }, testInfo) => {
+test("reflows HUD and independently resizes the battlefield camera", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
   await openBattle(page);
 
-  await page.locator('#context-actions button[data-action-id="interact-lever"]').click();
-  await clickBoardTile(page, 1, 2);
-  await expect(page.locator("#combat-log")).toContainText("gate-lever");
-  await expect(page.locator('#context-actions button[data-action-id="interact-lever"]')).toHaveCount(0);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForTimeout(250);
+  const mobileCanvas = await page.locator("#pixi-canvas").evaluate((canvas) => ({
+    width: canvas.clientWidth,
+    height: canvas.clientHeight,
+  }));
+  expect(mobileCanvas.width).toBeGreaterThan(350);
+  expect(mobileCanvas.height).toBeGreaterThan(210);
+  expect(await page.locator(".battle-layout").evaluate((node) => getComputedStyle(node).display)).toBe("flex");
 
-  await page.locator('#context-actions button[data-action-id="raise-shield"]').click();
-  await expect(page.locator("#hero-stats .stats-grid dd").first()).toHaveText("20");
-
-  await page.locator('#hand-cards button[data-action-id="spirit-beacon"]:not(:disabled)').first().click();
-  await expect(page.locator("#combat-log")).toContainText("created Spirit Beacon");
-  await expect(page.locator('#context-actions button[data-action-id="sustain-spell"]')).toBeDisabled();
-
-  await page.locator("#end-turn").click();
-  await expect(page.locator("#round-value")).toHaveText("2", { timeout: 12_000 });
-  await expect(page.locator("#initiative-list .active")).toHaveText("Aerin", { timeout: 12_000 });
-
-  const sustain = page.locator('#context-actions button[data-action-id="sustain-spell"]');
-  await expect(sustain).toBeEnabled();
-  await sustain.click();
-  await page.locator('#context-actions button[data-action-id="raise-shield"]').click();
-  await page.locator("#end-turn").click();
-
-  await expect(page.locator("#reaction-modal")).toBeVisible({ timeout: 12_000 });
-  await expect(page.locator("#reaction-description")).toContainText("Goblin Brute");
-  await page.locator("#reaction-use").click();
-  await expect(page.locator("#reaction-modal")).toBeHidden();
-  await expect(page.locator("#combat-log")).toContainText("used reactive-strike");
-  await expect(page.locator("#discard-count")).not.toHaveText("0");
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.waitForTimeout(250);
+  const wideWidth = await page.locator("#pixi-canvas").evaluate((canvas) => canvas.clientWidth);
+  expect(wideWidth).toBeGreaterThan(850);
   expect(runtimeErrors).toEqual([]);
-
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m0-reaction.png"), fullPage: true });
-});
-
-test("reaches and renders a deterministic defeat outcome", async ({ page }) => {
-  test.setTimeout(45_000);
-  const runtimeErrors = captureRuntimeErrors(page);
-  await openBattle(page);
-
-  await page.locator('#context-actions button[data-action-id="interact-lever"]').click();
-  await clickBoardTile(page, 1, 2);
-  await page.locator("#end-turn").click();
-
-  for (let step = 0; step < 100; step += 1) {
-    if (await page.locator("#result-modal").isVisible()) break;
-    if (await page.locator("#reaction-modal").isVisible()) {
-      await page.locator("#reaction-pass").click();
-    } else if ((await page.locator("#initiative-list .active").textContent()) === "Aerin") {
-      await page.locator("#end-turn").click();
-    }
-    await page.waitForTimeout(260);
-  }
-
-  await expect(page.locator("#result-modal")).toBeVisible();
-  await expect(page.locator("#result-title")).toHaveText("Defeat");
-  await expect(page.locator("#app")).toHaveAttribute("data-outcome", "defeat");
-  expect(runtimeErrors).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-responsive.png"), fullPage: true });
 });

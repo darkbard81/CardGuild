@@ -55,7 +55,7 @@ function addIssue(
 
 function validateUniqueIds<T extends { readonly id: string }>(
   context: ValidationContext,
-  category: Exclude<ContentSourceCategory, "manifest" | "scenario">,
+  category: Exclude<ContentSourceCategory, "manifest">,
   values: readonly T[],
 ): void {
   const seen = new Set<string>();
@@ -137,6 +137,8 @@ export function validateContentPackSemantics(
   validateUniqueIds(context, "cards", source.cards);
   validateUniqueIds(context, "equipment", source.equipment);
   validateUniqueIds(context, "actors", source.actors);
+  validateUniqueIds(context, "scenarios", source.scenarios);
+  validateUniqueIds(context, "adventures", source.adventures);
 
   const knownTraits = new Set(source.traits.map((definition) => definition.id));
   const knownConditions = new Set(source.conditions.map((definition) => definition.id));
@@ -239,66 +241,96 @@ export function validateContentPackSemantics(
         addIssue(context, "actors", `[${index}].baseCardGrants[${grantIndex}].traitId`, "UNKNOWN_TRAIT", `Trait "${grant.traitId}" is not defined.`, actor.id);
       }
     });
-    actor.conditions.forEach((condition, conditionIndex) => {
+    (actor.initialConditions ?? []).forEach((condition, conditionIndex) => {
       if (!knownConditions.has(condition.id)) {
-        addIssue(context, "actors", `[${index}].conditions[${conditionIndex}].id`, "UNKNOWN_CONDITION", `Condition "${condition.id}" is not defined.`, actor.id);
+        addIssue(context, "actors", `[${index}].initialConditions[${conditionIndex}].id`, "UNKNOWN_CONDITION", `Condition "${condition.id}" is not defined.`, actor.id);
       }
     });
   });
 
-  const scenarioActorIds = new Set<string>();
-  source.scenario.actorIds.forEach((actorId, index) => {
-    if (!knownActors.has(actorId)) {
-      addIssue(context, "scenario", `actorIds[${index}]`, "UNKNOWN_ACTOR", `Actor "${actorId}" is not defined.`, source.scenario.id);
+  source.scenarios.forEach((scenario, scenarioIndex) => {
+    const prefix = `[${scenarioIndex}]`;
+    const map = scenario.map;
+    const tileIds = new Set<string>();
+    const tilePositions = new Set<string>();
+    for (const [index, tile] of map.tiles.entries()) {
+      const key = positionKey(tile.position);
+      if (tileIds.has(tile.id)) addIssue(context, "scenarios", `${prefix}.map.tiles[${index}].id`, "DUPLICATE_TILE_ID", `Duplicate tile ID "${tile.id}".`, scenario.id);
+      if (tilePositions.has(key)) addIssue(context, "scenarios", `${prefix}.map.tiles[${index}].position`, "DUPLICATE_TILE_POSITION", `Multiple tiles occupy ${key}.`, scenario.id);
+      if (tile.position.x < 0 || tile.position.y < 0 || tile.position.x >= map.width || tile.position.y >= map.height) {
+        addIssue(context, "scenarios", `${prefix}.map.tiles[${index}].position`, "TILE_OUT_OF_BOUNDS", `Tile "${tile.id}" is outside ${map.width}x${map.height} map bounds.`, scenario.id);
+      }
+      tileIds.add(tile.id);
+      tilePositions.add(key);
+      validateTraits(context, knownTraits, "scenarios", tile.id, `${prefix}.map.tiles[${index}].traits`, tile.traits);
     }
-    if (scenarioActorIds.has(actorId)) {
-      addIssue(context, "scenario", `actorIds[${index}]`, "DUPLICATE_SCENARIO_ACTOR", `Scenario references actor "${actorId}" more than once.`, source.scenario.id);
+
+    const objectIds = new Set<string>();
+    for (const [index, object] of map.objects.entries()) {
+      if (objectIds.has(object.id)) addIssue(context, "scenarios", `${prefix}.map.objects[${index}].id`, "DUPLICATE_MAP_OBJECT_ID", `Duplicate map object ID "${object.id}".`, object.id);
+      if (object.position.x < 0 || object.position.y < 0 || object.position.x >= map.width || object.position.y >= map.height) {
+        addIssue(context, "scenarios", `${prefix}.map.objects[${index}].position`, "MAP_OBJECT_OUT_OF_BOUNDS", `Map object "${object.id}" is outside map bounds.`, object.id);
+      }
+      if (!tileIds.has(object.interaction.targetTileId)) {
+        addIssue(context, "scenarios", `${prefix}.map.objects[${index}].interaction.targetTileId`, "UNKNOWN_TARGET_TILE", `Interaction target tile "${object.interaction.targetTileId}" is not defined.`, object.id);
+      }
+      objectIds.add(object.id);
+      validateTraits(context, knownTraits, "scenarios", object.id, `${prefix}.map.objects[${index}].traits`, object.traits);
     }
-    scenarioActorIds.add(actorId);
+
+    const placementIds = new Set<string>();
+    const occupied = new Set<string>();
+    scenario.placements.forEach((placement, placementIndex) => {
+      const path = `${prefix}.placements[${placementIndex}]`;
+      if (!knownActors.has(placement.actorDefinitionId)) {
+        addIssue(context, "scenarios", `${path}.actorDefinitionId`, "UNKNOWN_ACTOR", `Actor definition "${placement.actorDefinitionId}" is not defined.`, placement.instanceId);
+      }
+      if (placementIds.has(placement.instanceId)) {
+        addIssue(context, "scenarios", `${path}.instanceId`, "DUPLICATE_PLACEMENT_ID", `Placement instance "${placement.instanceId}" is duplicated.`, scenario.id);
+      }
+      if (placement.team === "heroes" && !placement.partyMemberId) {
+        addIssue(context, "scenarios", `${path}.partyMemberId`, "MISSING_PARTY_MEMBER", "Hero placements require a persistent partyMemberId.", placement.instanceId);
+      }
+      if (placement.team === "enemies" && placement.partyMemberId) {
+        addIssue(context, "scenarios", `${path}.partyMemberId`, "ENEMY_PARTY_MEMBER", "Enemy placements cannot reference a party member.", placement.instanceId);
+      }
+      const key = positionKey(placement.position);
+      const tile = map.tiles.find((candidate) => positionKey(candidate.position) === key);
+      if (!tile) {
+        addIssue(context, "scenarios", `${path}.position`, "ACTOR_TILE_MISSING", `Placement "${placement.instanceId}" starts on undefined tile ${key}.`, placement.instanceId);
+      } else if (tile.traits.some((trait) => trait.id === "blocked" || trait.id === "impassable")) {
+        addIssue(context, "scenarios", `${path}.position`, "ACTOR_TILE_BLOCKED", `Placement "${placement.instanceId}" starts on blocked tile "${tile.id}".`, placement.instanceId);
+      }
+      if (occupied.has(key)) addIssue(context, "scenarios", `${path}.position`, "ACTOR_POSITION_CONFLICT", `Multiple actors start at ${key}.`, placement.instanceId);
+      placementIds.add(placement.instanceId);
+      occupied.add(key);
+    });
   });
 
-  const map = source.scenario.map;
-  const tileIds = new Set<string>();
-  const tilePositions = new Set<string>();
-  for (const [index, tile] of map.tiles.entries()) {
-    const key = positionKey(tile.position);
-    if (tileIds.has(tile.id)) addIssue(context, "scenario", `map.tiles[${index}].id`, "DUPLICATE_TILE_ID", `Duplicate tile ID "${tile.id}".`, source.scenario.id);
-    if (tilePositions.has(key)) addIssue(context, "scenario", `map.tiles[${index}].position`, "DUPLICATE_TILE_POSITION", `Multiple tiles occupy ${key}.`, source.scenario.id);
-    if (tile.position.x < 0 || tile.position.y < 0 || tile.position.x >= map.width || tile.position.y >= map.height) {
-      addIssue(context, "scenario", `map.tiles[${index}].position`, "TILE_OUT_OF_BOUNDS", `Tile "${tile.id}" is outside ${map.width}x${map.height} map bounds.`, source.scenario.id);
-    }
-    tileIds.add(tile.id);
-    tilePositions.add(key);
-    validateTraits(context, knownTraits, "scenario", tile.id, `map.tiles[${index}].traits`, tile.traits);
-  }
-
-  const objectIds = new Set<string>();
-  for (const [index, object] of map.objects.entries()) {
-    if (objectIds.has(object.id)) addIssue(context, "scenario", `map.objects[${index}].id`, "DUPLICATE_MAP_OBJECT_ID", `Duplicate map object ID "${object.id}".`, object.id);
-    if (object.position.x < 0 || object.position.y < 0 || object.position.x >= map.width || object.position.y >= map.height) {
-      addIssue(context, "scenario", `map.objects[${index}].position`, "MAP_OBJECT_OUT_OF_BOUNDS", `Map object "${object.id}" is outside map bounds.`, object.id);
-    }
-    if (!tileIds.has(object.interaction.targetTileId)) {
-      addIssue(context, "scenario", `map.objects[${index}].interaction.targetTileId`, "UNKNOWN_TARGET_TILE", `Interaction target tile "${object.interaction.targetTileId}" is not defined.`, object.id);
-    }
-    objectIds.add(object.id);
-    validateTraits(context, knownTraits, "scenario", object.id, `map.objects[${index}].traits`, object.traits);
-  }
-
-  const occupied = new Set<string>();
-  for (const actorId of source.scenario.actorIds) {
-    const actor = source.actors.find((candidate) => candidate.id === actorId);
-    if (!actor) continue;
-    const key = positionKey(actor.position);
-    const tile = map.tiles.find((candidate) => positionKey(candidate.position) === key);
-    if (!tile) {
-      addIssue(context, "actors", `${actor.id}.position`, "ACTOR_TILE_MISSING", `Actor "${actor.id}" starts on undefined tile ${key}.`, actor.id);
-    } else if (tile.traits.some((trait) => trait.id === "blocked" || trait.id === "impassable")) {
-      addIssue(context, "actors", `${actor.id}.position`, "ACTOR_TILE_BLOCKED", `Actor "${actor.id}" starts on blocked tile "${tile.id}".`, actor.id);
-    }
-    if (occupied.has(key)) addIssue(context, "actors", `${actor.id}.position`, "ACTOR_POSITION_CONFLICT", `Multiple actors start at ${key}.`, actor.id);
-    occupied.add(key);
-  }
+  const knownScenarios = new Set(source.scenarios.map((scenario) => scenario.id));
+  source.adventures.forEach((adventure, adventureIndex) => {
+    const encounterSeen = new Set<string>();
+    adventure.encounterIds.forEach((scenarioId, encounterIndex) => {
+      const path = `[${adventureIndex}].encounterIds[${encounterIndex}]`;
+      if (!knownScenarios.has(scenarioId)) addIssue(context, "adventures", path, "UNKNOWN_SCENARIO", `Scenario "${scenarioId}" is not defined.`, adventure.id);
+      if (encounterSeen.has(scenarioId)) addIssue(context, "adventures", path, "DUPLICATE_ADVENTURE_ENCOUNTER", `Adventure repeats scenario "${scenarioId}".`, adventure.id);
+      encounterSeen.add(scenarioId);
+    });
+    const rewardIds = new Set<string>();
+    const rewardedEncounters = new Set<string>();
+    adventure.rewards.forEach((reward, rewardIndex) => {
+      const path = `[${adventureIndex}].rewards[${rewardIndex}]`;
+      if (rewardIds.has(reward.id)) addIssue(context, "adventures", `${path}.id`, "DUPLICATE_REWARD_ID", `Reward "${reward.id}" is duplicated.`, adventure.id);
+      if (!adventure.encounterIds.includes(reward.afterEncounterId)) addIssue(context, "adventures", `${path}.afterEncounterId`, "REWARD_OUTSIDE_ADVENTURE", `Reward references encounter "${reward.afterEncounterId}" outside its adventure.`, reward.id);
+      if (rewardedEncounters.has(reward.afterEncounterId)) addIssue(context, "adventures", `${path}.afterEncounterId`, "DUPLICATE_ENCOUNTER_REWARD", `Encounter "${reward.afterEncounterId}" has more than one reward offer.`, reward.id);
+      reward.choices.forEach((choice, choiceIndex) => {
+        const known = choice.kind === "equipment" ? knownEquipment : knownCards;
+        if (!known.has(choice.definitionId)) addIssue(context, "adventures", `${path}.choices[${choiceIndex}].definitionId`, choice.kind === "equipment" ? "UNKNOWN_EQUIPMENT" : "UNKNOWN_CARD", `${choice.kind} "${choice.definitionId}" is not defined.`, reward.id);
+      });
+      rewardIds.add(reward.id);
+      rewardedEncounters.add(reward.afterEncounterId);
+    });
+  });
 
   return context.issues.sort(
     (left, right) =>

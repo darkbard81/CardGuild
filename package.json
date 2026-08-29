@@ -8,9 +8,12 @@
     "npm": ">=11.0.0"
   },
   "scripts": {
-    "dev": "npm run content:check && vite",
-    "build": "npm run content:check && tsc --noEmit && vite build",
-    "check": "npm run content:check && npm run typecheck && npm run typecheck:game && npm run typecheck:tools && npm run lint && npm run test:unit",
+    "dev": "npm run content:check && npm run assets:check && vite",
+    "build": "npm run content:check && npm run assets && tsc --noEmit && vite build",
+    "check": "npm run content:check && npm run assets:check && npm run typecheck && npm run typecheck:game && npm run typecheck:tools && npm run lint && npm run test:unit",
+    "assets:build": "tsx tools/assets/build-assets.ts",
+    "assets:check": "tsx tools/assets/check-assets.ts",
+    "assets": "npm run assets:build && npm run assets:check",
     "content:check": "tsx tools/content/check-content.ts",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -25,14 +28,15 @@
     "pixi.js": "^8.20.1"
   },
   "devDependencies": {
-    "@types/node": "^24.3.0",
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.62.1",
+    "@types/node": "^24.3.0",
     "ajv": "^8.20.0",
     "eslint": "^10.0.0",
     "globals": "^17.11.0",
-    "typescript": "~6.0.3",
+    "sharp": "^0.35.4",
     "tsx": "^4.23.12",
+    "typescript": "~6.0.3",
     "typescript-eslint": "^8.68.0",
     "vite": "^8.2.2",
     "vitest": "^3.2.7"
