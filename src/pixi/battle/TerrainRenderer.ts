@@ -46,12 +46,15 @@ export class TerrainRenderer {
         const groundId = tilemapAssetAt(tilemap, "ground", index);
         if (!groundId) throw new Error(`Presentation tilemap is missing ground at ${col},${row}.`);
         const ground = new Sprite(this.catalog.texture(groundId));
+        // Atlas frames carry a centred default anchor; board tiles are laid out top-left.
+        ground.anchor.set(0, 0);
         ground.position.set(col * cell, row * cell);
         ground.setSize(cell, cell);
         composition.addChild(ground);
         const transitionId = tilemapAssetAt(tilemap, "transitions", index);
         if (transitionId) {
           const overlay = new Sprite(this.catalog.texture(transitionId));
+          overlay.anchor.set(0, 0);
           overlay.position.copyFrom(ground.position);
           overlay.setSize(cell, cell);
           composition.addChild(overlay);

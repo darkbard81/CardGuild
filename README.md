@@ -1,14 +1,17 @@
 # CardGuild
 
 Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Adventure입니다.
-결정론적 전투 코어와 JSON Content Pipeline 위에 M2 Adventure Flow와 responsive
-top-down 2.5D board presentation을 연결했습니다. 같은 파티가 세 Encounter를 순서대로 진행하고
+결정론적 전투 코어와 JSON Content Pipeline 위에 M2 Adventure Flow와 top-down 2.5D
+board presentation을 연결했습니다. 전투 화면은 canvas 전체를 전장으로 쓰고 HUD는 그
+위에 떠 있는 반투명 패널로만 배치합니다. 같은 파티가 세 Encounter를 순서대로 진행하고
 선택한 Reward를 AdventureState의 Collection에 유지합니다.
 
 ## 요구 환경과 실행
 
 - Node.js 22.13 이상(22.x) 또는 Node.js 24 이상
 - npm 11 이상
+- 최소 지원 해상도 1024x768. HUD gutter는 `DEFAULT_BOARD_SAFE_AREA`로 보드 투영에서
+  제외되므로 어떤 칸도 패널에 가려지지 않습니다.
 
 ```bash
 npm install
@@ -22,10 +25,17 @@ npm run dev
 - 각 Encounter는 영속 party identity/loadout으로 새 CombatState와 파생 seed를 만듭니다.
 - 전투 HP, Condition, Reaction, 손패와 지속 효과는 다음 Encounter로 이월하지 않습니다.
 
-- `Step`, `Stride`, `Strike`는 손패와 무관한 고정 Basic Action입니다.
-- 이동은 상하좌우만 가능하며 목적지를 고른 뒤 최종 Facing을 선택합니다.
+- 입력은 대상 우선입니다. 보드에서 적·칸·오브젝트·자신을 클릭하면 그 대상에
+  합법인 행동만 링 메뉴로 열리고, 항목을 고르면 즉시 실행됩니다. `Esc`나 바깥
+  클릭으로 닫습니다.
+- `Step`, `Stride`, `Strike`는 손패와 무관한 고정 Basic Action이며 별도 버튼 없이
+  링 메뉴에 나타납니다.
+- 이동은 상하좌우만 가능하며 목적지를 고른 뒤 보드 위 4방향 위젯에서 최종 Facing을
+  선택합니다.
 - `Escape`, `Interact`, `Raise Shield`, `Sustain Spell`은 현재 상태가 제공하는
-  Context Action입니다.
+  Context Action이며 해당 대상(자신·오브젝트)을 클릭할 때 링 메뉴에 포함됩니다.
+- 손패 카드는 클릭해서 먼저 고를 수도 있습니다. 이때 합법 대상이 보드에 강조되고
+  그중 하나를 클릭하면 실행됩니다.
 - Halberd의 `Trip`, Boots of Fly의 `Fly`, Focus Spell인 `Spirit Beacon`,
   `Reactive Strike`는 출처가 보존되는 전술 카드입니다.
 - 레버를 사용하면 중앙의 Blocked gate가 열립니다. Rubble, Chasm, Wall, Web은
@@ -49,7 +59,7 @@ src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/app    Adventure/전투 세션과 입력 상태, 적 AI 턴 orchestration
 src/pixi   BoardProjection/PerspectiveMesh/camera/depth renderers와 tactical overlay
 src/presentation WebP atlas AssetCatalog와 layered tilemap mapping
-src/dom    Adventure/Reward, 행동·카드·HUD·로그·Reaction·결과 UI
+src/dom    Adventure/Reward, 링 컨텍스트 메뉴·카드·HUD·로그·Reaction·결과 UI
 ```
 
 `src/game`은 PixiJS, DOM, 브라우저 API, Ajv, 파일 경로에 의존하지 않습니다. UI는
@@ -59,8 +69,8 @@ state hash를 만듭니다. CombatState와 replay는 pack ID/version/fingerprint
 보존하며 콘텐츠가 다르면 replay command 실행 전에 실패합니다.
 
 장비와 Condition은 개별 ID 분기 대신 `TraitDefinition` provider를 통해 카드와
-Context Action을 공급합니다. `Escape` UI는 Condition이 공급한 Stand/Escape 같은
-Recovery Action을 하나의 메뉴로 묶습니다.
+Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Recovery Action도
+자신을 클릭했을 때 열리는 링 메뉴에 함께 나타나므로 별도 UI 분기가 없습니다.
 
 M2 콘텐츠의 source of truth는 [`content/m2`](content/m2) JSON이며, Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
@@ -93,7 +103,8 @@ Vitest는 Content v2 Schema/reference/fingerprint, Adventure 3전/Reward/실패/
 projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
 Reaction lifecycle, replay identity/hash, victory/defeat를 검증합니다. Playwright는 Adventure shell,
-지연 WebP atlas 로딩, 실제 perspective board hover/이동/Facing, 좁은 화면과 ultrawide reflow를 검증합니다.
+지연 WebP atlas 로딩, 실제 perspective board hover/링 메뉴 이동·공격/Facing,
+1024x768 최소 해상도 적합성과 ultrawide reflow를 검증합니다.
 
 ## M2 범위 밖
 

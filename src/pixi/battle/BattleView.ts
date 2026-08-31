@@ -28,11 +28,21 @@ export interface BoardHighlights {
   readonly facingPosition: GridPosition | null;
 }
 
+export type BoardPick =
+  | { readonly kind: "tile"; readonly position: GridPosition }
+  | { readonly kind: "actor"; readonly actorId: string; readonly position: GridPosition }
+  | { readonly kind: "object"; readonly objectId: string; readonly position: GridPosition };
+
+export interface ScreenPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
 export interface BattleViewHandlers {
-  readonly onTile: (position: GridPosition) => void;
-  readonly onActor: (actorId: string) => void;
-  readonly onObject: (objectId: string) => void;
+  /** A board target was picked; the screen point anchors the radial action menu. */
+  readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
   readonly onFacing: (facing: Direction) => void;
+  readonly onHoverCell: (position: GridPosition | null) => void;
 }
 
 interface AnimationRecord {
@@ -333,6 +343,7 @@ export class BattleView {
     this.hoverPosition = position;
     this.app.canvas.dataset.hoverCell = position ? `${position.x},${position.y}` : "";
     this.renderOverlay();
+    this.handlers.onHoverCell(position);
   }
 
   private gridAt(screenX: number, screenY: number): GridPosition | null {
@@ -357,21 +368,28 @@ export class BattleView {
     }
     const position = this.gridAt(point.x, point.y);
     if (!position) return;
+    const screen = { x: point.x, y: point.y };
     const actor = Object.values(this.state.actors).find(
       (candidate) => !candidate.defeated && candidate.position.x === position.x && candidate.position.y === position.y,
     );
     if (actor) {
-      this.handlers.onActor(actor.id);
+      this.handlers.onPick({ kind: "actor", actorId: actor.id, position }, screen);
       return;
     }
     const object = Object.values(this.state.map.objects).find(
       (candidate) => !candidate.used && candidate.position.x === position.x && candidate.position.y === position.y,
     );
     if (object) {
-      this.handlers.onObject(object.id);
+      this.handlers.onPick({ kind: "object", objectId: object.id, position }, screen);
       return;
     }
-    this.handlers.onTile(position);
+    this.handlers.onPick({ kind: "tile", position }, screen);
+  }
+
+  /** Screen position of a cell centre, used to anchor DOM overlays such as the ring menu. */
+  public cellAnchor(position: GridPosition): ScreenPoint {
+    const point = this.projection.gridToScreen(position.x + 0.5, position.y + 0.5);
+    return { x: point.x, y: point.y };
   }
 
   private cancelAnimations(): void {

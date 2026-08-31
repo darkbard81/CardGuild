@@ -45,6 +45,9 @@ async function openBattle(page: Page): Promise<void> {
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
 }
 
+/** Mirrors DEFAULT_BOARD_SAFE_AREA: the board is projected inside the HUD gutters. */
+const BOARD_SAFE_AREA = { left: 252, top: 96, right: 268, bottom: 178 };
+
 function projectBoardPoint(
   width: number,
   height: number,
@@ -52,13 +55,18 @@ function projectBoardPoint(
   gridX: number,
   gridY: number,
 ): { readonly x: number; readonly y: number } {
-  const topWidth = width * 0.72;
-  const bottomWidth = width * 0.9;
+  const areaWidth = Math.max(240, width - BOARD_SAFE_AREA.left - BOARD_SAFE_AREA.right);
+  const areaHeight = Math.max(240, height - BOARD_SAFE_AREA.top - BOARD_SAFE_AREA.bottom);
+  const centerX = BOARD_SAFE_AREA.left + areaWidth / 2;
+  const topWidth = areaWidth * 0.76;
+  const bottomWidth = areaWidth * 0.96;
+  const topY = BOARD_SAFE_AREA.top + areaHeight * 0.06;
+  const bottomY = BOARD_SAFE_AREA.top + areaHeight * 0.97;
   return projectCorners([
-    { x: (width - topWidth) / 2, y: height * 0.15 },
-    { x: (width + topWidth) / 2, y: height * 0.15 },
-    { x: (width + bottomWidth) / 2, y: height * 0.82 },
-    { x: (width - bottomWidth) / 2, y: height * 0.82 },
+    { x: centerX - topWidth / 2, y: topY },
+    { x: centerX + topWidth / 2, y: topY },
+    { x: centerX + bottomWidth / 2, y: bottomY },
+    { x: centerX - bottomWidth / 2, y: bottomY },
   ], map, gridX, gridY);
 }
 
@@ -77,6 +85,18 @@ async function clickBoardPoint(page: Page, gridX: number, gridY: number): Promis
   await page.locator("#pixi-canvas").click({
     position,
   });
+}
+
+/** Target-first input: pick a board square, then choose an action from the radial menu. */
+async function pickRingAction(
+  page: Page,
+  gridX: number,
+  gridY: number,
+  actionId: string,
+): Promise<void> {
+  await clickBoardPoint(page, gridX, gridY);
+  await expect(page.locator("#ring-root")).toBeVisible();
+  await page.locator(`#ring-root .ring-option[data-action-id="${actionId}"]`).click();
 }
 
 test("shows the Adventure shell before loading encounter WebP assets", async ({ page }, testInfo) => {
@@ -112,13 +132,13 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(webpResponses.some((url) => url.endsWith("/assets/m2-atlas.webp"))).toBe(true);
 
   const initialHash = await page.locator("#app").getAttribute("data-state-hash");
-  await page.locator('#basic-actions button[data-action-id="step"]').click();
   const target = await boardPoint(page, 1.5, 1.5);
   const canvasBox = await page.locator("#pixi-canvas").boundingBox();
   if (!canvasBox) throw new Error("Pixi canvas does not have a bounding box.");
   await page.mouse.move(canvasBox.x + target.x, canvasBox.y + target.y);
   await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-hover-cell", "1,1");
-  await clickBoardPoint(page, 1.5, 1.5);
+  await pickRingAction(page, 1.5, 1.5, "step");
+  await expect(page.locator("#ring-root")).toBeHidden();
   await expect(page.locator("#board-prompt")).toContainText("바라볼 방향");
   await clickBoardPoint(page, 1.5, 1.7);
 
@@ -132,6 +152,14 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   const expectedFoot = await boardPoint(page, 1.5, 1.8);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
+
+  await clickBoardPoint(page, 2.5, 1.5);
+  await expect(page.locator('#ring-root .ring-option[data-action-id="strike"]')).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#ring-root")).toBeHidden();
+  await pickRingAction(page, 2.5, 1.5, "strike");
+  await expect(page.locator("#combat-log")).toContainText("used strike");
+  await expect(page.locator("#action-pips .available")).toHaveCount(1);
 
   const beforeZoom = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-board-corners") ?? "[]") as [Corner, Corner, Corner, Corner];
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
@@ -156,20 +184,33 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await page.screenshot({ path: testInfo.outputPath("cardguild-m2-perspective-board.png"), fullPage: true });
 });
 
-test("reflows HUD and independently resizes the battlefield camera", async ({ page }, testInfo) => {
+test("fits the 1024x768 minimum and independently resizes the battlefield camera", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
   await openBattle(page);
 
-  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setViewportSize({ width: 1024, height: 768 });
   await page.waitForTimeout(250);
-  const mobileCanvas = await page.locator("#pixi-canvas").evaluate((canvas) => ({
+  const minimumCanvas = await page.locator("#pixi-canvas").evaluate((canvas) => ({
     width: canvas.clientWidth,
     height: canvas.clientHeight,
   }));
-  expect(mobileCanvas.width).toBeGreaterThan(350);
-  expect(mobileCanvas.height).toBeGreaterThan(210);
-  expect(await page.locator(".battle-layout").evaluate((node) => getComputedStyle(node).display)).toBe("flex");
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-mobile.png"), fullPage: true });
+  expect(minimumCanvas.width).toBe(1024);
+  expect(minimumCanvas.height).toBe(768);
+  const overflow = await page.evaluate(() => ({
+    horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    vertical: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+  }));
+  expect(overflow.horizontal).toBeLessThanOrEqual(0);
+  expect(overflow.vertical).toBeLessThanOrEqual(0);
+  for (const selector of [".hero-card", ".hud-status", ".hud-side", ".hand-dock"]) {
+    const box = await page.locator(selector).boundingBox();
+    if (!box) throw new Error(`HUD element ${selector} is not laid out.`);
+    expect(box.x).toBeGreaterThanOrEqual(0);
+    expect(box.y).toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width).toBeLessThanOrEqual(1024.5);
+    expect(box.y + box.height).toBeLessThanOrEqual(768.5);
+  }
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-minimum.png"), fullPage: true });
 
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.waitForTimeout(250);
