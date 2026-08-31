@@ -1,89 +1,114 @@
-import { Container, Sprite } from "pixi.js";
+import { type Application, Container, Graphics, RenderTexture, Sprite } from "pixi.js";
 
-import type { CombatState, TileState } from "../../game";
+import type { CombatState, GridPosition, TileState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
 import { tilemapAssetAt } from "../../presentation";
-import type { DepthKey } from "./DepthOrder";
-import { gridToIso } from "./IsometricProjection";
+import type { BoardViewConfig } from "./BoardViewConfig";
+import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 
-export interface SortableVisual extends DepthKey {
+export interface SortableVisual {
   readonly display: Container;
+  readonly position: GridPosition;
+  readonly footRowOffset: number;
+  readonly layerPriority: number;
+  readonly stableId: string;
 }
 
-function sizedSprite(catalog: AssetCatalog, assetId: string, fallbackHeight: number): Sprite {
-  const asset = catalog.asset(assetId);
-  const sprite = new Sprite(catalog.texture(assetId));
-  sprite.anchor.set(asset.anchor.x, asset.anchor.y);
-  if (asset.displayWidth !== undefined && asset.displayHeight !== undefined) {
-    sprite.setSize(asset.displayWidth, asset.displayHeight);
-  } else {
-    sprite.height = asset.displayHeight ?? fallbackHeight;
-    sprite.scale.x = sprite.scale.y;
-  }
-  sprite.eventMode = "none";
-  return sprite;
-}
-
-function raisedAssetId(catalog: AssetCatalog, tile: TileState): string | null {
-  const traits = new Set(tile.traits.map((trait) => trait.id));
-  if (traits.has("gate")) return catalog.manifest.objectVisuals.gateClosed;
-  if (traits.has("gate-open")) return catalog.manifest.objectVisuals.gateOpen;
-  if (traits.has("blocked")) return catalog.manifest.terrainVisuals.blocked;
-  return null;
+function traits(tile: TileState): ReadonlySet<string> {
+  return new Set(tile.traits.map((trait) => trait.id));
 }
 
 export class TerrainRenderer {
-  public constructor(private readonly catalog: AssetCatalog) {}
+  private boardTexture: RenderTexture | null = null;
 
-  public render(
-    state: CombatState,
-    groundLayer: Container,
-    transitionLayer: Container,
-  ): readonly SortableVisual[] {
+  public constructor(
+    private readonly app: Application,
+    private readonly catalog: AssetCatalog,
+    private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
+  ) {}
+
+  public renderBoard(state: CombatState): RenderTexture {
     const tilemap = this.catalog.tilemap(state.scenarioId);
     if (tilemap.width !== state.map.width || tilemap.height !== state.map.height) {
       throw new Error(`Presentation tilemap "${state.scenarioId}" dimensions do not match combat state.`);
     }
-    const stateTiles = new Map(
-      Object.values(state.map.tiles).map((tile) => [`${tile.position.x},${tile.position.y}`, tile]),
-    );
-    const positions = Array.from({ length: tilemap.width * tilemap.height }, (_, index) => ({
-      index,
-      position: { x: index % tilemap.width, y: Math.floor(index / tilemap.width) },
-    })).sort((left, right) =>
-      left.position.x + left.position.y - (right.position.x + right.position.y)
-      || left.position.y - right.position.y
-      || left.position.x - right.position.x,
-    );
-    const raised: SortableVisual[] = [];
-
-    for (const { index, position } of positions) {
-      const tile = stateTiles.get(`${position.x},${position.y}`);
-      if (!tile) throw new Error(`Combat state is missing tile ${position.x},${position.y}.`);
-      const point = gridToIso(position);
-      const groundAssetId = tilemapAssetAt(tilemap, "ground", index);
-      if (!groundAssetId) throw new Error(`Presentation tilemap is missing ground at ${position.x},${position.y}.`);
-      const ground = sizedSprite(this.catalog, groundAssetId, 48);
-      ground.position.set(point.x, point.y);
-      groundLayer.addChild(ground);
-
-      const transitionAssetId = tilemapAssetAt(tilemap, "transitions", index);
-      if (transitionAssetId) {
-        const overlay = sizedSprite(this.catalog, transitionAssetId, 32);
-        overlay.position.set(point.x, point.y);
-        transitionLayer.addChild(overlay);
-      }
-
-      const mappedObjectId = tilemapAssetAt(tilemap, "objects", index);
-      const propId = mappedObjectId === this.catalog.manifest.objectVisuals.lever
-        ? null
-        : raisedAssetId(this.catalog, tile);
-      if (propId) {
-        const display = new Container({ x: point.x, y: point.y + 6, label: tile.id });
-        display.addChild(sizedSprite(this.catalog, propId, 76));
-        raised.push({ display, position: tile.position, layerPriority: 10, stableId: tile.id });
+    const cell = this.config.boardTextureCellSize;
+    const width = tilemap.width * cell;
+    const height = tilemap.height * cell;
+    if (!this.boardTexture || this.boardTexture.width !== width || this.boardTexture.height !== height) {
+      this.boardTexture?.destroy(true);
+      this.boardTexture = RenderTexture.create({ width, height, resolution: 1 });
+    }
+    const composition = new Container({ label: "board-texture-composition" });
+    for (let row = 0; row < tilemap.height; row += 1) {
+      for (let col = 0; col < tilemap.width; col += 1) {
+        const index = row * tilemap.width + col;
+        const groundId = tilemapAssetAt(tilemap, "ground", index);
+        if (!groundId) throw new Error(`Presentation tilemap is missing ground at ${col},${row}.`);
+        const ground = new Sprite(this.catalog.texture(groundId));
+        ground.position.set(col * cell, row * cell);
+        ground.setSize(cell, cell);
+        composition.addChild(ground);
+        const transitionId = tilemapAssetAt(tilemap, "transitions", index);
+        if (transitionId) {
+          const overlay = new Sprite(this.catalog.texture(transitionId));
+          overlay.position.copyFrom(ground.position);
+          overlay.setSize(cell, cell);
+          composition.addChild(overlay);
+        }
       }
     }
-    return raised;
+    const grid = new Graphics({ label: "square-grid" });
+    for (let col = 0; col <= tilemap.width; col += 1) {
+      grid.moveTo(col * cell, 0).lineTo(col * cell, height);
+    }
+    for (let row = 0; row <= tilemap.height; row += 1) {
+      grid.moveTo(0, row * cell).lineTo(width, row * cell);
+    }
+    grid.stroke({ width: 3, color: 0x171713, alpha: 0.78 });
+    composition.addChild(grid);
+    this.app.renderer.render({ container: composition, target: this.boardTexture, clear: true });
+    composition.destroy({ children: true });
+    return this.boardTexture;
+  }
+
+  public renderProps(state: CombatState): readonly SortableVisual[] {
+    const tilemap = this.catalog.tilemap(state.scenarioId);
+    const stateTiles = new Map(Object.values(state.map.tiles).map((tile) => [`${tile.position.x},${tile.position.y}`, tile]));
+    const visuals: SortableVisual[] = [];
+    for (let row = 0; row < tilemap.height; row += 1) {
+      for (let col = 0; col < tilemap.width; col += 1) {
+        const index = row * tilemap.width + col;
+        const tile = stateTiles.get(`${col},${row}`);
+        if (!tile) continue;
+        const mapped = tilemapAssetAt(tilemap, "objects", index);
+        let assetId: string | null = mapped;
+        const tileTraits = traits(tile);
+        if (mapped === this.catalog.manifest.objectVisuals.lever) assetId = null;
+        if (tileTraits.has("gate-open")) assetId = this.catalog.manifest.objectVisuals.gateOpen;
+        else if (tileTraits.has("gate")) assetId = this.catalog.manifest.objectVisuals.gateClosed;
+        else if (tileTraits.has("blocked")) assetId = this.catalog.manifest.objectVisuals.wall;
+        if (!assetId) continue;
+        visuals.push(this.prop(assetId, tile.position, tile.id, 10));
+      }
+    }
+    return visuals;
+  }
+
+  private prop(assetId: string, position: GridPosition, stableId: string, layerPriority: number): SortableVisual {
+    const asset = this.catalog.asset(assetId);
+    const display = new Container({ label: stableId });
+    const sprite = new Sprite(this.catalog.texture(assetId));
+    sprite.anchor.set(asset.anchor.x, asset.anchor.y);
+    sprite.height = asset.displayHeight ?? 96;
+    sprite.scale.x = sprite.scale.y;
+    sprite.eventMode = "none";
+    display.addChild(sprite);
+    return { display, position, footRowOffset: this.config.propFootRowOffset, layerPriority, stableId };
+  }
+
+  public destroy(): void {
+    this.boardTexture?.destroy(true);
+    this.boardTexture = null;
   }
 }

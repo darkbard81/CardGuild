@@ -2,7 +2,7 @@
 
 Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Adventure입니다.
 결정론적 전투 코어와 JSON Content Pipeline 위에 M2 Adventure Flow와 responsive
-isometric presentation을 연결했습니다. 같은 파티가 세 Encounter를 순서대로 진행하고
+top-down 2.5D board presentation을 연결했습니다. 같은 파티가 세 Encounter를 순서대로 진행하고
 선택한 Reward를 AdventureState의 Collection에 유지합니다.
 
 ## 요구 환경과 실행
@@ -47,7 +47,7 @@ src/content JSON authoring DTO, semantic compiler, canonical fingerprint, M2 loa
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/app    Adventure/전투 세션과 입력 상태, 적 AI 턴 orchestration
-src/pixi   isometric projection/camera/depth/renderers와 tactical overlay
+src/pixi   BoardProjection/PerspectiveMesh/camera/depth renderers와 tactical overlay
 src/presentation WebP atlas AssetCatalog와 layered tilemap mapping
 src/dom    Adventure/Reward, 행동·카드·HUD·로그·Reaction·결과 UI
 ```
@@ -70,8 +70,8 @@ Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JS
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
 `art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
 `art/processed`, 2048² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
-layer mapping은 `presentation/m2`에 있습니다. 캐릭터 원본은 8방향을 보존하지만 현재
-GameCore의 Facing 계약은 cardinal 4방향만 사용합니다.
+layer mapping은 `presentation/m2`에 있습니다. 캐릭터는 front/back 양면 paper standee이며
+north는 back, 나머지 cardinal 방향은 front와 projected facing arrow로 표시합니다.
 
 설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M2 구현
 범위는 GitHub 이슈 `#3`을 따릅니다.
@@ -82,7 +82,7 @@ GameCore의 Facing 계약은 cardinal 4방향만 사용합니다.
 npm run content:check # Schema, references, compile, fingerprint
 npm run assets        # raw PNG cleanup -> normalized frames -> atlas/tilemap -> validation
 npm run assets:build  # 위 pipeline 산출물 재생성
-npm run assets:check  # alpha, anchors, 8방향, atlas, layered tilemap 검증
+npm run assets:check  # alpha, anchors, 양면 standee, atlas, layered tilemap 검증
 npm run check         # Content/asset, TypeScript, core 경계, ESLint, Vitest
 npm run build         # Content/asset 검증 후 production bundle
 npm run test:smoke    # 짧은 Chromium/PixiJS/DOM 입력·responsive smoke
@@ -90,10 +90,10 @@ npm test            # Vitest + Playwright
 ```
 
 Vitest는 Content v2 Schema/reference/fingerprint, Adventure 3전/Reward/실패/seed/Combat bridge,
-isometric projection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
+projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
 Reaction lifecycle, replay identity/hash, victory/defeat를 검증합니다. Playwright는 Adventure shell,
-지연 WebP atlas 로딩, 실제 isometric 캔버스 이동/Facing, 좁은 화면과 ultrawide reflow를 검증합니다.
+지연 WebP atlas 로딩, 실제 perspective board hover/이동/Facing, 좁은 화면과 ultrawide reflow를 검증합니다.
 
 ## M2 범위 밖
 

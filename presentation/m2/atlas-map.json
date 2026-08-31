@@ -1,779 +1,179 @@
 {
   "frames": {
-    "actor.goblin-brute.east": {
+    "actor.goblin-brute.back": {
       "frame": {
         "x": 2,
         "y": 2,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "sourceSize": {
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.9
+        "y": 1
       }
     },
-    "actor.goblin-brute.north": {
+    "actor.goblin-brute.front": {
       "frame": {
-        "x": 326,
+        "x": 262,
         "y": 2,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "sourceSize": {
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.9
+        "y": 1
       }
     },
-    "actor.goblin-brute.north-east": {
+    "actor.goblin-chief.back": {
       "frame": {
-        "x": 650,
+        "x": 522,
         "y": 2,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "sourceSize": {
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.9
+        "y": 1
       }
     },
-    "actor.goblin-brute.north-west": {
+    "actor.goblin-chief.front": {
       "frame": {
-        "x": 974,
+        "x": 782,
         "y": 2,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "sourceSize": {
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.9
+        "y": 1
       }
     },
-    "actor.goblin-brute.south": {
+    "actor.goblin-skirmisher.back": {
       "frame": {
-        "x": 1298,
+        "x": 1042,
         "y": 2,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "sourceSize": {
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.9
+        "y": 1
       }
     },
-    "actor.goblin-brute.south-east": {
+    "actor.goblin-skirmisher.front": {
       "frame": {
-        "x": 1622,
+        "x": 1302,
         "y": 2,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "sourceSize": {
-        "w": 320,
-        "h": 320
+        "w": 256,
+        "h": 384
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.9
+        "y": 1
       }
     },
-    "actor.goblin-brute.south-west": {
+    "actor.hero.aerin.back": {
+      "frame": {
+        "x": 1562,
+        "y": 2,
+        "w": 256,
+        "h": 384
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 384
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.hero.aerin.front": {
       "frame": {
         "x": 2,
-        "y": 326,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-brute.west": {
-      "frame": {
-        "x": 326,
-        "y": 326,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-chief.east": {
-      "frame": {
-        "x": 650,
-        "y": 326,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-chief.north": {
-      "frame": {
-        "x": 974,
-        "y": 326,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-chief.north-east": {
-      "frame": {
-        "x": 1298,
-        "y": 326,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-chief.north-west": {
-      "frame": {
-        "x": 1622,
-        "y": 326,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-chief.south": {
-      "frame": {
-        "x": 2,
-        "y": 650,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-chief.south-east": {
-      "frame": {
-        "x": 326,
-        "y": 650,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-chief.south-west": {
-      "frame": {
-        "x": 650,
-        "y": 650,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-chief.west": {
-      "frame": {
-        "x": 974,
-        "y": 650,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-skirmisher.east": {
-      "frame": {
-        "x": 1298,
-        "y": 650,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-skirmisher.north": {
-      "frame": {
-        "x": 1622,
-        "y": 650,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-skirmisher.north-east": {
-      "frame": {
-        "x": 2,
-        "y": 974,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-skirmisher.north-west": {
-      "frame": {
-        "x": 326,
-        "y": 974,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-skirmisher.south": {
-      "frame": {
-        "x": 650,
-        "y": 974,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-skirmisher.south-east": {
-      "frame": {
-        "x": 974,
-        "y": 974,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-skirmisher.south-west": {
-      "frame": {
-        "x": 1298,
-        "y": 974,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.goblin-skirmisher.west": {
-      "frame": {
-        "x": 1622,
-        "y": 974,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.hero.aerin.east": {
-      "frame": {
-        "x": 2,
-        "y": 1298,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.hero.aerin.north": {
-      "frame": {
-        "x": 326,
-        "y": 1298,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.hero.aerin.north-east": {
-      "frame": {
-        "x": 650,
-        "y": 1298,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.hero.aerin.north-west": {
-      "frame": {
-        "x": 974,
-        "y": 1298,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.hero.aerin.south": {
-      "frame": {
-        "x": 1298,
-        "y": 1298,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.hero.aerin.south-east": {
-      "frame": {
-        "x": 1622,
-        "y": 1298,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.hero.aerin.south-west": {
-      "frame": {
-        "x": 2,
-        "y": 1622,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "actor.hero.aerin.west": {
-      "frame": {
-        "x": 326,
-        "y": 1622,
-        "w": 320,
-        "h": 320
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 320,
-        "h": 320
-      },
-      "sourceSize": {
-        "w": 320,
-        "h": 320
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.9
-      }
-    },
-    "object.gate.closed": {
-      "frame": {
-        "x": 650,
-        "y": 1622,
+        "y": 390,
         "w": 256,
-        "h": 256
+        "h": 384
       },
       "rotated": false,
       "trimmed": false,
@@ -781,69 +181,45 @@
         "x": 0,
         "y": 0,
         "w": 256,
-        "h": 256
+        "h": 384
       },
       "sourceSize": {
         "w": 256,
-        "h": 256
+        "h": 384
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.92
-      }
-    },
-    "object.gate.open": {
-      "frame": {
-        "x": 910,
-        "y": 1622,
-        "w": 256,
-        "h": 256
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 256,
-        "h": 256
-      },
-      "sourceSize": {
-        "w": 256,
-        "h": 256
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.92
-      }
-    },
-    "object.lever": {
-      "frame": {
-        "x": 1170,
-        "y": 1622,
-        "w": 256,
-        "h": 256
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 256,
-        "h": 256
-      },
-      "sourceSize": {
-        "w": 256,
-        "h": 256
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.92
+        "y": 1
       }
     },
     "object.wall": {
       "frame": {
-        "x": 1430,
-        "y": 1622,
+        "x": 262,
+        "y": 390,
+        "w": 384,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 384,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 384,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "object.crate": {
+      "frame": {
+        "x": 650,
+        "y": 390,
         "w": 256,
         "h": 256
       },
@@ -861,99 +237,171 @@
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.92
+        "y": 1
+      }
+    },
+    "object.gate.closed": {
+      "frame": {
+        "x": 910,
+        "y": 390,
+        "w": 256,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "object.gate.open": {
+      "frame": {
+        "x": 1170,
+        "y": 390,
+        "w": 256,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "object.lever": {
+      "frame": {
+        "x": 1430,
+        "y": 390,
+        "w": 256,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
       }
     },
     "terrain.chasm": {
       "frame": {
         "x": 1690,
-        "y": 1622,
-        "w": 128,
-        "h": 96
+        "y": 390,
+        "w": 256,
+        "h": 256
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 96
+        "w": 256,
+        "h": 256
       },
       "sourceSize": {
-        "w": 128,
-        "h": 96
+        "w": 256,
+        "h": 256
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.333333
+        "y": 0.5
       }
     },
     "terrain.rubble": {
       "frame": {
-        "x": 1822,
-        "y": 1622,
-        "w": 128,
-        "h": 96
+        "x": 2,
+        "y": 778,
+        "w": 256,
+        "h": 256
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 96
+        "w": 256,
+        "h": 256
       },
       "sourceSize": {
-        "w": 128,
-        "h": 96
+        "w": 256,
+        "h": 256
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.333333
+        "y": 0.5
       }
     },
     "terrain.stone-floor": {
       "frame": {
-        "x": 2,
-        "y": 1946,
-        "w": 128,
-        "h": 96
+        "x": 262,
+        "y": 778,
+        "w": 256,
+        "h": 256
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 96
+        "w": 256,
+        "h": 256
       },
       "sourceSize": {
-        "w": 128,
-        "h": 96
+        "w": 256,
+        "h": 256
       },
       "anchor": {
         "x": 0.5,
-        "y": 0.333333
+        "y": 0.5
       }
     },
     "transition.web": {
       "frame": {
-        "x": 134,
-        "y": 1946,
-        "w": 128,
-        "h": 64
+        "x": 522,
+        "y": 778,
+        "w": 256,
+        "h": 256
       },
       "rotated": false,
       "trimmed": false,
       "spriteSourceSize": {
         "x": 0,
         "y": 0,
-        "w": 128,
-        "h": 64
+        "w": 256,
+        "h": 256
       },
       "sourceSize": {
-        "w": 128,
-        "h": 64
+        "w": 256,
+        "h": 256
       },
       "anchor": {
         "x": 0.5,

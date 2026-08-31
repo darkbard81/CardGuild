@@ -89,7 +89,7 @@ async function assertCleanAlpha(id: string, filePath: string, kind: AssetEntry["
     (info.height - 1) * info.width * 4 + 3,
     (info.height * info.width - 1) * 4 + 3,
   ];
-  if (cornerOffsets.some((offset) => (data[offset] ?? 255) !== 0)) {
+  if ((kind === "actor" || kind === "object") && cornerOffsets.some((offset) => (data[offset] ?? 255) !== 0)) {
     throw new Error(`Processed asset "${id}" has background pixels in a canvas corner.`);
   }
   let visible = 0;
@@ -101,12 +101,15 @@ async function assertCleanAlpha(id: string, filePath: string, kind: AssetEntry["
     const red = data[offset] ?? 0;
     const green = data[offset + 1] ?? 0;
     const blue = data[offset + 2] ?? 0;
-    if (alpha < 250 && red > 150 && blue > 150 && (red + blue) / 2 - green > 80) contaminated += 1;
+    if (alpha < 250 && red > 185 && green < 100 && blue > 185) contaminated += 1;
   }
   if (visible === 0) throw new Error(`Processed asset "${id}" is empty.`);
   if (contaminated / visible > 0.002) throw new Error(`Processed asset "${id}" retains magenta edge contamination.`);
-  if ((kind === "actor" || kind === "object") && (metadata.width !== (kind === "actor" ? 320 : 256))) {
-    throw new Error(`Processed ${kind} "${id}" has the wrong normalized canvas.`);
+  if (kind === "actor" && (metadata.width !== 256 || metadata.height !== 384)) {
+    throw new Error(`Processed actor "${id}" must use the 256x384 standee canvas.`);
+  }
+  if (kind === "object" && ![256, 384].includes(metadata.width)) {
+    throw new Error(`Processed object "${id}" has the wrong normalized canvas.`);
   }
 }
 
@@ -143,7 +146,7 @@ async function main(): Promise<void> {
   const manifest = await readJson<AssetManifest>(path.join(presentationRoot, "asset-manifest.json"));
   const sources = await readJson<Readonly<Record<string, string>>>(path.join(presentationRoot, "asset-sources.json"));
   const tilemaps = await readJson<TilemapPack>(path.join(presentationRoot, "tilemaps.json"));
-  if (manifest.version !== 2) throw new Error("Presentation asset manifest version must be 2.");
+  if (manifest.version !== 3) throw new Error("Presentation asset manifest version must be 3.");
   if (manifest.atlas.path !== "/assets/m2-atlas.json") throw new Error("Presentation atlas path is not canonical.");
 
   const atlasDataPath = path.join(root, "public", manifest.atlas.path.slice(1));
@@ -181,23 +184,22 @@ async function main(): Promise<void> {
     }
     if (asset.displayWidth !== undefined && asset.displayWidth <= 0) throw new Error(`Asset "${id}" displayWidth must be positive.`);
     if (asset.displayHeight !== undefined && asset.displayHeight <= 0) throw new Error(`Asset "${id}" displayHeight must be positive.`);
-    if (asset.footprint && (asset.footprint.width !== 64 || asset.footprint.height !== 32)) {
-      throw new Error(`Terrain asset "${id}" must declare the 64x32 logical footprint.`);
+    if (asset.footprint && (asset.footprint.width !== 128 || asset.footprint.height !== 128)) {
+      throw new Error(`Terrain asset "${id}" must declare the 128x128 square footprint.`);
     }
     await assertCleanAlpha(id, path.join(root, source), asset.kind);
   }
 
-  const directions = ["south", "south-west", "west", "north-west", "north", "north-east", "east", "south-east"];
   for (const [definitionId, visual] of Object.entries(manifest.actorVisuals)) {
-    for (const direction of directions) {
-      const id = visual[direction];
+    for (const side of ["front", "back"]) {
+      const id = visual[side];
       if (!id || manifest.assets[id]?.kind !== "actor") {
-        throw new Error(`Actor visual "${definitionId}" is missing a valid ${direction} asset.`);
+        throw new Error(`Actor visual "${definitionId}" is missing a valid ${side} asset.`);
       }
     }
   }
   assertTilemapPack(tilemaps, manifest);
-  process.stdout.write(`Assets OK: ${ids.length} atlas frames, ${Object.keys(manifest.actorVisuals).length} eight-facing actors, ${Object.keys(tilemaps.maps).length} layered tilemaps\n`);
+  process.stdout.write(`Assets OK: ${ids.length} atlas frames, ${Object.keys(manifest.actorVisuals).length} two-sided actors, ${Object.keys(tilemaps.maps).length} layered tilemaps\n`);
 }
 
 await main();

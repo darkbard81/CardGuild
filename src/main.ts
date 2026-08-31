@@ -31,14 +31,14 @@ async function bootstrap(): Promise<void> {
   });
 
   app.canvas.id = "pixi-canvas";
-  app.canvas.setAttribute("aria-label", "CardGuild M2 isometric tactical battle board");
+  app.canvas.setAttribute("aria-label", "CardGuild top-down perspective tactical battle board");
   pixiRoot.append(app.canvas);
   app.resize();
   const catalog = createPresentationCatalog();
   const controller = new AdventureController(app, catalog, required<HTMLElement>("#app"));
 
   pixiRoot.dataset.ready = "true";
-  pixiStatus.textContent = "Isometric presentation ready";
+  pixiStatus.textContent = "2.5D board ready";
 
   window.addEventListener(
     "beforeunload",

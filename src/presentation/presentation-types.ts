@@ -18,18 +18,12 @@ export interface PresentationAssetDefinition {
 }
 
 export interface ActorVisualDefinition {
-  readonly south: PresentationAssetId;
-  readonly "south-west": PresentationAssetId;
-  readonly west: PresentationAssetId;
-  readonly "north-west": PresentationAssetId;
-  readonly north: PresentationAssetId;
-  readonly "north-east": PresentationAssetId;
-  readonly east: PresentationAssetId;
-  readonly "south-east": PresentationAssetId;
+  readonly front: PresentationAssetId;
+  readonly back: PresentationAssetId;
 }
 
 export interface PresentationAssetManifest {
-  readonly version: 2;
+  readonly version: 3;
   readonly bundle: string;
   readonly atlas: { readonly path: string };
   readonly assets: Readonly<Record<PresentationAssetId, PresentationAssetDefinition>>;
@@ -42,6 +36,8 @@ export interface PresentationAssetManifest {
     readonly blocked: PresentationAssetId;
   };
   readonly objectVisuals: {
+    readonly wall: PresentationAssetId;
+    readonly crate: PresentationAssetId;
     readonly lever: PresentationAssetId;
     readonly gateClosed: PresentationAssetId;
     readonly gateOpen: PresentationAssetId;
@@ -82,5 +78,5 @@ export interface PresentationTilemapPack {
 }
 
 export function facingAsset(visual: ActorVisualDefinition, direction: Direction): PresentationAssetId {
-  return visual[direction];
+  return direction === "north" ? visual.back : visual.front;
 }

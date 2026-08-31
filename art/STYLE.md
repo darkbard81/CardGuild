@@ -1,27 +1,31 @@
-# CardGuild M2 Isometric Asset Style
+# CardGuild 2.5D Board Asset Style
 
-Every generated M2 asset prompt must reference this file.
+Every generated battle asset prompt must reference this file.
 
 ## Projection and scale
 
-- Projection: true 2:1 isometric (dimetric), no perspective convergence.
-- Logical game tile: 64x32 px.
-- Production terrain master: 128x96 px. Its top surface is one exact 128x64 diamond; the common 24px vertical base sits below it.
-- Terrain ground anchor: the center of the top diamond, normalized `(0.5, 0.333333)` in the 128x96 master.
-- Object ground anchor: bottom-center of the contact footprint. Keep every object within one logical tile unless its manifest footprint says otherwise.
-- Character source cell: 320x320 px. Keep the feet contact at normalized `(0.5, 0.90)` in every direction.
+- Game data stays on a flat rectangular square grid. Assets never encode gameplay projection.
+- Terrain masters are exact top-down 1:1 squares on a 256x256 production canvas.
+- The runtime composes terrain into one 128px-per-cell board texture, including its square grid lines, then applies a subtle trapezoid perspective with PixiJS.
+- Props and characters are upright paper standees. Only their bottom-center contact point is projected onto the board.
+- Props use normalized anchor `(0.5, 1)`. Character source sheets contain one front and one back full-body view, both with the same feet line and normalized anchor `(0.5, 1)`.
+- Perspective, isometric diamonds, 3D scene renders, floor-aligned character art, and baked camera convergence are forbidden in source assets.
 
-## Light and rendering
+## Character rendering
 
-- Key light: upper-left (north-west), identical for every asset.
-- Shadow: short, soft contact shadow toward lower-right; no long cast shadows.
-- Shading: clean hand-painted HD with crisp dark silhouettes, smooth cel-like value grouping, and restrained surface texture.
-- Camera: the same fixed isometric elevation and scale across terrain, objects, and characters.
-- Background during generation: solid flat `#FF00FF`; production output uses clean straight-alpha PNG.
+- Character style: 2D high detailed Japanese anime style.
+- Silhouette: crisp, thick dark outer line with a narrow light paper border.
+- Keep identity, anatomy, costume, equipment scale, pose energy, body root, and feet line consistent between front and back.
+- North facing uses the back standee. East, south, and west use the front standee; the projected facing arrow communicates exact direction.
+
+## Light and materials
+
+- Key light: upper-left, identical across all assets.
+- Shadow: no baked floor shadow. Runtime effects may add a projected contact marker.
+- Shading: detailed cel-painted values, readable silhouettes, restrained surface texture.
+- Generated output should use transparent background. The build preserves real alpha and removes edge-connected neutral checkerboard if a generator bakes it into RGB.
 
 ## Palette
-
-Only these core swatches and close value ramps derived from them are allowed:
 
 | Role | Hex |
 | --- | --- |
@@ -36,18 +40,18 @@ Only these core swatches and close value ramps derived from them are allowed:
 | brass accent | `#B5843F` |
 | parchment highlight | `#D8C79F` |
 | danger crimson | `#8E3028` |
-| magic / selection blue | `#4A91B8` |
+| movement blue | `#4A91B8` |
 
-## Identity rules
+## Identity and separation rules
 
-- Terrain contains surface and shared base only. Walls, gates, levers, webs, rubble props, characters, UI, text, and FX are separate sprites or layers.
-- Terrain types must share the exact same diamond, canvas, base thickness, light, and edge profile.
-- Props are generated one per image and use a bottom-center ground anchor.
-- Each character source contains eight static facings in row-major order: `south`, `south-west`, `west`, `north-west`, `north`, `north-east`, `east`, `south-east`.
-- Character identity, anatomy, costume, equipment scale, body root, and feet line must remain fixed across all eight directions.
+- Terrain, overlays, props, actors, and effects remain separate production assets and runtime layers.
+- Terrain types share the same exact square canvas and edge alignment.
+- Props are generated one per image with a clear bottom-center contact point.
+- Each actor source contains exactly two non-overlapping views in this order: front, back.
+- Actor and prop sprites remain upright and must never be children of the perspective floor mesh.
 
 ## References
 
-- Terrain material and camera reference: `documents/isomatric.png`.
-- Character readability and project rendering reference: `documents/ui_mockup.png`.
+- Board composition and upright standee reference: `documents/view_modify.png`.
+- Character standee reference: `documents/Template.png`.
 - User prompt convention: `documents/ImageGen_Prompt.md`.

@@ -1,59 +1,61 @@
-import type { Container } from "pixi.js";
+import { Point } from "pixi.js";
 
-export interface WorldBounds {
-  readonly minX: number;
-  readonly minY: number;
-  readonly maxX: number;
-  readonly maxY: number;
-}
+import type { BoardCorners } from "./BoardProjection";
+import type { BoardViewConfig } from "./BoardViewConfig";
+import { baseBoardCorners, DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 
 export class BattleCamera {
-  public readonly minZoom = 0.55;
+  public readonly minZoom = 0.72;
   public readonly defaultZoom = 1;
   public readonly maxZoom = 1.5;
   private zoom = this.defaultZoom;
-  private x = 0;
-  private y = 0;
-  private bounds: WorldBounds | null = null;
+  private panX = 0;
+  private panY = 0;
 
-  public fit(bounds: WorldBounds, viewportWidth: number, viewportHeight: number): void {
-    this.bounds = bounds;
-    const width = Math.max(1, bounds.maxX - bounds.minX);
-    const height = Math.max(1, bounds.maxY - bounds.minY);
-    const fit = Math.min((viewportWidth - 32) / width, (viewportHeight - 32) / height);
-    this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, fit));
-    this.center(viewportWidth, viewportHeight);
-  }
+  public constructor(private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG) {}
 
-  public center(viewportWidth: number, viewportHeight: number): void {
-    if (!this.bounds) return;
-    const centerX = (this.bounds.minX + this.bounds.maxX) / 2;
-    const centerY = (this.bounds.minY + this.bounds.maxY) / 2;
-    this.x = viewportWidth / 2 - centerX * this.zoom;
-    this.y = viewportHeight / 2 - centerY * this.zoom;
-  }
-
-  public focus(worldX: number, worldY: number, viewportWidth: number, viewportHeight: number): void {
-    this.x = viewportWidth / 2 - worldX * this.zoom;
-    this.y = viewportHeight / 2 - worldY * this.zoom;
+  public reset(): void {
+    this.zoom = this.defaultZoom;
+    this.panX = 0;
+    this.panY = 0;
   }
 
   public panBy(screenX: number, screenY: number): void {
-    this.x += screenX;
-    this.y += screenY;
+    this.panX += screenX;
+    this.panY += screenY;
   }
 
-  public zoomBy(factor: number, viewportWidth: number, viewportHeight: number): void {
+  public zoomBy(factor: number, pointerX: number, pointerY: number, viewportWidth: number, viewportHeight: number): void {
     const oldZoom = this.zoom;
-    this.zoom = Math.max(this.minZoom, Math.min(this.maxZoom, this.zoom * factor));
-    const worldCenterX = (viewportWidth / 2 - this.x) / oldZoom;
-    const worldCenterY = (viewportHeight / 2 - this.y) / oldZoom;
-    this.x = viewportWidth / 2 - worldCenterX * this.zoom;
-    this.y = viewportHeight / 2 - worldCenterY * this.zoom;
+    const nextZoom = Math.max(this.minZoom, Math.min(this.maxZoom, oldZoom * factor));
+    if (nextZoom === oldZoom) return;
+    const centerX = viewportWidth / 2;
+    const centerY = viewportHeight / 2;
+    const baseOffsetX = (pointerX - centerX - this.panX) / oldZoom;
+    const baseOffsetY = (pointerY - centerY - this.panY) / oldZoom;
+    this.zoom = nextZoom;
+    this.panX = pointerX - centerX - baseOffsetX * nextZoom;
+    this.panY = pointerY - centerY - baseOffsetY * nextZoom;
   }
 
-  public apply(world: Container): void {
-    world.scale.set(this.zoom);
-    world.position.set(this.x, this.y);
+  public centerScreenPoint(point: Point, viewportWidth: number, viewportHeight: number): void {
+    this.panX += viewportWidth / 2 - point.x;
+    this.panY += viewportHeight / 2 - point.y;
+  }
+
+  public corners(viewportWidth: number, viewportHeight: number): BoardCorners {
+    const centerX = viewportWidth / 2;
+    const centerY = viewportHeight / 2;
+    const transformed = baseBoardCorners(viewportWidth, viewportHeight, this.config).map((corner) => new Point(
+      centerX + (corner.x - centerX) * this.zoom + this.panX,
+      centerY + (corner.y - centerY) * this.zoom + this.panY,
+    ));
+    const [topLeft, topRight, bottomRight, bottomLeft] = transformed;
+    if (!topLeft || !topRight || !bottomRight || !bottomLeft) throw new Error("Board camera needs four corners.");
+    return [topLeft, topRight, bottomRight, bottomLeft];
+  }
+
+  public get scale(): number {
+    return this.zoom;
   }
 }

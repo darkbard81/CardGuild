@@ -1,8 +1,8 @@
 {
-  "version": 1,
+  "version": 2,
   "styleSheet": "art/STYLE.md",
   "promptConvention": "documents/ImageGen_Prompt.md",
-  "background": "#FF00FF",
+  "background": "transparent",
   "atlas": {
     "size": 2048,
     "padding": 2,
@@ -12,73 +12,63 @@
   "sources": [
     {
       "input": "art/source/terrain/stone-floor.png",
-      "mode": "terrain-block",
+      "mode": "square-terrain",
       "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 128, "height": 96 },
+      "canvas": { "width": 256, "height": 256 },
       "frames": [
-        { "assetId": "terrain.stone-floor", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.333333 }, "displaySize": { "width": 64, "height": 48 }, "footprint": { "width": 64, "height": 32 } }
+        { "assetId": "terrain.stone-floor", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 128, "height": 128 }, "footprint": { "width": 128, "height": 128 } }
       ],
-      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one full mossy ancient stone-floor block tile, true 2:1 dimetric diamond, shared thick base, upper-left light, isolated on solid #FF00FF; no props, scenery, text, UI, or multiple tiles."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon stone floor Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/rubble.png",
-      "mode": "terrain-block",
+      "mode": "square-terrain",
       "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 128, "height": 96 },
+      "canvas": { "width": 256, "height": 256 },
       "frames": [
-        { "assetId": "terrain.rubble", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.333333 }, "displaySize": { "width": 64, "height": 48 }, "footprint": { "width": 64, "height": 32 } }
+        { "assetId": "terrain.rubble", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 128, "height": 128 }, "footprint": { "width": 128, "height": 128 } }
       ],
-      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one full cracked stone-and-compact-rubble block tile, true 2:1 dimetric diamond, shared thick base, upper-left light, isolated on solid #FF00FF; no props outside the surface, scenery, text, UI, or multiple tiles."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square cracked rubble floor Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/chasm.png",
-      "mode": "terrain-block",
+      "mode": "square-terrain",
       "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 128, "height": 96 },
+      "canvas": { "width": 256, "height": 256 },
       "frames": [
-        { "assetId": "terrain.chasm", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.333333 }, "displaySize": { "width": 64, "height": 48 }, "footprint": { "width": 64, "height": 32 } }
+        { "assetId": "terrain.chasm", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 128, "height": 128 }, "footprint": { "width": 128, "height": 128 } }
       ],
-      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one full bottomless dark chasm block tile, true 2:1 dimetric diamond, shared thick base, upper-left light, isolated on solid #FF00FF; no water, props, scenery, text, UI, or multiple tiles."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon chasm Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/web-overlay.png",
-      "mode": "terrain-overlay",
+      "mode": "web-overlay",
       "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 128, "height": 64 },
+      "canvas": { "width": 256, "height": 256 },
       "frames": [
-        { "assetId": "transition.web", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 32 }, "footprint": { "width": 64, "height": 32 } }
+        { "assetId": "transition.web", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 128, "height": 128 }, "footprint": { "width": 128, "height": 128 } }
       ],
-      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one pale floor-web transition overlay filling one true 2:1 diamond footprint, isolated on solid #FF00FF; no stone floor, base, spider, props, scenery, text, UI, or multiple tiles."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square spider web floor overlay Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/objects/wall.png",
       "mode": "grounded-object",
       "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "canvas": { "width": 384, "height": 256 },
       "frames": [
-        { "assetId": "object.wall", "kind": "object", "anchor": { "x": 0.5, "y": 0.92 }, "displaySize": { "height": 76 } }
+        { "assetId": "object.wall", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 108 } }
       ],
-      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one isolated ruined mossy stone wall segment, one-tile bottom-center contact, true 2:1 dimetric view, upper-left light, solid #FF00FF; no floor tile, second object, scenery, text, or UI."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style dungeon stone wall Object Standee. 3:2ratio 굵은 외곽선과 투명배경."
     },
     {
-      "input": "art/source/objects/gate-closed.png",
+      "input": "art/source/objects/crate.png",
       "mode": "grounded-object",
       "grid": { "rows": 1, "cols": 1 },
       "canvas": { "width": 256, "height": 256 },
       "frames": [
-        { "assetId": "object.gate.closed", "kind": "object", "anchor": { "x": 0.5, "y": 0.92 }, "displaySize": { "height": 92 } }
+        { "assetId": "object.crate", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 92 } }
       ],
-      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one isolated closed ruined stone-and-timber gate, one-tile bottom-center contact, true 2:1 dimetric view, upper-left light, solid #FF00FF; no floor tile, second object, scenery, text, or UI."
-    },
-    {
-      "input": "art/source/objects/gate-open.png",
-      "mode": "grounded-object",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
-      "frames": [
-        { "assetId": "object.gate.open", "kind": "object", "anchor": { "x": 0.5, "y": 0.92 }, "displaySize": { "height": 92 } }
-      ],
-      "prompt": "Reference art/STYLE.md and the accepted closed gate. Preserve the exact arch, camera, scale, palette, anchor, and light; open both leaves so passage is clear; one isolated object on solid #FF00FF with no floor, scenery, text, or UI."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style wooden crate Object Standee. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/objects/lever.png",
@@ -86,81 +76,77 @@
       "grid": { "rows": 1, "cols": 1 },
       "canvas": { "width": 256, "height": 256 },
       "frames": [
-        { "assetId": "object.lever", "kind": "object", "anchor": { "x": 0.5, "y": 0.92 }, "displaySize": { "height": 52 } }
+        { "assetId": "object.lever", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 88 } }
       ],
-      "prompt": "Reference art/STYLE.md and documents/isomatric.png. Exactly one isolated ancient timber-and-brass floor lever, one-tile bottom-center contact, true 2:1 dimetric view, upper-left light, solid #FF00FF; no floor tile, second object, scenery, text, or UI."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style dungeon lever Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
-      "input": "art/source/actors/aerin-directions-2x4.png",
-      "mode": "directional-actor",
+      "input": "art/source/objects/gate-closed.png",
+      "mode": "grounded-object",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 256, "height": 256 },
+      "frames": [
+        { "assetId": "object.gate.closed", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 156 } }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style closed dungeon gate Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/objects/gate-open.png",
+      "mode": "grounded-object",
+      "grid": { "rows": 1, "cols": 1 },
+      "canvas": { "width": 256, "height": 256 },
+      "frames": [
+        { "assetId": "object.gate.open", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 156 } }
+      ],
+      "prompt": "Reference art/STYLE.md and the accepted closed gate. 2d high detailed Japanese anime style open dungeon gate Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/aerin-front-back.png",
+      "mode": "two-sided-actor",
       "definitionId": "hero.aerin",
-      "grid": { "rows": 4, "cols": 2 },
-      "canvas": { "width": 320, "height": 320 },
+      "grid": { "rows": 1, "cols": 2 },
+      "canvas": { "width": 256, "height": 384 },
       "frames": [
-        { "assetId": "actor.hero.aerin.south", "direction": "south", "sourceIndex": 0, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
-        { "assetId": "actor.hero.aerin.south-west", "direction": "south-west", "sourceIndex": 1, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
-        { "assetId": "actor.hero.aerin.west", "direction": "west", "sourceIndex": 2, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
-        { "assetId": "actor.hero.aerin.north-west", "direction": "north-west", "sourceIndex": 3, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
-        { "assetId": "actor.hero.aerin.north", "direction": "north", "sourceIndex": 4, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
-        { "assetId": "actor.hero.aerin.north-east", "direction": "north-east", "sourceIndex": 3, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
-        { "assetId": "actor.hero.aerin.east", "direction": "east", "sourceIndex": 6, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } },
-        { "assetId": "actor.hero.aerin.south-east", "direction": "south-east", "sourceIndex": 1, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 88 } }
+        { "assetId": "actor.hero.aerin.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 152 } },
+        { "assetId": "actor.hero.aerin.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 152 } }
       ],
-      "prompt": "Reference art/STYLE.md, documents/ui_mockup.png, and the accepted Aerin identity. Exactly one borderless 2-column by 4-row sheet ordered south, south-west, west, north-west, north, north-east, east, south-east; fixed identity, scale, body root, and feet line on solid #FF00FF."
+      "prompt": "Reference art/STYLE.md, documents/Template.png, and documents/view_modify.png. 2D high detailed Japanese anime style elf maid Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
-      "input": "art/source/actors/goblin-skirmisher-directions-2x4.png",
-      "mode": "directional-actor",
+      "input": "art/source/actors/goblin-skirmisher-front-back.png",
+      "mode": "two-sided-actor",
       "definitionId": "enemy.goblin-skirmisher",
-      "grid": { "rows": 4, "cols": 2 },
-      "canvas": { "width": 320, "height": 320 },
+      "grid": { "rows": 1, "cols": 2 },
+      "canvas": { "width": 256, "height": 384 },
       "frames": [
-        { "assetId": "actor.goblin-skirmisher.south", "direction": "south", "sourceIndex": 0, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
-        { "assetId": "actor.goblin-skirmisher.south-west", "direction": "south-west", "sourceIndex": 2, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
-        { "assetId": "actor.goblin-skirmisher.west", "direction": "west", "sourceIndex": 4, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
-        { "assetId": "actor.goblin-skirmisher.north-west", "direction": "north-west", "sourceIndex": 3, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
-        { "assetId": "actor.goblin-skirmisher.north", "direction": "north", "sourceIndex": 1, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
-        { "assetId": "actor.goblin-skirmisher.north-east", "direction": "north-east", "sourceIndex": 3, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
-        { "assetId": "actor.goblin-skirmisher.east", "direction": "east", "sourceIndex": 5, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } },
-        { "assetId": "actor.goblin-skirmisher.south-east", "direction": "south-east", "sourceIndex": 7, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 67 } }
+        { "assetId": "actor.goblin-skirmisher.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 132 } },
+        { "assetId": "actor.goblin-skirmisher.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 132 } }
       ],
-      "prompt": "Reference art/STYLE.md, documents/ui_mockup.png, and the accepted Aerin sheet. One wiry green goblin skirmisher in exactly the same borderless 2-column by 4-row direction order, fixed identity, scale, body root, and feet line on solid #FF00FF."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin skirmisher Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
-      "input": "art/source/actors/goblin-brute-directions-2x4.png",
-      "mode": "directional-actor",
+      "input": "art/source/actors/goblin-brute-front-back.png",
+      "mode": "two-sided-actor",
       "definitionId": "enemy.goblin-brute",
-      "grid": { "rows": 4, "cols": 2 },
-      "canvas": { "width": 320, "height": 320 },
+      "grid": { "rows": 1, "cols": 2 },
+      "canvas": { "width": 256, "height": 384 },
       "frames": [
-        { "assetId": "actor.goblin-brute.south", "direction": "south", "sourceIndex": 0, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
-        { "assetId": "actor.goblin-brute.south-west", "direction": "south-west", "sourceIndex": 6, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
-        { "assetId": "actor.goblin-brute.west", "direction": "west", "sourceIndex": 2, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
-        { "assetId": "actor.goblin-brute.north-west", "direction": "north-west", "sourceIndex": 5, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
-        { "assetId": "actor.goblin-brute.north", "direction": "north", "sourceIndex": 4, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
-        { "assetId": "actor.goblin-brute.north-east", "direction": "north-east", "sourceIndex": 5, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
-        { "assetId": "actor.goblin-brute.east", "direction": "east", "sourceIndex": 1, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } },
-        { "assetId": "actor.goblin-brute.south-east", "direction": "south-east", "sourceIndex": 7, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 76 } }
+        { "assetId": "actor.goblin-brute.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 152 } },
+        { "assetId": "actor.goblin-brute.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 152 } }
       ],
-      "prompt": "Reference art/STYLE.md, documents/ui_mockup.png, and the accepted Aerin sheet. One broad olive goblin brute in exactly the same borderless 2-column by 4-row direction order, fixed identity, scale, body root, and feet line on solid #FF00FF."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin brute Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
-      "input": "art/source/actors/goblin-chief-directions-2x4.png",
-      "mode": "directional-actor",
+      "input": "art/source/actors/goblin-chief-front-back.png",
+      "mode": "two-sided-actor",
       "definitionId": "enemy.goblin-chief",
-      "grid": { "rows": 4, "cols": 2 },
-      "canvas": { "width": 320, "height": 320 },
+      "grid": { "rows": 1, "cols": 2 },
+      "canvas": { "width": 256, "height": 384 },
       "frames": [
-        { "assetId": "actor.goblin-chief.south", "direction": "south", "sourceIndex": 0, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
-        { "assetId": "actor.goblin-chief.south-west", "direction": "south-west", "sourceIndex": 1, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
-        { "assetId": "actor.goblin-chief.west", "direction": "west", "sourceIndex": 2, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
-        { "assetId": "actor.goblin-chief.north-west", "direction": "north-west", "sourceIndex": 3, "flipX": true, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
-        { "assetId": "actor.goblin-chief.north", "direction": "north", "sourceIndex": 4, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
-        { "assetId": "actor.goblin-chief.north-east", "direction": "north-east", "sourceIndex": 3, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
-        { "assetId": "actor.goblin-chief.east", "direction": "east", "sourceIndex": 5, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } },
-        { "assetId": "actor.goblin-chief.south-east", "direction": "south-east", "sourceIndex": 1, "kind": "actor", "anchor": { "x": 0.5, "y": 0.9 }, "displaySize": { "height": 82 } }
+        { "assetId": "actor.goblin-chief.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 164 } },
+        { "assetId": "actor.goblin-chief.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 164 } }
       ],
-      "prompt": "Reference art/STYLE.md, documents/ui_mockup.png, and the accepted Aerin sheet. One crowned dark-green goblin commander in exactly the same borderless 2-column by 4-row direction order, fixed identity, scale, body root, and feet line on solid #FF00FF."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin chief Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     }
   ],
   "presentation": {
@@ -172,6 +158,8 @@
       "blocked": "object.wall"
     },
     "objectVisuals": {
+      "wall": "object.wall",
+      "crate": "object.crate",
       "lever": "object.lever",
       "gateClosed": "object.gate.closed",
       "gateOpen": "object.gate.open"

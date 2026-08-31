@@ -44,9 +44,27 @@ button {
 }
 
 .app-shell {
-  display: grid;
-  grid-template-rows: auto minmax(34rem, 1fr) auto;
+  display: block;
   min-height: 100vh;
+}
+
+.combat-stage {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  min-height: 40rem;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 42%, #24302e 0, #10171b 54%, #080b0d 100%);
+}
+
+.combat-hud {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  pointer-events: none;
 }
 
 .topbar,
@@ -68,7 +86,10 @@ button {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid var(--line);
   box-shadow: 0 0.75rem 2rem rgb(0 0 0 / 28%);
-  z-index: 2;
+  z-index: 3;
+  pointer-events: auto;
+  background: rgb(23 25 26 / 91%);
+  backdrop-filter: blur(8px);
 }
 
 .brand-block h1,
@@ -162,12 +183,18 @@ button {
   display: grid;
   grid-template-columns: minmax(15rem, 18rem) minmax(31rem, 1fr) minmax(18rem, 22rem);
   min-height: 0;
+  pointer-events: none;
 }
 
 .side-panel {
   min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
   padding: 1rem;
   border-right: 1px solid var(--line);
+  pointer-events: auto;
+  background: rgb(23 25 26 / 88%);
+  backdrop-filter: blur(8px);
 }
 
 .detail-panel {
@@ -420,7 +447,8 @@ button {
   gap: 0.65rem;
   min-width: 0;
   padding: 0.8rem;
-  background: #0d1114;
+  background: transparent;
+  pointer-events: none;
 }
 
 .board-header {
@@ -428,6 +456,11 @@ button {
   justify-content: space-between;
   gap: 1rem;
   align-items: center;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid rgb(93 80 54 / 70%);
+  border-radius: 0.55rem;
+  background: rgb(13 17 20 / 76%);
+  backdrop-filter: blur(6px);
 }
 
 .runtime-chip {
@@ -447,14 +480,13 @@ button {
 }
 
 .pixi-root {
-  min-width: 0;
-  min-height: 28rem;
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
-  border: 1px solid #4a4334;
-  border-radius: 0.55rem;
-  background:
-    radial-gradient(circle at center, #222c2c, #0e1418 72%);
-  box-shadow: inset 0 0 3rem rgb(0 0 0 / 45%);
+  pointer-events: auto;
 }
 
 .pixi-root canvas {
@@ -463,12 +495,21 @@ button {
   height: 100%;
 }
 
+.board-interaction-window {
+  min-height: 28rem;
+}
+
 .board-prompt {
   min-height: 1.4rem;
   margin: 0;
   color: #d9cfb5;
   font-size: 0.82rem;
   text-align: center;
+  padding: 0.45rem 0.7rem;
+  border: 1px solid rgb(93 80 54 / 58%);
+  border-radius: 999px;
+  background: rgb(13 17 20 / 78%);
+  backdrop-filter: blur(6px);
 }
 
 .enemy-list {
@@ -564,6 +605,9 @@ button {
   min-width: 0;
   padding: 0.8rem 1rem 1rem;
   border-top: 1px solid var(--line);
+  pointer-events: auto;
+  background: rgb(23 25 26 / 91%);
+  backdrop-filter: blur(8px);
 }
 
 .hand-heading {
@@ -867,6 +911,7 @@ button {
     grid-column: 1 / -1;
     grid-template-columns: 1fr 1fr 2fr;
     grid-template-rows: auto;
+    max-height: 15rem;
     border-top: 1px solid var(--line);
     border-left: 0;
   }
@@ -883,6 +928,28 @@ button {
 @media (max-width: 760px) {
   .app-shell {
     display: block;
+  }
+
+  .combat-stage {
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
+  }
+
+  .pixi-root {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: 62vh;
+    min-height: 22rem;
+    max-height: 34rem;
+  }
+
+  .combat-hud {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
   }
 
   .adventure-screen {
@@ -919,11 +986,11 @@ button {
 
   .board-panel {
     order: -1;
+    grid-template-rows: auto auto;
   }
 
-  .pixi-root {
-    min-height: 58vw;
-    max-height: 70vh;
+  .board-interaction-window {
+    display: none;
   }
 
   .side-panel,
@@ -932,6 +999,10 @@ button {
   .log-panel {
     border: 0;
     border-top: 1px solid var(--line);
+  }
+
+  .detail-panel {
+    max-height: none;
   }
 
   .hand-dock {

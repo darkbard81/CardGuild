@@ -4,7 +4,7 @@ import path from "node:path";
 import sharp, { type OverlayOptions } from "sharp";
 
 type AssetKind = "actor" | "terrain" | "object" | "ui";
-type SourceMode = "terrain-block" | "terrain-overlay" | "grounded-object" | "directional-actor";
+type SourceMode = "square-terrain" | "web-overlay" | "grounded-object" | "two-sided-actor";
 
 interface Point {
   readonly x: number;
@@ -18,7 +18,7 @@ interface Size {
 
 interface FramePlan {
   readonly assetId: string;
-  readonly direction?: string;
+  readonly side?: "front" | "back";
   readonly sourceIndex?: number;
   readonly flipX?: boolean;
   readonly kind: AssetKind;
@@ -38,10 +38,10 @@ interface SourcePlan {
 }
 
 interface GenerationPlan {
-  readonly version: 1;
+  readonly version: 2;
   readonly styleSheet: string;
   readonly promptConvention: string;
-  readonly background: "#FF00FF";
+  readonly background: "transparent";
   readonly atlas: {
     readonly size: number;
     readonly padding: number;
@@ -102,8 +102,6 @@ interface ScenarioSource {
   };
 }
 
-const MAGENTA_CORE_DISTANCE = 105;
-const MAGENTA_EDGE_DISTANCE = 190;
 const ALPHA_VISIBLE_THRESHOLD = 8;
 
 function assertPositiveInteger(value: number, label: string): void {
@@ -130,8 +128,8 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 }
 
 function validatePlan(plan: GenerationPlan): void {
-  if (plan.version !== 1) throw new Error("Generation plan version must be 1.");
-  if (plan.background !== "#FF00FF") throw new Error("Generated sources must use the #FF00FF background contract.");
+  if (plan.version !== 2) throw new Error("Generation plan version must be 2.");
+  if (plan.background !== "transparent") throw new Error("Generated sources must use the transparent background contract.");
   if (!isPowerOfTwo(plan.atlas.size)) throw new Error("Atlas size must be a power of two.");
   if (plan.atlas.padding < 1 || plan.atlas.padding > 2) throw new Error("Atlas padding must be 1 or 2 pixels.");
   const ids = new Set<string>();
@@ -150,30 +148,16 @@ function validatePlan(plan: GenerationPlan): void {
         throw new Error(`${frame.assetId} sourceIndex is outside its source grid.`);
       }
     }
-    if (source.mode === "directional-actor") {
-      const directions = source.frames.map((frame) => frame.direction);
-      const expected = ["south", "south-west", "west", "north-west", "north", "north-east", "east", "south-east"];
-      if (JSON.stringify(directions) !== JSON.stringify(expected)) {
-        throw new Error(`${source.input} must contain the canonical eight-direction order.`);
+    if (source.mode === "two-sided-actor") {
+      const sides = source.frames.map((frame) => frame.side);
+      if (JSON.stringify(sides) !== JSON.stringify(["front", "back"])) {
+        throw new Error(`${source.input} must contain front then back.`);
       }
       if (!source.definitionId) throw new Error(`${source.input} is missing definitionId.`);
     }
   }
 }
-
-function colorDistanceFromMagenta(red: number, green: number, blue: number): number {
-  return Math.hypot(red - 255, green, blue - 255);
-}
-
-function isMagentaBackgroundCandidate(red: number, green: number, blue: number): boolean {
-  const magentaExcess = (red + blue) / 2 - green;
-  const balancedMagenta = Math.abs(red - blue) < 70 && magentaExcess > 25;
-  return colorDistanceFromMagenta(red, green, blue) < MAGENTA_EDGE_DISTANCE
-    || balancedMagenta
-    || (red > 100 && blue > 100 && green < 185 && magentaExcess > 38);
-}
-
-function cleanMagenta(pixels: Buffer, width: number, height: number): Buffer {
+function cleanGeneratedBackground(pixels: Buffer, width: number, height: number): Buffer {
   const cleaned = Buffer.from(pixels);
   const count = width * height;
   const candidates = new Uint8Array(count);
@@ -187,13 +171,10 @@ function cleanMagenta(pixels: Buffer, width: number, height: number): Buffer {
     const red = cleaned[offset] ?? 0;
     const green = cleaned[offset + 1] ?? 0;
     const blue = cleaned[offset + 2] ?? 0;
-    if (colorDistanceFromMagenta(red, green, blue) < MAGENTA_CORE_DISTANCE) {
-      cleaned[offset] = 0;
-      cleaned[offset + 1] = 0;
-      cleaned[offset + 2] = 0;
-      cleaned[offset + 3] = 0;
-    }
-    if (isMagentaBackgroundCandidate(red, green, blue)) candidates[index] = 1;
+    const alpha = cleaned[offset + 3] ?? 0;
+    if (alpha < 250) continue;
+    const spread = Math.max(red, green, blue) - Math.min(red, green, blue);
+    if (Math.min(red, green, blue) > 210 && spread < 30) candidates[index] = 1;
   }
 
   const enqueue = (index: number): void => {
@@ -232,25 +213,6 @@ function cleanMagenta(pixels: Buffer, width: number, height: number): Buffer {
     }
   }
 
-  for (let index = 0; index < count; index += 1) {
-    const offset = index * 4;
-    const alpha = cleaned[offset + 3] ?? 0;
-    if (alpha === 0) continue;
-    const red = cleaned[offset] ?? 0;
-    const green = cleaned[offset + 1] ?? 0;
-    const blue = cleaned[offset + 2] ?? 0;
-    const distance = colorDistanceFromMagenta(red, green, blue);
-    if (distance >= MAGENTA_EDGE_DISTANCE) continue;
-    const normalized = Math.max(0, Math.min(1, (distance - MAGENTA_CORE_DISTANCE) / (MAGENTA_EDGE_DISTANCE - MAGENTA_CORE_DISTANCE)));
-    const nextAlpha = Math.min(alpha, Math.round(255 * normalized));
-    cleaned[offset + 3] = nextAlpha;
-    if (nextAlpha < 255 && nextAlpha > 0) {
-      const fraction = nextAlpha / 255;
-      cleaned[offset] = Math.max(0, Math.min(255, Math.round((red - 255 * (1 - fraction)) / fraction)));
-      cleaned[offset + 1] = Math.max(0, Math.min(255, Math.round(green / fraction)));
-      cleaned[offset + 2] = Math.max(0, Math.min(255, Math.round((blue - 255 * (1 - fraction)) / fraction)));
-    }
-  }
   return cleaned;
 }
 
@@ -311,7 +273,7 @@ async function extractCleanFrames(root: string, source: SourcePlan): Promise<rea
         .ensureAlpha()
         .raw()
         .toBuffer();
-      const pixels = cleanMagenta(raw, width, height);
+      const pixels = cleanGeneratedBackground(raw, width, height);
       const box = visibleBox(pixels, width, height);
       if (!box) throw new Error(`${frame.assetId} became empty during background cleanup.`);
       frames.push({ plan: frame, pixels, width, height, box });
@@ -328,8 +290,8 @@ async function extractCleanFrames(root: string, source: SourcePlan): Promise<rea
 function processedPath(root: string, source: SourcePlan, frame: FramePlan): string {
   if (frame.kind === "actor") {
     const actorSlug = source.definitionId?.split(".").slice(1).join("-");
-    if (!actorSlug || !frame.direction) throw new Error(`${frame.assetId} has incomplete actor metadata.`);
-    return path.join(root, "art", "processed", "actors", actorSlug, `${frame.direction}.png`);
+    if (!actorSlug || !frame.side) throw new Error(`${frame.assetId} has incomplete actor metadata.`);
+    return path.join(root, "art", "processed", "actors", actorSlug, `${frame.side}.png`);
   }
   if (frame.kind === "object") {
     return path.join(root, "art", "processed", "objects", `${frame.assetId.replace(/^object\./, "").replaceAll(".", "-")}.png`);
@@ -337,46 +299,44 @@ function processedPath(root: string, source: SourcePlan, frame: FramePlan): stri
   return path.join(root, "art", "processed", "terrain", `${frame.assetId.replace(/^(terrain|transition)\./, "").replaceAll(".", "-")}.png`);
 }
 
-function exactMask(mode: SourceMode, size: Size): Buffer | null {
-  if (mode === "terrain-block") {
-    const halfWidth = size.width / 2;
-    const surfaceHeight = size.width / 2;
-    return Buffer.from(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}"><polygon points="${halfWidth},0 ${size.width},${surfaceHeight / 2} ${size.width},${size.height - surfaceHeight / 2} ${halfWidth},${size.height} 0,${size.height - surfaceHeight / 2} 0,${surfaceHeight / 2}" fill="white"/></svg>`,
-    );
+function webPixels(pixels: Buffer): Buffer {
+  const result = Buffer.alloc(pixels.length);
+  for (let offset = 0; offset < pixels.length; offset += 4) {
+    const alpha = pixels[offset + 3] ?? 0;
+    const luminance = ((pixels[offset] ?? 0) * 0.2126) + ((pixels[offset + 1] ?? 0) * 0.7152) + ((pixels[offset + 2] ?? 0) * 0.0722);
+    const webAlpha = Math.round(Math.max(0, Math.min(210, (luminance - 88) * 2.6)) * alpha / 255);
+    result[offset] = 232;
+    result[offset + 1] = 226;
+    result[offset + 2] = 208;
+    result[offset + 3] = webAlpha;
   }
-  if (mode === "terrain-overlay") {
-    return Buffer.from(
-      `<svg xmlns="http://www.w3.org/2000/svg" width="${size.width}" height="${size.height}"><polygon points="${size.width / 2},0 ${size.width},${size.height / 2} ${size.width / 2},${size.height} 0,${size.height / 2}" fill="white"/></svg>`,
-    );
-  }
-  return null;
+  return result;
 }
 
 async function processSource(root: string, source: SourcePlan): Promise<readonly ProcessedAsset[]> {
   const frames = await extractCleanFrames(root, source);
-  const safeWidth = source.mode === "directional-actor" ? source.canvas.width * 0.84 : source.canvas.width * 0.86;
-  const safeHeight = source.mode === "directional-actor" ? source.canvas.height * 0.82 : source.canvas.height * 0.86;
-  const sharedScale = source.mode === "terrain-block"
+  const safeWidth = source.mode === "two-sided-actor" ? source.canvas.width * 0.94 : source.canvas.width * 0.9;
+  const safeHeight = source.mode === "two-sided-actor" ? source.canvas.height * 0.94 : source.canvas.height * 0.9;
+  const sharedScale = source.mode === "square-terrain" || source.mode === "web-overlay"
     ? 1
     : Math.min(...frames.map((frame) => Math.min(safeWidth / frame.box.width, safeHeight / frame.box.height)));
   const outputs: ProcessedAsset[] = [];
 
   for (const frame of frames) {
-    const cropPipeline = sharp(frame.pixels, { raw: { width: frame.width, height: frame.height, channels: 4 } })
-      .extract(frame.box);
+    const sourcePixels = source.mode === "web-overlay" ? webPixels(frame.pixels) : frame.pixels;
+    const sourceBox = visibleBox(sourcePixels, frame.width, frame.height) ?? frame.box;
+    const cropPipeline = sharp(sourcePixels, { raw: { width: frame.width, height: frame.height, channels: 4 } })
+      .extract(sourceBox);
     if (frame.plan.flipX) cropPipeline.flop();
     const cropped = await cropPipeline.png().toBuffer();
-    const mask = exactMask(source.mode, source.canvas);
     let result: Buffer;
     let processingScale = sharedScale;
-    if (source.mode === "terrain-block") {
+    if (source.mode === "square-terrain" || source.mode === "web-overlay") {
       result = await sharp(cropped)
         .resize(source.canvas.width, source.canvas.height, { fit: "fill" })
-        .composite(mask ? [{ input: mask, blend: "dest-in" }] : [])
         .png({ compressionLevel: 9 })
         .toBuffer();
-      processingScale = Math.min(source.canvas.width / frame.box.width, source.canvas.height / frame.box.height);
+      processingScale = Math.min(source.canvas.width / sourceBox.width, source.canvas.height / sourceBox.height);
     } else {
       const scaledWidth = Math.max(1, Math.round(frame.box.width * sharedScale));
       const scaledHeight = Math.max(1, Math.round(frame.box.height * sharedScale));
@@ -385,14 +345,11 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
         .png()
         .toBuffer();
       const left = Math.round(frame.plan.anchor.x * source.canvas.width - scaledWidth / 2);
-      const top = source.mode === "terrain-overlay"
-        ? Math.round((source.canvas.height - scaledHeight) / 2)
-        : Math.round(frame.plan.anchor.y * source.canvas.height - scaledHeight);
+      const top = Math.round(frame.plan.anchor.y * source.canvas.height - scaledHeight);
       if (left < 0 || top < 0 || left + scaledWidth > source.canvas.width || top + scaledHeight > source.canvas.height) {
         throw new Error(`${frame.plan.assetId} does not fit its normalized canvas.`);
       }
       const composites: OverlayOptions[] = [{ input: scaled, left, top }];
-      if (mask) composites.push({ input: mask, blend: "dest-in" });
       result = await sharp({
         create: {
           width: source.canvas.width,
@@ -507,14 +464,14 @@ async function buildManifest(root: string, plan: GenerationPlan, assets: readonl
   }]));
   const actorVisuals: Record<string, Record<string, string>> = {};
   for (const source of plan.sources) {
-    if (source.mode !== "directional-actor" || !source.definitionId) continue;
+    if (source.mode !== "two-sided-actor" || !source.definitionId) continue;
     actorVisuals[source.definitionId] = Object.fromEntries(source.frames.map((frame) => {
-      if (!frame.direction) throw new Error(`${frame.assetId} is missing direction.`);
-      return [frame.direction, frame.assetId];
+      if (!frame.side) throw new Error(`${frame.assetId} is missing a side.`);
+      return [frame.side, frame.assetId];
     }));
   }
   const manifest = {
-    version: 2,
+    version: 3,
     bundle: "m2-encounter",
     atlas: { path: "/assets/m2-atlas.json" },
     assets: definitions,
@@ -544,7 +501,7 @@ async function buildTilemaps(root: string): Promise<void> {
   const scenarios = await readJson<readonly ScenarioSource[]>(path.join(root, "content", "m2", "scenarios.json"));
   const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm"];
   const transitionPalette = ["transition.web"];
-  const objectPalette = ["object.wall", "object.gate.closed", "object.lever"];
+  const objectPalette = ["object.wall", "object.gate.closed", "object.lever", "object.crate"];
   const maps: Record<string, unknown> = {};
   for (const scenario of scenarios) {
     const { width, height } = scenario.map;
@@ -582,6 +539,12 @@ async function buildTilemaps(root: string): Promise<void> {
       if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 2;
       objectIds[index] = object.id;
     }
+    if (scenario.id === "encounter.ruined-gate") {
+      for (const [x, y] of [[2, 2], [2, 3]] as const) {
+        const index = y * width + x;
+        if (objects[index] === -1) objects[index] = 3;
+      }
+    }
     if (tileIds.some((id) => id === null)) throw new Error(`${scenario.id} does not define every tile.`);
     maps[scenario.id] = {
       width,
@@ -597,13 +560,11 @@ async function buildTilemaps(root: string): Promise<void> {
 
 async function writePipelineMetadata(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
   const metadata = {
-    version: 1,
+    version: 2,
     styleSheet: plan.styleSheet,
     promptConvention: plan.promptConvention,
     backgroundCleanup: {
-      method: "edge-connected chroma matte with soft defringe",
-      coreDistance: MAGENTA_CORE_DISTANCE,
-      edgeDistance: MAGENTA_EDGE_DISTANCE,
+      method: "preserve generated alpha or remove edge-connected neutral checkerboard",
       outputAlpha: "straight",
     },
     atlas: { size: plan.atlas.size, padding: plan.atlas.padding },
@@ -633,13 +594,15 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     "object.gate.closed",
     "object.gate.open",
     "object.lever",
-    "actor.hero.aerin.south",
-    "actor.goblin-skirmisher.south",
-    "actor.goblin-brute.south",
-    "actor.goblin-chief.south",
+    "object.crate",
+    "actor.hero.aerin.front",
+    "actor.goblin-skirmisher.front",
+    "actor.goblin-brute.front",
+    "actor.goblin-chief.front",
   ];
   const cellWidth = 300;
   const cellHeight = 300;
+  const previewRows = Math.ceil(previewIds.length / 4);
   const composites: OverlayOptions[] = [];
   for (const [index, id] of previewIds.entries()) {
     const asset = byId.get(id);
@@ -667,7 +630,7 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     ["alpha-dark.png", { r: 17, g: 24, b: 32, alpha: 1 }],
   ] as const) {
     await sharp({
-      create: { width: cellWidth * 4, height: cellHeight * 3, channels: 4, background },
+      create: { width: cellWidth * 4, height: cellHeight * previewRows, channels: 4, background },
     }).composite(composites).png({ compressionLevel: 9 }).toFile(path.join(qcRoot, name));
   }
 
@@ -677,14 +640,12 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     "terrain.stone-floor", "terrain.rubble", "terrain.stone-floor",
   ];
   const terrainComposites: OverlayOptions[] = [];
-  const positions = terrainIds.map((id, index) => ({ id, x: index % 3, y: Math.floor(index / 3) }))
-    .sort((left, right) => left.x + left.y - (right.x + right.y) || left.y - right.y || left.x - right.x);
+  const positions = terrainIds.map((id, index) => ({ id, x: index % 3, y: Math.floor(index / 3) }));
   for (const position of positions) {
     const asset = byId.get(position.id);
     if (!asset) throw new Error(`Terrain QC preview is missing ${position.id}.`);
-    const centerX = 256 + (position.x - position.y) * 64;
-    const centerY = 48 + (position.x + position.y) * 32;
-    terrainComposites.push({ input: asset.file, left: centerX - 64, top: centerY - 32 });
+    const tile = await sharp(asset.file).resize(128, 128).png().toBuffer();
+    terrainComposites.push({ input: tile, left: 64 + position.x * 128, top: position.y * 96 });
   }
   await sharp({
     create: { width: 512, height: 320, channels: 4, background: { r: 17, g: 24, b: 32, alpha: 1 } },
@@ -692,13 +653,13 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
 
   const actorSources = [...new Map(
     assets
-      .filter((asset) => asset.source.mode === "directional-actor")
+      .filter((asset) => asset.source.mode === "two-sided-actor")
       .map((asset) => [asset.source.input, asset.source]),
   ).values()];
   for (const source of actorSources) {
     const directionComposites: OverlayOptions[] = source.frames.map((frame, index) => {
       const asset = byId.get(frame.assetId);
-      if (!asset) throw new Error(`Direction QC preview is missing ${frame.assetId}.`);
+      if (!asset) throw new Error(`Two-sided QC preview is missing ${frame.assetId}.`);
       return {
         input: asset.file,
         left: (index % source.grid.cols) * source.canvas.width,
@@ -714,7 +675,7 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
         channels: 4,
         background: { r: 17, g: 24, b: 32, alpha: 1 },
       },
-    }).composite(directionComposites).png({ compressionLevel: 9 }).toFile(path.join(qcRoot, `${actorSlug}-directions.png`));
+    }).composite(directionComposites).png({ compressionLevel: 9 }).toFile(path.join(qcRoot, `${actorSlug}-front-back.png`));
   }
 }
 

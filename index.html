@@ -27,7 +27,15 @@
         <article id="adventure-content" class="adventure-content"></article>
       </section>
 
-      <header class="topbar combat-only">
+      <section class="combat-stage combat-only" aria-label="Tactical combat">
+        <div
+          id="pixi-root"
+          class="pixi-root"
+          data-ready="false"
+          aria-label="CardGuild top-down perspective tactical battlefield"
+        ></div>
+        <div class="combat-hud">
+      <header class="topbar">
         <div class="brand-block">
           <p class="eyebrow">PF2e Tactical Adventure</p>
           <h1>CardGuild</h1>
@@ -43,7 +51,7 @@
         <ol id="initiative-list" class="initiative-list" aria-label="Initiative order"></ol>
       </header>
 
-      <section class="battle-layout combat-only">
+      <section class="battle-layout">
         <aside class="side-panel hero-panel" aria-labelledby="hero-heading">
           <div class="panel-heading">
             <p class="eyebrow">Active hero</p>
@@ -76,12 +84,7 @@
               <span id="pixi-status" role="status" aria-live="polite">Starting…</span>
             </div>
           </div>
-          <div
-            id="pixi-root"
-            class="pixi-root"
-            data-ready="false"
-            aria-label="CardGuild tactical battlefield canvas"
-          ></div>
+          <div class="board-interaction-window" aria-hidden="true"></div>
           <p id="board-prompt" class="board-prompt" aria-live="polite">
             행동을 선택하세요.
           </p>
@@ -108,7 +111,7 @@
         </aside>
       </section>
 
-      <footer class="hand-dock combat-only">
+      <footer class="hand-dock">
         <div class="hand-heading">
           <div>
             <p class="eyebrow">Tactical deck</p>
@@ -121,6 +124,8 @@
         </div>
         <div id="hand-cards" class="hand-cards"></div>
       </footer>
+        </div>
+      </section>
 
       <div id="reaction-modal" class="modal-backdrop" hidden>
         <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reaction-title">

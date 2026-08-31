@@ -1,14 +1,12 @@
-import type { GridPosition } from "../../game";
-
 export interface DepthKey {
-  readonly position: GridPosition;
+  readonly screenY: number;
   readonly layerPriority: number;
   readonly stableId: string;
 }
 
 export function compareDepth(left: DepthKey, right: DepthKey): number {
   return (
-    left.position.x + left.position.y - (right.position.x + right.position.y) ||
+    left.screenY - right.screenY ||
     left.layerPriority - right.layerPriority ||
     left.stableId.localeCompare(right.stableId)
   );
