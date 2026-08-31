@@ -23,7 +23,15 @@ import type {
   LegalAction,
   LegalTarget,
 } from "../game";
+import {
+  hoveredRingEntry,
+  IDLE_INTERACTION,
+  interactionAction,
+  type Interaction,
+  type RingEntry,
+} from "./battle-interaction";
 import { actionCost, BattleUi } from "../dom/battle-ui";
+import { measureHudSafeArea } from "../dom/hud-safe-area";
 import { RingMenu, type RingMenuOption } from "../dom/ring-menu";
 import type { AssetCatalog } from "../presentation";
 import { BattleView, type BoardHighlights, type BoardPick, type ScreenPoint } from "../pixi/BattleView";
@@ -37,15 +45,6 @@ export interface BattleControllerOptions {
   readonly definition?: CombatDefinition;
   readonly seed?: number;
   readonly onComplete?: (state: CombatState, stateHash: string) => void;
-}
-
-/** One radial menu entry: an action already bound to the board target that was picked. */
-interface RingEntry {
-  readonly id: string;
-  readonly action: LegalAction;
-  readonly target: LegalTarget;
-  /** Interchangeable copies of the same card collapse into one entry. */
-  readonly copies: number;
 }
 
 function samePosition(left: GridPosition, right: GridPosition): boolean {
@@ -88,12 +87,9 @@ export class BattleController {
   private readonly onComplete: ((state: CombatState, stateHash: string) => void) | undefined;
   private state: CombatState;
   private history: CombatEvent[];
-  private selectedAction: LegalAction | null = null;
-  private hoveredAction: LegalAction | null = null;
-  private pendingMove: { readonly action: LegalAction; readonly position: GridPosition } | null = null;
-  private ringEntries: readonly RingEntry[] = [];
-  private hoveredRingOptionId: string | null = null;
-  private ringTargetPosition: GridPosition | null = null;
+  private interaction: Interaction = IDLE_INTERACTION;
+  /** Pure preview state: it changes what the inspector shows, never what a click does. */
+  private hoveredCardAction: LegalAction | null = null;
   private hoverCell: GridPosition | null = null;
   private prompt = PROMPT_IDLE;
   private aiTimer: number | null = null;
@@ -108,10 +104,12 @@ export class BattleController {
     const setup = createCombat(this.definition, this.seed);
     this.state = setup.state;
     this.history = [...setup.events];
+    const stage = this.requireElement<HTMLElement>(".combat-stage");
     this.view = new BattleView(app, catalog, {
       onPick: (pick, screen) => this.handlePick(pick, screen),
       onFacing: (facing) => this.handleFacing(facing),
       onHoverCell: (position) => this.handleHoverCell(position),
+      safeArea: () => measureHudSafeArea(stage),
     });
     this.ui = new BattleUi(this.definition.content, this.definition.scenario, {
       onCard: (action) => this.handleCard(action),
@@ -121,7 +119,7 @@ export class BattleController {
       onPassReaction: () => this.resolveReaction(false),
       onRestart: () => this.restart(),
     });
-    this.ring = new RingMenu(this.requireRingRoot(), {
+    this.ring = new RingMenu(this.requireElement<HTMLElement>("#ring-root"), {
       onSelect: (optionId) => this.handleRingSelect(optionId),
       onHover: (optionId) => this.handleRingHover(optionId),
       onDismiss: () => this.dismissRing(),
@@ -130,10 +128,10 @@ export class BattleController {
     this.scheduleAi();
   }
 
-  private requireRingRoot(): HTMLElement {
-    const root = document.querySelector<HTMLElement>("#ring-root");
-    if (!root) throw new Error("Required element was not found: #ring-root");
-    return root;
+  private requireElement<T extends Element>(selector: string): T {
+    const element = document.querySelector<T>(selector);
+    if (!element) throw new Error(`Required element was not found: ${selector}`);
+    return element;
   }
 
   private nextCommandId(label: string): string {
@@ -155,27 +153,25 @@ export class BattleController {
   }
 
   private highlights(): BoardHighlights {
-    if (this.pendingMove) {
-      // Facing step: only the committed destination stays lit.
-      return { tiles: [this.pendingMove.position], actorIds: [], objectIds: [], facingPosition: this.pendingMove.position };
+    const interaction = this.interaction;
+    // The facing step has committed to a destination: only that square stays lit.
+    if (interaction.kind === "facing") {
+      return { tiles: [interaction.position], actorIds: [], objectIds: [], facingPosition: interaction.position };
     }
-    const hovered = this.hoveredRingEntry();
-    const targets = hovered ? [hovered.target] : this.targetsFor(this.selectedAction);
-    const ringCell = this.ringEntries.length > 0 ? this.ringTargetPosition : null;
+    const hovered = hoveredRingEntry(interaction);
+    const targets = hovered
+      ? [hovered.target]
+      : this.targetsFor(interaction.kind === "card" ? interaction.action : null);
+    const ringCell = interaction.kind === "ring" ? [interaction.position] : [];
     return {
       tiles: [
         ...targets.flatMap((target) => (target.kind === "tile" ? [target.position] : [])),
-        ...(ringCell ? [ringCell] : []),
+        ...ringCell,
       ],
       actorIds: targets.flatMap((target) => (target.kind === "actor" ? [target.actorId] : [])),
       objectIds: targets.flatMap((target) => (target.kind === "object" ? [target.objectId] : [])),
       facingPosition: null,
     };
-  }
-
-  private hoveredRingEntry(): RingEntry | null {
-    if (!this.hoveredRingOptionId) return null;
-    return this.ringEntries.find((entry) => entry.id === this.hoveredRingOptionId) ?? null;
   }
 
   private previewFor(action: LegalAction | null, target: LegalTarget | null): ActionPreview | null {
@@ -196,7 +192,7 @@ export class BattleController {
     const stateHash = hashCombatState(this.state);
     this.view.render(this.state, this.highlights(), events);
     this.ui.render(this.state, this.history, {
-      selectedAction: this.selectedAction,
+      selectedAction: interactionAction(this.interaction),
       prompt: this.prompt,
       stateHash,
     });
@@ -204,12 +200,12 @@ export class BattleController {
   }
 
   private renderDetail(): void {
-    const hovered = this.hoveredRingEntry();
+    const hovered = hoveredRingEntry(this.interaction);
     if (hovered) {
       this.ui.renderActionDetail(hovered.action, this.previewFor(hovered.action, hovered.target));
       return;
     }
-    const action = this.hoveredAction ?? this.selectedAction;
+    const action = this.hoveredCardAction ?? interactionAction(this.interaction);
     if (action) {
       this.ui.renderActionDetail(action, this.previewFor(action, null));
       return;
@@ -226,24 +222,20 @@ export class BattleController {
     this.ui.renderActionDetail(null, null);
   }
 
-  private clearSelection(): void {
-    this.selectedAction = null;
-    this.hoveredAction = null;
-    this.pendingMove = null;
-    this.closeRing();
+  /** Every phase change goes through here so the ring can never outlive its state. */
+  private enter(interaction: Interaction): void {
+    this.interaction = interaction;
+    if (interaction.kind !== "ring") this.ring.hide();
   }
 
-  private closeRing(): void {
-    this.ring.hide();
-    this.ringEntries = [];
-    this.ringTargetPosition = null;
-    this.hoveredRingOptionId = null;
+  private goIdle(): void {
+    this.enter(IDLE_INTERACTION);
+    this.hoveredCardAction = null;
   }
 
   private dismissRing(): void {
-    if (!this.ring.isOpen) return;
-    this.closeRing();
-    this.hoveredAction = null;
+    if (this.interaction.kind !== "ring") return;
+    this.goIdle();
     this.prompt = PROMPT_IDLE;
     this.render();
   }
@@ -251,32 +243,32 @@ export class BattleController {
   /** A board target was picked: resolve it against the selected card, or open the ring menu. */
   private handlePick(pick: BoardPick, screen: ScreenPoint): void {
     if (!this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
-    if (this.pendingMove) {
-      this.clearSelection();
+    const interaction = this.interaction;
+    if (interaction.kind === "facing") {
+      this.goIdle();
       this.prompt = PROMPT_IDLE;
       this.render();
       return;
     }
-    if (this.selectedAction) {
-      this.resolveSelectedAction(pick);
+    if (interaction.kind === "card") {
+      this.resolveCardTarget(interaction.action, pick);
       return;
     }
     const entries = this.entriesFor(pick);
     if (entries.length === 0) {
-      this.closeRing();
+      this.goIdle();
       this.prompt = "이 대상에 사용할 수 있는 행동이 없습니다.";
       this.render();
       return;
     }
-    this.ringEntries = entries;
-    this.ringTargetPosition = pick.position;
+    this.enter({ kind: "ring", position: pick.position, entries, hoveredOptionId: null });
     this.prompt = "링 메뉴에서 행동을 선택하세요. (Esc 취소)";
     this.render();
-    this.ring.show(screen, this.pickLabel(pick), entries.map((entry) => this.ringOption(entry)));
+    this.ring.show(screen, this.pickLabel(pick), entries.map((entry) => this.ringOption(entry, entries)));
   }
 
-  private ringOption(entry: RingEntry): RingMenuOption {
-    const duplicated = this.ringEntries.filter((other) => other.action.source.id === entry.action.source.id).length > 1;
+  private ringOption(entry: RingEntry, entries: readonly RingEntry[]): RingMenuOption {
+    const duplicated = entries.filter((other) => other.action.source.id === entry.action.source.id).length > 1;
     const suffix = duplicated && "label" in entry.target ? ` · ${entry.target.label}` : "";
     const copies = entry.copies > 1 ? ` ×${entry.copies}` : "";
     return {
@@ -331,15 +323,18 @@ export class BattleController {
   }
 
   private handleRingSelect(optionId: string): void {
-    const entry = this.ringEntries.find((candidate) => candidate.id === optionId);
+    const interaction = this.interaction;
+    if (interaction.kind !== "ring") return;
+    const entry = interaction.entries.find((candidate) => candidate.id === optionId);
     if (!entry) return;
-    const { action, target } = entry;
-    this.closeRing();
-    this.commit(action, target);
+    this.goIdle();
+    this.commit(entry.action, entry.target);
   }
 
   private handleRingHover(optionId: string | null): void {
-    this.hoveredRingOptionId = optionId;
+    const interaction = this.interaction;
+    if (interaction.kind !== "ring") return;
+    this.interaction = { ...interaction, hoveredOptionId: optionId };
     this.view.render(this.state, this.highlights());
     this.renderDetail();
   }
@@ -347,16 +342,15 @@ export class BattleController {
   /** Card-first path: select a card, then pick one of its highlighted board targets. */
   private handleCard(action: LegalAction): void {
     if (!action.enabled || !this.activeHeroId() || this.state.pendingReaction) return;
-    this.closeRing();
-    if (this.selectedAction?.source.id === action.source.id) {
-      this.clearSelection();
+    const current = this.interaction;
+    if (current.kind === "card" && current.action.source.id === action.source.id) {
+      this.goIdle();
       this.prompt = PROMPT_IDLE;
       this.render();
       return;
     }
-    this.selectedAction = action;
-    this.hoveredAction = null;
-    this.pendingMove = null;
+    this.enter({ kind: "card", action });
+    this.hoveredCardAction = null;
     const targets = this.targetsFor(action);
     const single = targets[0];
     if (targets.length === 1 && single && (single.kind === "none" || single.kind === "effect")) {
@@ -374,12 +368,10 @@ export class BattleController {
     this.render();
   }
 
-  private resolveSelectedAction(pick: BoardPick): void {
-    const action = this.selectedAction;
-    if (!action) return;
+  private resolveCardTarget(action: LegalAction, pick: BoardPick): void {
     const target = this.targetsFor(action).find((candidate) => this.targetMatchesPick(candidate, pick, this.heroId()));
     if (!target) {
-      this.clearSelection();
+      this.goIdle();
       this.prompt = PROMPT_IDLE;
       this.render();
       return;
@@ -390,8 +382,7 @@ export class BattleController {
   /** Tile targets need a facing pick on the board before the command is sent. */
   private commit(action: LegalAction, target: LegalTarget): void {
     if (target.kind === "tile") {
-      this.selectedAction = action;
-      this.pendingMove = { action, position: { ...target.position } };
+      this.enter({ kind: "facing", action, position: { ...target.position } });
       this.prompt = PROMPT_FACING;
       this.render();
       return;
@@ -402,7 +393,7 @@ export class BattleController {
   }
 
   private handleActionHover(action: LegalAction | null): void {
-    this.hoveredAction = action;
+    this.hoveredCardAction = action;
     this.view.render(this.state, this.highlights());
     this.renderDetail();
   }
@@ -413,11 +404,11 @@ export class BattleController {
   }
 
   private handleFacing(facing: Direction): void {
-    const pending = this.pendingMove;
-    if (!pending) return;
-    this.useAction(pending.action, {
+    const interaction = this.interaction;
+    if (interaction.kind !== "facing") return;
+    this.useAction(interaction.action, {
       kind: "tile",
-      position: pending.position,
+      position: interaction.position,
       facing,
     });
   }
@@ -471,7 +462,7 @@ export class BattleController {
     }
     this.state = result.state;
     this.history.push(...result.events);
-    this.clearSelection();
+    this.goIdle();
     this.prompt = this.state.pendingReaction
       ? "Reaction을 사용하거나 Pass하세요."
       : this.state.outcome
@@ -503,7 +494,7 @@ export class BattleController {
     const setup = createCombat(this.definition, this.seed);
     this.state = setup.state;
     this.history = [...setup.events];
-    this.clearSelection();
+    this.goIdle();
     this.prompt = PROMPT_IDLE;
     this.render(setup.events);
     this.scheduleAi();

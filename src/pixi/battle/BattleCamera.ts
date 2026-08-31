@@ -1,8 +1,8 @@
 import { Point } from "pixi.js";
 
 import type { BoardCorners } from "./BoardProjection";
-import type { BoardViewConfig } from "./BoardViewConfig";
-import { baseBoardCorners, DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
+import type { BoardSafeArea, BoardViewConfig } from "./BoardViewConfig";
+import { baseBoardCorners, DEFAULT_BOARD_VIEW_CONFIG, ZERO_BOARD_SAFE_AREA } from "./BoardViewConfig";
 
 export class BattleCamera {
   public readonly minZoom = 0.72;
@@ -43,10 +43,14 @@ export class BattleCamera {
     this.panY += viewportHeight / 2 - point.y;
   }
 
-  public corners(viewportWidth: number, viewportHeight: number): BoardCorners {
+  public corners(
+    viewportWidth: number,
+    viewportHeight: number,
+    safeArea: BoardSafeArea = ZERO_BOARD_SAFE_AREA,
+  ): BoardCorners {
     const centerX = viewportWidth / 2;
     const centerY = viewportHeight / 2;
-    const transformed = baseBoardCorners(viewportWidth, viewportHeight, this.config).map((corner) => new Point(
+    const transformed = baseBoardCorners(viewportWidth, viewportHeight, this.config, safeArea).map((corner) => new Point(
       centerX + (corner.x - centerX) * this.zoom + this.panX,
       centerY + (corner.y - centerY) * this.zoom + this.panY,
     ));

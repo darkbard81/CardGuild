@@ -45,29 +45,15 @@ async function openBattle(page: Page): Promise<void> {
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
 }
 
-/** Mirrors DEFAULT_BOARD_SAFE_AREA: the board is projected inside the HUD gutters. */
-const BOARD_SAFE_AREA = { left: 252, top: 96, right: 268, bottom: 178 };
-
-function projectBoardPoint(
-  width: number,
-  height: number,
-  map: { readonly width: number; readonly height: number },
-  gridX: number,
-  gridY: number,
-): { readonly x: number; readonly y: number } {
-  const areaWidth = Math.max(240, width - BOARD_SAFE_AREA.left - BOARD_SAFE_AREA.right);
-  const areaHeight = Math.max(240, height - BOARD_SAFE_AREA.top - BOARD_SAFE_AREA.bottom);
-  const centerX = BOARD_SAFE_AREA.left + areaWidth / 2;
-  const topWidth = areaWidth * 0.76;
-  const bottomWidth = areaWidth * 0.96;
-  const topY = BOARD_SAFE_AREA.top + areaHeight * 0.06;
-  const bottomY = BOARD_SAFE_AREA.top + areaHeight * 0.97;
-  return projectCorners([
-    { x: centerX - topWidth / 2, y: topY },
-    { x: centerX + topWidth / 2, y: topY },
-    { x: centerX + bottomWidth / 2, y: bottomY },
-    { x: centerX - bottomWidth / 2, y: bottomY },
-  ], map, gridX, gridY);
+/**
+ * The board quad is framed inside HUD gutters the app measures from the live overlay,
+ * so the test reads the published corners instead of re-deriving them from constants.
+ */
+async function boardCorners(page: Page): Promise<[Corner, Corner, Corner, Corner]> {
+  const published = await page.locator("#pixi-canvas").getAttribute("data-board-corners");
+  const corners = JSON.parse(published ?? "[]") as Corner[];
+  if (corners.length !== 4) throw new Error("The board has not published its corners yet.");
+  return corners as [Corner, Corner, Corner, Corner];
 }
 
 async function boardPoint(
@@ -75,9 +61,7 @@ async function boardPoint(
   gridX: number,
   gridY: number,
 ): Promise<{ readonly x: number; readonly y: number }> {
-  const box = await page.locator("#pixi-canvas").boundingBox();
-  if (!box) throw new Error("Pixi canvas does not have a bounding box.");
-  return projectBoardPoint(box.width, box.height, ROAD_MAP, gridX, gridY);
+  return projectCorners(await boardCorners(page), ROAD_MAP, gridX, gridY);
 }
 
 async function clickBoardPoint(page: Page, gridX: number, gridY: number): Promise<void> {
@@ -161,11 +145,18 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#combat-log")).toContainText("used strike");
   await expect(page.locator("#action-pips .available")).toHaveCount(1);
 
-  const beforeZoom = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-board-corners") ?? "[]") as [Corner, Corner, Corner, Corner];
+  // Card-first path: choose the card, then one of the targets it highlights.
+  await page.locator('#hand-cards .tactical-card[data-action-id="trip"]:not([disabled])').first().click();
+  await expect(page.locator("#board-prompt")).toContainText("강조된 적");
+  await clickBoardPoint(page, 2.5, 1.5);
+  await expect(page.locator("#combat-log")).toContainText("used trip");
+  await expect(page.locator("#action-pips .available")).toHaveCount(0);
+
+  const beforeZoom = await boardCorners(page);
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   await page.mouse.wheel(0, -240);
   await page.waitForTimeout(100);
-  const afterZoom = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-board-corners") ?? "[]") as [Corner, Corner, Corner, Corner];
+  const afterZoom = await boardCorners(page);
   expect(afterZoom[1].x - afterZoom[0].x).toBeGreaterThan(beforeZoom[1].x - beforeZoom[0].x);
   await page.keyboard.down("Alt");
   await page.mouse.down();
@@ -173,7 +164,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await page.mouse.up();
   await page.keyboard.up("Alt");
   await page.waitForTimeout(100);
-  const afterPan = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-board-corners") ?? "[]") as [Corner, Corner, Corner, Corner];
+  const afterPan = await boardCorners(page);
   expect(afterPan[0].x).toBeGreaterThan(afterZoom[0].x + 30);
   const zoomedFeet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const zoomedHero = zoomedFeet.find((entry) => entry.id === "hero");
@@ -202,13 +193,34 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   }));
   expect(overflow.horizontal).toBeLessThanOrEqual(0);
   expect(overflow.vertical).toBeLessThanOrEqual(0);
-  for (const selector of [".hero-card", ".hud-status", ".hud-side", ".hand-dock"]) {
-    const box = await page.locator(selector).boundingBox();
-    if (!box) throw new Error(`HUD element ${selector} is not laid out.`);
+  const canvasBox = await page.locator("#pixi-canvas").boundingBox();
+  if (!canvasBox) throw new Error("Pixi canvas does not have a bounding box.");
+  const corners = await boardCorners(page);
+  const board = {
+    left: Math.min(...corners.map((corner) => corner.x)) + canvasBox.x,
+    right: Math.max(...corners.map((corner) => corner.x)) + canvasBox.x,
+    top: Math.min(...corners.map((corner) => corner.y)) + canvasBox.y,
+    bottom: Math.max(...corners.map((corner) => corner.y)) + canvasBox.y,
+  };
+  const gutters = page.locator("[data-hud-gutter]");
+  const gutterCount = await gutters.count();
+  expect(gutterCount).toBeGreaterThan(0);
+  for (let index = 0; index < gutterCount; index += 1) {
+    const panel = gutters.nth(index);
+    const box = await panel.boundingBox();
+    if (!box) throw new Error("A HUD gutter element is not laid out.");
     expect(box.x).toBeGreaterThanOrEqual(0);
     expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.x + box.width).toBeLessThanOrEqual(1024.5);
     expect(box.y + box.height).toBeLessThanOrEqual(768.5);
+    // No board square may hide under a HUD panel.
+    const overlaps =
+      box.x < board.right && box.x + box.width > board.left
+      && box.y < board.bottom && box.y + box.height > board.top;
+    expect(
+      overlaps,
+      `${await panel.getAttribute("class")} overlaps the board quad`,
+    ).toBe(false);
   }
   await page.screenshot({ path: testInfo.outputPath("cardguild-m2-minimum.png"), fullPage: true });
 

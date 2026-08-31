@@ -10,8 +10,9 @@ board presentation을 연결했습니다. 전투 화면은 canvas 전체를 전�
 
 - Node.js 22.13 이상(22.x) 또는 Node.js 24 이상
 - npm 11 이상
-- 최소 지원 해상도 1024x768. HUD gutter는 `DEFAULT_BOARD_SAFE_AREA`로 보드 투영에서
-  제외되므로 어떤 칸도 패널에 가려지지 않습니다.
+- 최소 지원 해상도 1024x768. 보드 투영은 HUD gutter를 제외한 영역 안에서 계산되며,
+  gutter 크기는 `data-hud-gutter` 패널을 실제로 measure해서 얻습니다. style.css가
+  바뀌면 투영이 따라오고, smoke test는 어떤 패널도 보드 quad와 겹치지 않는지 검증합니다.
 
 ```bash
 npm install
@@ -56,11 +57,16 @@ src/game   순수 CombatState + Command + Event, grid, trait providers, AI, repl
 src/content JSON authoring DTO, semantic compiler, canonical fingerprint, M2 loader
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
-src/app    Adventure/전투 세션과 입력 상태, 적 AI 턴 orchestration
+src/app    Adventure/전투 세션, 명시적 interaction state machine, 적 AI 턴 orchestration
 src/pixi   BoardProjection/PerspectiveMesh/camera/depth renderers와 tactical overlay
 src/presentation WebP atlas AssetCatalog와 layered tilemap mapping
 src/dom    Adventure/Reward, 링 컨텍스트 메뉴·카드·HUD·로그·Reaction·결과 UI
 ```
+
+전투 입력은 `battle-interaction.ts`의 `Interaction` union(`idle`/`card`/`ring`/`facing`)이
+단계를 소유합니다. 각 단계가 자기 데이터를 들고 있으므로 링 항목이나 확정된 목적지가
+다음 단계로 새지 않으며, 이후 AoE·multi-target·drag 같은 targeting mode도 여기에
+붙입니다.
 
 `src/game`은 PixiJS, DOM, 브라우저 API, Ajv, 파일 경로에 의존하지 않습니다. UI는
 `listLegalActions`, `listLegalTargets`, `previewAction`의 결과를 표시하고

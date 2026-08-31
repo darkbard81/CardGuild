@@ -1,6 +1,7 @@
 /**
  * Pixels reserved for the floating HUD on each edge of the canvas. The board quad is
- * projected inside this rectangle so no square ever sits under an overlay panel.
+ * projected inside this rectangle so no square ever sits under an overlay panel. The
+ * values are measured from the live HUD elements, never mirrored from style.css.
  */
 export interface BoardSafeArea {
   readonly left: number;
@@ -10,7 +11,6 @@ export interface BoardSafeArea {
 }
 
 export interface BoardViewConfig {
-  readonly safeArea: BoardSafeArea;
   readonly topYRatio: number;
   readonly bottomYRatio: number;
   readonly topWidthRatio: number;
@@ -24,18 +24,17 @@ export interface BoardViewConfig {
   readonly boardTextureCellSize: number;
 }
 
-/** Matches the HUD gutters in style.css: hero column, detail column, status bar and hand dock. */
-export const DEFAULT_BOARD_SAFE_AREA: BoardSafeArea = Object.freeze({
-  left: 252,
-  top: 96,
-  right: 268,
-  bottom: 178,
+/** Used until the HUD has been laid out and measured. */
+export const ZERO_BOARD_SAFE_AREA: BoardSafeArea = Object.freeze({
+  left: 0,
+  top: 0,
+  right: 0,
+  bottom: 0,
 });
 
 const MIN_BOARD_EXTENT = 240;
 
 export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
-  safeArea: DEFAULT_BOARD_SAFE_AREA,
   topYRatio: 0.06,
   bottomYRatio: 0.97,
   topWidthRatio: 0.76,
@@ -53,13 +52,14 @@ export function baseBoardCorners(
   viewportWidth: number,
   viewportHeight: number,
   config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
+  safeArea: BoardSafeArea = ZERO_BOARD_SAFE_AREA,
 ): readonly [
   { readonly x: number; readonly y: number },
   { readonly x: number; readonly y: number },
   { readonly x: number; readonly y: number },
   { readonly x: number; readonly y: number },
 ] {
-  const { left, top, right, bottom } = config.safeArea;
+  const { left, top, right, bottom } = safeArea;
   const areaWidth = Math.max(MIN_BOARD_EXTENT, viewportWidth - left - right);
   const areaHeight = Math.max(MIN_BOARD_EXTENT, viewportHeight - top - bottom);
   const centerX = left + areaWidth / 2;

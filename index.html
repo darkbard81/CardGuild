@@ -38,7 +38,7 @@
         <span id="pixi-status" class="sr-only" role="status" aria-live="polite">Starting…</span>
 
         <div class="combat-hud">
-          <section class="hud-card hero-card" aria-labelledby="hero-heading">
+          <section class="hud-card hero-card" data-hud-gutter="left" aria-labelledby="hero-heading">
             <div class="hero-id">
               <h2 id="hero-heading">Aerin</h2>
               <div id="action-pips" class="action-pips" aria-label="Actions remaining"></div>
@@ -46,7 +46,7 @@
             <div id="hero-stats" class="actor-stats"></div>
           </section>
 
-          <div class="hud-status">
+          <div class="hud-status" data-hud-gutter="top">
             <p class="hud-card objective-card">
               <span class="hud-label">Objective</span>
               <strong id="objective-text">Loading encounter…</strong>
@@ -60,7 +60,7 @@
             </div>
           </div>
 
-          <aside class="hud-side" aria-label="Combat details">
+          <aside class="hud-side" data-hud-gutter="right" aria-label="Combat details">
             <section class="hud-card inspector">
               <h2 class="hud-label">Detail</h2>
               <div id="selected-detail" class="selected-detail"></div>
@@ -71,9 +71,9 @@
             </section>
           </aside>
 
-          <p id="board-prompt" class="board-prompt" aria-live="polite">행동을 선택하세요.</p>
+          <p id="board-prompt" class="board-prompt" data-hud-gutter="bottom" aria-live="polite">행동을 선택하세요.</p>
 
-          <footer class="hand-dock">
+          <footer class="hand-dock" data-hud-gutter="bottom">
             <div id="hand-cards" class="hand-cards"></div>
             <div class="hand-side">
               <p class="pile-counts">

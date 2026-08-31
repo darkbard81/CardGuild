@@ -15,8 +15,8 @@ import type { AssetCatalog } from "../../presentation";
 import { ActorRenderer } from "./ActorRenderer";
 import { BattleCamera } from "./BattleCamera";
 import { BoardProjection } from "./BoardProjection";
-import type { BoardViewConfig } from "./BoardViewConfig";
-import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
+import type { BoardSafeArea, BoardViewConfig } from "./BoardViewConfig";
+import { DEFAULT_BOARD_VIEW_CONFIG, ZERO_BOARD_SAFE_AREA } from "./BoardViewConfig";
 import { ObjectRenderer } from "./ObjectRenderer";
 import { facingPolygon, pointInPolygon, TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
 import { TerrainRenderer, type SortableVisual } from "./TerrainRenderer";
@@ -43,6 +43,8 @@ export interface BattleViewHandlers {
   readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
   readonly onFacing: (facing: Direction) => void;
   readonly onHoverCell: (position: GridPosition | null) => void;
+  /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
+  readonly safeArea: () => BoardSafeArea;
 }
 
 interface AnimationRecord {
@@ -121,6 +123,7 @@ export class BattleView {
   private boardKey = "";
   private currentHighlights: BoardHighlights = { tiles: [], actorIds: [], objectIds: [], facingPosition: null };
   private hoverPosition: GridPosition | null = null;
+  private safeArea: BoardSafeArea = ZERO_BOARD_SAFE_AREA;
   private boardMesh: PerspectiveMesh | null = null;
   private visuals: PositionedVisual[] = [];
   private actorVisuals = new Map<string, PositionedVisual>();
@@ -159,6 +162,7 @@ export class BattleView {
       this.resizeFrame = window.requestAnimationFrame(() => {
         this.resizeFrame = null;
         this.app.resize();
+        this.safeArea = this.handlers.safeArea();
         this.layoutScene();
       });
     });
@@ -173,6 +177,7 @@ export class BattleView {
     this.cancelAnimations();
     this.state = state;
     this.currentHighlights = highlights;
+    this.safeArea = this.handlers.safeArea();
     const nextBoardKey = `${state.scenarioId}:${state.map.width}x${state.map.height}`;
     if (this.boardKey !== nextBoardKey) {
       this.boardKey = nextBoardKey;
@@ -183,7 +188,7 @@ export class BattleView {
     this.depthRenderLayer.detachAll();
     for (const layer of [this.boardFloorLayer, this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
-    const corners = this.camera.corners(this.app.screen.width, this.app.screen.height);
+    const corners = this.camera.corners(this.app.screen.width, this.app.screen.height, this.safeArea);
     this.projection.update(state.map.width, state.map.height, corners);
     this.boardMesh = new PerspectiveMesh({
       texture: boardTexture,
@@ -244,7 +249,7 @@ export class BattleView {
 
   private layoutScene(): void {
     if (!this.state || this.app.screen.width <= 0 || this.app.screen.height <= 0) return;
-    const corners = this.camera.corners(this.app.screen.width, this.app.screen.height);
+    const corners = this.camera.corners(this.app.screen.width, this.app.screen.height, this.safeArea);
     this.projection.update(this.state.map.width, this.state.map.height, corners);
     this.boardMesh?.setCorners(
       corners[0].x, corners[0].y,
