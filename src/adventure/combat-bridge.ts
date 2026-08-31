@@ -1,7 +1,8 @@
-import { buildActorSetup, getContentIdentity } from "../content/compile-content";
+import { getContentIdentity } from "../content/compile-content";
 import type { CompiledContentPack } from "../content/content-types";
 import { positionKey } from "../game/grid";
 import type { CombatDefinition } from "../game/types";
+import { deriveActorSetup, validatePartyLoadout } from "../loadout";
 import { deriveCombatSeed } from "./runtime";
 import type { AdventureState } from "./types";
 
@@ -18,17 +19,21 @@ export function buildAdventureEncounter(
   if (state.phase !== "combat" || !scenarioId) throw new Error("Adventure is not in an active combat phase.");
   const source = pack.scenarioSources[scenarioId];
   if (!source) throw new Error(`Scenario "${scenarioId}" is not present in the compiled content pack.`);
+  const validation = validatePartyLoadout(state.party, state.collection, pack);
+  if (!validation.valid) throw new Error(`Adventure party loadout is invalid: ${validation.issues[0]?.message ?? "unknown error"}`);
 
   const actors = source.placements.map((placement) => {
     const actorDefinition = pack.actorDefinitions[placement.actorDefinitionId];
     if (!actorDefinition) throw new Error(`Actor definition "${placement.actorDefinitionId}" is missing.`);
-    if (!placement.partyMemberId) return buildActorSetup(actorDefinition, placement);
+    if (!placement.partyMemberId) {
+      return deriveActorSetup(actorDefinition, placement, actorDefinition.starterLoadout, pack.combatContent);
+    }
     const partyMember = state.party.members[placement.partyMemberId];
     if (!partyMember) throw new Error(`Party member "${placement.partyMemberId}" is missing.`);
     if (partyMember.actorDefinitionId !== placement.actorDefinitionId) {
       throw new Error(`Party member "${partyMember.id}" does not match actor definition "${placement.actorDefinitionId}".`);
     }
-    return buildActorSetup(actorDefinition, placement, partyMember.equipmentIds);
+    return deriveActorSetup(actorDefinition, placement, partyMember.loadout, pack.combatContent, partyMember.id);
   });
 
   return {

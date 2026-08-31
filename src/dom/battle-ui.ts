@@ -12,6 +12,7 @@ import type {
   LegalAction,
   ScenarioDefinition,
 } from "../game";
+import type { AssetCatalog } from "../presentation";
 
 export interface BattleUiHandlers {
   readonly onCard: (action: LegalAction) => void;
@@ -143,6 +144,7 @@ export class BattleUi {
   public constructor(
     private readonly content: CombatContent,
     private readonly scenario: ScenarioDefinition,
+    private readonly catalog: AssetCatalog,
     private readonly handlers: BattleUiHandlers,
   ) {
     this.resultAction.textContent = "Return to Adventure";
@@ -184,6 +186,8 @@ export class BattleUi {
     this.renderCards(
       actions.filter((action) => action.source.kind === "card"),
       presentation.selectedAction,
+      state,
+      hero.id,
     );
     this.renderLog(state, history);
 
@@ -253,30 +257,53 @@ export class BattleUi {
     }
   }
 
-  private renderCards(actions: readonly LegalAction[], selected: LegalAction | null): void {
+  private renderCards(
+    actions: readonly LegalAction[],
+    selected: LegalAction | null,
+    state: CombatState,
+    actorId: string,
+  ): void {
     this.handCards.replaceChildren();
     if (actions.length === 0) {
       this.handCards.append(element("p", "empty-message", "손패가 비었습니다."));
       return;
     }
-    for (const action of actions) this.handCards.append(this.cardButton(action, selected));
+    for (const action of actions) {
+      const card = action.source.kind === "card"
+        ? state.cardZones[actorId]?.hand.find((candidate) => candidate.id === action.source.id)
+        : undefined;
+      this.handCards.append(this.cardButton(action, selected, card));
+    }
   }
 
-  private cardButton(action: LegalAction, selected: LegalAction | null): HTMLButtonElement {
+  private cardButton(
+    action: LegalAction,
+    selected: LegalAction | null,
+    card: CombatState["cardZones"][string]["hand"][number] | undefined,
+  ): HTMLButtonElement {
     const button = element("button", "tactical-card");
     button.type = "button";
     button.disabled = !action.enabled;
     button.dataset.actionId = action.actionId;
     button.dataset.sourceId = action.source.id;
     button.dataset.sourceKind = action.source.kind;
+    if (card) {
+      button.dataset.cardDefinitionId = card.definitionId;
+      button.dataset.cardSourceKind = card.source.kind;
+    }
     button.setAttribute("aria-pressed", String(selected?.source.id === action.source.id));
     if (selected?.source.id === action.source.id) button.classList.add("selected");
     button.title = action.reason ?? action.description;
 
     const top = element("span", "card-top");
     top.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
+    const visual = card ? this.catalog.cardVisual(card.definitionId) : null;
+    const icon = element("span", visual ? "tactical-card-icon" : "tactical-card-icon missing");
+    icon.setAttribute("aria-hidden", "true");
+    if (visual) Object.assign(icon.style, this.catalog.domAtlasStyle(visual, 32));
     button.append(
       top,
+      icon,
       element("span", "card-description", action.description),
       element("span", "card-source", action.sourceLabel ?? "Character"),
     );

@@ -111,7 +111,7 @@ export class BattleController {
       onHoverCell: (position) => this.handleHoverCell(position),
       safeArea: () => measureHudSafeArea(stage),
     });
-    this.ui = new BattleUi(this.definition.content, this.definition.scenario, {
+    this.ui = new BattleUi(this.definition.content, this.definition.scenario, catalog, {
       onCard: (action) => this.handleCard(action),
       onCardHover: (action) => this.handleActionHover(action),
       onEndTurn: () => this.endTurn(),

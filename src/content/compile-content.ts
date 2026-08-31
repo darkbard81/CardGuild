@@ -1,5 +1,7 @@
 import { positionKey } from "../game/grid";
 import type { ActorSetup, CombatDefinition, ContentIdentity, ScenarioDefinition } from "../game/types";
+import { deriveActorSetup } from "../loadout";
+import type { PartyMemberLoadout } from "../loadout";
 import type {
   ActorDefinition,
   CompiledContentPack,
@@ -29,34 +31,16 @@ function recordById<T extends { readonly id: string }>(values: readonly T[]): Re
 export function buildActorSetup(
   definition: ActorDefinition,
   placement: EncounterActorPlacement,
-  equipmentIds: readonly string[] = definition.equipmentIds,
+  content: CombatDefinition["content"],
+  loadout: PartyMemberLoadout = definition.starterLoadout,
 ): ActorSetup {
-  return {
-    id: placement.instanceId,
-    definitionId: definition.id,
-    name: definition.name,
-    team: placement.team,
-    position: { ...placement.position },
-    facing: placement.facing,
-    hp: definition.hp,
-    maxHp: definition.maxHp,
-    baseAc: definition.baseAc,
-    reflexModifier: definition.reflexModifier,
-    athleticsModifier: definition.athleticsModifier,
-    initiativeModifier: definition.initiativeModifier,
-    speedFeet: definition.speedFeet,
-    fallbackWeapon: { ...definition.fallbackWeapon, damage: { ...definition.fallbackWeapon.damage } },
-    conditions: (definition.initialConditions ?? []).map((condition) => ({ ...condition })),
-    traits: definition.traits.map((trait) => ({ ...trait, params: trait.params ? { ...trait.params } : undefined })),
-    equipmentIds: [...equipmentIds],
-    innateActionIds: [...definition.innateActionIds],
-    baseCardGrants: definition.baseCardGrants.map((grant) => ({ ...grant })),
-  };
+  return deriveActorSetup(definition, placement, loadout, content);
 }
 
 export function compileScenario(
   source: ScenarioSource,
   actorDefinitions: Readonly<Record<string, ActorDefinition>>,
+  combatContent: CombatDefinition["content"],
 ): ScenarioDefinition {
   return {
     id: source.id,
@@ -65,7 +49,7 @@ export function compileScenario(
     actors: source.placements.map((placement) => {
       const definition = actorDefinitions[placement.actorDefinitionId];
       if (!definition) throw new Error(`Actor definition "${placement.actorDefinitionId}" is not present.`);
-      return buildActorSetup(definition, placement);
+      return buildActorSetup(definition, placement, combatContent);
     }),
     map: {
       width: source.map.width,
@@ -85,18 +69,19 @@ export function compileContentPack(
 
   const normalized = normalizeContentPack(source);
   const actorDefinitions = recordById(normalized.actors);
-  const scenarios = recordById(normalized.scenarios.map((scenario) => compileScenario(scenario, actorDefinitions)));
+  const combatContent = {
+    actions: recordById(normalized.actions),
+    cards: recordById(normalized.cards),
+    equipment: recordById(normalized.equipment),
+    traits: recordById(normalized.traits),
+    conditions: recordById(normalized.conditions),
+  };
+  const scenarios = recordById(normalized.scenarios.map((scenario) => compileScenario(scenario, actorDefinitions, combatContent)));
 
   return {
     manifest: normalized.manifest,
     fingerprint: fingerprintContentPack(normalized),
-    combatContent: {
-      actions: recordById(normalized.actions),
-      cards: recordById(normalized.cards),
-      equipment: recordById(normalized.equipment),
-      traits: recordById(normalized.traits),
-      conditions: recordById(normalized.conditions),
-    },
+    combatContent,
     actorDefinitions,
     scenarioSources: recordById(normalized.scenarios),
     scenarios,

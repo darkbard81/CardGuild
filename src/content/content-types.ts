@@ -12,6 +12,7 @@ import type {
   Direction,
   EquipmentDefinition,
   EquipmentId,
+  EquipmentSlotId,
   MapObjectState,
   ObjectiveDefinition,
   ScenarioDefinition,
@@ -24,7 +25,7 @@ import type {
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 3;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -42,10 +43,20 @@ export interface ActorDefinition {
   readonly speedFeet: number;
   readonly fallbackWeapon: WeaponProfile;
   readonly traits: readonly TraitInstance[];
-  readonly equipmentIds: readonly EquipmentId[];
+  readonly loadoutProfile: LoadoutProfile;
+  readonly starterLoadout: StarterLoadout;
   readonly innateActionIds: readonly ActionId[];
   readonly baseCardGrants: readonly CardGrant[];
   readonly initialConditions?: readonly ConditionInstance[];
+}
+
+export interface LoadoutProfile {
+  readonly preparedCardCapacity: number;
+}
+
+export interface StarterLoadout {
+  readonly equipment: Readonly<Partial<Record<EquipmentSlotId, EquipmentId>>>;
+  readonly preparedCards: readonly CardDefinitionId[];
 }
 
 export interface EncounterActorPlacement {

@@ -23,6 +23,7 @@ export interface AdventureUiHandlers {
   readonly onStart: () => void;
   readonly onContinue: () => void;
   readonly onChooseReward: (rewardId: string, choiceIndex: number) => void;
+  readonly onOpenLoadout: () => void;
   readonly onRetry: () => void;
 }
 
@@ -65,21 +66,31 @@ export class AdventureUi {
     this.content.replaceChildren();
 
     if (state.phase === "ready") {
+      const actions = element("div", "adventure-actions");
+      actions.append(
+        this.actionButton("Begin Adventure", this.handlers.onStart),
+        this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
+      );
       this.content.append(
-        element("p", "eyebrow", "M2 Linear Adventure"),
+        element("p", "eyebrow", "M3 Loadout Adventure"),
         element("h1", undefined, this.definition.name),
         element("p", "adventure-description", this.definition.description),
-        this.actionButton("Begin Adventure", this.handlers.onStart),
+        actions,
       );
       return;
     }
     if (state.phase === "between-encounters") {
       const scenario = state.currentEncounterId ? this.pack.scenarios[state.currentEncounterId] : undefined;
+      const actions = element("div", "adventure-actions");
+      actions.append(
+        this.actionButton("Enter Encounter", this.handlers.onContinue),
+        this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
+      );
       this.content.append(
         element("p", "eyebrow", "Next Encounter"),
         element("h1", undefined, scenario?.name ?? "Continue"),
         element("p", "adventure-description", scenario?.objective.description ?? "Prepare for battle."),
-        this.actionButton("Enter Encounter", this.handlers.onContinue),
+        actions,
       );
       return;
     }
@@ -136,5 +147,15 @@ export class AdventureUi {
     button.type = "button";
     button.addEventListener("click", onClick);
     return button;
+  }
+
+  private secondaryActionButton(label: string, onClick: () => void): HTMLButtonElement {
+    const button = this.actionButton(label, onClick);
+    button.classList.add("adventure-action-secondary");
+    return button;
+  }
+
+  public setVisible(visible: boolean): void {
+    this.screen.hidden = !visible;
   }
 }

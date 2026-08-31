@@ -61,7 +61,7 @@ describe("content structural validation", () => {
     })[0];
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain(
-      "Pack: cardguild.m2\nSource: content/test/manifest.json",
+      "Pack: cardguild.m3\nSource: content/test/manifest.json",
     );
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain("Path: /manifest/version");
   });
@@ -121,7 +121,7 @@ describe("content semantic validation and compilation", () => {
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toBe(
       [
-        "Pack: cardguild.m2",
+        "Pack: cardguild.m3",
         "Source: content/test/equipment.json",
         "Definition: halberd",
         "Path: [0].traits[0].id",
@@ -168,6 +168,7 @@ describe("content semantic validation and compilation", () => {
         {
           id: "trait-only-kit",
           name: "Trait-only Kit",
+          slot: "shield",
           traits: [{ id: "trip" }, { id: "fly" }, { id: "shield" }],
           statModifiers: [],
           shieldBonus: 2,
@@ -178,7 +179,10 @@ describe("content semantic validation and compilation", () => {
           ? {
               ...actor,
               initiativeModifier: 100,
-              equipmentIds: ["trait-only-kit"],
+              starterLoadout: {
+                ...actor.starterLoadout,
+                equipment: { shield: "trait-only-kit" },
+              },
               initialConditions: [{ id: "custom-condition", sourceId: "test" }],
             }
           : { ...actor, initiativeModifier: -100 },
@@ -191,7 +195,11 @@ describe("content semantic validation and compilation", () => {
     const setup = createCombat(definition, 72);
     const allCards = Object.values(setup.state.cardZones.hero ?? {}).flat() as readonly {
       readonly definitionId: string;
-      readonly source: { readonly objectId: string; readonly traitId?: string };
+      readonly source: {
+        readonly kind: "base" | "prepared" | "equipment-trait";
+        readonly equipmentId?: string;
+        readonly traitId?: string;
+      };
     }[];
 
     expect(allCards.filter((card) => card.definitionId === "card.trip")).toHaveLength(3);
@@ -199,7 +207,7 @@ describe("content semantic validation and compilation", () => {
     expect(
       allCards
         .filter((card) => card.definitionId === "card.trip" || card.definitionId === "card.fly")
-        .every((card) => card.source.objectId === "trait-only-kit" && card.source.traitId !== undefined),
+        .every((card) => card.source.kind === "equipment-trait" && card.source.equipmentId === "trait-only-kit" && card.source.traitId !== undefined),
     ).toBe(true);
 
     const actions = listLegalActions(setup.state, "hero", pack.combatContent);
@@ -234,7 +242,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 2,
+        schemaVersion: 3,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),

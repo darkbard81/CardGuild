@@ -31,8 +31,8 @@ npm run content:check
 원본 파일, definition, JSON path와 원인을 출력합니다.
 
 ```text
-Pack: cardguild.m2
-Source: content/m2/equipment.json
+Pack: cardguild.m3
+Source: content/m3/equipment.json
 Definition: halberd
 Path: [0].traits[1].id
 UNKNOWN_TRAIT: Trait "tirp" is not defined.
@@ -44,8 +44,10 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   같은 ID를 사용할 수 있습니다.
 - Content에서 사용하는 모든 Trait ID를 `traits.json`에 먼저 등록합니다.
 - Card, provider, Actor와 effect가 참조하는 ID는 같은 pack 안에 존재해야 합니다.
-- 한 Actor에 같은 Equipment definition ID를 두 번 넣지 않습니다. 장비 instance가
-  필요해지는 M3 전까지 duplicate equipment reference는 오류입니다.
+- Equipment는 `weapon`, `shield`, `feet` 중 정확한 `slot`을 선언합니다. slot은 편성
+  metadata이며 효과는 계속 Statistic/Trait provider로 정의합니다.
+- Actor는 `loadoutProfile.preparedCardCapacity`와 `starterLoadout`을 선언합니다.
+  `baseCardGrants`는 Collection copy를 소비하는 prepared card와 분리합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
 - `remove-condition`은 지정한 Condition ID를 즉시 제거합니다. 판정이 필요한
@@ -53,7 +55,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `2`입니다.
+- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `3`입니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면
   version을 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key,
@@ -64,5 +66,5 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 Schema shape를 호환되지 않게 바꿀 때는 기존 schema를 덮어써서 조용히 해석하지
 말고 `schemaVersion`을 올리고 명시적인 migration 또는 새 loader를 추가합니다.
-현재 pre-release repository에는 v1 runtime compatibility layer가 없으며 v2가
+현재 pre-release repository에는 이전 pack runtime compatibility layer가 없으며 v3가
 authoritative contract입니다.

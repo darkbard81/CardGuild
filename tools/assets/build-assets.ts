@@ -4,7 +4,7 @@ import path from "node:path";
 import sharp, { type OverlayOptions } from "sharp";
 
 type AssetKind = "actor" | "terrain" | "object" | "ui";
-type SourceMode = "square-terrain" | "web-overlay" | "grounded-object" | "two-sided-actor";
+type SourceMode = "square-terrain" | "web-overlay" | "grounded-object" | "two-sided-actor" | "ui-icon";
 
 interface Point {
   readonly x: number;
@@ -38,7 +38,7 @@ interface SourcePlan {
 }
 
 interface GenerationPlan {
-  readonly version: 2;
+  readonly version: 3;
   readonly styleSheet: string;
   readonly promptConvention: string;
   readonly background: "transparent";
@@ -52,6 +52,8 @@ interface GenerationPlan {
   readonly presentation: {
     readonly terrainVisuals: Readonly<Record<string, string>>;
     readonly objectVisuals: Readonly<Record<string, string>>;
+    readonly equipmentVisuals: Readonly<Record<string, string>>;
+    readonly cardVisuals: Readonly<Record<string, string>>;
   };
 }
 
@@ -128,7 +130,7 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 }
 
 function validatePlan(plan: GenerationPlan): void {
-  if (plan.version !== 2) throw new Error("Generation plan version must be 2.");
+  if (plan.version !== 3) throw new Error("Generation plan version must be 3.");
   if (plan.background !== "transparent") throw new Error("Generated sources must use the transparent background contract.");
   if (!isPowerOfTwo(plan.atlas.size)) throw new Error("Atlas size must be a power of two.");
   if (plan.atlas.padding < 1 || plan.atlas.padding > 2) throw new Error("Atlas padding must be 1 or 2 pixels.");
@@ -296,6 +298,9 @@ function processedPath(root: string, source: SourcePlan, frame: FramePlan): stri
   if (frame.kind === "object") {
     return path.join(root, "art", "processed", "objects", `${frame.assetId.replace(/^object\./, "").replaceAll(".", "-")}.png`);
   }
+  if (frame.kind === "ui") {
+    return path.join(root, "art", "processed", "ui", `${frame.assetId.replace(/^ui\./, "").replaceAll(".", "-")}.png`);
+  }
   return path.join(root, "art", "processed", "terrain", `${frame.assetId.replace(/^(terrain|transition)\./, "").replaceAll(".", "-")}.png`);
 }
 
@@ -344,8 +349,12 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
         .resize(scaledWidth, scaledHeight, { fit: "fill" })
         .png()
         .toBuffer();
-      const left = Math.round(frame.plan.anchor.x * source.canvas.width - scaledWidth / 2);
-      const top = Math.round(frame.plan.anchor.y * source.canvas.height - scaledHeight);
+      const left = source.mode === "ui-icon"
+        ? Math.round((source.canvas.width - scaledWidth) / 2)
+        : Math.round(frame.plan.anchor.x * source.canvas.width - scaledWidth / 2);
+      const top = source.mode === "ui-icon"
+        ? Math.round((source.canvas.height - scaledHeight) / 2)
+        : Math.round(frame.plan.anchor.y * source.canvas.height - scaledHeight);
       if (left < 0 || top < 0 || left + scaledWidth > source.canvas.width || top + scaledHeight > source.canvas.height) {
         throw new Error(`${frame.plan.assetId} does not fit its normalized canvas.`);
       }
@@ -449,7 +458,7 @@ async function buildAtlas(root: string, plan: GenerationPlan, assets: readonly P
     },
   };
   await writeJson(atlasDataPath, atlasData);
-  await writeJson(path.join(root, "presentation", "m2", "atlas-map.json"), atlasData);
+  await writeJson(path.join(root, "presentation", "m3", "atlas-map.json"), atlasData);
   process.stdout.write(`Packed ${assets.length} sprites -> ${path.relative(root, atlasImagePath)}\n`);
 }
 
@@ -471,17 +480,24 @@ async function buildManifest(root: string, plan: GenerationPlan, assets: readonl
     }));
   }
   const manifest = {
-    version: 3,
-    bundle: "m2-encounter",
-    atlas: { path: "/assets/m2-atlas.json" },
+    version: 4,
+    bundle: "m3-encounter",
+    atlas: {
+      path: "/assets/m3-atlas.json",
+      imagePath: "/assets/m3-atlas.webp",
+      width: plan.atlas.size,
+      height: plan.atlas.size,
+    },
     assets: definitions,
     actorVisuals,
     terrainVisuals: plan.presentation.terrainVisuals,
     objectVisuals: plan.presentation.objectVisuals,
+    equipmentVisuals: plan.presentation.equipmentVisuals,
+    cardVisuals: plan.presentation.cardVisuals,
   };
   const sourceMap = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, path.relative(root, asset.file)]));
-  await writeJson(path.join(root, "presentation", "m2", "asset-manifest.json"), manifest);
-  await writeJson(path.join(root, "presentation", "m2", "asset-sources.json"), sourceMap);
+  await writeJson(path.join(root, "presentation", "m3", "asset-manifest.json"), manifest);
+  await writeJson(path.join(root, "presentation", "m3", "asset-sources.json"), sourceMap);
 }
 
 function traitSet(tile: ScenarioTile): ReadonlySet<string> {
@@ -498,7 +514,7 @@ function semanticType(traits: ReadonlySet<string>): string {
 }
 
 async function buildTilemaps(root: string): Promise<void> {
-  const scenarios = await readJson<readonly ScenarioSource[]>(path.join(root, "content", "m2", "scenarios.json"));
+  const scenarios = await readJson<readonly ScenarioSource[]>(path.join(root, "content", "m3", "scenarios.json"));
   const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm"];
   const transitionPalette = ["transition.web"];
   const objectPalette = ["object.wall", "object.gate.closed", "object.lever", "object.crate"];
@@ -554,13 +570,13 @@ async function buildTilemaps(root: string): Promise<void> {
       meta: { tileIds, objectIds, type: types, walkable, cost: costs },
     };
   }
-  await writeJson(path.join(root, "presentation", "m2", "tilemaps.json"), { version: 1, maps });
+  await writeJson(path.join(root, "presentation", "m3", "tilemaps.json"), { version: 1, maps });
   process.stdout.write(`Built ${Object.keys(maps).length} layered tilemaps\n`);
 }
 
 async function writePipelineMetadata(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
   const metadata = {
-    version: 2,
+    version: 3,
     styleSheet: plan.styleSheet,
     promptConvention: plan.promptConvention,
     backgroundCleanup: {
@@ -599,6 +615,13 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     "actor.goblin-skirmisher.front",
     "actor.goblin-brute.front",
     "actor.goblin-chief.front",
+    "ui.equipment.halberd",
+    "ui.equipment.shield",
+    "ui.equipment.boots-of-fly",
+    "ui.card.trip",
+    "ui.card.fly",
+    "ui.card.spirit-beacon",
+    "ui.card.reactive-strike",
   ];
   const cellWidth = 300;
   const cellHeight = 300;

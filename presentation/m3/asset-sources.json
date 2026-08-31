@@ -15,5 +15,12 @@
   "actor.goblin-brute.front": "art/processed/actors/goblin-brute/front.png",
   "actor.goblin-brute.back": "art/processed/actors/goblin-brute/back.png",
   "actor.goblin-chief.front": "art/processed/actors/goblin-chief/front.png",
-  "actor.goblin-chief.back": "art/processed/actors/goblin-chief/back.png"
+  "actor.goblin-chief.back": "art/processed/actors/goblin-chief/back.png",
+  "ui.equipment.halberd": "art/processed/ui/equipment-halberd.png",
+  "ui.equipment.shield": "art/processed/ui/equipment-shield.png",
+  "ui.equipment.boots-of-fly": "art/processed/ui/equipment-boots-of-fly.png",
+  "ui.card.trip": "art/processed/ui/card-trip.png",
+  "ui.card.fly": "art/processed/ui/card-fly.png",
+  "ui.card.spirit-beacon": "art/processed/ui/card-spirit-beacon.png",
+  "ui.card.reactive-strike": "art/processed/ui/card-reactive-strike.png"
 }

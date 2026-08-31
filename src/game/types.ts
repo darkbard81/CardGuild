@@ -3,6 +3,7 @@ export type ActionId = string;
 export type CardDefinitionId = string;
 export type CardInstanceId = string;
 export type EquipmentId = string;
+export type EquipmentSlotId = "weapon" | "shield" | "feet";
 export type EffectId = string;
 export type ObjectId = string;
 export type TraitId = string;
@@ -76,7 +77,7 @@ export interface ActorState {
   readonly traits: readonly TraitInstance[];
   readonly equipmentIds: readonly EquipmentId[];
   readonly innateActionIds: readonly ActionId[];
-  readonly baseCardGrants: readonly CardGrant[];
+  readonly deckContributions: readonly DeckContribution[];
   readonly reactionAvailable: boolean;
   readonly shieldRaised: boolean;
   readonly defeated: boolean;
@@ -119,15 +120,25 @@ export interface EffectInstance {
   readonly sustainedOnTurn: number | null;
 }
 
-export interface CardSource {
-  readonly objectId: string;
-  readonly traitId?: TraitId;
+export type DeckContributionSource =
+  | { readonly kind: "base"; readonly sourceId: string }
+  | { readonly kind: "prepared"; readonly memberId: string }
+  | {
+      readonly kind: "equipment-trait";
+      readonly equipmentId: EquipmentId;
+      readonly traitId: TraitId;
+    };
+
+export interface DeckContribution {
+  readonly cardDefinitionId: CardDefinitionId;
+  readonly count: number;
+  readonly source: DeckContributionSource;
 }
 
 export interface CardInstance {
   readonly id: CardInstanceId;
   readonly definitionId: CardDefinitionId;
-  readonly source: CardSource;
+  readonly source: DeckContributionSource;
 }
 
 export interface CardZones {
@@ -222,10 +233,11 @@ export interface PendingReaction {
 }
 
 export interface CombatState {
-  readonly version: 3;
+  readonly version: 4;
   readonly scenarioId: string;
   readonly seed: number;
   readonly contentIdentity: ContentIdentity;
+  readonly setupFingerprint: string;
   readonly round: number;
   readonly turn: TurnState;
   readonly actors: Readonly<Record<EntityId, ActorState>>;
@@ -343,6 +355,7 @@ export interface StatModifier {
 export interface EquipmentDefinition {
   readonly id: EquipmentId;
   readonly name: string;
+  readonly slot: EquipmentSlotId;
   readonly traits: readonly TraitInstance[];
   readonly statModifiers: readonly StatModifier[];
   readonly weaponProfile?: WeaponProfile;
@@ -382,6 +395,7 @@ export interface CombatReplay {
   readonly scenarioId: string;
   readonly seed: number;
   readonly contentIdentity: ContentIdentity;
+  readonly setupFingerprint: string;
   readonly commands: readonly CombatCommand[];
 }
 

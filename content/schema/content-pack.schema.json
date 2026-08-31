@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v2",
+  "title": "CardGuild Content Pack v3",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures"],
@@ -295,20 +295,47 @@
     "equipmentDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "traits", "statModifiers"],
+      "required": ["id", "name", "slot", "traits", "statModifiers"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
+        "slot": { "enum": ["weapon", "shield", "feet"] },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
         "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } },
         "weaponProfile": { "$ref": "#/$defs/weaponProfile" },
         "shieldBonus": { "type": "integer", "minimum": 1 }
       }
     },
+    "loadoutProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["preparedCardCapacity"],
+      "properties": {
+        "preparedCardCapacity": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "starterEquipment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "weapon": { "$ref": "#/$defs/nonEmptyString" },
+        "shield": { "$ref": "#/$defs/nonEmptyString" },
+        "feet": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "starterLoadout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["equipment", "preparedCards"],
+      "properties": {
+        "equipment": { "$ref": "#/$defs/starterEquipment" },
+        "preparedCards": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } }
+      }
+    },
     "actorDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "hp", "maxHp", "baseAc", "reflexModifier", "athleticsModifier", "initiativeModifier", "speedFeet", "fallbackWeapon", "initialConditions", "traits", "equipmentIds", "innateActionIds", "baseCardGrants"],
+      "required": ["id", "name", "hp", "maxHp", "baseAc", "reflexModifier", "athleticsModifier", "initiativeModifier", "speedFeet", "fallbackWeapon", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
@@ -322,7 +349,8 @@
         "fallbackWeapon": { "$ref": "#/$defs/weaponProfile" },
         "initialConditions": { "type": "array", "items": { "$ref": "#/$defs/conditionInstance" } },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
-        "equipmentIds": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "loadoutProfile": { "$ref": "#/$defs/loadoutProfile" },
+        "starterLoadout": { "$ref": "#/$defs/starterLoadout" },
         "innateActionIds": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
         "baseCardGrants": { "type": "array", "items": { "$ref": "#/$defs/cardGrant" } }
       }
@@ -452,7 +480,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": { "const": 2 },
+        "schemaVersion": { "const": 3 },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

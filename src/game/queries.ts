@@ -92,11 +92,15 @@ export function resolveActionSource(
     if (!cardDefinition) return null;
     const definition = content.actions[cardDefinition.actionId];
     if (!definition) return null;
-    const equipmentName = content.equipment[card.source.objectId]?.name;
+    const sourceLabel = card.source.kind === "equipment-trait"
+      ? content.equipment[card.source.equipmentId]?.name ?? card.source.equipmentId
+      : card.source.kind === "prepared"
+        ? "Prepared Card"
+        : card.source.sourceId;
     return {
       definition,
       card,
-      sourceLabel: equipmentName ?? card.source.objectId,
+      sourceLabel,
     };
   }
 

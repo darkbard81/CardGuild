@@ -2,6 +2,7 @@
   {
     "id": "halberd",
     "name": "Halberd",
+    "slot": "weapon",
     "traits": [{ "id": "weapon" }, { "id": "trip" }, { "id": "reach" }],
     "statModifiers": [],
     "weaponProfile": {
@@ -14,6 +15,7 @@
   {
     "id": "shield",
     "name": "Steel Shield",
+    "slot": "shield",
     "traits": [{ "id": "shield" }],
     "statModifiers": [],
     "shieldBonus": 2
@@ -21,6 +23,7 @@
   {
     "id": "boots-of-fly",
     "name": "Boots of Fly",
+    "slot": "feet",
     "traits": [{ "id": "fly" }],
     "statModifiers": [{ "selector": "reflex", "value": 1, "label": "Boots of Fly" }]
   }

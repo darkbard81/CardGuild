@@ -1,5 +1,6 @@
 export { chooseAiCommand } from "./ai";
 export { createCombat, dispatchCombatCommand } from "./engine";
+export { computeCombatSetupFingerprint, fingerprintValue, fnv1a64, stableSerialize } from "./determinism";
 export { findPath, findReachableTiles, gridDistance, hasLineOfEffect, hasLineOfSight, positionKey } from "./grid";
 export {
   getContextActionOptions,

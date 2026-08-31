@@ -47,7 +47,7 @@ const actor: ActorState = {
   traits: [],
   equipmentIds: [],
   innateActionIds: [],
-  baseCardGrants: [],
+  deckContributions: [],
   reactionAvailable: true,
   shieldRaised: false,
   defeated: false,

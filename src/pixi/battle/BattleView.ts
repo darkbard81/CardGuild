@@ -8,6 +8,7 @@ import {
   Rectangle,
   RenderLayer,
   type Ticker,
+  Texture,
 } from "pixi.js";
 
 import type { CombatEvent, CombatState, Direction, GridPosition } from "../../game";
@@ -189,6 +190,7 @@ export class BattleView {
     }
 
     this.depthRenderLayer.detachAll();
+    if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
     for (const layer of [this.boardFloorLayer, this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
     const corners = this.camera.corners(this.boardFrame());
@@ -462,6 +464,9 @@ export class BattleView {
     this.app.canvas.removeEventListener("pointerdown", this.pointerDownHandler);
     this.app.canvas.removeEventListener("pointermove", this.pointerMoveHandler);
     this.app.canvas.removeEventListener("pointerup", this.pointerUpHandler);
+    if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
+    this.scene.removeFromParent();
+    this.app.renderer.render({ container: this.app.stage, clear: true });
     this.scene.destroy({ children: true });
     this.terrainRenderer.destroy();
   }

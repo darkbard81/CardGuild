@@ -145,6 +145,7 @@ export function validateContentPackSemantics(
   const knownActions = new Set(source.actions.map((definition) => definition.id));
   const knownCards = new Set(source.cards.map((definition) => definition.id));
   const knownEquipment = new Set(source.equipment.map((definition) => definition.id));
+  const equipmentById = new Map(source.equipment.map((definition) => [definition.id, definition]));
   const knownActors = new Set(source.actors.map((definition) => definition.id));
 
   source.traits.forEach((definition, definitionIndex) => {
@@ -218,15 +219,23 @@ export function validateContentPackSemantics(
     if (actor.hp > actor.maxHp) {
       addIssue(context, "actors", `[${index}].hp`, "HP_EXCEEDS_MAXIMUM", `Actor "${actor.id}" has ${actor.hp} HP but maximum HP is ${actor.maxHp}.`, actor.id);
     }
-    const equipmentSeen = new Set<string>();
-    actor.equipmentIds.forEach((equipmentId, equipmentIndex) => {
+    Object.entries(actor.starterLoadout.equipment).forEach(([slot, equipmentId]) => {
+      if (!equipmentId) return;
       if (!knownEquipment.has(equipmentId)) {
-        addIssue(context, "actors", `[${index}].equipmentIds[${equipmentIndex}]`, "UNKNOWN_EQUIPMENT", `Equipment "${equipmentId}" is not defined.`, actor.id);
+        addIssue(context, "actors", `[${index}].starterLoadout.equipment.${slot}`, "UNKNOWN_EQUIPMENT", `Equipment "${equipmentId}" is not defined.`, actor.id);
       }
-      if (equipmentSeen.has(equipmentId)) {
-        addIssue(context, "actors", `[${index}].equipmentIds[${equipmentIndex}]`, "DUPLICATE_EQUIPMENT", `Actor "${actor.id}" equips "${equipmentId}" more than once.`, actor.id);
+      const equipment = equipmentById.get(equipmentId);
+      if (equipment && equipment.slot !== slot) {
+        addIssue(context, "actors", `[${index}].starterLoadout.equipment.${slot}`, "SLOT_MISMATCH", `Equipment "${equipmentId}" belongs in slot "${equipment.slot}", not "${slot}".`, actor.id);
       }
-      equipmentSeen.add(equipmentId);
+    });
+    if (actor.starterLoadout.preparedCards.length > actor.loadoutProfile.preparedCardCapacity) {
+      addIssue(context, "actors", `[${index}].starterLoadout.preparedCards`, "PREPARED_CAPACITY_EXCEEDED", `Actor "${actor.id}" prepares ${actor.starterLoadout.preparedCards.length} cards but capacity is ${actor.loadoutProfile.preparedCardCapacity}.`, actor.id);
+    }
+    actor.starterLoadout.preparedCards.forEach((cardId, cardIndex) => {
+      if (!knownCards.has(cardId)) {
+        addIssue(context, "actors", `[${index}].starterLoadout.preparedCards[${cardIndex}]`, "UNKNOWN_CARD", `Card "${cardId}" is not defined.`, actor.id);
+      }
     });
     actor.innateActionIds.forEach((actionId, actionIndex) => {
       if (!knownActions.has(actionId)) {

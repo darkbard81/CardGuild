@@ -17,7 +17,15 @@
     },
     "initialConditions": [],
     "traits": [{ "id": "actor" }, { "id": "hero" }],
-    "equipmentIds": ["halberd", "shield", "boots-of-fly"],
+    "loadoutProfile": { "preparedCardCapacity": 2 },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "halberd",
+        "shield": "shield",
+        "feet": "boots-of-fly"
+      },
+      "preparedCards": []
+    },
     "innateActionIds": [],
     "baseCardGrants": [
       { "cardDefinitionId": "card.spirit-beacon", "count": 2, "sourceId": "focus.spirit-beacon" },
@@ -42,7 +50,8 @@
     },
     "initialConditions": [],
     "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "equipmentIds": [],
+    "loadoutProfile": { "preparedCardCapacity": 0 },
+    "starterLoadout": { "equipment": {}, "preparedCards": [] },
     "innateActionIds": [],
     "baseCardGrants": []
   },
@@ -64,7 +73,8 @@
     },
     "initialConditions": [],
     "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "equipmentIds": [],
+    "loadoutProfile": { "preparedCardCapacity": 0 },
+    "starterLoadout": { "equipment": {}, "preparedCards": [] },
     "innateActionIds": ["knockdown"],
     "baseCardGrants": []
   },
@@ -86,7 +96,8 @@
     },
     "initialConditions": [],
     "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "equipmentIds": [],
+    "loadoutProfile": { "preparedCardCapacity": 0 },
+    "starterLoadout": { "equipment": {}, "preparedCards": [] },
     "innateActionIds": ["knockdown"],
     "baseCardGrants": []
   }

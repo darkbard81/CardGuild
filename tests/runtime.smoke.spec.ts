@@ -93,6 +93,49 @@ async function pickRingAction(
   await page.locator(`#ring-root .ring-option[data-action-id="${actionId}"]`).click();
 }
 
+async function strikeRoadEnemy(page: Page): Promise<boolean> {
+  for (const [gridX, gridY] of [[2.5, 1.5], [1.5, 1.5]] as const) {
+    await clickBoardPoint(page, gridX, gridY);
+    const strike = page.locator('#ring-root .ring-option[data-action-id="strike"]');
+    if (await strike.isVisible()) {
+      await strike.click();
+      return true;
+    }
+    await page.keyboard.press("Escape");
+  }
+  return false;
+}
+
+async function waitForRoadTurn(page: Page): Promise<void> {
+  for (let step = 0; step < 12; step += 1) {
+    if (await page.locator("#result-modal").isVisible()) return;
+    if (await page.locator("#reaction-modal").isVisible()) {
+      await page.getByRole("button", { name: "Use Reaction" }).click();
+      continue;
+    }
+    if ((await page.locator("#initiative-list .active").textContent())?.includes("Aerin")) return;
+    await page.waitForTimeout(300);
+  }
+  throw new Error("Road Ambush did not return control to Aerin.");
+}
+
+async function winRoadAmbush(page: Page): Promise<void> {
+  for (let round = 0; round < 7; round += 1) {
+    await waitForRoadTurn(page);
+    if (await page.locator("#result-modal").isVisible()) break;
+    while (await page.locator("#action-pips .available").count()) {
+      if (!await strikeRoadEnemy(page)) break;
+      if (await page.locator("#result-modal").isVisible()) break;
+    }
+    if (await page.locator("#result-modal").isVisible()) break;
+    await page.getByRole("button", { name: "End Turn" }).click();
+  }
+  await expect(page.locator("#result-modal")).toBeVisible();
+  await expect(page.locator("#result-title")).toHaveText("Victory");
+  await page.getByRole("button", { name: "Return to Adventure" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
+}
+
 test("shows the Adventure shell before loading encounter WebP assets", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpRequests: string[] = [];
@@ -103,10 +146,111 @@ test("shows the Adventure shell before loading encounter WebP assets", async ({ 
 
   await expect(page.locator("#adventure-content h1")).toHaveText("Goblin Trouble");
   await expect(page.locator("#adventure-progress li")).toHaveCount(3);
-  await expect(page.locator("#adventure-collection")).toContainText("No rewards yet");
+  await expect(page.locator("#adventure-collection")).toContainText("Halberd ×1");
+  await expect(page.locator("#adventure-collection")).toContainText("Steel Shield ×1");
+  await expect(page.locator("#adventure-collection")).toContainText("Boots of Fly ×1");
   expect(webpRequests).toEqual([]);
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-adventure.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-adventure.png"), fullPage: true });
+});
+
+test("previews and atomically applies a responsive loadout change", async ({ page }, testInfo) => {
+  const runtimeErrors = captureRuntimeErrors(page);
+  const webpResponses: string[] = [];
+  page.on("response", (response) => {
+    if (response.url().endsWith(".webp") && response.ok()) webpResponses.push(response.url());
+  });
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openAdventure(page);
+  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "loadout");
+  await expect(page.locator(".collection-item")).toHaveCount(3);
+  await expect(page.locator(".deck-contribution")).toHaveCount(4);
+  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
+  await expect(page.locator('.deck-contribution[data-card-id="card.fly"]')).toContainText("Boots of Fly / Fly");
+  await expect(page.locator('.deck-contribution[data-card-id="card.trip"]')).toContainText("Halberd / Trip");
+  expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
+
+  await page.locator('.equipment-slot[data-slot="feet"]').click();
+  await page.locator('.loadout-option[data-option-id="empty-feet"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
+  await expect(page.locator("#loadout-detail")).toContainText("Fly ×2");
+  await page.getByRole("button", { name: "Apply Change" }).click();
+  await expect(page.locator(".deck-panel h2")).toHaveText("6 Tactical Cards");
+  await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
+  await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
+  await expect(page.locator(".collection-panel")).toContainText("×1");
+
+  await page.locator('.equipment-slot[data-slot="feet"]').click();
+  await page.locator('.loadout-option[data-option-id="boots-of-fly"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("15 → 16");
+  await page.getByRole("button", { name: "Apply Change" }).click();
+  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-loadout-1024.png"), fullPage: true });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(mobileOverflow).toBeLessThanOrEqual(0);
+  await page.getByRole("button", { name: "Done" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
+  expect(runtimeErrors).toEqual([]);
+});
+
+test("carries a reward loadout through the shared resolver into the next encounter", async ({ page }, testInfo) => {
+  test.setTimeout(45_000);
+  const runtimeErrors = captureRuntimeErrors(page);
+  await openBattle(page);
+  await winRoadAmbush(page);
+
+  await expect(page.locator("#adventure-content h1")).toHaveText("Choose one reward");
+  await page.getByRole("button", { name: "Fly card" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-adventure-phase", "between-encounters");
+  await expect(page.locator("#adventure-collection")).toContainText("Fly ×1");
+  await page.getByRole("button", { name: "Manage Loadout" }).click();
+
+  await page.getByRole("button", { name: "+ Add Card" }).click();
+  await page.locator('.loadout-option[data-option-id="card.fly"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("Fly ×1 (Prepared Card)");
+  await page.getByRole("button", { name: "Apply Change" }).click();
+  await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
+
+  await page.locator('.equipment-slot[data-slot="feet"]').click();
+  await page.locator('.loadout-option[data-option-id="empty-feet"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
+  await page.getByRole("button", { name: "Apply Change" }).click();
+  await page.locator('.equipment-slot[data-slot="shield"]').click();
+  await page.locator('.loadout-option[data-option-id="empty-shield"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("− Context: Raise Shield");
+  await page.getByRole("button", { name: "Apply Change" }).click();
+  await expect(page.locator(".deck-panel h2")).toHaveText("7 Tactical Cards");
+  await expect(page.locator(".collection-panel")).toContainText("Steel Shield");
+  await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-reward-loadout.png"), fullPage: true });
+
+  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "Enter Encounter" }).click();
+  await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.ruined-gate");
+  await expect(page.locator("#hero-stats")).toContainText("Reflex DC");
+  await expect(page.locator("#hero-stats")).toContainText("15");
+  await expect(page.locator("#hand-count")).toHaveText("6");
+  await expect(page.locator("#deck-count")).toHaveText("1");
+  await expect(page.locator('.tactical-card[data-card-definition-id="card.fly"][data-card-source-kind="prepared"]')).toHaveCount(1);
+
+  const nextMap = { width: 9, height: 7 };
+  const hero = projectCorners(await boardCorners(page), nextMap, 1.5, 3.5);
+  await page.locator("#pixi-canvas").click({ position: hero });
+  await expect(page.locator('#ring-root .ring-option[data-action-id="raise-shield"]')).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#ring-root")).toBeHidden();
+  const destination = projectCorners(await boardCorners(page), nextMap, 2.5, 3.5);
+  await page.locator("#pixi-canvas").click({ position: destination });
+  await expect(page.locator('#ring-root .ring-option[data-action-id="fly"]')).toBeVisible();
+  expect(runtimeErrors).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-next-encounter.png"), fullPage: true });
 });
 
 test("loads the 2.5D board and keeps hover, movement, and facing on the square grid", async ({ page }, testInfo) => {
@@ -123,7 +267,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#hand-cards .tactical-card")).toHaveCount(6);
   await expect(page.locator("#app")).toHaveAttribute("data-state-hash", /^[0-9a-f]{16}$/);
   expect(new Set(webpResponses).size).toBe(1);
-  expect(webpResponses.some((url) => url.endsWith("/assets/m2-atlas.webp"))).toBe(true);
+  expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
 
   const initialHash = await page.locator("#app").getAttribute("data-state-hash");
   const target = await boardPoint(page, 1.5, 1.5);
@@ -199,7 +343,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(boardCentre.y).toBeLessThan(canvasBox.height);
 
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-perspective-board.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-perspective-board.png"), fullPage: true });
 });
 
 test("fits the 1024x768 minimum and independently resizes the battlefield camera", async ({ page }, testInfo) => {
@@ -249,7 +393,7 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
       `${await panel.getAttribute("class")} overlaps the board quad`,
     ).toBe(false);
   }
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-minimum.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-minimum.png"), fullPage: true });
 
   const minimumRatio = await heroCellRatio(page);
 
@@ -266,7 +410,7 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m2-responsive.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-responsive.png"), fullPage: true });
 });
 
 test("pans an off-screen actor back into view when its turn starts", async ({ page }) => {

@@ -1,13 +1,13 @@
 {
-  "version": 2,
+  "version": 3,
   "styleSheet": "art/STYLE.md",
   "promptConvention": "documents/ImageGen_Prompt.md",
   "background": "transparent",
   "atlas": {
     "size": 2048,
     "padding": 2,
-    "image": "public/assets/m2-atlas.webp",
-    "data": "public/assets/m2-atlas.json"
+    "image": "public/assets/m3-atlas.webp",
+    "data": "public/assets/m3-atlas.json"
   },
   "sources": [
     {
@@ -147,6 +147,31 @@
         { "assetId": "actor.goblin-chief.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 164 } }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin chief Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/ui/equipment-icons.png",
+      "mode": "ui-icon",
+      "grid": { "rows": 1, "cols": 3 },
+      "canvas": { "width": 256, "height": 256 },
+      "frames": [
+        { "assetId": "ui.equipment.halberd", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
+        { "assetId": "ui.equipment.shield", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
+        { "assetId": "ui.equipment.boots-of-fly", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } }
+      ],
+      "prompt": "Reference art/STYLE.md. CardGuild equipment inventory icons: Halberd, Steel Shield, and Boots of Fly, in one horizontal transparent sprite sheet."
+    },
+    {
+      "input": "art/source/ui/card-icons.png",
+      "mode": "ui-icon",
+      "grid": { "rows": 2, "cols": 2 },
+      "canvas": { "width": 256, "height": 256 },
+      "frames": [
+        { "assetId": "ui.card.trip", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
+        { "assetId": "ui.card.fly", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
+        { "assetId": "ui.card.spirit-beacon", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
+        { "assetId": "ui.card.reactive-strike", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } }
+      ],
+      "prompt": "Reference art/STYLE.md. CardGuild tactical-card icons: Trip, Fly, Spirit Beacon, and Reactive Strike, in a 2x2 transparent sprite sheet."
     }
   ],
   "presentation": {
@@ -163,6 +188,17 @@
       "lever": "object.lever",
       "gateClosed": "object.gate.closed",
       "gateOpen": "object.gate.open"
+    },
+    "equipmentVisuals": {
+      "halberd": "ui.equipment.halberd",
+      "shield": "ui.equipment.shield",
+      "boots-of-fly": "ui.equipment.boots-of-fly"
+    },
+    "cardVisuals": {
+      "card.trip": "ui.card.trip",
+      "card.fly": "ui.card.fly",
+      "card.spirit-beacon": "ui.card.spirit-beacon",
+      "card.reactive-strike": "ui.card.reactive-strike"
     }
   }
 }

@@ -18,7 +18,7 @@ export function hasTrait(
 }
 
 export function getEquipment(
-  actor: ActorState,
+  actor: Pick<ActorState, "equipmentIds">,
   content: CombatContent,
 ): readonly EquipmentDefinition[] {
   return actor.equipmentIds.flatMap((id) => {
@@ -28,7 +28,7 @@ export function getEquipment(
 }
 
 export function getEquipmentCardGrants(
-  actor: ActorState,
+  actor: Pick<ActorState, "equipmentIds">,
   content: CombatContent,
 ): readonly CardGrant[] {
   return getEquipment(actor, content).flatMap((equipment) =>
@@ -44,7 +44,7 @@ export function getEquipmentCardGrants(
 }
 
 export function getEquipmentActionGrants(
-  actor: ActorState,
+  actor: Pick<ActorState, "equipmentIds">,
   content: CombatContent,
 ) {
   return getEquipment(actor, content).flatMap((equipment) =>

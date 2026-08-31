@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "styleSheet": "art/STYLE.md",
   "promptConvention": "documents/ImageGen_Prompt.md",
   "backgroundCleanup": {
@@ -298,6 +298,125 @@
       "anchor": {
         "x": 0.5,
         "y": 1
+      }
+    },
+    "ui.equipment.halberd": {
+      "source": "art/source/ui/equipment-icons.png",
+      "output": "art/processed/ui/equipment-halberd.png",
+      "sourceBox": {
+        "left": 12,
+        "top": 11,
+        "width": 712,
+        "height": 679
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.323596,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.shield": {
+      "source": "art/source/ui/equipment-icons.png",
+      "output": "art/processed/ui/equipment-shield.png",
+      "sourceBox": {
+        "left": 0,
+        "top": 11,
+        "width": 665,
+        "height": 648
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.323596,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.boots-of-fly": {
+      "source": "art/source/ui/equipment-icons.png",
+      "output": "art/processed/ui/equipment-boots-of-fly.png",
+      "sourceBox": {
+        "left": 88,
+        "top": 41,
+        "width": 595,
+        "height": 647
+      },
+      "sourceIndex": 2,
+      "flipX": false,
+      "processingScale": 0.323596,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.trip": {
+      "source": "art/source/ui/card-icons.png",
+      "output": "art/processed/ui/card-trip.png",
+      "sourceBox": {
+        "left": 19,
+        "top": 10,
+        "width": 591,
+        "height": 617
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.367464,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.fly": {
+      "source": "art/source/ui/card-icons.png",
+      "output": "art/processed/ui/card-fly.png",
+      "sourceBox": {
+        "left": 87,
+        "top": 11,
+        "width": 502,
+        "height": 616
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.367464,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.spirit-beacon": {
+      "source": "art/source/ui/card-icons.png",
+      "output": "art/processed/ui/card-spirit-beacon.png",
+      "sourceBox": {
+        "left": 93,
+        "top": 0,
+        "width": 534,
+        "height": 591
+      },
+      "sourceIndex": 2,
+      "flipX": false,
+      "processingScale": 0.367464,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.reactive-strike": {
+      "source": "art/source/ui/card-icons.png",
+      "output": "art/processed/ui/card-reactive-strike.png",
+      "sourceBox": {
+        "left": 0,
+        "top": 0,
+        "width": 627,
+        "height": 611
+      },
+      "sourceIndex": 3,
+      "flipX": false,
+      "processingScale": 0.367464,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
       }
     }
   }

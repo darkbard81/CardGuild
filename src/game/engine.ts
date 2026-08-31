@@ -1,10 +1,10 @@
 import { rollCheck } from "./checks";
+import { computeCombatSetupFingerprint } from "./determinism";
 import { findPath, getTile, gridDistance, hasLineOfSight, positionKey } from "./grid";
 import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
   getEquipment,
-  getEquipmentCardGrants,
   getStatistic,
   getWeaponProfile,
   hasTrait,
@@ -36,10 +36,11 @@ import type {
 } from "./types";
 
 interface CombatDraft {
-  version: 3;
+  version: 4;
   scenarioId: string;
   seed: number;
   contentIdentity: CombatState["contentIdentity"];
+  setupFingerprint: string;
   round: number;
   turn: TurnState;
   actors: Record<string, ActorState>;
@@ -63,7 +64,10 @@ function cloneActor(actor: ActorState): ActorState {
     traits: actor.traits.map((trait) => ({ ...trait, params: trait.params ? { ...trait.params } : undefined })),
     equipmentIds: [...actor.equipmentIds],
     innateActionIds: [...actor.innateActionIds],
-    baseCardGrants: actor.baseCardGrants.map((grant) => ({ ...grant })),
+    deckContributions: actor.deckContributions.map((contribution) => ({
+      ...contribution,
+      source: { ...contribution.source },
+    })),
   };
 }
 
@@ -145,19 +149,16 @@ function fail(state: CombatState, error: string): CommandResult {
 }
 
 function makeCardInstances(actor: ActorState, content: CombatContent): readonly CardInstance[] {
-  const grants = [
-    ...actor.baseCardGrants,
-    ...getEquipmentCardGrants(actor, content),
-  ];
   const instances: CardInstance[] = [];
   let sequence = 1;
 
-  for (const grant of grants) {
+  for (const grant of actor.deckContributions) {
+    if (!content.cards[grant.cardDefinitionId]) continue;
     for (let copy = 0; copy < grant.count; copy += 1) {
       instances.push({
         id: `${actor.id}-card-${String(sequence).padStart(2, "0")}`,
         definitionId: grant.cardDefinitionId,
-        source: { objectId: grant.sourceId, traitId: grant.traitId },
+        source: { ...grant.source },
       });
       sequence += 1;
     }
@@ -211,10 +212,11 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
   if (activeActor) actors[activeActorId] = { ...activeActor, reactionAvailable: true };
 
   const state: CombatState = {
-    version: 3,
+    version: 4,
     scenarioId: scenario.id,
     seed,
     contentIdentity: { ...contentIdentity },
+    setupFingerprint: computeCombatSetupFingerprint(definition, seed),
     round: 1,
     turn: {
       initiativeOrder,

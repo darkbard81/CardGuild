@@ -1,8 +1,11 @@
 {
-  "version": 3,
-  "bundle": "m2-encounter",
+  "version": 4,
+  "bundle": "m3-encounter",
   "atlas": {
-    "path": "/assets/m2-atlas.json"
+    "path": "/assets/m3-atlas.json",
+    "imagePath": "/assets/m3-atlas.webp",
+    "width": 2048,
+    "height": 2048
   },
   "assets": {
     "terrain.stone-floor": {
@@ -177,6 +180,76 @@
         "y": 1
       },
       "displayHeight": 164
+    },
+    "ui.equipment.halberd": {
+      "frame": "ui.equipment.halberd",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.shield": {
+      "frame": "ui.equipment.shield",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.boots-of-fly": {
+      "frame": "ui.equipment.boots-of-fly",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.trip": {
+      "frame": "ui.card.trip",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.fly": {
+      "frame": "ui.card.fly",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.spirit-beacon": {
+      "frame": "ui.card.spirit-beacon",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.reactive-strike": {
+      "frame": "ui.card.reactive-strike",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
     }
   },
   "actorVisuals": {
@@ -210,5 +283,16 @@
     "lever": "object.lever",
     "gateClosed": "object.gate.closed",
     "gateOpen": "object.gate.open"
+  },
+  "equipmentVisuals": {
+    "halberd": "ui.equipment.halberd",
+    "shield": "ui.equipment.shield",
+    "boots-of-fly": "ui.equipment.boots-of-fly"
+  },
+  "cardVisuals": {
+    "card.trip": "ui.card.trip",
+    "card.fly": "ui.card.fly",
+    "card.spirit-beacon": "ui.card.spirit-beacon",
+    "card.reactive-strike": "ui.card.reactive-strike"
   }
 }

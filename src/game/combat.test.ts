@@ -89,7 +89,7 @@ describe("M0 combat core", () => {
     const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     const second = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("c416128a1f3c5319");
+    expect(hashCombatState(first)).toBe("ff6dd09946fa2432");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -99,7 +99,7 @@ describe("M0 combat core", () => {
     expect(first.cardZones.hero?.drawPile).toHaveLength(2);
     const cards = allCards(first, "hero");
     expect(cards.filter((card) => card.definitionId === "card.trip")).toHaveLength(3);
-    expect(cards.filter((card) => card.source.objectId === "halberd")).toHaveLength(3);
+    expect(cards.filter((card) => card.source.kind === "equipment-trait" && card.source.equipmentId === "halberd")).toHaveLength(3);
     expect(cards.filter((card) => card.definitionId === "card.fly")).toHaveLength(2);
     expect(getStatistic(first.actors.hero as NonNullable<typeof first.actors.hero>, M0_CONTENT, "reflex").value).toBe(16);
   });
@@ -548,6 +548,7 @@ describe("M0 combat core", () => {
         "trait-only-kit": {
           id: "trait-only-kit",
           name: "Trait-only Kit",
+          slot: "shield",
           traits: [{ id: "trip" }, { id: "fly" }, { id: "shield" }],
           statModifiers: [],
         },
@@ -573,6 +574,18 @@ describe("M0 combat core", () => {
     const scenario = heroFirstScenario({
       hero: {
         equipmentIds: ["trait-only-kit"],
+        deckContributions: [
+          {
+            cardDefinitionId: "card.trip",
+            count: 3,
+            source: { kind: "equipment-trait", equipmentId: "trait-only-kit", traitId: "trip" },
+          },
+          {
+            cardDefinitionId: "card.fly",
+            count: 2,
+            source: { kind: "equipment-trait", equipmentId: "trait-only-kit", traitId: "fly" },
+          },
+        ],
         conditions: [{ id: "test-condition", sourceId: "test" }],
       },
     });
@@ -583,7 +596,7 @@ describe("M0 combat core", () => {
     expect(
       cards
         .filter((card) => card.definitionId === "card.trip" || card.definitionId === "card.fly")
-        .every((card) => card.source.objectId === "trait-only-kit"),
+        .every((card) => card.source.kind === "equipment-trait" && card.source.equipmentId === "trait-only-kit"),
     ).toBe(true);
     const actions = listLegalActions(state, "hero", providerContent);
     expect(actions.find((action) => action.actionId === "raise-shield")?.enabled).toBe(true);
@@ -777,6 +790,33 @@ describe("M0 combat core", () => {
     ).toThrow(/content mismatch/i);
     expect(setup.state.sequence).toBe(0);
     expect(setup.state.commandLog).toEqual([]);
+  });
+
+  it("changes setup identity with loadout-derived actor setup and fails before replay commands", () => {
+    const scenario = heroFirstScenario();
+    const setup = createM0Combat(scenario, 57);
+    const replay = createCombatReplay(setup.state);
+    const hero = scenario.actors.find((actor) => actor.id === "hero") as ActorSetup;
+    const changedScenario: ScenarioDefinition = {
+      ...scenario,
+      actors: scenario.actors.map((actor) => actor.id === hero.id
+        ? {
+            ...actor,
+            equipmentIds: actor.equipmentIds.filter((id) => id !== "boots-of-fly"),
+            deckContributions: actor.deckContributions.filter(
+              (entry) => entry.source.kind !== "equipment-trait" || entry.source.equipmentId !== "boots-of-fly",
+            ),
+          }
+        : actor),
+    };
+    const changed = createM0Combat(changedScenario, 57);
+
+    expect(changed.state.setupFingerprint).not.toBe(setup.state.setupFingerprint);
+    expect(() => replayCombat(
+      { scenario: changedScenario, content: M0_CONTENT, contentIdentity: M0_CONTENT_IDENTITY },
+      replay,
+    )).toThrow(/setup mismatch/i);
+    expect(replay.commands).toEqual([]);
   });
 
   it("ends in victory when all enemies are defeated", () => {
