@@ -1,5 +1,5 @@
 import { WebSocket } from "ws";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { M4_ADVENTURE_ID, M4_COMPILED_PACK, M4_CONTENT_IDENTITY } from "../../src/content";
 import type {
@@ -118,6 +118,7 @@ describe("real WebSocket cooperative session", () => {
     await Promise.all(sockets.splice(0).map((socket) => socket.close()));
     if (running) await running.close();
     running = null;
+    vi.restoreAllMocks();
   });
 
   it("creates, joins, orders, authorizes, converges, and reconnects three real clients", async () => {
@@ -373,4 +374,40 @@ describe("real WebSocket cooperative session", () => {
     oversized.send("x".repeat(70 * 1024));
     expect(await oversizedClose).toBe(1009);
   }, 30_000);
+
+  it("observes a rejected SessionHost intent and closes only that gateway connection with 1011", async () => {
+    const authorityErrors = vi.fn();
+    running = await startCardGuildServer({
+      context: { pack: M4_COMPILED_PACK, adventureId: M4_ADVENTURE_ID, actorDefinitionId: "hero.aerin" },
+      allowedOrigins: new Set([TEST_ORIGIN]),
+      heartbeatMs: 60_000,
+      onInternalError: authorityErrors,
+      sources: {
+        sessionId: () => "session-failure-boundary",
+        playerId: () => "player-failure-boundary",
+        reconnectCredential: () => ({
+          token: "reconnect-failure-boundary",
+          digest: digestReconnectToken("reconnect-failure-boundary"),
+        }),
+        adventureSeed: () => 1,
+      },
+    });
+    const created = await post<SessionCredentialResponse>(running.origin, "/api/sessions", { displayName: "Host" });
+    const client = await SocketClient.connect(running.origin, created.body);
+    sockets.push(client);
+    await client.waitForSnapshot(0, 0);
+    const host = running.store.get(created.body.sessionId) as NonNullable<ReturnType<typeof running.store.get>>;
+    const authorityFailure = new Error("private invariant detail");
+    vi.spyOn(host, "handleIntent").mockRejectedValueOnce(authorityFailure);
+    const closed = new Promise<{ readonly code: number; readonly reason: string }>((resolve) => {
+      client.socket.once("close", (code, reason) => resolve({ code, reason: reason.toString() }));
+    });
+
+    client.send(intent("trigger-authority-failure", host.state.revision, { type: "begin-adventure" }));
+
+    await expect(closed).resolves.toEqual({ code: 1011, reason: "session authority failure" });
+    expect(authorityErrors).toHaveBeenCalledOnce();
+    expect(authorityErrors).toHaveBeenCalledWith(authorityFailure);
+    expect(client.messages.some((message) => JSON.stringify(message).includes("private invariant detail"))).toBe(false);
+  });
 });

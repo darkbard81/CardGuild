@@ -16,6 +16,7 @@ export interface StartServerOptions {
   readonly sources?: SessionStoreSources;
   readonly heartbeatMs?: number;
   readonly helloDeadlineMs?: number;
+  readonly onInternalError?: (error: unknown) => void;
 }
 
 export interface RunningCardGuildServer {
@@ -77,6 +78,9 @@ export async function startCardGuildServer(options: StartServerOptions): Promise
     allowedOrigins: options.allowedOrigins,
     heartbeatMs: options.heartbeatMs,
     helloDeadlineMs: options.helloDeadlineMs,
+    onInternalError: options.onInternalError ?? ((error: unknown) => {
+      console.error("CardGuild session authority failed", error);
+    }),
   });
   const host = options.host ?? "127.0.0.1";
   await new Promise<void>((resolve, reject) => {

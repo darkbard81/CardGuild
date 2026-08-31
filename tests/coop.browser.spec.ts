@@ -61,6 +61,36 @@ async function expectConvergence(pages: readonly Page[]): Promise<void> {
   }, { timeout: 20_000 }).toBe(true);
 }
 
+test("clears a stale stored credential, returns to landing, and stops reconnecting", async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 1024, height: 768 } });
+  await context.addInitScript(() => {
+    sessionStorage.setItem("cardguild.session.v1", JSON.stringify({
+      sessionId: "session_stale_browser_credential",
+      playerId: "player_stale_browser_credential",
+      reconnectToken: "stale-token",
+      seat: 1,
+    }));
+  });
+  const page = await context.newPage();
+  let connectionAttempts = 0;
+  page.on("websocket", (socket) => {
+    if (new URL(socket.url()).pathname === "/ws") connectionAttempts += 1;
+  });
+
+  try {
+    await page.goto("/");
+    await expect(page.locator("#app")).toHaveAttribute("data-session-error", "SESSION_NOT_FOUND");
+    await expect(page.locator("#app")).toHaveAttribute("data-session-status", "closed");
+    await expect(page.locator("#create-session")).toBeVisible();
+    await expect(page.locator("#session-status")).toContainText("Session was not found");
+    await expect.poll(() => page.evaluate(() => sessionStorage.getItem("cardguild.session.v1"))).toBeNull();
+    await page.waitForTimeout(900);
+    expect(connectionAttempts).toBe(1);
+  } finally {
+    await context.close();
+  }
+});
+
 test("host invites three isolated browser clients, enforces ownership, converges, and reconnects", async ({ browser }, testInfo) => {
   test.setTimeout(90_000);
   const players = await Promise.all([

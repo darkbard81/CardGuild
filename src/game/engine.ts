@@ -29,6 +29,7 @@ import type {
   ConditionInstance,
   EffectInstance,
   MapObjectState,
+  MoveContinuation,
   PendingReaction,
   RngState,
   TileState,
@@ -514,6 +515,70 @@ function completeMove(
   applyWebTerrain(draft, actor.id, continuation.movementMode, events, content);
 }
 
+function continuationAction(
+  state: CombatState,
+  actor: ActorState,
+  continuation: MoveContinuation,
+  content: CombatContent,
+): ActionDefinition | null {
+  if (continuation.source.kind === "card") {
+    const committedCard = state.cardZones[actor.id]?.discardPile.find(
+      (card) => card.id === continuation.source.id,
+    );
+    const cardDefinition = committedCard ? content.cards[committedCard.definitionId] : undefined;
+    if (!cardDefinition || cardDefinition.actionId !== continuation.actionId) return null;
+    return content.actions[cardDefinition.actionId] ?? null;
+  }
+  if (continuation.source.id !== continuation.actionId) return null;
+  const resolved = resolveActionSource(state, actor, continuation.source, content);
+  return resolved?.definition.id === continuation.actionId ? resolved.definition : null;
+}
+
+export function validateMoveContinuation(
+  state: CombatState,
+  continuation: MoveContinuation,
+  content: CombatContent,
+): { readonly legal: boolean; readonly reason?: string } {
+  const actor = state.actors[continuation.actorId];
+  if (!actor || actor.defeated) return { legal: false, reason: "Mover cannot continue." };
+  if (state.outcome) return { legal: false, reason: "Combat has ended." };
+  if (state.turn.activeActorId !== actor.id) return { legal: false, reason: "Mover is no longer active." };
+  if (actor.conditions.some((condition) => condition.id === "prone" || condition.id === "grabbed")) {
+    return { legal: false, reason: "Mover can no longer move." };
+  }
+
+  const definition = continuationAction(state, actor, continuation, content);
+  if (
+    !definition ||
+    definition.timing.kind !== "turn" ||
+    definition.effect.kind !== "move" ||
+    definition.effect.movementMode !== continuation.movementMode ||
+    state.turn.lockedActionIds.includes(definition.id)
+  ) return { legal: false, reason: "Movement action source is no longer legal." };
+
+  const finalStep = continuation.path[continuation.path.length - 1];
+  if (!finalStep || positionKey(finalStep) !== positionKey(continuation.destination)) {
+    return { legal: false, reason: "Movement continuation path is malformed." };
+  }
+  const maximumCost = definition.effect.step ? 5 : actor.speedFeet;
+  const currentPath = findPath(
+    state.map,
+    state.actors,
+    actor.id,
+    actor.position,
+    continuation.destination,
+    maximumCost,
+    continuation.movementMode,
+  );
+  if (
+    !currentPath ||
+    currentPath.path.length !== continuation.path.length ||
+    currentPath.path.some((position, index) =>
+      positionKey(position) !== positionKey(continuation.path[index] as NonNullable<typeof continuation.path[number]>))
+  ) return { legal: false, reason: "Movement path is no longer legal." };
+  return { legal: true };
+}
+
 function executeMove(
   draft: CombatDraft,
   actorId: string,
@@ -858,6 +923,7 @@ function resumeAfterReaction(
     if (!draft.outcome) advanceTurn(draft, events);
     return;
   }
+  if (!validateMoveContinuation(asState(draft), pending.continuation, content).legal) return;
   completeMove(draft, pending.continuation, content, events);
   checkCombatOutcome(draft, events);
 }
@@ -903,8 +969,7 @@ function continueReactionQueue(
   if (
     draft.turn.activeActorId !== mover.id ||
     pending.continuation.actorId !== mover.id ||
-    pending.continuation.destination.x < 0 ||
-    pending.continuation.destination.y < 0
+    !validateMoveContinuation(asState(draft), pending.continuation, content).legal
   ) {
     draft.pendingReaction = null;
     return;

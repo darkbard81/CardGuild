@@ -351,6 +351,15 @@ export function validateContentPackSemantics(
       if (scenario && scenario.partySpawnSlots.length < adventure.partySize.max) {
         addIssue(context, "adventures", path, "INSUFFICIENT_PARTY_SPAWNS", `Scenario "${scenarioId}" provides ${scenario.partySpawnSlots.length} party spawn slots but adventure maximum is ${adventure.partySize.max}.`, adventure.id);
       }
+      if (scenario) {
+        const availableSeats = new Set(scenario.partySpawnSlots.map((spawn) => spawn.seat));
+        for (const seat of [1, 2, 3] as const) {
+          if (seat > adventure.partySize.max) break;
+          if (!availableSeats.has(seat)) {
+            addIssue(context, "adventures", path, "MISSING_PARTY_SPAWN_SEAT", `Scenario "${scenarioId}" is missing required party spawn seat ${seat}.`, adventure.id);
+          }
+        }
+      }
       if (encounterSeen.has(scenarioId)) addIssue(context, "adventures", path, "DUPLICATE_ADVENTURE_ENCOUNTER", `Adventure repeats scenario "${scenarioId}".`, adventure.id);
       encounterSeen.add(scenarioId);
     });

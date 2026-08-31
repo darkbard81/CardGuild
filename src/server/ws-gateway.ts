@@ -17,6 +17,7 @@ export interface WebSocketGatewayOptions {
   readonly allowedOrigins: ReadonlySet<string>;
   readonly helloDeadlineMs?: number;
   readonly heartbeatMs?: number;
+  readonly onInternalError?: (error: unknown) => void;
 }
 
 function errorMessage(code: ProtocolErrorCode, message: string): ServerError {
@@ -130,7 +131,21 @@ export function attachWebSocketGateway(
         send(socket, errorMessage("INVALID_MESSAGE", "hello is only valid as the first message."));
         return;
       }
-      void store.get(identity.sessionId)?.handleIntent(identity.playerId, message);
+      const host = store.get(identity.sessionId);
+      if (!host) {
+        socket.close(1011, "session authority unavailable");
+        return;
+      }
+      void host.handleIntent(identity.playerId, message).catch((error: unknown) => {
+        try {
+          options.onInternalError?.(error);
+        } catch {
+          // An observer failure must not escape the transport error boundary.
+        }
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close(1011, "session authority failure");
+        }
+      });
     });
     socket.on("close", () => {
       clearTimeout(deadline);

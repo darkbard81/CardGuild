@@ -1,5 +1,5 @@
 import type { AdventureState } from "../adventure";
-import { SessionClient, type SessionCredential } from "../client";
+import { isTerminalHandshakeFailure, SessionClient, type SessionCredential } from "../client";
 import { M4_ADVENTURE, M4_COMPILED_PACK, M4_CONTENT_IDENTITY } from "../content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
@@ -110,6 +110,10 @@ export class AdventureController {
       },
       onError: (error) => {
         this.root.dataset.sessionError = error.code;
+        if (isTerminalHandshakeFailure(error.code)) {
+          this.returnToLanding(error.message);
+          return;
+        }
         this.lobbyUi.setStatus(error.message);
       },
       onStatus: (status) => {
@@ -118,6 +122,23 @@ export class AdventureController {
       },
     });
     this.client.connect();
+  }
+
+  private returnToLanding(message: string): void {
+    this.snapshot = null;
+    this.client = null;
+    this.battle?.destroy();
+    this.battle = null;
+    this.root.dataset.screen = "session";
+    delete this.root.dataset.sessionId;
+    delete this.root.dataset.sessionRevision;
+    delete this.root.dataset.sessionHash;
+    delete this.root.dataset.viewerMemberId;
+    delete this.root.dataset.viewerRole;
+    this.ui.setVisible(false);
+    this.loadoutUi.setVisible(false);
+    this.lobbyUi.renderLanding();
+    this.lobbyUi.setStatus(message);
   }
 
   private viewerSeat(snapshot: ServerSnapshot): SessionSeat | undefined {

@@ -2,6 +2,7 @@ import { M4_CONTENT_IDENTITY } from "../content";
 import type {
   ClientHello,
   ClientIntentEnvelope,
+  ProtocolErrorCode,
   ServerError,
   ServerMessage,
   ServerSnapshot,
@@ -9,6 +10,16 @@ import type {
 import type { SessionGameplayIntent } from "../session";
 
 const STORAGE_KEY = "cardguild.session.v1";
+const TERMINAL_HANDSHAKE_FAILURES = new Set<ProtocolErrorCode>([
+  "SESSION_NOT_FOUND",
+  "UNAUTHENTICATED",
+  "CONTENT_MISMATCH",
+  "PROTOCOL_MISMATCH",
+]);
+
+export function isTerminalHandshakeFailure(code: ProtocolErrorCode): boolean {
+  return TERMINAL_HANDSHAKE_FAILURES.has(code);
+}
 
 export interface SessionCredential {
   readonly sessionId: string;
@@ -50,6 +61,8 @@ export class SessionClient {
   private reconnectTimer: number | null = null;
   private reconnectAttempt = 0;
   private destroyed = false;
+  private terminallyClosed = false;
+  private authenticatedSocket: WebSocket | null = null;
   private snapshotValue: ServerSnapshot | null = null;
   private outstanding: { readonly envelope: ClientIntentEnvelope; committedRevision?: number } | null = null;
 
@@ -110,14 +123,17 @@ export class SessionClient {
   }
 
   public connect(): void {
-    if (this.destroyed || this.socket?.readyState === WebSocket.OPEN || this.socket?.readyState === WebSocket.CONNECTING) return;
+    if (
+      this.destroyed ||
+      this.terminallyClosed ||
+      this.socket?.readyState === WebSocket.OPEN ||
+      this.socket?.readyState === WebSocket.CONNECTING
+    ) return;
     this.handlers.onStatus(this.reconnectAttempt > 0 ? "reconnecting" : "connecting");
     const socket = new WebSocket(websocketUrl());
     this.socket = socket;
     socket.addEventListener("open", () => {
       if (this.socket !== socket) return;
-      this.reconnectAttempt = 0;
-      this.handlers.onStatus("connected");
       const hello: ClientHello = {
         v: 1,
         type: "hello",
@@ -129,18 +145,30 @@ export class SessionClient {
       socket.send(JSON.stringify(hello));
       if (this.outstanding) socket.send(JSON.stringify(this.outstanding.envelope));
     });
-    socket.addEventListener("message", (event) => this.receive(JSON.parse(String(event.data)) as ServerMessage));
+    socket.addEventListener("message", (event) => {
+      if (this.socket !== socket) return;
+      this.receive(socket, JSON.parse(String(event.data)) as ServerMessage);
+    });
     socket.addEventListener("close", (event) => {
       if (this.socket === socket) this.socket = null;
-      if (this.destroyed) return;
+      if (this.authenticatedSocket === socket) this.authenticatedSocket = null;
+      if (this.destroyed || this.terminallyClosed) return;
       if (event.code === 4001) {
-        this.handlers.onStatus("closed");
-        this.handlers.onError({
+        this.stopTerminal({
           v: 1,
           type: "error",
           code: "UNAUTHENTICATED",
           message: "This session was opened in a newer connection.",
-        });
+        }, false);
+        return;
+      }
+      if (event.code === 4003 || event.code === 4004) {
+        this.stopTerminal({
+          v: 1,
+          type: "error",
+          code: event.code === 4004 ? "SESSION_NOT_FOUND" : "UNAUTHENTICATED",
+          message: event.reason || "The session handshake was rejected.",
+        }, true);
         return;
       }
       this.scheduleReconnect();
@@ -166,9 +194,16 @@ export class SessionClient {
     return true;
   }
 
-  private receive(message: ServerMessage): void {
+  private receive(socket: WebSocket, message: ServerMessage): void {
     if (message.type === "error") {
       if (!message.requestId || this.outstanding?.envelope.requestId === message.requestId) this.outstanding = null;
+      if (isTerminalHandshakeFailure(message.code)) {
+        this.stopTerminal(message, true);
+        if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+          socket.close(1000, "terminal handshake failure");
+        }
+        return;
+      }
       this.handlers.onError(message);
       return;
     }
@@ -186,6 +221,11 @@ export class SessionClient {
       message.revision > this.snapshotValue.revision ||
       message.cause?.kind === "resync";
     if (!shouldApply) return;
+    if (this.authenticatedSocket !== socket) {
+      this.authenticatedSocket = socket;
+      this.reconnectAttempt = 0;
+      this.handlers.onStatus("connected");
+    }
     this.snapshotValue = message;
     if (
       this.outstanding?.committedRevision !== undefined &&
@@ -195,7 +235,7 @@ export class SessionClient {
   }
 
   private scheduleReconnect(): void {
-    if (this.reconnectTimer !== null || this.destroyed) return;
+    if (this.reconnectTimer !== null || this.destroyed || this.terminallyClosed) return;
     this.handlers.onStatus("reconnecting");
     const delay = Math.min(2_000, 250 * 2 ** Math.min(this.reconnectAttempt, 3));
     this.reconnectAttempt += 1;
@@ -203,6 +243,19 @@ export class SessionClient {
       this.reconnectTimer = null;
       this.connect();
     }, delay);
+  }
+
+  private stopTerminal(error: ServerError, clearCredential: boolean): void {
+    if (this.terminallyClosed) return;
+    this.terminallyClosed = true;
+    this.outstanding = null;
+    if (this.reconnectTimer !== null) {
+      window.clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    if (clearCredential) SessionClient.clearCredential();
+    this.handlers.onStatus("closed");
+    this.handlers.onError(error);
   }
 
   public destroy(): void {

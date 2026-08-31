@@ -7,7 +7,7 @@ import {
   M0_DEFAULT_SEED,
 } from "../content/load-m0-content";
 import { chooseAiCommand } from "./ai";
-import { createCombat, dispatchCombatCommand } from "./engine";
+import { createCombat, dispatchCombatCommand, validateMoveContinuation } from "./engine";
 import {
   listLegalActions,
   listLegalTargets,
@@ -123,14 +123,17 @@ function twoReactionState(moverHp = 100): CombatState {
   return makeReactionAvailable(state, "hero-2");
 }
 
-function openTwoReactions(state = twoReactionState()): CombatState {
+function openTwoReactions(
+  state = twoReactionState(),
+  destination: { readonly x: number; readonly y: number } = { x: 3, y: 1 },
+): CombatState {
   return dispatchCombatCommand(
     state,
     command(
       state,
       "goblin-skirmisher",
       { kind: "basic", id: "stride" },
-      { kind: "tile", position: { x: 3, y: 1 }, facing: "east" },
+      { kind: "tile", position: destination, facing: "east" },
     ),
     M0_CONTENT,
   ).state;
@@ -568,6 +571,61 @@ describe("M0 combat core", () => {
     }, M0_CONTENT);
     expect(skipped.state.pendingReaction).toBeNull();
     expect(skipped.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
+  });
+
+  it("cancels a reaction continuation when its destination becomes occupied or its original path changes", () => {
+    const occupiedBase = openTwoReactions();
+    const brute = occupiedBase.actors["goblin-brute"] as NonNullable<typeof occupiedBase.actors[string]>;
+    const occupied: CombatState = {
+      ...occupiedBase,
+      actors: {
+        ...occupiedBase.actors,
+        [brute.id]: { ...brute, position: { x: 3, y: 1 } },
+      },
+    };
+    const occupiedPending = occupied.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    expect(validateMoveContinuation(occupied, occupiedPending.continuation, M0_CONTENT).legal).toBe(false);
+    const occupiedPass = dispatchCombatCommand(occupied, {
+      type: "pass-reaction",
+      id: "occupied-continuation-pass",
+      sequence: occupied.sequence + 1,
+      actorId: occupiedPending.candidates[0]?.actorId as string,
+      triggerId: occupiedPending.triggerId,
+    }, M0_CONTENT);
+    expect(occupiedPass.accepted).toBe(true);
+    expect(occupiedPass.state.pendingReaction).toBeNull();
+    expect(occupiedPass.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
+    expect(occupiedPass.events.some((event) => event.type === "ACTOR_MOVED")).toBe(false);
+
+    const originalPath = openTwoReactions(twoReactionState(), { x: 3, y: 2 });
+    const pathPending = originalPath.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    expect(pathPending.continuation.path).toEqual([{ x: 3, y: 1 }, { x: 3, y: 2 }]);
+    const pathTile = originalPath.map.tiles["3,1"] as NonNullable<typeof originalPath.map.tiles[string]>;
+    const changedPath: CombatState = {
+      ...originalPath,
+      map: {
+        ...originalPath.map,
+        tiles: {
+          ...originalPath.map.tiles,
+          "3,1": { ...pathTile, traits: [...pathTile.traits, { id: "blocked" }] },
+        },
+      },
+    };
+    const withoutBoundary: CombatState = { ...changedPath, pendingReaction: null };
+    expect(listLegalTargets(withoutBoundary, "goblin-skirmisher", { kind: "basic", id: "stride" }, M0_CONTENT))
+      .toContainEqual(expect.objectContaining({ kind: "tile", position: { x: 3, y: 2 } }));
+    expect(validateMoveContinuation(changedPath, pathPending.continuation, M0_CONTENT).legal).toBe(false);
+    const changedPathPass = dispatchCombatCommand(changedPath, {
+      type: "pass-reaction",
+      id: "changed-path-pass",
+      sequence: changedPath.sequence + 1,
+      actorId: pathPending.candidates[0]?.actorId as string,
+      triggerId: pathPending.triggerId,
+    }, M0_CONTENT);
+    expect(changedPathPass.accepted).toBe(true);
+    expect(changedPathPass.state.pendingReaction).toBeNull();
+    expect(changedPathPass.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
+    expect(changedPathPass.events.some((event) => event.type === "ACTOR_MOVED")).toBe(false);
   });
 
   it("opens a movement reaction for Stride but never for Step", () => {

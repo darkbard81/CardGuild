@@ -162,6 +162,31 @@ describe("content semantic validation and compilation", () => {
     ]));
   });
 
+  it("requires every party seat through the Adventure maximum instead of accepting a slot count", () => {
+    const source = sourceCopy();
+    const adventure = source.adventures[0] as NonNullable<typeof source.adventures[0]>;
+    const invalid: ContentPackSource = {
+      ...source,
+      adventures: source.adventures.map((candidate) => candidate.id === adventure.id
+        ? { ...candidate, partySize: { min: 1, max: 2 } }
+        : candidate),
+      scenarios: source.scenarios.map((scenario) => adventure.encounterIds.includes(scenario.id)
+        ? { ...scenario, partySpawnSlots: scenario.partySpawnSlots.filter((spawn) => spawn.seat !== 2) }
+        : scenario),
+    };
+
+    const issues = validateContentPackSemantics(invalid);
+    const missingSeatIssues = issues.filter((issue) => issue.code === "MISSING_PARTY_SPAWN_SEAT");
+    expect(missingSeatIssues).toHaveLength(adventure.encounterIds.length);
+    expect(missingSeatIssues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        definitionId: adventure.id,
+        message: expect.stringContaining("missing required party spawn seat 2"),
+      }),
+    ]));
+    expect(issues.some((issue) => issue.code === "INSUFFICIENT_PARTY_SPAWNS")).toBe(false);
+  });
+
   it("adds equipment and condition providers using JSON-shaped data without engine changes", () => {
     const source = sourceCopy();
     const custom: ContentPackSource = {
