@@ -23,6 +23,10 @@ export interface BoardViewConfig {
    * every window size and only the camera zoom changes it.
    */
   readonly referenceCellWidth: number;
+  /** Square width the camera zooms in towards, so "fully zoomed" means the same on every map. */
+  readonly maxCellWidth: number;
+  /** Zoom-in always available, even on a map whose fitted squares are already large. */
+  readonly minZoomHeadroom: number;
   readonly actorFootRowOffset: number;
   readonly propFootRowOffset: number;
   readonly boardTextureCellSize: number;
@@ -46,10 +50,20 @@ export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
   meshVerticesX: 20,
   meshVerticesY: 20,
   referenceCellWidth: 128,
+  maxCellWidth: 220,
+  minZoomHeadroom: 1.5,
   actorFootRowOffset: 0.8,
   propFootRowOffset: 0.88,
   boardTextureCellSize: 128,
 });
+
+/** Everything the camera needs to frame one board inside the current canvas. */
+export interface BoardFrame {
+  readonly viewportWidth: number;
+  readonly viewportHeight: number;
+  readonly columns: number;
+  readonly safeArea: BoardSafeArea;
+}
 
 export function baseBoardCorners(
   viewportWidth: number,

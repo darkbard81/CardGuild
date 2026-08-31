@@ -15,7 +15,7 @@ import type { AssetCatalog } from "../../presentation";
 import { ActorRenderer } from "./ActorRenderer";
 import { BattleCamera } from "./BattleCamera";
 import { BoardProjection } from "./BoardProjection";
-import type { BoardSafeArea, BoardViewConfig } from "./BoardViewConfig";
+import type { BoardFrame, BoardSafeArea, BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG, ZERO_BOARD_SAFE_AREA } from "./BoardViewConfig";
 import { ObjectRenderer } from "./ObjectRenderer";
 import { facingPolygon, pointInPolygon, TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
@@ -63,6 +63,9 @@ function samePosition(left: GridPosition | null, right: GridPosition | null): bo
   return left?.x === right?.x && left?.y === right?.y;
 }
 
+/** Keeps a focused actor clear of the HUD edge rather than flush against it. */
+const FOCUS_MARGIN = 48;
+
 function lerp(left: number, right: number, progress: number): number {
   return left + (right - left) * progress;
 }
@@ -96,8 +99,7 @@ export class BattleView {
       event.deltaY < 0 ? 1.1 : 0.9,
       event.clientX - bounds.left,
       event.clientY - bounds.top,
-      this.app.screen.width,
-      this.app.screen.height,
+      this.boardFrame(),
     );
     this.layoutScene();
   };
@@ -110,7 +112,7 @@ export class BattleView {
   };
   private readonly pointerMoveHandler = (event: PointerEvent): void => {
     if (!this.panPointer || this.panPointer.id !== event.pointerId) return;
-    this.camera.panBy(event.clientX - this.panPointer.x, event.clientY - this.panPointer.y);
+    this.camera.panBy(event.clientX - this.panPointer.x, event.clientY - this.panPointer.y, this.boardFrame());
     this.panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
     this.layoutScene();
   };
@@ -163,6 +165,7 @@ export class BattleView {
         this.resizeFrame = null;
         this.app.resize();
         this.safeArea = this.handlers.safeArea();
+        this.camera.clamp(this.boardFrame());
         this.layoutScene();
       });
     });
@@ -188,7 +191,7 @@ export class BattleView {
     this.depthRenderLayer.detachAll();
     for (const layer of [this.boardFloorLayer, this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
-    const corners = this.camera.corners(this.app.screen.width, this.app.screen.height, this.safeArea);
+    const corners = this.camera.corners(this.boardFrame());
     this.projection.update(state.map.width, state.map.height, corners);
     this.boardMesh = new PerspectiveMesh({
       texture: boardTexture,
@@ -216,17 +219,40 @@ export class BattleView {
       this.actorVisuals.set(visual.stableId, positioned);
     }
     this.layoutScene();
+    const turnStarted = [...events].reverse().find((event) => event.type === "TURN_STARTED");
+    if (turnStarted) this.ensureActorVisible(turnStarted.actorId);
     this.renderFeedback(events);
     this.animateMovement(events, previousPositions);
     this.app.canvas.dataset.boardSize = `${state.map.width}x${state.map.height}`;
   }
 
-  public focusActor(actorId: string): void {
+  /**
+   * Pans the minimum distance that brings an actor back inside the safe area. At fit
+   * zoom the whole board is already visible, so this is a no-op and the board does not
+   * jump around at the start of every turn.
+   */
+  public ensureActorVisible(actorId: string): void {
     const actor = this.state?.actors[actorId];
     if (!actor) return;
     const point = this.projection.gridToScreen(actor.position.x + 0.5, actor.position.y + this.config.actorFootRowOffset);
-    this.camera.centerScreenPoint(point, this.app.screen.width, this.app.screen.height);
+    const left = this.safeArea.left + FOCUS_MARGIN;
+    const right = this.app.screen.width - this.safeArea.right - FOCUS_MARGIN;
+    const top = this.safeArea.top + FOCUS_MARGIN;
+    const bottom = this.app.screen.height - this.safeArea.bottom - FOCUS_MARGIN;
+    const dx = point.x < left ? left - point.x : point.x > right ? right - point.x : 0;
+    const dy = point.y < top ? top - point.y : point.y > bottom ? bottom - point.y : 0;
+    if (dx === 0 && dy === 0) return;
+    this.camera.panBy(dx, dy, this.boardFrame());
     this.layoutScene();
+  }
+
+  private boardFrame(): BoardFrame {
+    return {
+      viewportWidth: this.app.screen.width,
+      viewportHeight: this.app.screen.height,
+      columns: this.state?.map.width ?? 1,
+      safeArea: this.safeArea,
+    };
   }
 
   private registerVisual(visual: SortableVisual, parent: Container): PositionedVisual {
@@ -252,7 +278,7 @@ export class BattleView {
 
   private layoutScene(): void {
     if (!this.state || this.app.screen.width <= 0 || this.app.screen.height <= 0) return;
-    const corners = this.camera.corners(this.app.screen.width, this.app.screen.height, this.safeArea);
+    const corners = this.camera.corners(this.boardFrame());
     this.projection.update(this.state.map.width, this.state.map.height, corners);
     this.boardMesh?.setCorners(
       corners[0].x, corners[0].y,

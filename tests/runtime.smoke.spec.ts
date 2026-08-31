@@ -181,6 +181,23 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   const projectedHero = projectCorners(afterPan, ROAD_MAP, 1.5, 1.8);
   expect(zoomedHero?.x).toBeCloseTo(projectedHero.x, 0);
   expect(zoomedHero?.y).toBeCloseTo(projectedHero.y, 0);
+  // Panning is bounded: the board centre stays on screen however far it is dragged.
+  await page.keyboard.down("Alt");
+  await page.mouse.down();
+  await page.mouse.move(canvasBox.x + canvasBox.width * 2, canvasBox.y + canvasBox.height * 2, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up("Alt");
+  await page.waitForTimeout(100);
+  const dragged = await boardCorners(page);
+  const boardCentre = {
+    x: dragged.reduce((total, corner) => total + corner.x, 0) / dragged.length,
+    y: dragged.reduce((total, corner) => total + corner.y, 0) / dragged.length,
+  };
+  expect(boardCentre.x).toBeGreaterThan(0);
+  expect(boardCentre.x).toBeLessThan(canvasBox.width);
+  expect(boardCentre.y).toBeGreaterThan(0);
+  expect(boardCentre.y).toBeLessThan(canvasBox.height);
+
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m2-perspective-board.png"), fullPage: true });
 });
@@ -250,4 +267,36 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m2-responsive.png"), fullPage: true });
+});
+
+test("pans an off-screen actor back into view when its turn starts", async ({ page }) => {
+  const runtimeErrors = captureRuntimeErrors(page);
+  await openBattle(page);
+  const canvasBox = await page.locator("#pixi-canvas").boundingBox();
+  if (!canvasBox) throw new Error("Pixi canvas does not have a bounding box.");
+  const actorFeet = async (id: string): Promise<{ x: number; y: number }> => {
+    const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
+    const actor = feet.find((entry) => entry.id === id);
+    if (!actor) throw new Error(`${id} has not published its layout.`);
+    return actor;
+  };
+
+  await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
+  for (let index = 0; index < 8; index += 1) await page.mouse.wheel(0, -240);
+  await page.keyboard.down("Alt");
+  await page.mouse.down();
+  await page.mouse.move(canvasBox.x + canvasBox.width * 1.5, canvasBox.y + canvasBox.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await page.keyboard.up("Alt");
+  await page.waitForTimeout(150);
+  expect((await actorFeet("goblin-skirmisher")).x).toBeGreaterThan(canvasBox.width);
+
+  await page.locator("#end-turn").click();
+  await page.waitForTimeout(600);
+  const goblin = await actorFeet("goblin-skirmisher");
+  expect(goblin.x).toBeGreaterThan(0);
+  expect(goblin.x).toBeLessThan(canvasBox.width);
+  expect(goblin.y).toBeGreaterThan(0);
+  expect(goblin.y).toBeLessThan(canvasBox.height);
+  expect(runtimeErrors).toEqual([]);
 });

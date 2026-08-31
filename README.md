@@ -89,7 +89,14 @@ Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·
 layer mapping은 `presentation/m2`에 있습니다. 보드 위 콘텐츠는 절대 픽셀이 아니라
 투영된 셀 폭 대비(`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다. 창 크기가
 달라져도 스탠디가 칸에서 차지하는 비율은 고정이고 카메라 zoom만 크기를 바꿉니다.
-HP 뱃지는 역스케일해 작은 창에서도 화면 크기를 유지합니다. 캐릭터는 front/back 양면 paper standee이며
+HP 뱃지는 역스케일해 작은 창에서도 화면 크기를 유지합니다.
+
+카메라 zoom은 배율이 아니라 셀 크기로 정의됩니다. zoom 1은 항상 "맵 전체가 안전영역에
+들어오는" 상태이고, 상한은 셀이 `maxCellWidth`(220px)가 될 때까지입니다. 덕분에 9x7
+맵도 3x3과 같은 밀착 뷰에 도달합니다. 기본 상태에서 이미 셀이 목표보다 큰 맵은
+`minZoomHeadroom`(1.5x)만큼은 항상 확대할 수 있습니다. Pan은 보드 중심이 안전영역을
+벗어나지 않도록 제한되며, 턴이 시작될 때 해당 액터가 화면 밖이면 최소 거리만 pan해
+시야에 넣습니다(zoom 1에서는 전체가 보이므로 아무 일도 하지 않습니다). 캐릭터는 front/back 양면 paper standee이며
 north는 back, 나머지 cardinal 방향은 front와 projected facing arrow로 표시합니다.
 
 설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M2 구현
