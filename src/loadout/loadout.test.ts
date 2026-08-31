@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { M3_COMPILED_PACK } from "../content";
+import { M3_COMPILED_PACK, M3_CONTENT_IDENTITY, M3_ROAD_AMBUSH_ID } from "../content";
+import { createCombat } from "../game";
 import {
   createStartingCollection,
+  deriveActorSetup,
   deriveLoadoutSnapshot,
   deriveTacticalDeck,
   previewLoadoutChange,
@@ -25,7 +27,7 @@ function party(loadout: PartyMemberLoadout = actor.starterLoadout): LoadoutParty
 
 describe("loadout ownership and derivation", () => {
   it("turns transferable starter loadout copies into collection ownership", () => {
-    expect(createStartingCollection(party())).toEqual({
+    expect(createStartingCollection(party(), content)).toEqual({
       equipment: { halberd: 1, shield: 1, "boots-of-fly": 1 },
       cards: {},
     });
@@ -38,7 +40,7 @@ describe("loadout ownership and derivation", () => {
         two: member(actor.starterLoadout, "two"),
       },
     };
-    const oneCopy = createStartingCollection(party());
+    const oneCopy = createStartingCollection(party(), content);
     expect(validatePartyLoadout(twoMembers, oneCopy, content).issues.map((issue) => issue.code)).toEqual(
       expect.arrayContaining(["EQUIPMENT_COPIES_EXCEEDED"]),
     );
@@ -64,7 +66,7 @@ describe("loadout ownership and derivation", () => {
         two: member(actor.starterLoadout, "two"),
       },
     };
-    expect(validatePartyLoadout(transferred, createStartingCollection(party()), content)).toEqual({
+    expect(validatePartyLoadout(transferred, createStartingCollection(party(), content), content)).toEqual({
       valid: true,
       issues: [],
     });
@@ -73,7 +75,7 @@ describe("loadout ownership and derivation", () => {
   it("counts only prepared copies against card ownership and never consumes fixed grants", () => {
     const onePrepared = party({ equipment: actor.starterLoadout.equipment, preparedCards: ["card.fly"] });
     const oneCard: LoadoutCollection = {
-      ...createStartingCollection(party()),
+      ...createStartingCollection(party(), content),
       cards: { "card.fly": 1 },
     };
     expect(validatePartyLoadout(onePrepared, oneCard, content)).toEqual({ valid: true, issues: [] });
@@ -85,7 +87,7 @@ describe("loadout ownership and derivation", () => {
     expect(validatePartyLoadout(duplicate, oneCard, content).issues.map((issue) => issue.code)).toContain(
       "CARD_COPIES_EXCEEDED",
     );
-    expect(createStartingCollection(party()).cards).toEqual({});
+    expect(createStartingCollection(party(), content).cards).toEqual({});
     expect(deriveTacticalDeck(actor, actor.starterLoadout, content.combatContent, "party.hero-1").contributions)
       .toEqual(expect.arrayContaining([
         expect.objectContaining({ source: { kind: "base", sourceId: "focus.spirit-beacon" } }),
@@ -129,15 +131,54 @@ describe("loadout ownership and derivation", () => {
     const deck = deriveTacticalDeck(actor, replacement.members["party.hero-1"]?.loadout as PartyMemberLoadout, fixtureContent.combatContent, "party.hero-1");
     expect(deck.totalCards).toBe(6);
     expect(deck.contributions.filter((entry) => entry.cardDefinitionId === "card.fly")).toEqual([
-      { cardDefinitionId: "card.fly", count: 1, source: { kind: "prepared", memberId: "party.hero-1" } },
       { cardDefinitionId: "card.fly", count: 2, source: { kind: "equipment-trait", equipmentId: "boots-of-fly", traitId: "fly" } },
+      { cardDefinitionId: "card.fly", count: 1, source: { kind: "prepared", memberId: "party.hero-1" } },
     ]);
+  });
+
+  it("canonicalizes a prepared-card multiset before setup fingerprinting and seeded card allocation", () => {
+    const placement = {
+      instanceId: "party.hero-1",
+      actorDefinitionId: actor.id,
+      team: "heroes" as const,
+      position: { x: 0, y: 0 },
+      facing: "north" as const,
+      partyMemberId: "party.hero-1",
+    };
+    const source = M3_COMPILED_PACK.scenarioSources[M3_ROAD_AMBUSH_ID];
+    expect(source).toBeDefined();
+    const map = M3_COMPILED_PACK.scenarios[M3_ROAD_AMBUSH_ID]?.map;
+    expect(map).toBeDefined();
+    const loadouts = [
+      { equipment: actor.starterLoadout.equipment, preparedCards: ["card.trip", "card.fly"] },
+      { equipment: actor.starterLoadout.equipment, preparedCards: ["card.fly", "card.trip"] },
+    ] as const;
+    const definitions = loadouts.map((loadout) => ({
+      content: content.combatContent,
+      contentIdentity: M3_CONTENT_IDENTITY,
+      scenario: {
+        id: source?.id ?? M3_ROAD_AMBUSH_ID,
+        name: source?.name ?? "Road Ambush",
+        objective: source?.objective ?? { kind: "defeat-all-enemies" as const, description: "Test" },
+        actors: [deriveActorSetup(actor, placement, loadout, content.combatContent, placement.partyMemberId)],
+        map: map as NonNullable<typeof map>,
+      },
+    }));
+
+    const first = createCombat(definitions[0] as NonNullable<(typeof definitions)[number]>, 77).state;
+    const second = createCombat(definitions[1] as NonNullable<(typeof definitions)[number]>, 77).state;
+
+    expect(first.actors[placement.instanceId]?.deckContributions).toEqual(
+      second.actors[placement.instanceId]?.deckContributions,
+    );
+    expect(first.setupFingerprint).toBe(second.setupFingerprint);
+    expect(first.cardZones).toEqual(second.cardZones);
   });
 
   it("uses the same rules for stat, weapon, context action, and deck preview", () => {
     const currentParty = party();
     const collection: LoadoutCollection = {
-      ...createStartingCollection(currentParty),
+      ...createStartingCollection(currentParty, content),
       cards: { "card.fly": 1 },
     };
     const candidate: PartyMemberLoadout = {

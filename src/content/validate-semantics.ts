@@ -297,11 +297,8 @@ export function validateContentPackSemantics(
       if (placementIds.has(placement.instanceId)) {
         addIssue(context, "scenarios", `${path}.instanceId`, "DUPLICATE_PLACEMENT_ID", `Placement instance "${placement.instanceId}" is duplicated.`, scenario.id);
       }
-      if (placement.team === "heroes" && !placement.partyMemberId) {
-        addIssue(context, "scenarios", `${path}.partyMemberId`, "MISSING_PARTY_MEMBER", "Hero placements require a persistent partyMemberId.", placement.instanceId);
-      }
-      if (placement.team === "enemies" && placement.partyMemberId) {
-        addIssue(context, "scenarios", `${path}.partyMemberId`, "ENEMY_PARTY_MEMBER", "Enemy placements cannot reference a party member.", placement.instanceId);
+      if (placement.team === "heroes") {
+        addIssue(context, "scenarios", `${path}.team`, "STATIC_HERO_PLACEMENT", "Party heroes must use partySpawnSlots instead of static placements.", placement.instanceId);
       }
       const key = positionKey(placement.position);
       const tile = map.tiles.find((candidate) => positionKey(candidate.position) === key);
@@ -314,14 +311,46 @@ export function validateContentPackSemantics(
       placementIds.add(placement.instanceId);
       occupied.add(key);
     });
+
+    const spawnSeats = new Set<number>();
+    const spawnPositions = new Set<string>();
+    scenario.partySpawnSlots.forEach((spawn, spawnIndex) => {
+      const path = `${prefix}.partySpawnSlots[${spawnIndex}]`;
+      if (spawnSeats.has(spawn.seat)) {
+        addIssue(context, "scenarios", `${path}.seat`, "DUPLICATE_PARTY_SPAWN_SEAT", `Party spawn seat ${spawn.seat} is duplicated.`, scenario.id);
+      }
+      const key = positionKey(spawn.position);
+      const tile = map.tiles.find((candidate) => positionKey(candidate.position) === key);
+      if (!tile) {
+        addIssue(context, "scenarios", `${path}.position`, "PARTY_SPAWN_TILE_MISSING", `Party spawn seat ${spawn.seat} starts on undefined tile ${key}.`, scenario.id);
+      } else if (tile.traits.some((trait) => trait.id === "blocked" || trait.id === "impassable")) {
+        addIssue(context, "scenarios", `${path}.position`, "PARTY_SPAWN_TILE_BLOCKED", `Party spawn seat ${spawn.seat} starts on blocked tile "${tile.id}".`, scenario.id);
+      }
+      if (occupied.has(key)) {
+        addIssue(context, "scenarios", `${path}.position`, "PARTY_SPAWN_STATIC_CONFLICT", `Party spawn seat ${spawn.seat} conflicts with a static actor at ${key}.`, scenario.id);
+      }
+      if (spawnPositions.has(key)) {
+        addIssue(context, "scenarios", `${path}.position`, "DUPLICATE_PARTY_SPAWN_POSITION", `Multiple party spawn slots occupy ${key}.`, scenario.id);
+      }
+      spawnSeats.add(spawn.seat);
+      spawnPositions.add(key);
+    });
   });
 
   const knownScenarios = new Set(source.scenarios.map((scenario) => scenario.id));
+  const scenariosById = new Map(source.scenarios.map((scenario) => [scenario.id, scenario]));
   source.adventures.forEach((adventure, adventureIndex) => {
+    if (adventure.partySize.min > adventure.partySize.max) {
+      addIssue(context, "adventures", `[${adventureIndex}].partySize`, "INVALID_PARTY_SIZE", `Adventure party minimum ${adventure.partySize.min} exceeds maximum ${adventure.partySize.max}.`, adventure.id);
+    }
     const encounterSeen = new Set<string>();
     adventure.encounterIds.forEach((scenarioId, encounterIndex) => {
       const path = `[${adventureIndex}].encounterIds[${encounterIndex}]`;
       if (!knownScenarios.has(scenarioId)) addIssue(context, "adventures", path, "UNKNOWN_SCENARIO", `Scenario "${scenarioId}" is not defined.`, adventure.id);
+      const scenario = scenariosById.get(scenarioId);
+      if (scenario && scenario.partySpawnSlots.length < adventure.partySize.max) {
+        addIssue(context, "adventures", path, "INSUFFICIENT_PARTY_SPAWNS", `Scenario "${scenarioId}" provides ${scenario.partySpawnSlots.length} party spawn slots but adventure maximum is ${adventure.partySize.max}.`, adventure.id);
+      }
       if (encounterSeen.has(scenarioId)) addIssue(context, "adventures", path, "DUPLICATE_ADVENTURE_ENCOUNTER", `Adventure repeats scenario "${scenarioId}".`, adventure.id);
       encounterSeen.add(scenarioId);
     });

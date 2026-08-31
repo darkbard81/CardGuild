@@ -55,14 +55,25 @@ export function createAdventureSession(
   adventureSeed: number,
 ): AdventureState {
   if (!Number.isInteger(adventureSeed)) throw new Error("Adventure seed must be an integer.");
+  const roster = Object.values(party.members);
+  const { min, max } = context.definition.partySize;
+  if (roster.length < min || roster.length > max) {
+    throw new Error(`Adventure requires ${min}-${max} party members, received ${roster.length}.`);
+  }
+  const seats = new Set(roster.map((member) => member.seat));
+  if (seats.size !== roster.length) throw new Error("Party member seats must be unique.");
   const clonedParty: PartyState = {
     members: Object.fromEntries(
-      Object.values(party.members)
-        .sort((left, right) => left.id.localeCompare(right.id))
-        .map((member) => [member.id, { ...member, loadout: clonePartyLoadout(member.loadout) }]),
+      roster
+        .sort((left, right) => left.seat - right.seat || left.id.localeCompare(right.id))
+        .map((member) => {
+          const definition = context.actorDefinitions[member.actorDefinitionId];
+          if (!definition) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
+          return [member.id, { ...member, loadout: clonePartyLoadout(definition.starterLoadout) }];
+        }),
     ),
   };
-  const collection = createStartingCollection(clonedParty);
+  const collection = createStartingCollection(clonedParty, context);
   const validation = validatePartyLoadout(clonedParty, collection, context);
   if (!validation.valid) throw new Error(`Invalid starting loadout: ${validation.issues[0]?.message ?? "unknown error"}`);
   return {

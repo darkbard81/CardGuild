@@ -29,5 +29,17 @@ export {
   M3_ROAD_AMBUSH_ID,
   M3_RUINED_GATE_ID,
   M3_SCENARIO,
+  M4_ADVENTURE,
+  M4_ADVENTURE_ID,
+  M4_COMBAT_DEFINITION,
+  M4_COMPILED_PACK,
+  M4_CONTENT,
+  M4_CONTENT_IDENTITY,
+  M4_CONTENT_SOURCE,
+  M4_DEFAULT_SEED,
+  M4_GOBLIN_CHIEF_ID,
+  M4_ROAD_AMBUSH_ID,
+  M4_RUINED_GATE_ID,
+  M4_SCENARIO,
 } from "./load-m3-content";
 export { formatContentValidationIssue, validateContentPackSemantics } from "./validate-semantics";

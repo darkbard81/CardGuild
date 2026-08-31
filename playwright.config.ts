@@ -2,6 +2,7 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "./tests",
+  testMatch: "**/*.spec.ts",
   fullyParallel: true,
   forbidOnly: true,
   reporter: "list",
@@ -11,8 +12,9 @@ export default defineConfig({
     headless: true,
   },
   webServer: {
-    command: "npm run dev -- --host 127.0.0.1 --port 4173",
+    command: "CARDGUILD_ADVENTURE_SEED=1 npm run dev:coop",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: true,
+    timeout: 120_000,
   },
 });

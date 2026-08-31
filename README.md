@@ -1,8 +1,8 @@
 # CardGuild
 
 Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Adventure입니다.
-결정론적 전투 코어와 JSON Content Pipeline 위에 M3 Collection/Loadout Builder와
-top-down 2.5D board presentation을 연결했습니다. 전투 화면은 canvas 전체를 전장으로
+결정론적 전투 코어와 JSON Content Pipeline 위에 M4 server-authoritative 1–3인 협동,
+Collection/Loadout Builder, top-down 2.5D board presentation을 연결했습니다. 전투 화면은 canvas 전체를 전장으로
 쓰고 HUD는 그 위에 떠 있는 반투명 패널로만 배치합니다. Adventure Reward는 Collection
 소유권으로 남으며, 다음 Encounter 전에 장비와 준비 카드를 편성할 수 있습니다.
 
@@ -16,10 +16,41 @@ top-down 2.5D board presentation을 연결했습니다. 전투 화면은 canvas 
 
 ```bash
 npm install
-npm run dev
+npm run dev:coop
 ```
 
-## M3 플레이
+브라우저는 `http://127.0.0.1:4173`에서 엽니다. 호스트가 `Create & Host`로 세션을 만든 뒤
+화면에 표시되는 Session ID만 B/C에게 전달합니다. 공개 방 목록이나 matchmaking은 없고,
+게스트는 그 ID로 `Join Host`합니다. 재접속 credential은 각 탭의 `sessionStorage`에만
+보관되며 URL이나 초대 코드에는 포함되지 않습니다.
+
+Production build는 client와 server entry를 모두 생성합니다.
+
+```bash
+npm run build
+CARDGUILD_ALLOWED_ORIGINS=https://game.example.com \
+CARDGUILD_HOST=0.0.0.0 CARDGUILD_PORT=8787 npm run start:server
+```
+
+`start:server`는 기본적으로 `dist/` 정적 client와 `/api`, `/ws`를 같은 origin에서 제공합니다.
+개발 서버는 Vite가 `/api`와 `/ws`를 port 8787 backend로 proxy합니다.
+
+## M4 호스트 초대 협동
+
+- 한 세션은 1–3개의 고정 seat를 가지며 한 player가 `party.hero-1`부터 하나의
+  PartyMember만 소유합니다. 네트워크 player ID와 gameplay actor ID는 분리됩니다.
+- 호스트만 Adventure 시작, Encounter 진입, shared Reward 선택을 할 수 있습니다.
+  호스트도 다른 player의 Loadout이나 Combat actor는 조작할 수 없습니다.
+- 브라우저는 intent만 전송합니다. seed, state, outcome, command sequence/ID와 적 AI는
+  server가 만들고 기존 pure reducer로 다시 검증합니다.
+- accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
+  snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
+  stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
+- 연결이 끊겨도 같은 server process의 state는 그대로 남습니다. 같은 credential로
+  재접속하면 최신 snapshot과 combat event history를 복구하고, 중복 연결은 최신 연결이
+  이전 연결을 대체합니다. server restart persistence와 host migration은 지원하지 않습니다.
+
+## 플레이
 
 - `Goblin Trouble`은 Road Ambush → Ruined Gate → Goblin Chief의 linear Adventure입니다.
 - 전투 승리 후 두 Reward 중 하나를 획득하며, `Manage Loadout`에서 장비 slot과 준비
@@ -44,7 +75,8 @@ npm run dev
   `Reactive Strike`는 출처가 보존되는 전술 카드입니다.
 - 레버를 사용하면 중앙의 Blocked gate가 열립니다. Rubble, Chasm, Wall, Web은
   이동 및 LOS/LOE 판정에 서로 다른 Trait으로 참여합니다.
-- 적 AI와 모든 동률, 판정, 셔플은 기본 seed `1`에서 결정론적으로 처리됩니다.
+- 적 AI는 server에서만 실행됩니다. 제품 세션 seed는 Node crypto로 만들며, 테스트는
+  주입한 고정 seed로 동률·판정·셔플·AI 결과를 재현합니다.
 
 ### CardGuild Rules Override
 
@@ -57,11 +89,15 @@ PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 
 
 ```text
 src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
-src/content JSON authoring DTO, semantic compiler, canonical fingerprint, M3 loader
+src/content JSON authoring DTO, semantic compiler, canonical fingerprint, v4 loader
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
-src/app    Adventure/전투 세션, 명시적 interaction state machine, 적 AI 턴 orchestration
+src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
+src/protocol protocol v1 type/schema와 strict Ajv validation
+src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
+src/client full snapshot/reconnect/idempotent intent client
+src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
 src/pixi   BoardProjection/PerspectiveMesh/camera/depth renderers와 tactical overlay
 src/presentation WebP atlas AssetCatalog와 layered tilemap mapping
 src/dom    Adventure/Reward/Loadout Builder, 링 컨텍스트 메뉴·카드·HUD·로그·Reaction·결과 UI
@@ -72,7 +108,8 @@ src/dom    Adventure/Reward/Loadout Builder, 링 컨텍스트 메뉴·카드·HU
 다음 단계로 새지 않으며, 이후 AoE·multi-target·drag 같은 targeting mode도 여기에
 붙입니다.
 
-`src/game`은 PixiJS, DOM, 브라우저 API, Ajv, 파일 경로에 의존하지 않습니다. UI는
+`src/game`, `src/adventure`, `src/loadout`, `src/session`은 socket이나 DOM을 모르며,
+server 전용 typecheck는 DOM lib 없이 이 경계를 검증합니다. UI는
 `listLegalActions`, `listLegalTargets`, `previewAction`의 결과를 표시하고
 `CombatCommand`만 전송합니다. 같은 seed와 command log는 같은 event sequence와
 state hash를 만듭니다. CombatState와 replay는 pack ID/version/fingerprint와 Combat
@@ -83,7 +120,8 @@ Setup Fingerprint를 보존하며 콘텐츠나 loadout setup이 다르면 첫 re
 Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Recovery Action도
 자신을 클릭했을 때 열리는 링 메뉴에 함께 나타나므로 별도 UI 분기가 없습니다.
 
-M3 콘텐츠의 source of truth는 [`content/m3`](content/m3) JSON이며, Schema와
+M4 콘텐츠의 source of truth는 기존 authoring 경로를 유지한 [`content/m3`](content/m3)
+JSON이며 pack identity는 `cardguild.m4@0.4.0`, contract는 schema v4입니다. Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.
@@ -104,8 +142,8 @@ HP 뱃지는 역스케일해 작은 창에서도 화면 크기를 유지합니�
 시야에 넣습니다(zoom 1에서는 전체가 보이므로 아무 일도 하지 않습니다). 캐릭터는 front/back 양면 paper standee이며
 north는 back, 나머지 cardinal 방향은 front와 projected facing arrow로 표시합니다.
 
-설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M3 구현
-범위는 GitHub 이슈 `#4`를 따릅니다.
+설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M4 구현
+범위는 GitHub 이슈 `#5`를 따릅니다.
 
 ## 검증
 
@@ -116,11 +154,13 @@ npm run assets:build  # 위 pipeline 산출물 재생성
 npm run assets:check  # alpha, anchors, 양면 standee, atlas, layered tilemap 검증
 npm run check         # Content/asset, TypeScript, core 경계, ESLint, Vitest
 npm run build         # Content/asset 검증 후 production bundle
-npm run test:smoke    # 짧은 Chromium/PixiJS/DOM 입력·responsive smoke
-npm test            # Vitest + Playwright
+npm run typecheck:server # DOM 없는 server/session/protocol type boundary
+npm run test:network # 실제 random-port HTTP/WebSocket 3-client integration
+npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive smoke
+npm test             # unit + network + Playwright
 ```
 
-Vitest는 Content v3 Schema/reference/fingerprint, Collection/Loadout ownership와 파생
+Vitest는 Content v4 Schema/reference/fingerprint와 1–3P spawn, Collection/Loadout ownership와 파생
 deck/stat/context, Adventure 3전/Reward/실패/seed/Combat bridge,
 projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
@@ -128,8 +168,14 @@ Reaction lifecycle, replay setup identity/hash, victory/defeat를 검증합니�
 Adventure shell, responsive Loadout Builder, 지연 WebP atlas 로딩, 실제 perspective board
 hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 → 다음 Encounter 실제
 손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
+Network integration은 실제 `ws` client 3개로 queue/revision/idempotency/authorization,
+server AI/reaction, newest-wins reconnect, wrong token/content, invalid/oversized message를 검증합니다.
+Playwright는 별도 BrowserContext 3개로 host create/invite/join, ownership, 실시간 hash 수렴,
+reaction owner UI, reload resync와 기존 링 메뉴/Facing/HUD camera를 함께 검증합니다.
 
-## M3 범위 밖
+## M4 범위 밖
 
-전체 PF2e 규칙, 손 점유/그립, branch Adventure, 랜덤 loot economy,
-sprite animation, 완성형 VFX/audio, 서버·온라인 협동·저장은 후속 단계입니다.
+계정/OAuth, matchmaking/public room, late join/spectator, host migration/kick, chat,
+hidden-hand/PvP, prediction/rollback/delta protocol, DB·Redis·다중 process·server restart 복구,
+AFK auto-turn/reaction auto-pass/disconnect AI takeover는 후속 범위입니다. 전체 PF2e 규칙,
+branch Adventure, 완성형 VFX/audio와 3인 balance polish도 포함하지 않습니다.

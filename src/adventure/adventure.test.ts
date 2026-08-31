@@ -28,6 +28,7 @@ function partyWithStarter(): PartyState {
     members: {
       "party.hero-1": {
         id: "party.hero-1",
+        seat: 1,
         actorDefinitionId: aerin.id,
         loadout: {
           equipment: { ...aerin.starterLoadout.equipment },
@@ -35,6 +36,24 @@ function partyWithStarter(): PartyState {
         },
       },
     },
+  };
+}
+
+function partyWithSize(size: 1 | 2 | 3): PartyState {
+  return {
+    members: Object.fromEntries(Array.from({ length: size }, (_, index) => {
+      const seat = (index + 1) as 1 | 2 | 3;
+      const id = `party.hero-${seat}`;
+      return [id, {
+        id,
+        seat,
+        actorDefinitionId: aerin.id,
+        loadout: {
+          equipment: { ...aerin.starterLoadout.equipment },
+          preparedCards: [...aerin.starterLoadout.preparedCards],
+        },
+      }];
+    })),
   };
 }
 
@@ -95,6 +114,54 @@ describe("Adventure runtime", () => {
       M3_GOBLIN_CHIEF_ID,
     ]);
     expect(state.collection.equipment).toEqual({ halberd: 1, "boots-of-fly": 2, shield: 2 });
+  });
+
+  it("derives starting ownership and equipped loadout from actor definitions, not caller data", () => {
+    const injected: PartyState = {
+      members: {
+        "party.hero-1": {
+          id: "party.hero-1",
+          seat: 1,
+          actorDefinitionId: aerin.id,
+          loadout: { equipment: {}, preparedCards: ["card.fly", "card.fly"] },
+        },
+      },
+    };
+
+    const state = createAdventureSession(context, injected, 19);
+
+    expect(state.party.members["party.hero-1"]?.loadout).toEqual(aerin.starterLoadout);
+    expect(state.collection).toEqual({
+      equipment: { halberd: 1, shield: 1, "boots-of-fly": 1 },
+      cards: {},
+    });
+  });
+
+  it("starts the same adventure with one to three stable party members and deterministic spawn slots", () => {
+    const setupFingerprints: string[] = [];
+    for (const size of [1, 2, 3] as const) {
+      let state = createAdventureSession(context, partyWithSize(size), 23);
+      state = dispatchAdventureCommand(state, { type: "start-adventure" }, context).state;
+      state = dispatchAdventureCommand(state, { type: "start-encounter" }, context).state;
+      const encounter = buildAdventureEncounter(M3_COMPILED_PACK, state);
+      setupFingerprints.push(createCombat(encounter.definition, encounter.seed).state.setupFingerprint);
+      const heroActors = encounter.definition.scenario.actors.filter((actor) => actor.team === "heroes");
+
+      expect(heroActors.map((actor) => actor.id)).toEqual(
+        Array.from({ length: size }, (_, index) => `party.hero-${index + 1}`),
+      );
+      expect(heroActors.map((actor) => actor.position)).toEqual(
+        M3_COMPILED_PACK.scenarioSources[M3_ROAD_AMBUSH_ID]?.partySpawnSlots
+          .slice(0, size)
+          .map((slot) => slot.position),
+      );
+      expect(state.collection.equipment).toEqual({
+        halberd: size,
+        shield: size,
+        "boots-of-fly": size,
+      });
+    }
+    expect(setupFingerprints[0]).not.toBe(setupFingerprints[2]);
   });
 
   it("atomically changes loadout only in ready and between-encounters phases", () => {
@@ -166,7 +233,7 @@ describe("Adventure runtime", () => {
     const encounter = buildAdventureEncounter(M3_COMPILED_PACK, state);
     const first = createCombat(encounter.definition, encounter.seed).state;
     const second = createCombat(encounter.definition, encounter.seed).state;
-    const hero = first.actors.hero;
+    const hero = first.actors["party.hero-1"];
 
     expect(hero?.equipmentIds).toEqual(["halberd", "shield", "boots-of-fly"]);
     expect(hero?.deckContributions.reduce((total, entry) => total + entry.count, 0)).toBe(8);
@@ -201,7 +268,7 @@ describe("Adventure runtime", () => {
 
     const encounter = buildAdventureEncounter(M3_COMPILED_PACK, state);
     const combat = createCombat(encounter.definition, encounter.seed).state;
-    const hero = combat.actors.hero as NonNullable<typeof combat.actors.hero>;
+    const hero = combat.actors["party.hero-1"] as NonNullable<typeof combat.actors[string]>;
     expect(hero.equipmentIds).toEqual(preview.equipmentIds);
     expect(hero.deckContributions).toEqual(preview.deck.contributions);
     expect(getStatistic(hero, context.combatContent, "reflex").value).toBe(preview.statistics.reflex);

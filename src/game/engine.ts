@@ -862,6 +862,62 @@ function resumeAfterReaction(
   checkCombatOutcome(draft, events);
 }
 
+function isReactionCandidateValid(
+  draft: CombatDraft,
+  pending: PendingReaction,
+  candidate: PendingReaction["candidates"][number],
+  content: CombatContent,
+): boolean {
+  const reactor = draft.actors[candidate.actorId];
+  const mover = draft.actors[pending.sourceActorId];
+  const card = draft.cardZones[candidate.actorId]?.hand.find((entry) => entry.id === candidate.cardInstanceId);
+  if (
+    draft.outcome ||
+    !reactor ||
+    !mover ||
+    reactor.team === mover.team ||
+    reactor.defeated ||
+    mover.defeated ||
+    !reactor.reactionAvailable ||
+    !card ||
+    content.cards[card.definitionId]?.actionId !== candidate.actionId
+  ) return false;
+  const weapon = getWeaponProfile(reactor, content);
+  return gridDistance(reactor.position, mover.position) <= weapon.rangeFeet &&
+    isInFrontOrSide(reactor, mover.position) &&
+    hasLineOfSight(draft.map, reactor.position, mover.position);
+}
+
+function continueReactionQueue(
+  draft: CombatDraft,
+  pending: PendingReaction,
+  remaining: PendingReaction["candidates"],
+  content: CombatContent,
+  events: CombatEvent[],
+): void {
+  const mover = draft.actors[pending.sourceActorId];
+  if (!mover || mover.defeated || draft.outcome) {
+    resumeAfterReaction(draft, pending, content, events);
+    return;
+  }
+  if (
+    draft.turn.activeActorId !== mover.id ||
+    pending.continuation.actorId !== mover.id ||
+    pending.continuation.destination.x < 0 ||
+    pending.continuation.destination.y < 0
+  ) {
+    draft.pendingReaction = null;
+    return;
+  }
+  const candidates = remaining.filter((candidate) =>
+    isReactionCandidateValid(draft, pending, candidate, content));
+  if (candidates.length > 0) {
+    draft.pendingReaction = { ...pending, candidates };
+    return;
+  }
+  resumeAfterReaction(draft, pending, content, events);
+}
+
 function useReaction(
   state: CombatState,
   command: Extract<CombatCommand, { type: "use-reaction" }>,
@@ -869,10 +925,10 @@ function useReaction(
 ): CommandResult {
   const pending = state.pendingReaction;
   if (!pending || pending.triggerId !== command.triggerId) return fail(state, "Reaction trigger is unavailable.");
-  const candidate = pending.candidates.find(
-    (entry) => entry.actorId === command.actorId && entry.cardInstanceId === command.cardInstanceId,
-  );
-  if (!candidate) return fail(state, "Reaction candidate is unavailable.");
+  const candidate = pending.candidates[0];
+  if (candidate?.actorId !== command.actorId || candidate.cardInstanceId !== command.cardInstanceId) {
+    return fail(state, "Only the head reaction candidate can act.");
+  }
   const reactor = state.actors[command.actorId];
   const mover = state.actors[pending.sourceActorId];
   const definition = content.actions[candidate.actionId];
@@ -886,7 +942,7 @@ function useReaction(
   discardCard(draft, reactor.id, candidate.cardInstanceId, events);
   events.push({ type: "REACTION_USED", triggerId: pending.triggerId, actorId: reactor.id, actionId: definition.id });
   performWeaponAttack(draft, reactor.id, mover.id, definition, content, events, 0);
-  resumeAfterReaction(draft, pending, content, events);
+  continueReactionQueue(draft, pending, pending.candidates.slice(1), content, events);
   return { accepted: true, state: asState(draft), events };
 }
 
@@ -897,19 +953,14 @@ function passReaction(
 ): CommandResult {
   const pending = state.pendingReaction;
   if (!pending || pending.triggerId !== command.triggerId) return fail(state, "Reaction trigger is unavailable.");
-  if (!pending.candidates.some((candidate) => candidate.actorId === command.actorId)) {
-    return fail(state, "Actor cannot pass this reaction.");
+  if (pending.candidates[0]?.actorId !== command.actorId) {
+    return fail(state, "Only the head reaction candidate can pass.");
   }
   const draft = cloneState(state);
   const events: CombatEvent[] = [];
   beginAcceptedCommand(draft, command);
   events.push({ type: "REACTION_PASSED", triggerId: pending.triggerId, actorId: command.actorId });
-  const remaining = pending.candidates.filter((candidate) => candidate.actorId !== command.actorId);
-  if (remaining.length > 0) {
-    draft.pendingReaction = { ...pending, candidates: remaining };
-  } else {
-    resumeAfterReaction(draft, pending, content, events);
-  }
+  continueReactionQueue(draft, pending, pending.candidates.slice(1), content, events);
   return { accepted: true, state: asState(draft), events };
 }
 

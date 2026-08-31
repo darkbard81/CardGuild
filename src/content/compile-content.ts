@@ -42,15 +42,30 @@ export function compileScenario(
   actorDefinitions: Readonly<Record<string, ActorDefinition>>,
   combatContent: CombatDefinition["content"],
 ): ScenarioDefinition {
+  const previewSpawn = [...source.partySpawnSlots].sort((left, right) => left.seat - right.seat)[0];
+  const previewHero = actorDefinitions["hero.aerin"] ?? Object.values(actorDefinitions)
+    .find((definition) => definition.traits.some((trait) => trait.id === "hero"));
+  const previewActors = previewSpawn && previewHero
+    ? [buildActorSetup(previewHero, {
+        instanceId: "hero",
+        actorDefinitionId: previewHero.id,
+        team: "heroes",
+        position: { ...previewSpawn.position },
+        facing: previewSpawn.facing,
+      }, combatContent)]
+    : [];
   return {
     id: source.id,
     name: source.name,
     objective: { ...source.objective },
-    actors: source.placements.map((placement) => {
-      const definition = actorDefinitions[placement.actorDefinitionId];
-      if (!definition) throw new Error(`Actor definition "${placement.actorDefinitionId}" is not present.`);
-      return buildActorSetup(definition, placement, combatContent);
-    }),
+    actors: [
+      ...previewActors,
+      ...source.placements.map((placement) => {
+        const definition = actorDefinitions[placement.actorDefinitionId];
+        if (!definition) throw new Error(`Actor definition "${placement.actorDefinitionId}" is not present.`);
+        return buildActorSetup(definition, placement, combatContent);
+      }),
+    ],
     map: {
       width: source.map.width,
       height: source.map.height,

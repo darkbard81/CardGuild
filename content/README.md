@@ -16,7 +16,8 @@ cards.json       Action을 참조하는 전술 카드
 equipment.json   능력치, 무기 profile, Trait
 actors.json      재사용 가능한 ActorDefinition
 scenarios.json   Encounter placement, objective, map tiles와 objects
-adventures.json  linear Encounter 순서와 fixed reward offer
+                 static placement와 seat별 partySpawnSlots
+adventures.json  linear Encounter 순서, 1–3P partySize와 fixed reward offer
 ```
 
 Schema는 `schema/content-pack.schema.json`의 JSON Schema Draft 2020-12가
@@ -31,7 +32,7 @@ npm run content:check
 원본 파일, definition, JSON path와 원인을 출력합니다.
 
 ```text
-Pack: cardguild.m3
+Pack: cardguild.m4
 Source: content/m3/equipment.json
 Definition: halberd
 Path: [0].traits[1].id
@@ -48,6 +49,13 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   metadata이며 효과는 계속 Statistic/Trait provider로 정의합니다.
 - Actor는 `loadoutProfile.preparedCardCapacity`와 `starterLoadout`을 선언합니다.
   `baseCardGrants`는 Collection copy를 소비하는 prepared card와 분리합니다.
+- Scenario의 `placements`에는 enemy/NPC/static actor만 작성하고 party hero는 넣지 않습니다.
+  `partySpawnSlots`는 seat 1–3을 각각 한 번씩 선언합니다. 배열 순서가 아니라 `seat`가
+  runtime 배치를 결정합니다.
+- Spawn slot은 map bounds 안의 통행 가능한 서로 다른 위치여야 하며 static placement와
+  겹칠 수 없습니다. 모든 Adventure Encounter는 `partySize.max`만큼 slot을 제공합니다.
+- Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
+  PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
 - `remove-condition`은 지정한 Condition ID를 즉시 제거합니다. 판정이 필요한
@@ -55,7 +63,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `3`입니다.
+- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `4`입니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면
   version을 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key,
@@ -66,5 +74,5 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 Schema shape를 호환되지 않게 바꿀 때는 기존 schema를 덮어써서 조용히 해석하지
 말고 `schemaVersion`을 올리고 명시적인 migration 또는 새 loader를 추가합니다.
-현재 pre-release repository에는 이전 pack runtime compatibility layer가 없으며 v3가
+현재 pre-release repository에는 이전 pack runtime compatibility layer가 없으며 v4가
 authoritative contract입니다.

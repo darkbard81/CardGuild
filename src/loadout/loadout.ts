@@ -48,12 +48,17 @@ function increment(target: Record<string, number>, id: string, amount = 1): void
   target[id] = (target[id] ?? 0) + amount;
 }
 
-export function createStartingCollection(party: LoadoutParty): LoadoutCollection {
+export function createStartingCollection(
+  party: LoadoutParty,
+  content: LoadoutContent,
+): LoadoutCollection {
   const equipment: Record<string, number> = {};
   const cards: Record<string, number> = {};
   for (const member of Object.values(party.members).sort((left, right) => left.id.localeCompare(right.id))) {
-    for (const id of equipmentIds(member.loadout)) increment(equipment, id);
-    for (const id of member.loadout.preparedCards) increment(cards, id);
+    const definition = content.actorDefinitions[member.actorDefinitionId];
+    if (!definition) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
+    for (const id of equipmentIds(definition.starterLoadout)) increment(equipment, id);
+    for (const id of definition.starterLoadout.preparedCards) increment(cards, id);
   }
   return { equipment, cards };
 }
@@ -136,6 +141,17 @@ function addContribution(target: DeckContribution[], next: DeckContribution): vo
   if (existing) target[existingIndex] = { ...existing, count: existing.count + next.count };
 }
 
+function sourceKey(source: DeckContributionSource): string {
+  if (source.kind === "base") return `base:${source.sourceId}`;
+  if (source.kind === "prepared") return `prepared:${source.memberId}`;
+  return `equipment:${source.equipmentId}:${source.traitId}`;
+}
+
+function compareContribution(left: DeckContribution, right: DeckContribution): number {
+  return left.cardDefinitionId.localeCompare(right.cardDefinitionId) ||
+    sourceKey(left.source).localeCompare(sourceKey(right.source));
+}
+
 export function deriveTacticalDeck(
   actor: ActorDefinition,
   loadout: PartyMemberLoadout,
@@ -166,7 +182,7 @@ export function deriveTacticalDeck(
     });
   }
   return {
-    contributions,
+    contributions: contributions.sort(compareContribution),
     totalCards: contributions.reduce((total, contribution) => total + contribution.count, 0),
   };
 }
@@ -176,7 +192,7 @@ export function deriveActorSetup(
   placement: EncounterActorPlacement,
   loadout: PartyMemberLoadout,
   content: CombatContent,
-  memberId = placement.partyMemberId ?? placement.instanceId,
+  memberId = placement.instanceId,
 ): ActorSetup {
   const deck = deriveTacticalDeck(actor, loadout, content, memberId);
   return {
@@ -231,12 +247,6 @@ export function deriveLoadoutSnapshot(
     weapon: { ...getWeaponProfile(ruleActor, content), damage: { ...getWeaponProfile(ruleActor, content).damage } },
     contextActionIds,
   };
-}
-
-function sourceKey(source: DeckContributionSource): string {
-  if (source.kind === "base") return `base:${source.sourceId}`;
-  if (source.kind === "prepared") return `prepared:${source.memberId}`;
-  return `equipment:${source.equipmentId}:${source.traitId}`;
 }
 
 function contributionKey(contribution: DeckContribution): string {

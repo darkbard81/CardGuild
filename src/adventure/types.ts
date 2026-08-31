@@ -12,6 +12,7 @@ export type AdventurePhase =
 
 export interface PartyMemberState extends LoadoutPartyMember {
   readonly id: string;
+  readonly seat: 1 | 2 | 3;
   readonly actorDefinitionId: ActorDefinitionId;
   readonly loadout: PartyMemberLoadout;
 }

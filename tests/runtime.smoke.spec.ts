@@ -34,15 +34,26 @@ function captureRuntimeErrors(page: Page): string[] {
 async function openAdventure(page: Page): Promise<void> {
   await page.goto("/");
   await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
+  await expect(page.locator("#app")).toHaveAttribute("data-screen", "session");
+  await page.locator("#session-display-name").fill("Solo Host");
+  await page.locator("#create-session").click();
+  await expect(page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "host");
+  await page.locator("#begin-adventure").click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
 }
 
 async function openBattle(page: Page): Promise<void> {
   await openAdventure(page);
-  await page.getByRole("button", { name: "Begin Adventure" }).click();
+  await page.getByRole("button", { name: "Enter Encounter" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 });
   await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.road-ambush");
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
+}
+
+async function controlledActorId(page: Page): Promise<string> {
+  const actorId = await page.locator("#app").getAttribute("data-controlled-actor-id");
+  if (!actorId) throw new Error("The client has not published its controlled actor ID.");
+  return actorId;
 }
 
 /**
@@ -60,7 +71,8 @@ async function boardCorners(page: Page): Promise<[Corner, Corner, Corner, Corner
 async function heroCellRatio(page: Page): Promise<number> {
   const corners = await boardCorners(page);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; scale: number }>;
-  const hero = feet.find((entry) => entry.id === "hero");
+  const heroId = await controlledActorId(page);
+  const hero = feet.find((entry) => entry.id === heroId);
   if (!hero) throw new Error("The hero has not published its layout.");
   const bottomWidth = (corners[2].x - corners[3].x) / ROAD_MAP.width;
   return hero.scale / (bottomWidth / 128);
@@ -95,10 +107,14 @@ async function pickRingAction(
 
 async function strikeRoadEnemy(page: Page): Promise<boolean> {
   for (const [gridX, gridY] of [[2.5, 1.5], [1.5, 1.5]] as const) {
+    if (await page.locator("#app").getAttribute("data-screen") !== "combat") return false;
+    if (await page.locator("#result-modal").isVisible()) return false;
     await clickBoardPoint(page, gridX, gridY);
     const strike = page.locator('#ring-root .ring-option[data-action-id="strike"]');
     if (await strike.isVisible()) {
+      const revision = await page.locator("#app").getAttribute("data-session-revision");
       await strike.click();
+      await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "");
       return true;
     }
     await page.keyboard.press("Escape");
@@ -108,6 +124,7 @@ async function strikeRoadEnemy(page: Page): Promise<boolean> {
 
 async function waitForRoadTurn(page: Page): Promise<void> {
   for (let step = 0; step < 12; step += 1) {
+    if (await page.locator("#app").getAttribute("data-screen") !== "combat") return;
     if (await page.locator("#result-modal").isVisible()) return;
     if (await page.locator("#reaction-modal").isVisible()) {
       await page.getByRole("button", { name: "Use Reaction" }).click();
@@ -122,18 +139,21 @@ async function waitForRoadTurn(page: Page): Promise<void> {
 async function winRoadAmbush(page: Page): Promise<void> {
   for (let round = 0; round < 7; round += 1) {
     await waitForRoadTurn(page);
+    if (await page.locator("#app").getAttribute("data-screen") !== "combat") break;
     if (await page.locator("#result-modal").isVisible()) break;
     while (await page.locator("#action-pips .available").count()) {
       if (!await strikeRoadEnemy(page)) break;
+      if (await page.locator("#app").getAttribute("data-screen") !== "combat") break;
       if (await page.locator("#result-modal").isVisible()) break;
     }
+    if (await page.locator("#app").getAttribute("data-screen") !== "combat") break;
     if (await page.locator("#result-modal").isVisible()) break;
+    const revision = await page.locator("#app").getAttribute("data-session-revision");
     await page.getByRole("button", { name: "End Turn" }).click();
+    await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "");
   }
-  await expect(page.locator("#result-modal")).toBeVisible();
-  await expect(page.locator("#result-title")).toHaveText("Victory");
-  await page.getByRole("button", { name: "Return to Adventure" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
+  await expect(page.locator("#adventure-content h1")).toHaveText("Choose one reward");
 }
 
 test("shows the Adventure shell before loading encounter WebP assets", async ({ page }, testInfo) => {
@@ -144,7 +164,7 @@ test("shows the Adventure shell before loading encounter WebP assets", async ({ 
   });
   await openAdventure(page);
 
-  await expect(page.locator("#adventure-content h1")).toHaveText("Goblin Trouble");
+  await expect(page.locator("#adventure-content h1")).toHaveText("Road Ambush");
   await expect(page.locator("#adventure-progress li")).toHaveCount(3);
   await expect(page.locator("#adventure-collection")).toContainText("Halberd ×1");
   await expect(page.locator("#adventure-collection")).toContainText("Steel Shield ×1");
@@ -236,8 +256,10 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.ruined-gate");
   await expect(page.locator("#hero-stats")).toContainText("Reflex DC");
   await expect(page.locator("#hero-stats")).toContainText("15");
-  await expect(page.locator("#hand-count")).toHaveText("6");
-  await expect(page.locator("#deck-count")).toHaveText("1");
+  // The authoritative server pumps the opening enemy turn before publishing the
+  // next human boundary, so Aerin has drawn the following turn's card already.
+  await expect(page.locator("#hand-count")).toHaveText("7");
+  await expect(page.locator("#deck-count")).toHaveText("0");
   await expect(page.locator('.tactical-card[data-card-definition-id="card.fly"][data-card-source-kind="prepared"]')).toHaveCount(1);
 
   const nextMap = { width: 9, height: 7 };
@@ -286,7 +308,8 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#app")).not.toHaveAttribute("data-state-hash", initialHash ?? "");
   await page.waitForTimeout(500);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
-  const heroFoot = feet.find((entry) => entry.id === "hero");
+  const heroId = await controlledActorId(page);
+  const heroFoot = feet.find((entry) => entry.id === heroId);
   const expectedFoot = await boardPoint(page, 1.5, 1.8);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
@@ -321,7 +344,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   const afterPan = await boardCorners(page);
   expect(afterPan[0].x).toBeGreaterThan(afterZoom[0].x + 30);
   const zoomedFeet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
-  const zoomedHero = zoomedFeet.find((entry) => entry.id === "hero");
+  const zoomedHero = zoomedFeet.find((entry) => entry.id === heroId);
   const projectedHero = projectCorners(afterPan, ROAD_MAP, 1.5, 1.8);
   expect(zoomedHero?.x).toBeCloseTo(projectedHero.x, 0);
   expect(zoomedHero?.y).toBeCloseTo(projectedHero.y, 0);
@@ -351,7 +374,27 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   await openBattle(page);
 
   await page.setViewportSize({ width: 1024, height: 768 });
-  await page.waitForTimeout(250);
+  await expect.poll(async () => {
+    const canvas = await page.locator("#pixi-canvas").boundingBox();
+    if (!canvas) return false;
+    const publishedCorners = await boardCorners(page);
+    const publishedBoard = {
+      left: Math.min(...publishedCorners.map((corner) => corner.x)) + canvas.x,
+      right: Math.max(...publishedCorners.map((corner) => corner.x)) + canvas.x,
+      top: Math.min(...publishedCorners.map((corner) => corner.y)) + canvas.y,
+      bottom: Math.max(...publishedCorners.map((corner) => corner.y)) + canvas.y,
+    };
+    const panels = page.locator("[data-hud-gutter]");
+    for (let index = 0; index < await panels.count(); index += 1) {
+      const box = await panels.nth(index).boundingBox();
+      if (!box) return false;
+      if (
+        box.x < publishedBoard.right && box.x + box.width > publishedBoard.left &&
+        box.y < publishedBoard.bottom && box.y + box.height > publishedBoard.top
+      ) return false;
+    }
+    return true;
+  }).toBe(true);
   const minimumCanvas = await page.locator("#pixi-canvas").evaluate((canvas) => ({
     width: canvas.clientWidth,
     height: canvas.clientHeight,
@@ -390,7 +433,7 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
       && box.y < board.bottom && box.y + box.height > board.top;
     expect(
       overlaps,
-      `${await panel.getAttribute("class")} overlaps the board quad`,
+      `${await panel.getAttribute("class")} overlaps the board quad: ${JSON.stringify({ box, board })}`,
     ).toBe(false);
   }
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-minimum.png"), fullPage: true });
@@ -405,7 +448,8 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   // squares and the standees together instead of leaving sprites oversized.
   expect(await heroCellRatio(page)).toBeCloseTo(minimumRatio, 2);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
-  const heroFoot = feet.find((entry) => entry.id === "hero");
+  const heroId = await controlledActorId(page);
+  const heroFoot = feet.find((entry) => entry.id === heroId);
   const expectedFoot = await boardPoint(page, 0.5, 1.8);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);

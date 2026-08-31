@@ -42,6 +42,21 @@ export const M3_ADVENTURE = requireAdventure(M3_ADVENTURE_ID);
 export const M3_COMBAT_DEFINITION = getCombatDefinition(M3_COMPILED_PACK, M3_RUINED_GATE_ID);
 export const M3_SCENARIO = M3_COMBAT_DEFINITION.scenario;
 
+// M4 is the authoritative content contract. Legacy M3 names remain as
+// source-compatible fixture aliases for the already-shipped M0-M3 test surface.
+export const M4_DEFAULT_SEED = M3_DEFAULT_SEED;
+export const M4_ADVENTURE_ID = M3_ADVENTURE_ID;
+export const M4_ROAD_AMBUSH_ID = M3_ROAD_AMBUSH_ID;
+export const M4_RUINED_GATE_ID = M3_RUINED_GATE_ID;
+export const M4_GOBLIN_CHIEF_ID = M3_GOBLIN_CHIEF_ID;
+export const M4_CONTENT_SOURCE = M3_CONTENT_SOURCE;
+export const M4_COMPILED_PACK = M3_COMPILED_PACK;
+export const M4_CONTENT = M3_CONTENT;
+export const M4_CONTENT_IDENTITY = M3_CONTENT_IDENTITY;
+export const M4_ADVENTURE = M3_ADVENTURE;
+export const M4_COMBAT_DEFINITION = M3_COMBAT_DEFINITION;
+export const M4_SCENARIO = M3_SCENARIO;
+
 export function cloneScenario(scenarioDefinition: ScenarioDefinition): ScenarioDefinition {
   return {
     ...scenarioDefinition,
@@ -91,7 +106,7 @@ export function cloneM0Scenario(): ScenarioDefinition {
 }
 
 // These names remain as test-fixture aliases for the original vertical slice.
-// They point at the authoritative v3 Ruined Gate content, not a compatibility pack.
+// They point at the authoritative v4 Ruined Gate content, not a compatibility pack.
 export const M0_DEFAULT_SEED = M3_DEFAULT_SEED;
 export const M0_SCENARIO_ID = M3_RUINED_GATE_ID;
 export const M0_CONTENT_SOURCE = M3_CONTENT_SOURCE;

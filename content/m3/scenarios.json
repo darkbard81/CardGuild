@@ -7,8 +7,12 @@
     "description": "폐허로 가는 길을 막은 고블린 척후병을 쓰러뜨리세요."
   },
   "placements": [
-    { "instanceId": "hero", "actorDefinitionId": "hero.aerin", "partyMemberId": "party.hero-1", "team": "heroes", "position": { "x": 0, "y": 1 }, "facing": "east" },
     { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 2, "y": 1 }, "facing": "west" }
+  ],
+  "partySpawnSlots": [
+    { "seat": 1, "position": { "x": 0, "y": 1 }, "facing": "east" },
+    { "seat": 2, "position": { "x": 0, "y": 0 }, "facing": "east" },
+    { "seat": 3, "position": { "x": 0, "y": 2 }, "facing": "east" }
   ],
   "map": {
     "width": 3,
@@ -35,9 +39,13 @@
     "description": "레버로 문을 열고 두 고블린을 쓰러뜨리세요."
   },
   "placements": [
-    { "instanceId": "hero", "actorDefinitionId": "hero.aerin", "partyMemberId": "party.hero-1", "team": "heroes", "position": { "x": 1, "y": 3 }, "facing": "east" },
     { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 7, "y": 2 }, "facing": "west" },
     { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 7, "y": 4 }, "facing": "west" }
+  ],
+  "partySpawnSlots": [
+    { "seat": 1, "position": { "x": 1, "y": 3 }, "facing": "east" },
+    { "seat": 2, "position": { "x": 1, "y": 4 }, "facing": "east" },
+    { "seat": 3, "position": { "x": 1, "y": 5 }, "facing": "east" }
   ],
   "map": {
     "width": 9,
@@ -133,9 +141,13 @@
     "description": "폐허 안뜰의 고블린 대장을 쓰러뜨리세요."
   },
   "placements": [
-    { "instanceId": "hero", "actorDefinitionId": "hero.aerin", "partyMemberId": "party.hero-1", "team": "heroes", "position": { "x": 0, "y": 1 }, "facing": "east" },
     { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 4, "y": 0 }, "facing": "west" },
     { "instanceId": "goblin-chief", "actorDefinitionId": "enemy.goblin-chief", "team": "enemies", "position": { "x": 4, "y": 2 }, "facing": "west" }
+  ],
+  "partySpawnSlots": [
+    { "seat": 1, "position": { "x": 0, "y": 1 }, "facing": "east" },
+    { "seat": 2, "position": { "x": 0, "y": 0 }, "facing": "east" },
+    { "seat": 3, "position": { "x": 0, "y": 2 }, "facing": "east" }
   ],
   "map": {
     "width": 5,

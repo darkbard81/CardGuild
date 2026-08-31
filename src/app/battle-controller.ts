@@ -1,20 +1,12 @@
 import {
-  chooseAiCommand,
-  createCombat,
-  dispatchCombatCommand,
   hashCombatState,
   listLegalActions,
   listLegalTargets,
   previewAction,
 } from "../game";
-import {
-  M0_COMBAT_DEFINITION,
-  M0_DEFAULT_SEED,
-} from "../content/load-m0-content";
 import type {
   ActionPreview,
   ActionTarget,
-  CombatCommand,
   CombatDefinition,
   CombatEvent,
   CombatState,
@@ -23,6 +15,7 @@ import type {
   LegalAction,
   LegalTarget,
 } from "../game";
+import type { SessionGameplayIntent } from "../session";
 import {
   hoveredRingEntry,
   IDLE_INTERACTION,
@@ -37,14 +30,16 @@ import type { AssetCatalog } from "../presentation";
 import { BattleView, type BoardHighlights, type BoardPick, type ScreenPoint } from "../pixi/BattleView";
 import type { Application } from "pixi.js";
 
-const AI_DELAY_MS = 260;
 const PROMPT_IDLE = "보드에서 적·칸·오브젝트를 클릭해 행동을 고르세요.";
 const PROMPT_FACING = "이동 후 바라볼 방향을 선택하세요.";
 
 export interface BattleControllerOptions {
-  readonly definition?: CombatDefinition;
-  readonly seed?: number;
-  readonly onComplete?: (state: CombatState, stateHash: string) => void;
+  readonly definition: CombatDefinition;
+  readonly state: CombatState;
+  readonly history: readonly CombatEvent[];
+  readonly viewerMemberId: string;
+  readonly controlledActorId: string;
+  readonly onIntent: (intent: SessionGameplayIntent) => boolean;
 }
 
 function samePosition(left: GridPosition, right: GridPosition): boolean {
@@ -83,8 +78,9 @@ function legalTargetToActionTarget(target: LegalTarget, fallbackFacing: Directio
 
 export class BattleController {
   private readonly definition: CombatDefinition;
-  private readonly seed: number;
-  private readonly onComplete: ((state: CombatState, stateHash: string) => void) | undefined;
+  private readonly viewerMemberId: string;
+  private readonly controlledActorId: string;
+  private readonly onIntent: (intent: SessionGameplayIntent) => boolean;
   private state: CombatState;
   private history: CombatEvent[];
   private interaction: Interaction = IDLE_INTERACTION;
@@ -92,18 +88,17 @@ export class BattleController {
   private hoveredCardAction: LegalAction | null = null;
   private hoverCell: GridPosition | null = null;
   private prompt = PROMPT_IDLE;
-  private aiTimer: number | null = null;
   private readonly view: BattleView;
   private readonly ui: BattleUi;
   private readonly ring: RingMenu;
 
-  public constructor(app: Application, catalog: AssetCatalog, options: BattleControllerOptions = {}) {
-    this.definition = options.definition ?? M0_COMBAT_DEFINITION;
-    this.seed = options.seed ?? M0_DEFAULT_SEED;
-    this.onComplete = options.onComplete;
-    const setup = createCombat(this.definition, this.seed);
-    this.state = setup.state;
-    this.history = [...setup.events];
+  public constructor(app: Application, catalog: AssetCatalog, options: BattleControllerOptions) {
+    this.definition = options.definition;
+    this.viewerMemberId = options.viewerMemberId;
+    this.controlledActorId = options.controlledActorId;
+    this.onIntent = options.onIntent;
+    this.state = options.state;
+    this.history = [...options.history];
     const stage = this.requireElement<HTMLElement>(".combat-stage");
     this.view = new BattleView(app, catalog, {
       onPick: (pick, screen) => this.handlePick(pick, screen),
@@ -124,8 +119,7 @@ export class BattleController {
       onHover: (optionId) => this.handleRingHover(optionId),
       onDismiss: () => this.dismissRing(),
     });
-    this.render(setup.events);
-    this.scheduleAi();
+    this.render(options.history);
   }
 
   private requireElement<T extends Element>(selector: string): T {
@@ -134,17 +128,13 @@ export class BattleController {
     return element;
   }
 
-  private nextCommandId(label: string): string {
-    return `command-${String(this.state.sequence + 1).padStart(4, "0")}-${label}`;
-  }
-
   private activeHeroId(): string | null {
-    const actor = this.state.actors[this.state.turn.activeActorId];
-    return actor?.team === "heroes" ? actor.id : null;
+    const actor = this.state.actors[this.controlledActorId];
+    return actor?.team === "heroes" && this.state.turn.activeActorId === actor.id ? actor.id : null;
   }
 
   private heroId(): string {
-    return Object.values(this.state.actors).find((actor) => actor.team === "heroes")?.id ?? "hero";
+    return this.controlledActorId;
   }
 
   private targetsFor(action: LegalAction | null): readonly LegalTarget[] {
@@ -190,11 +180,16 @@ export class BattleController {
 
   private render(events: readonly CombatEvent[] = []): void {
     const stateHash = hashCombatState(this.state);
+    const canControl = Boolean(this.activeHeroId()) && !this.state.pendingReaction && !this.state.outcome;
+    const app = this.requireElement<HTMLElement>("#app");
+    app.dataset.viewerMemberId = this.viewerMemberId;
     this.view.render(this.state, this.highlights(), events);
     this.ui.render(this.state, this.history, {
       selectedAction: interactionAction(this.interaction),
       prompt: this.prompt,
       stateHash,
+      controlledActorId: this.controlledActorId,
+      canControl,
     });
     this.renderDetail();
   }
@@ -414,94 +409,62 @@ export class BattleController {
   }
 
   private useAction(action: LegalAction, target: ActionTarget): void {
-    const actorId = this.activeHeroId();
-    if (!actorId) return;
-    this.dispatch({
+    if (!this.activeHeroId()) return;
+    this.sendIntent({
       type: "use-action",
-      id: this.nextCommandId(action.actionId),
-      sequence: this.state.sequence + 1,
-      actorId,
       action: action.source,
       target,
     });
   }
 
   private endTurn(): void {
-    const actorId = this.activeHeroId();
-    if (!actorId) return;
-    this.dispatch({
-      type: "end-turn",
-      id: this.nextCommandId("end-turn"),
-      sequence: this.state.sequence + 1,
-      actorId,
-    });
+    if (!this.activeHeroId()) return;
+    this.sendIntent({ type: "end-turn" });
   }
 
   private resolveReaction(use: boolean): void {
     const pending = this.state.pendingReaction;
     const candidate = pending?.candidates[0];
-    if (!pending || !candidate) return;
-    const base = {
-      id: this.nextCommandId(use ? "use-reaction" : "pass-reaction"),
-      sequence: this.state.sequence + 1,
-      actorId: candidate.actorId,
-      triggerId: pending.triggerId,
-    };
-    const command: CombatCommand = use
-      ? { type: "use-reaction", ...base, cardInstanceId: candidate.cardInstanceId }
-      : { type: "pass-reaction", ...base };
-    this.dispatch(command);
+    if (!pending || !candidate || candidate.actorId !== this.controlledActorId) return;
+    this.sendIntent(use
+      ? { type: "use-reaction", triggerId: pending.triggerId, cardInstanceId: candidate.cardInstanceId }
+      : { type: "pass-reaction", triggerId: pending.triggerId });
   }
 
-  private dispatch(command: CombatCommand): void {
-    const result = dispatchCombatCommand(this.state, command, this.definition.content);
-    if (!result.accepted) {
-      this.prompt = result.error ?? "행동을 실행할 수 없습니다.";
+  private sendIntent(intent: SessionGameplayIntent): void {
+    if (!this.onIntent(intent)) {
+      this.prompt = "서버 응답을 기다리는 중입니다.";
       this.render();
       return;
     }
-    this.state = result.state;
-    this.history.push(...result.events);
     this.goIdle();
-    this.prompt = this.state.pendingReaction
-      ? "Reaction을 사용하거나 Pass하세요."
-      : this.state.outcome
-        ? "전투가 종료되었습니다."
-        : this.activeHeroId()
-          ? PROMPT_IDLE
-          : `${this.state.actors[this.state.turn.activeActorId]?.name ?? "Enemy"}의 턴입니다.`;
-    this.render(result.events);
-    this.scheduleAi();
-  }
-
-  private scheduleAi(): void {
-    if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
-    this.aiTimer = null;
-    if (this.state.outcome || this.state.pendingReaction || this.activeHeroId()) return;
-    this.aiTimer = window.setTimeout(() => {
-      this.aiTimer = null;
-      const command = chooseAiCommand(this.state, this.definition.content);
-      if (command) this.dispatch(command);
-    }, AI_DELAY_MS);
+    this.prompt = "서버가 행동을 판정하는 중입니다.";
+    this.render();
   }
 
   private restart(): void {
-    if (this.state.outcome && this.onComplete) {
-      this.onComplete(this.state, hashCombatState(this.state));
-      return;
-    }
-    if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
-    const setup = createCombat(this.definition, this.seed);
-    this.state = setup.state;
-    this.history = [...setup.events];
+    this.prompt = "전투 결과는 서버가 Adventure로 반영합니다.";
+    this.render();
+  }
+
+  public update(state: CombatState, events: readonly CombatEvent[], replaceHistory = false): void {
+    this.state = state;
+    this.history = replaceHistory ? [...events] : [...this.history, ...events];
     this.goIdle();
-    this.prompt = PROMPT_IDLE;
-    this.render(setup.events);
-    this.scheduleAi();
+    const pendingOwner = state.pendingReaction?.candidates[0]?.actorId;
+    this.prompt = state.pendingReaction
+      ? pendingOwner === this.controlledActorId
+        ? "Reaction을 사용하거나 Pass하세요."
+        : `${state.actors[pendingOwner ?? ""]?.name ?? "다른 플레이어"}의 Reaction을 기다리는 중입니다.`
+      : state.outcome
+        ? "전투가 종료되었습니다."
+        : this.activeHeroId()
+          ? PROMPT_IDLE
+          : `${state.actors[state.turn.activeActorId]?.name ?? "다른 플레이어"}의 턴입니다.`;
+    this.render(events);
   }
 
   public destroy(): void {
-    if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
     this.ring.destroy();
     this.ui.destroy();
     this.view.destroy();

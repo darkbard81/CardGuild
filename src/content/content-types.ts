@@ -25,7 +25,7 @@ import type {
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 3;
+  readonly schemaVersion: 4;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -65,7 +65,12 @@ export interface EncounterActorPlacement {
   readonly team: TeamId;
   readonly position: { readonly x: number; readonly y: number };
   readonly facing: Direction;
-  readonly partyMemberId?: string;
+}
+
+export interface PartySpawnSlot {
+  readonly seat: 1 | 2 | 3;
+  readonly position: { readonly x: number; readonly y: number };
+  readonly facing: Direction;
 }
 
 export interface BattleMapSource {
@@ -80,6 +85,7 @@ export interface ScenarioSource {
   readonly name: string;
   readonly objective: ObjectiveDefinition;
   readonly placements: readonly EncounterActorPlacement[];
+  readonly partySpawnSlots: readonly PartySpawnSlot[];
   readonly map: BattleMapSource;
 }
 
@@ -97,6 +103,10 @@ export interface AdventureDefinition {
   readonly id: string;
   readonly name: string;
   readonly description: string;
+  readonly partySize: {
+    readonly min: 1 | 2 | 3;
+    readonly max: 1 | 2 | 3;
+  };
   readonly encounterIds: readonly ScenarioId[];
   readonly rewards: readonly AdventureRewardDefinition[];
 }

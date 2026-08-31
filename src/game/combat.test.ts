@@ -84,12 +84,64 @@ function allCards(state: CombatState, actorId: string): readonly CardInstance[] 
   return zones ? [...zones.hand, ...zones.drawPile, ...zones.discardPile] : [];
 }
 
+function makeReactionAvailable(state: CombatState, actorId: string): CombatState {
+  const actor = state.actors[actorId] as NonNullable<typeof state.actors[string]>;
+  const zones = state.cardZones[actorId] as NonNullable<typeof state.cardZones[string]>;
+  const card = allCards(state, actorId).find((entry) => entry.definitionId === "card.reactive-strike") as CardInstance;
+  return {
+    ...state,
+    actors: { ...state.actors, [actorId]: { ...actor, reactionAvailable: true } },
+    cardZones: {
+      ...state.cardZones,
+      [actorId]: {
+        hand: [card, ...zones.hand.filter((entry) => entry.id !== card.id)],
+        drawPile: zones.drawPile.filter((entry) => entry.id !== card.id),
+        discardPile: zones.discardPile.filter((entry) => entry.id !== card.id),
+      },
+    },
+  };
+}
+
+function twoReactionState(moverHp = 100): CombatState {
+  const scenario = cloneM0Scenario();
+  const hero = scenario.actors.find((actor) => actor.id === "hero") as ActorSetup;
+  const configured: ScenarioDefinition = {
+    ...scenario,
+    actors: [
+      ...scenario.actors.map((actor) => {
+        if (actor.id === "hero") return { ...actor, position: { x: 1, y: 1 }, facing: "east" as const, initiativeModifier: -100 };
+        if (actor.id === "goblin-skirmisher") {
+          return { ...actor, position: { x: 2, y: 1 }, facing: "east" as const, initiativeModifier: 100, hp: moverHp, maxHp: moverHp, baseAc: -100 };
+        }
+        return { ...actor, position: { x: 8, y: 6 }, initiativeModifier: -102 };
+      }),
+      { ...hero, id: "hero-2", position: { x: 2, y: 0 }, facing: "south", initiativeModifier: -101 },
+    ],
+  };
+  let state = createM0Combat(configured, 44).state;
+  state = makeReactionAvailable(state, "hero");
+  return makeReactionAvailable(state, "hero-2");
+}
+
+function openTwoReactions(state = twoReactionState()): CombatState {
+  return dispatchCombatCommand(
+    state,
+    command(
+      state,
+      "goblin-skirmisher",
+      { kind: "basic", id: "stride" },
+      { kind: "tile", position: { x: 3, y: 1 }, facing: "east" },
+    ),
+    M0_CONTENT,
+  ).state;
+}
+
 describe("M0 combat core", () => {
   it("builds an equipment-provenance deck and repeats the same initial hash", () => {
     const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     const second = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("ff6dd09946fa2432");
+    expect(hashCombatState(first)).toBe("fe4ff44e45fe8f19");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -384,6 +436,138 @@ describe("M0 combat core", () => {
     );
     expect(secondUse.accepted).toBe(false);
     expect(secondUse.error).toMatch(/unavailable/i);
+  });
+
+  it("resolves multiple reactions strictly from the deterministic head of the queue", () => {
+    const opened = openTwoReactions();
+    const pending = opened.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    expect(pending.candidates.map((candidate) => candidate.actorId)).toEqual(["hero", "hero-2"]);
+
+    const nonHeadPass = dispatchCombatCommand(opened, {
+      type: "pass-reaction",
+      id: "non-head-pass",
+      sequence: opened.sequence + 1,
+      actorId: "hero-2",
+      triggerId: pending.triggerId,
+    }, M0_CONTENT);
+    expect(nonHeadPass.accepted).toBe(false);
+    expect(nonHeadPass.state).toBe(opened);
+
+    const nonHead = pending.candidates[1] as NonNullable<typeof pending.candidates[number]>;
+    const nonHeadUse = dispatchCombatCommand(opened, {
+      type: "use-reaction",
+      id: "non-head-use",
+      sequence: opened.sequence + 1,
+      actorId: nonHead.actorId,
+      triggerId: pending.triggerId,
+      cardInstanceId: nonHead.cardInstanceId,
+    }, M0_CONTENT);
+    expect(nonHeadUse.accepted).toBe(false);
+    expect(nonHeadUse.state).toBe(opened);
+
+    const head = pending.candidates[0] as NonNullable<typeof pending.candidates[number]>;
+    const used = dispatchCombatCommand(opened, {
+      type: "use-reaction",
+      id: "head-use",
+      sequence: opened.sequence + 1,
+      actorId: head.actorId,
+      triggerId: pending.triggerId,
+      cardInstanceId: head.cardInstanceId,
+    }, M0_CONTENT);
+    expect(used.accepted).toBe(true);
+    expect(used.state.pendingReaction?.candidates.map((candidate) => candidate.actorId)).toEqual(["hero-2"]);
+    expect(used.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
+
+    const passed = dispatchCombatCommand(used.state, {
+      type: "pass-reaction",
+      id: "next-pass",
+      sequence: used.state.sequence + 1,
+      actorId: "hero-2",
+      triggerId: pending.triggerId,
+    }, M0_CONTENT);
+    expect(passed.accepted).toBe(true);
+    expect(passed.state.pendingReaction).toBeNull();
+    expect(passed.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
+  });
+
+  it("keeps reaction events and final hashes independent of reversed arrival attempts", () => {
+    const resolve = (sendNonHeadFirst: boolean) => {
+      let state = openTwoReactions();
+      const triggerId = state.pendingReaction?.triggerId as string;
+      if (sendNonHeadFirst) {
+        const rejected = dispatchCombatCommand(state, {
+          type: "pass-reaction",
+          id: "arrival-out-of-order",
+          sequence: state.sequence + 1,
+          actorId: "hero-2",
+          triggerId,
+        }, M0_CONTENT);
+        expect(rejected.accepted).toBe(false);
+        expect(rejected.state).toBe(state);
+      }
+      const events: unknown[] = [];
+      for (const [id, actorId] of [["ordered-head", "hero"], ["ordered-next", "hero-2"]] as const) {
+        const result = dispatchCombatCommand(state, {
+          type: "pass-reaction",
+          id,
+          sequence: state.sequence + 1,
+          actorId,
+          triggerId,
+        }, M0_CONTENT);
+        expect(result.accepted).toBe(true);
+        events.push(...result.events);
+        state = result.state;
+      }
+      return { state, events };
+    };
+
+    const ordered = resolve(false);
+    const reversed = resolve(true);
+    expect(reversed.events).toEqual(ordered.events);
+    expect(hashCombatState(reversed.state)).toBe(hashCombatState(ordered.state));
+  });
+
+  it("revalidates remaining candidates and cancels continuation when the first reaction defeats the mover", () => {
+    const opened = openTwoReactions(twoReactionState(1));
+    const pending = opened.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    const head = pending.candidates[0] as NonNullable<typeof pending.candidates[number]>;
+    const killed = dispatchCombatCommand(opened, {
+      type: "use-reaction",
+      id: "lethal-head-use",
+      sequence: opened.sequence + 1,
+      actorId: head.actorId,
+      triggerId: pending.triggerId,
+      cardInstanceId: head.cardInstanceId,
+    }, M0_CONTENT);
+
+    expect(killed.accepted).toBe(true);
+    expect(killed.state.actors["goblin-skirmisher"]?.defeated).toBe(true);
+    expect(killed.state.pendingReaction).toBeNull();
+    expect(killed.events.some((event) => event.type === "ACTOR_MOVED")).toBe(false);
+
+    const invalidatedBase = openTwoReactions();
+    const invalidated: CombatState = {
+      ...invalidatedBase,
+      actors: {
+        ...invalidatedBase.actors,
+        "hero-2": {
+          ...(invalidatedBase.actors["hero-2"] as NonNullable<typeof opened.actors[string]>),
+          reactionAvailable: false,
+        },
+      },
+    };
+    const invalidatedPending = invalidated.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    const invalidatedHead = invalidatedPending.candidates[0] as NonNullable<typeof invalidatedPending.candidates[number]>;
+    const skipped = dispatchCombatCommand(invalidated, {
+      type: "use-reaction",
+      id: "skip-invalid-next",
+      sequence: invalidated.sequence + 1,
+      actorId: invalidatedHead.actorId,
+      triggerId: invalidatedPending.triggerId,
+      cardInstanceId: invalidatedHead.cardInstanceId,
+    }, M0_CONTENT);
+    expect(skipped.state.pendingReaction).toBeNull();
+    expect(skipped.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
   });
 
   it("opens a movement reaction for Stride but never for Step", () => {

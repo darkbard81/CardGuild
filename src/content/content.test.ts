@@ -44,6 +44,12 @@ describe("content structural validation", () => {
       actors: [{ ...source.actors[0], maxHp: 0 }, ...source.actors.slice(1)],
     };
     expect(validateContentPackStructure(invalidRange, contentPackSchema).some((issue) => issue.path.includes("maxHp"))).toBe(true);
+
+    const legacyV2 = {
+      ...source,
+      manifest: { ...source.manifest, schemaVersion: 2 },
+    };
+    expect(validateContentPackStructure(legacyV2, contentPackSchema).some((issue) => issue.path.endsWith("/schemaVersion"))).toBe(true);
   });
 
   it("formats structural issues with pack identity and source context", () => {
@@ -61,7 +67,7 @@ describe("content structural validation", () => {
     })[0];
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain(
-      "Pack: cardguild.m3\nSource: content/test/manifest.json",
+      "Pack: cardguild.m4\nSource: content/test/manifest.json",
     );
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain("Path: /manifest/version");
   });
@@ -121,13 +127,39 @@ describe("content semantic validation and compilation", () => {
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toBe(
       [
-        "Pack: cardguild.m3",
+        "Pack: cardguild.m4",
         "Source: content/test/equipment.json",
         "Definition: halberd",
         "Path: [0].traits[0].id",
         'UNKNOWN_TRAIT: Trait "tirp" is not defined.',
       ].join("\n"),
     );
+  });
+
+  it("validates deterministic v4 party spawn seats, positions, and adventure capacity", () => {
+    const source = sourceCopy();
+    const firstScenario = source.scenarios[0] as NonNullable<typeof source.scenarios[0]>;
+    const firstSpawn = firstScenario.partySpawnSlots[0] as NonNullable<typeof firstScenario.partySpawnSlots[0]>;
+    const staticPosition = firstScenario.placements[0]?.position as NonNullable<typeof firstScenario.placements[0]>["position"];
+    const invalid: ContentPackSource = {
+      ...source,
+      scenarios: source.scenarios.map((scenario, index) => index === 0
+        ? {
+            ...scenario,
+            partySpawnSlots: [
+              firstSpawn,
+              { ...firstSpawn, position: staticPosition },
+            ],
+          }
+        : scenario),
+    };
+
+    const codes = validateContentPackSemantics(invalid).map((issue) => issue.code);
+    expect(codes).toEqual(expect.arrayContaining([
+      "DUPLICATE_PARTY_SPAWN_SEAT",
+      "PARTY_SPAWN_STATIC_CONFLICT",
+      "INSUFFICIENT_PARTY_SPAWNS",
+    ]));
   });
 
   it("adds equipment and condition providers using JSON-shaped data without engine changes", () => {
@@ -242,7 +274,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 3,
+        schemaVersion: 4,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),
@@ -255,6 +287,7 @@ describe("content fingerprint", () => {
         .map((scenario) => ({
           ...scenario,
           placements: [...scenario.placements].reverse(),
+          partySpawnSlots: [...scenario.partySpawnSlots].reverse(),
           map: {
             ...scenario.map,
             tiles: [...scenario.map.tiles].reverse(),
