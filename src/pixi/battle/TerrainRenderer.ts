@@ -12,6 +12,8 @@ export interface SortableVisual {
   readonly footRowOffset: number;
   readonly layerPriority: number;
   readonly stableId: string;
+  /** Held at a constant screen size while the board scales, e.g. an HP badge. */
+  readonly screenSpace?: Container;
 }
 
 function traits(tile: TileState): ReadonlySet<string> {

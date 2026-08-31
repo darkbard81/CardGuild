@@ -56,6 +56,16 @@ async function boardCorners(page: Page): Promise<[Corner, Corner, Corner, Corner
   return corners as [Corner, Corner, Corner, Corner];
 }
 
+/** Sprite height as a share of the square it stands on, which must not track window size. */
+async function heroCellRatio(page: Page): Promise<number> {
+  const corners = await boardCorners(page);
+  const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; scale: number }>;
+  const hero = feet.find((entry) => entry.id === "hero");
+  if (!hero) throw new Error("The hero has not published its layout.");
+  const bottomWidth = (corners[2].x - corners[3].x) / ROAD_MAP.width;
+  return hero.scale / (bottomWidth / 128);
+}
+
 async function boardPoint(
   page: Page,
   gridX: number,
@@ -224,10 +234,15 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   }
   await page.screenshot({ path: testInfo.outputPath("cardguild-m2-minimum.png"), fullPage: true });
 
+  const minimumRatio = await heroCellRatio(page);
+
   await page.setViewportSize({ width: 1600, height: 900 });
   await page.waitForTimeout(250);
   const wideWidth = await page.locator("#pixi-canvas").evaluate((canvas) => canvas.clientWidth);
   expect(wideWidth).toBeGreaterThan(850);
+  // Board content is sized against its square, so widening the window enlarges the
+  // squares and the standees together instead of leaving sprites oversized.
+  expect(await heroCellRatio(page)).toBeCloseTo(minimumRatio, 2);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const heroFoot = feet.find((entry) => entry.id === "hero");
   const expectedFoot = await boardPoint(page, 0.5, 1.8);

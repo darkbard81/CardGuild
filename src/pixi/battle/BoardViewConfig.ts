@@ -17,8 +17,12 @@ export interface BoardViewConfig {
   readonly bottomWidthRatio: number;
   readonly meshVerticesX: number;
   readonly meshVerticesY: number;
-  readonly farDepthScale: number;
-  readonly nearDepthScale: number;
+  /**
+   * Cell width the art is authored against. Board content is scaled by the projected
+   * cell width over this value, so a standee keeps the same share of its square at
+   * every window size and only the camera zoom changes it.
+   */
+  readonly referenceCellWidth: number;
   readonly actorFootRowOffset: number;
   readonly propFootRowOffset: number;
   readonly boardTextureCellSize: number;
@@ -41,8 +45,7 @@ export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
   bottomWidthRatio: 0.96,
   meshVerticesX: 20,
   meshVerticesY: 20,
-  farDepthScale: 0.78,
-  nearDepthScale: 1,
+  referenceCellWidth: 128,
   actorFootRowOffset: 0.8,
   propFootRowOffset: 0.88,
   boardTextureCellSize: 128,

@@ -242,8 +242,11 @@ export class BattleView {
     const row = visual.currentPosition.y + visual.footRowOffset;
     const foot = this.projection.gridToScreen(visual.currentPosition.x + 0.5, row);
     visual.display.position.copyFrom(foot);
-    const scale = this.projection.getDepthScale(row) * this.camera.scale;
+    // Content is sized against the projected cell, so its share of a square is fixed
+    // at every window size; the camera zoom already lives in the projected width.
+    const scale = this.projection.getCellScale(row);
     visual.display.scale.set(scale);
+    if (visual.screenSpace) visual.screenSpace.scale.set(scale > 0 ? 1 / scale : 1);
     visual.display.zIndex = Math.round(foot.y * 100) + visual.layerPriority;
   }
 

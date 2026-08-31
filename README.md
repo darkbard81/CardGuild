@@ -86,7 +86,10 @@ Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JS
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
 `art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
 `art/processed`, 2048² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
-layer mapping은 `presentation/m2`에 있습니다. 캐릭터는 front/back 양면 paper standee이며
+layer mapping은 `presentation/m2`에 있습니다. 보드 위 콘텐츠는 절대 픽셀이 아니라
+투영된 셀 폭 대비(`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다. 창 크기가
+달라져도 스탠디가 칸에서 차지하는 비율은 고정이고 카메라 zoom만 크기를 바꿉니다.
+HP 뱃지는 역스케일해 작은 창에서도 화면 크기를 유지합니다. 캐릭터는 front/back 양면 paper standee이며
 north는 back, 나머지 cardinal 방향은 front와 projected facing arrow로 표시합니다.
 
 설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M2 구현
