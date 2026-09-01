@@ -79,9 +79,17 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   실제 선택된 Attribute를 남깁니다. Damage는 melee와 `thrown`이 STR 전량,
   `propulsive`가 양수 STR의 절반(음수면 전량), 그 외 ranged는 0입니다.
 - Weapon trait은 boolean field를 늘리지 않고 기존 Equipment/Trait pipeline을 씁니다.
-  `agile` weapon으로 하는 Strike만 MAP이 `0 / -4 / -8`로 완화되고, 나머지와
+  Equipment의 effective trait set은 `equipment.traits`와 `weaponProfile.traits`의
+  합집합(ID 중복 제거)이고, Strike resolver·Card provider·Context Action provider·
+  Statistic modifier stack이 **모두 같은 set**을 봅니다. 따라서 같은 trait ID를 어느 쪽에
+  적더라도 Resolved Strike와 Trait provider의 결과가 갈라지지 않습니다.
+- `agile` weapon으로 하는 Strike만 MAP이 `0 / -4 / -8`로 완화되고, 나머지와
   Athletics Trip 같은 Attack-trait Skill Action은 `0 / -5 / -10`을 씁니다.
-  MAP 단계는 여전히 Attack trait 사용 횟수로 셉니다.
+  MAP 단계는 여전히 Attack trait 사용 횟수로 셉니다. Reactive Strike는 자기 turn 밖에서
+  일어나므로 MAP이 적용되지 않습니다.
+- Weapon damage roll은 penalty가 아무리 커도 최소 1입니다. Critical과 action
+  multiplier는 그 최소값을 만든 뒤에 곱합니다. Resistance는 damage roll 이후 단계라
+  이 최소값과 별개입니다.
 - 실제 시작 무기는 Equipment + `starterLoadout.weapon`으로 소유합니다. weapon slot이
   비면 Character의 `offense.unarmedStrike`를 씁니다. Character ID별 fallback
   special-case는 없습니다.

@@ -157,7 +157,9 @@ Strike와 Class DC도 같은 경계에 있습니다. Playable Character의 weapo
 `weapon dice + 합법적인 Attribute contribution`을 계산합니다. melee는 STR, ranged와
 thrown은 DEX를 쓰고 `finesse`는 둘 중 높은 쪽을 결정적으로 고릅니다. MAP은
 `resolveMapPenalty()` 한 곳에서만 계산되어 agile weapon Strike만 `0 / -4 / -8`로
-완화됩니다. Legality query, Ring/Menu preview, Loadout Preview, 일반 Strike,
+완화되고, 자기 turn 밖의 Reactive Strike에는 적용되지 않습니다. Weapon damage roll은
+`strikeDamageTotal()`에서 PF2e 최소 1을 먼저 적용한 뒤 critical/action multiplier를
+곱하므로 Preview의 damage range와 실제 damage가 같은 최소 정책을 씁니다. Legality query, Ring/Menu preview, Loadout Preview, 일반 Strike,
 Reactive Strike가 모두 이 하나의 `ResolvedStrikeProfile`을 소비하므로 UI가 스스로
 `STR + proficiency`를 더하지 않습니다. Class DC는
 `10 + key Attribute + class DC proficiency + typed modifier`에서 파생되며 Save/Skill DC와

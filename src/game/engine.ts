@@ -1,7 +1,7 @@
 import { rollCheck } from "./checks";
 import { computeCombatSetupFingerprint } from "./determinism";
 import { findPath, getTile, gridDistance, hasLineOfSight, positionKey } from "./grid";
-import { resolveMapPenalty, resolveStrike } from "./offense";
+import { resolveMapPenalty, resolveStrike, strikeDamageTotal } from "./offense";
 import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
@@ -395,9 +395,10 @@ function performWeaponAttack(
   const damageRoll = rollDice(draft.rng, strike.damage.count, strike.damage.sides);
   draft.rng = damageRoll.rng;
   const criticalMultiplier = check.degree === "critical-success" ? 2 : 1;
-  const damage = Math.max(
-    0,
-    (damageRoll.total + strike.damage.flatModifier) * definition.effect.damageMultiplier * criticalMultiplier,
+  const damage = strikeDamageTotal(
+    damageRoll.total,
+    strike.damage.flatModifier,
+    definition.effect.damageMultiplier * criticalMultiplier,
   );
   applyDamage(draft, actorId, targetActorId, damage, strike.damage.damageType, events);
   if (definition.effect.applyCondition && !draft.actors[targetActorId]?.defeated) {
@@ -1032,6 +1033,8 @@ function useReaction(
   replaceActor(draft, { ...reactor, reactionAvailable: false });
   discardCard(draft, reactor.id, candidate.cardInstanceId, events);
   events.push({ type: "REACTION_USED", triggerId: pending.triggerId, actorId: reactor.id, actionId: definition.id });
+  // A Reactive Strike happens off the reactor's turn, so PF2e's multiple attack penalty
+  // does not apply: no attacks of its own have been made this turn.
   performWeaponAttack(draft, reactor.id, mover.id, definition, content, events, 0);
   continueReactionQueue(draft, pending, pending.candidates.slice(1), content, events);
   return { accepted: true, state: asState(draft), events };

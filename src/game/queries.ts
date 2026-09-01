@@ -8,7 +8,7 @@ import {
   hasLineOfSight,
   positionKey,
 } from "./grid";
-import { resolveMapPenalty, resolveStrike } from "./offense";
+import { resolveMapPenalty, resolveStrike, strikeDamageTotal } from "./offense";
 import {
   getConditionActionGrants,
   getEquipmentActionGrants,
@@ -403,8 +403,9 @@ export function previewAction(
       damageRange:
         resolved.definition.effect.kind === "weapon-attack"
           ? [
-              (damage.count + damage.flatModifier) * resolved.definition.effect.damageMultiplier,
-              (damage.count * damage.sides + damage.flatModifier) * resolved.definition.effect.damageMultiplier,
+              // Both ends run the execution helper, so the minimum-1 rule cannot drift.
+              strikeDamageTotal(damage.count, damage.flatModifier, resolved.definition.effect.damageMultiplier),
+              strikeDamageTotal(damage.count * damage.sides, damage.flatModifier, resolved.definition.effect.damageMultiplier),
             ]
           : undefined,
       notes: [

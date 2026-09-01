@@ -1,3 +1,4 @@
+import { equipmentTraits } from "./rules";
 import type {
   ActorStatProfile,
   ActorState,
@@ -269,7 +270,7 @@ function collectModifiers(actor: ActorState, context: StatisticResolutionContext
     modifiers.push(
       ...sourced(equipment.statModifiers, "equipment", equipment.id),
       ...sourced(derivedEquipmentModifiers(equipment, actor), "equipment", equipment.id),
-      ...traitModifiers(equipment.traits, context, `equipment:${equipment.id}`),
+      ...traitModifiers(equipmentTraits(equipment), context, `equipment:${equipment.id}`),
     );
   }
   for (const condition of [...actor.conditions]

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveMapPenalty, resolveStrike, resolveStrikeSource } from "./offense";
+import {
+  resolveMapPenalty,
+  resolveStrike,
+  resolveStrikeSource,
+  strikeDamageTotal,
+  weaponDamageRoll,
+} from "./offense";
+import { equipmentTraits, getEquipmentActionGrants, getEquipmentCardGrants } from "./rules";
 import { formatStatisticSources, resolveClassDC } from "./statistics";
 import type {
   ActorState,
@@ -12,6 +19,7 @@ import type {
   FixedStrikeProfile,
   ProficiencyRank,
   SkillId,
+  TraitDefinition,
   TraitId,
   WeaponCategory,
 } from "./types";
@@ -69,6 +77,15 @@ function weaponEquipment(id: string, profile: CharacterWeaponProfile): Equipment
   return { id, name: profile.name, slot: "weapon", traits: [], statModifiers: [], weaponProfile: profile };
 }
 
+/** A Trait that provides a card, a context action, and a statistic modifier at once. */
+const TRIP: TraitDefinition = {
+  id: "trip",
+  name: "Trip",
+  cardGrants: [{ cardDefinitionId: "card.trip", count: 3 }],
+  actionGrants: [{ actionId: "trip", contextGroup: "escape" }],
+  statModifiers: [{ selector: { kind: "attack" }, type: "circumstance", value: 1, label: "Trip haft" }],
+};
+
 const FRIGHTENED: ConditionDefinition = {
   id: "frightened",
   name: "Frightened",
@@ -82,7 +99,7 @@ function content(equipment: readonly EquipmentDefinition[] = []): CombatContent 
     cards: {},
     conditions: { frightened: FRIGHTENED },
     equipment: Object.fromEntries(equipment.map((entry) => [entry.id, entry])),
-    traits: {},
+    traits: { trip: TRIP },
   };
 }
 
@@ -236,6 +253,43 @@ describe("weapon proficiency and Strike attack", () => {
   });
 });
 
+describe("weapon Trait source of truth", () => {
+  const onDefinition: EquipmentDefinition = {
+    ...weaponEquipment("halberd", weapon({ name: "Halberd" })),
+    traits: [{ id: "trip" }],
+  };
+  const onProfile = weaponEquipment("glaive", weapon({ name: "Glaive", traits: [{ id: "trip" }] }));
+
+  it.each([["equipment.traits", onDefinition], ["weaponProfile.traits", onProfile]])(
+    "gives the Strike resolver and the Trait providers the same effective Trait set from %s",
+    (_where, equipment) => {
+      const actor = character({ equipmentIds: [equipment.id] });
+      const context = { content: content([equipment]) };
+
+      expect(equipmentTraits(equipment).map((trait) => trait.id)).toEqual(["trip"]);
+      expect(resolveStrike(actor, context).traits).toContain("trip");
+      expect(getEquipmentCardGrants(actor, context.content as CombatContent))
+        .toContainEqual(expect.objectContaining({ cardDefinitionId: "card.trip", count: 3, traitId: "trip", sourceId: equipment.id }));
+      expect(getEquipmentActionGrants(actor, context.content as CombatContent))
+        .toContainEqual(expect.objectContaining({ actionId: "trip" }));
+      // The Trait's own statModifiers reach the shared stack from either authoring site.
+      expect(resolveStrike(actor, context).sources.map((source) => source.label)).toContain("Trip haft");
+    },
+  );
+
+  it("counts a Trait named on both sites only once", () => {
+    const both: EquipmentDefinition = {
+      ...weaponEquipment("halberd", weapon({ name: "Halberd", traits: [{ id: "trip" }] })),
+      traits: [{ id: "trip" }],
+    };
+    const actor = character({ equipmentIds: ["halberd"] });
+    expect(equipmentTraits(both)).toHaveLength(1);
+    expect(getEquipmentCardGrants(actor, content([both]))).toHaveLength(1);
+    // One circumstance bonus, applied once.
+    expect(resolveStrike(actor, { content: content([both]) }).attackModifier).toBe(4 + 5 + 1);
+  });
+});
+
 describe("multiple attack penalty", () => {
   it("walks the standard ladder and the eased agile ladder", () => {
     expect([0, 1, 2, 3].map((n) => resolveMapPenalty(n))).toEqual([0, -5, -10, -10]);
@@ -284,6 +338,21 @@ describe("Strike damage", () => {
     }, context);
     expect(strong.damage.flatModifier).toBe(2);
     expect(feeble.damage.flatModifier).toBe(-2);
+  });
+});
+
+describe("Strike damage roll minimum", () => {
+  it("never lets the damage roll itself fall below 1", () => {
+    expect(weaponDamageRoll(1, 3)).toBe(4);
+    expect(weaponDamageRoll(1, -3)).toBe(1);
+    expect(weaponDamageRoll(1, -30)).toBe(1);
+  });
+
+  it("applies the minimum before a critical or action multiplier doubles it", () => {
+    // A penalised critical deals 2, not 0: PF2e resolves normal damage first.
+    expect(strikeDamageTotal(1, -30, 2)).toBe(2);
+    expect(strikeDamageTotal(1, -30, 1)).toBe(1);
+    expect(strikeDamageTotal(6, 4, 2)).toBe(20);
   });
 });
 

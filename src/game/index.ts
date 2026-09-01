@@ -11,13 +11,15 @@ export {
   validateActionIntent,
 } from "./queries";
 export { createCombatReplay, hashCombatState, replayCombat } from "./replay";
-export { facingToward, isDirectlyBehind, isInFrontOrSide } from "./rules";
+export { equipmentTraits, facingToward, isDirectlyBehind, isInFrontOrSide } from "./rules";
 export {
   WEAPON_CATEGORIES,
   equippedWeapon,
   resolveMapPenalty,
   resolveStrike,
   resolveStrikeSource,
+  strikeDamageTotal,
+  weaponDamageRoll,
 } from "./offense";
 export type { StrikeResolutionOptions, StrikeSource } from "./offense";
 export {

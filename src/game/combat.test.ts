@@ -327,6 +327,43 @@ describe("M0 combat core", () => {
     expect(previews[2]).toContain("Multiple attack penalty -10");
   });
 
+  it("deals at least 1 damage when penalties sink the Strike, and doubles that on a critical", () => {
+    // A large authored damage penalty is legal now that damage has its own modifier stack.
+    const drainedContent: CombatContent = {
+      ...M0_CONTENT,
+      conditions: {
+        ...M0_CONTENT.conditions,
+        "damage-drained": {
+          id: "damage-drained",
+          name: "Damage Drained",
+          traits: [],
+          statModifiers: [{ selector: { kind: "damage" }, type: "untyped", value: -30, label: "Damage drained" }],
+        },
+      },
+    };
+    const scenario = heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, facing: "east", conditions: [{ id: "damage-drained", sourceId: "test" }] },
+      // A trivially low AC makes the outcome a critical success on every die face.
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 100, maxHp: 100, authoredAc: -100 },
+      "goblin-brute": { position: { x: 8, y: 6 } },
+    });
+    const state = createM0Combat(scenario, 33, drainedContent).state;
+
+    const preview = previewAction(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }, drainedContent);
+    expect(preview.damageRange).toEqual([1, 1]);
+
+    const result = dispatchCombatCommand(
+      state,
+      command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
+      drainedContent,
+    );
+    const check = result.events.find((event) => event.type === "CHECK_ROLLED");
+    const dealt = result.events.find((event) => event.type === "DAMAGE_DEALT");
+    expect(check?.type === "CHECK_ROLLED" ? check.degree : null).toBe("critical-success");
+    // Minimum first, doubling second: 2, never 0.
+    expect(dealt?.type === "DAMAGE_DEALT" ? dealt.amount : null).toBe(2);
+  });
+
   it("keeps a Creature's authored Strike out of the Character weapon formula", () => {
     const scenario = scenarioWith({
       hero: { position: { x: 1, y: 1 }, hp: 100, maxHp: 100, initiative: -100 },

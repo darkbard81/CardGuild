@@ -26,12 +26,27 @@ export function getEquipment(
   });
 }
 
+/**
+ * The one effective Trait set an Equipment carries. A weapon may name Traits on the
+ * definition or inside its weapon profile; both reach the Strike resolver, the card and
+ * action providers, and the statistic modifier stack through this function, so the same
+ * Trait ID can never exist for one boundary and be missing from another.
+ */
+export function equipmentTraits(equipment: EquipmentDefinition): readonly TraitInstance[] {
+  const seen = new Set<string>();
+  return [...equipment.traits, ...(equipment.weaponProfile?.traits ?? [])].filter((trait) => {
+    if (seen.has(trait.id)) return false;
+    seen.add(trait.id);
+    return true;
+  });
+}
+
 export function getEquipmentCardGrants(
   actor: Pick<ActorState, "equipmentIds">,
   content: CombatContent,
 ): readonly CardGrant[] {
   return getEquipment(actor, content).flatMap((equipment) =>
-    equipment.traits.flatMap((trait) => {
+    equipmentTraits(equipment).flatMap((trait) => {
       const definition = content.traits[trait.id];
       return (definition?.cardGrants ?? []).map((grant) => ({
         ...grant,
@@ -47,7 +62,7 @@ export function getEquipmentActionGrants(
   content: CombatContent,
 ) {
   return getEquipment(actor, content).flatMap((equipment) =>
-    equipment.traits.flatMap((trait) => content.traits[trait.id]?.actionGrants ?? []),
+    equipmentTraits(equipment).flatMap((trait) => content.traits[trait.id]?.actionGrants ?? []),
   );
 }
 

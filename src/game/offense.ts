@@ -1,3 +1,4 @@
+import { equipmentTraits } from "./rules";
 import { proficiencyBonus, resolveModifierStack, titleCase, type StatisticResolutionContext } from "./statistics";
 import type {
   ActorState,
@@ -62,15 +63,6 @@ export function equippedWeapon(
   return undefined;
 }
 
-function mergeTraits(...groups: readonly (readonly TraitInstance[])[]): readonly TraitInstance[] {
-  const seen = new Set<TraitId>();
-  return groups.flat().filter((trait) => {
-    if (seen.has(trait.id)) return false;
-    seen.add(trait.id);
-    return true;
-  });
-}
-
 export function resolveStrikeSource(actor: ActorState, context: StatisticResolutionContext): StrikeSource {
   if (actor.statProfile.kind === "creature") {
     const profile = actor.statProfile.stats.strike;
@@ -79,13 +71,13 @@ export function resolveStrikeSource(actor: ActorState, context: StatisticResolut
   const stats = actor.statProfile.stats;
   const equipment = equippedWeapon(actor, context);
   if (equipment?.weaponProfile) {
-    // Weapon traits reuse the Equipment/Trait pipeline; the profile may name extra ones
-    // instead of growing a boolean per trait.
+    // Weapon Traits reuse the Equipment/Trait pipeline: `equipmentTraits()` is the same
+    // effective set the card, action and modifier providers read.
     return {
       kind: "equipment",
       equipment,
       profile: equipment.weaponProfile,
-      traits: mergeTraits(equipment.traits, equipment.weaponProfile.traits),
+      traits: equipmentTraits(equipment),
       stats,
     };
   }
@@ -259,6 +251,23 @@ export function resolveStrike(
     damage: damageStrike(profile.damage.count, profile.damage.sides, profile.damage.damageType, damageSources),
     sources: attackSources,
   };
+}
+
+/**
+ * PF2e Player Core: a Strike's damage roll deals at least 1 damage even when penalties
+ * would take it to 0 or below (https://2e.aonprd.com/Rules.aspx?ID=2263). Resistance is a
+ * later step and may still reduce this to 0; the roll itself never does.
+ */
+export function weaponDamageRoll(rolledDice: number, flatModifier: number): number {
+  return Math.max(1, rolledDice + flatModifier);
+}
+
+/**
+ * The minimum applies to the normal damage, and only then does a critical or an action's
+ * own multiplier double it — a penalised critical deals 2, not 0.
+ */
+export function strikeDamageTotal(rolledDice: number, flatModifier: number, multiplier: number): number {
+  return weaponDamageRoll(rolledDice, flatModifier) * multiplier;
 }
 
 function damageStrike(
