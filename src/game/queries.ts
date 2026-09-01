@@ -210,6 +210,27 @@ interface BaseActionValidation extends ActionValidationResult {
   readonly resolved?: ResolvedAction;
 }
 
+const ACTION_CANNOT_RESOLVE = "Action cannot be resolved.";
+
+function buildIntentPlan(
+  state: CombatState,
+  actor: ActorState,
+  resolved: ResolvedAction,
+  source: ActionSource,
+  target: ActionTarget,
+  content: CombatContent,
+) {
+  return buildResolvedActionPlan(
+    resolved.definition,
+    actor,
+    target,
+    source,
+    state,
+    content,
+    turnMapContext(state),
+  );
+}
+
 function validateActionBase(
   state: CombatState,
   actorId: string,
@@ -252,6 +273,9 @@ export function validateActionIntent(
   const targets = listCandidateTargets(state, base.actor, base.resolved.definition, content);
   if (targets.length === 0) return { legal: false, reason: "No legal target." };
   if (!targetIsLegal(targets, target)) return { legal: false, reason: "Target is not legal." };
+  if (!buildIntentPlan(state, base.actor, base.resolved, source, target, content)) {
+    return { legal: false, reason: ACTION_CANNOT_RESOLVE };
+  }
   return { legal: true };
 }
 
@@ -277,8 +301,11 @@ export function listLegalTargets(
   content: CombatContent,
 ): readonly LegalTarget[] {
   const base = validateActionBase(state, actorId, source, content);
-  if (!base.legal || !base.actor || !base.resolved) return [];
-  return listCandidateTargets(state, base.actor, base.resolved.definition, content);
+  const { actor, resolved } = base;
+  if (!base.legal || !actor || !resolved) return [];
+  return listCandidateTargets(state, actor, resolved.definition, content).filter((candidate) =>
+    buildIntentPlan(state, actor, resolved, source, targetIntent(candidate, actor), content),
+  );
 }
 
 export function listLegalActions(
@@ -299,14 +326,22 @@ export function listLegalActions(
   return sources.flatMap((source) => {
     const resolved = resolveActionSource(state, actor, source, content);
     if (!resolved) return [];
-    const candidate = listCandidateTargets(state, actor, resolved.definition, content)[0];
-    const validation = validateActionIntent(
-      state,
-      actor.id,
-      source,
-      candidate ? targetIntent(candidate, actor) : { kind: "none" },
-      content,
-    );
+    const base = validateActionBase(state, actor.id, source, content);
+    let validation: ActionValidationResult;
+    if (!base.legal) {
+      validation = { legal: false, reason: base.reason };
+    } else {
+      const candidates = listCandidateTargets(state, actor, resolved.definition, content);
+      if (candidates.length === 0) {
+        validation = { legal: false, reason: "No legal target." };
+      } else {
+        validation = candidates.some((candidate) =>
+          buildIntentPlan(state, actor, resolved, source, targetIntent(candidate, actor), content),
+        )
+          ? { legal: true }
+          : { legal: false, reason: ACTION_CANNOT_RESOLVE };
+      }
+    }
     return [
       {
         source,
@@ -340,16 +375,8 @@ export function previewAction(
 
   // Every resolution, movement included, goes through the plan; only path legality stays
   // in the movement resolver, which owns reachability and cost.
-  const plan = buildResolvedActionPlan(
-    resolved.definition,
-    actor,
-    target,
-    source,
-    state,
-    content,
-    turnMapContext(state),
-  );
-  if (!plan) return { legal: false, reason: "Action cannot be resolved.", notes: [] };
+  const plan = buildIntentPlan(state, actor, resolved, source, target, content);
+  if (!plan) return { legal: false, reason: ACTION_CANNOT_RESOLVE, notes: [] };
   const resolution = plan.resolution;
 
   if (resolution.kind === "move") {

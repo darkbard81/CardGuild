@@ -4,17 +4,19 @@ import { M6_COMBAT_DEFINITION, M6_CONTENT } from "../content/load-m6-content";
 import { buildResolvedActionPlan, resolveActionStatistic, turnMapContext } from "./action-plan";
 import { degreeProbabilities } from "./checks";
 import { createCombat, dispatchCombatCommand } from "./engine";
-import { previewAction } from "./queries";
+import { listLegalActions, listLegalTargets, previewAction } from "./queries";
 import { hashCombatState } from "./replay";
 import { resolveClassDC, resolveStatisticDC, resolveStatisticModifier } from "./statistics";
 import type {
   ActionDcRef,
   ActionDefinition,
+  ActionParticipant,
   ActionSource,
   ActionTarget,
   ActorSetup,
   CardInstance,
   CombatCommand,
+  CombatContent,
   CombatState,
   ScenarioDefinition,
 } from "./types";
@@ -85,6 +87,20 @@ function withCardInHand(state: CombatState, actorId: string, cardDefinitionId: s
 }
 
 const ENEMY: ActionTarget = { kind: "actor", actorId: "goblin-skirmisher" };
+
+function classDcAction(id: string, owner: ActionParticipant): ActionDefinition {
+  const trip = M6_CONTENT.actions.trip as NonNullable<(typeof M6_CONTENT.actions)["trip"]>;
+  if (trip.resolution.kind !== "check") throw new Error("M6 Trip fixture is missing.");
+  return {
+    ...trip,
+    id,
+    name: "Class DC Test",
+    resolution: {
+      ...trip.resolution,
+      check: { ...trip.resolution.check, dc: { kind: "class-dc", owner } },
+    },
+  };
+}
 
 describe("resolved action plan", () => {
   it("composes DCs out of the Armor Class, statistic DC, and Class DC resolvers", () => {
@@ -192,6 +208,94 @@ describe("resolved action plan", () => {
     expect(creatureActorPlan).not.toThrow();
     expect(creatureTargetPlan()).toBeNull();
     expect(creatureActorPlan()).toBeNull();
+  });
+
+  it("disables a Creature's unresolvable Class DC Action before target selection", () => {
+    const opened = heroFirst();
+    const actionId = "class-dc-test";
+    const action = classDcAction(actionId, "actor");
+    const content: CombatContent = {
+      ...M6_CONTENT,
+      actions: { ...M6_CONTENT.actions, [actionId]: action },
+    };
+    const source: ActionSource = { kind: "innate", id: actionId };
+    const goblinId = "goblin-skirmisher";
+    const goblin = opened.actors[goblinId] as NonNullable<CombatState["actors"][string]>;
+    const creatureState: CombatState = {
+      ...opened,
+      actors: {
+        ...opened.actors,
+        [goblinId]: { ...goblin, innateActionIds: [...goblin.innateActionIds, actionId] },
+      },
+      turn: {
+        ...opened.turn,
+        activeActorId: goblinId,
+        activeIndex: opened.turn.initiativeOrder.indexOf(goblinId),
+      },
+    };
+    const heroTarget: ActionTarget = { kind: "actor", actorId: "hero" };
+
+    expect(listLegalActions(creatureState, goblinId, content).find((entry) => entry.actionId === actionId))
+      .toEqual(expect.objectContaining({ enabled: false, reason: "Action cannot be resolved." }));
+    expect(listLegalTargets(creatureState, goblinId, source, content)).toEqual([]);
+    expect(previewAction(creatureState, goblinId, source, heroTarget, content))
+      .toEqual({ legal: false, reason: "Action cannot be resolved.", notes: [] });
+    const rejected = dispatchCombatCommand(creatureState, useAction(creatureState, source, heroTarget), content);
+    expect(rejected.accepted).toBe(false);
+    expect(rejected.error).toBe("Action cannot be resolved.");
+    expect(rejected.state).toBe(creatureState);
+
+    const hero = opened.actors.hero as NonNullable<CombatState["actors"][string]>;
+    const characterState: CombatState = {
+      ...opened,
+      actors: {
+        ...opened.actors,
+        hero: { ...hero, innateActionIds: [...hero.innateActionIds, actionId] },
+      },
+    };
+    expect(listLegalActions(characterState, "hero", content).find((entry) => entry.actionId === actionId))
+      .toEqual(expect.objectContaining({ enabled: true, reason: undefined }));
+    expect(listLegalTargets(characterState, "hero", source, content))
+      .toContainEqual(expect.objectContaining({ kind: "actor", actorId: goblinId }));
+  });
+
+  it("filters unresolvable Creature targets without disabling an Action that has a Character target", () => {
+    const opened = heroFirst();
+    const actionId = "target-class-dc-test";
+    const action: ActionDefinition = {
+      ...classDcAction(actionId, "target"),
+      range: { kind: "feet", value: 10 },
+    };
+    const content: CombatContent = {
+      ...M6_CONTENT,
+      actions: { ...M6_CONTENT.actions, [actionId]: action },
+    };
+    const source: ActionSource = { kind: "innate", id: actionId };
+    const hero = opened.actors.hero as NonNullable<CombatState["actors"][string]>;
+    const characterTargetId = "z-character-enemy";
+    const mixedState: CombatState = {
+      ...opened,
+      actors: {
+        ...opened.actors,
+        hero: { ...hero, innateActionIds: [...hero.innateActionIds, actionId] },
+        [characterTargetId]: {
+          ...hero,
+          id: characterTargetId,
+          name: "Character Enemy",
+          team: "enemies",
+          position: { x: 2, y: 2 },
+        },
+      },
+    };
+    const characterTarget: ActionTarget = { kind: "actor", actorId: characterTargetId };
+
+    expect(listLegalActions(mixedState, "hero", content).find((entry) => entry.actionId === actionId))
+      .toEqual(expect.objectContaining({ enabled: true, reason: undefined }));
+    expect(listLegalTargets(mixedState, "hero", source, content))
+      .toEqual([expect.objectContaining({ kind: "actor", actorId: characterTargetId })]);
+    expect(previewAction(mixedState, "hero", source, ENEMY, content))
+      .toEqual({ legal: false, reason: "Action cannot be resolved.", notes: [] });
+    expect(previewAction(mixedState, "hero", source, characterTarget, content).legal).toBe(true);
   });
 
   it("reads a Skill's default Attribute and honours an override without touching the rank", () => {
