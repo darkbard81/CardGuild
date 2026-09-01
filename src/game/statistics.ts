@@ -1,10 +1,15 @@
 import type {
   ActorStatProfile,
   ActorState,
+  ArmorCategory,
+  ArmorProfile,
   AttributeId,
+  CharacterStatProfile,
   CombatContent,
+  EquipmentDefinition,
   FixedCreatureStats,
   InitiativeStatisticSelector,
+  ModifierTarget,
   ModifierType,
   ProficiencyRank,
   ResolvedStatistic,
@@ -27,6 +32,10 @@ export function cloneActorStatProfile(profile: ActorStatProfile): ActorStatProfi
           attributes: { ...profile.stats.attributes },
           saves: { ...profile.stats.saves },
           skills: { ...profile.stats.skills },
+          defense: {
+            ...profile.stats.defense,
+            armorProficiencies: { ...profile.stats.defense.armorProficiencies },
+          },
         },
       }
     : {
@@ -66,6 +75,7 @@ export const SKILL_ATTRIBUTE: Readonly<Record<SkillId, AttributeId>> = {
 
 export const ATTRIBUTE_IDS = ["str", "dex", "con", "int", "wis", "cha"] as const satisfies readonly AttributeId[];
 export const SAVE_IDS = ["fortitude", "reflex", "will"] as const satisfies readonly SaveId[];
+export const ARMOR_CATEGORIES = ["unarmored", "light", "medium", "heavy"] as const satisfies readonly ArmorCategory[];
 export const SKILL_IDS = [
   "acrobatics",
   "arcana",
@@ -123,21 +133,34 @@ function selectorKey(selector: StatisticSelector): string {
   return `${selector.kind}:${selector.id}`;
 }
 
-function selectorLabel(selector: StatisticSelector): string {
-  if (selector.kind === "perception") return "Perception";
-  return selector.id[0]?.toUpperCase() + selector.id.slice(1);
+function titleCase(value: string): string {
+  return `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}`;
 }
 
-function selectorMatches(contribution: StatisticModifierContribution, selector: StatisticSelector): boolean {
+function selectorLabel(selector: StatisticSelector): string {
+  if (selector.kind === "perception") return "Perception";
+  return titleCase(selector.id);
+}
+
+/**
+ * `all` reaches every target the stack serves, AC included — that is what makes a
+ * Frightened status penalty hit checks and Armor Class from one authored contribution.
+ */
+function selectorMatches(contribution: StatisticModifierContribution, target: ModifierTarget): boolean {
   if (contribution.selector.kind === "all") return true;
-  if (contribution.selector.kind === "perception") return selector.kind === "perception";
-  if (contribution.selector.kind === "save" && selector.kind === "save") {
-    return contribution.selector.id === undefined || contribution.selector.id === selector.id;
+  if (contribution.selector.kind === "perception") return target.kind === "perception";
+  if (contribution.selector.kind === "ac") return target.kind === "ac";
+  if (contribution.selector.kind === "save" && target.kind === "save") {
+    return contribution.selector.id === undefined || contribution.selector.id === target.id;
   }
-  if (contribution.selector.kind === "skill" && selector.kind === "skill") {
-    return contribution.selector.id === undefined || contribution.selector.id === selector.id;
+  if (contribution.selector.kind === "skill" && target.kind === "skill") {
+    return contribution.selector.id === undefined || contribution.selector.id === target.id;
   }
   return false;
+}
+
+function modifierTarget(selector: StatisticSelector): ModifierTarget {
+  return selector.kind === "skill" ? { kind: "skill", id: selector.id } : selector;
 }
 
 function sourced(
@@ -175,6 +198,34 @@ function assertUntypedIsPenalty(modifier: SourcedModifier): void {
   );
 }
 
+/**
+ * Armor and a raised Shield reach AC as ordinary typed contributions instead of
+ * special-case arithmetic, so they stack under the same rules as everything else.
+ */
+function derivedEquipmentModifiers(
+  equipment: EquipmentDefinition,
+  actor: Pick<ActorState, "shieldRaised">,
+): readonly StatisticModifierContribution[] {
+  const derived: StatisticModifierContribution[] = [];
+  if (equipment.armorProfile && equipment.armorProfile.acItemBonus !== 0) {
+    derived.push({
+      selector: { kind: "ac" },
+      type: "item",
+      value: equipment.armorProfile.acItemBonus,
+      label: equipment.name,
+    });
+  }
+  if (equipment.shieldBonus && actor.shieldRaised) {
+    derived.push({
+      selector: { kind: "ac" },
+      type: "circumstance",
+      value: equipment.shieldBonus,
+      label: `${equipment.name} raised`,
+    });
+  }
+  return derived;
+}
+
 function collectModifiers(actor: ActorState, context: StatisticResolutionContext): readonly SourcedModifier[] {
   const modifiers: SourcedModifier[] = [
     ...traitModifiers(actor.traits, context, `actor:${actor.id}`),
@@ -184,6 +235,7 @@ function collectModifiers(actor: ActorState, context: StatisticResolutionContext
     if (!equipment) continue;
     modifiers.push(
       ...sourced(equipment.statModifiers, "equipment", equipment.id),
+      ...sourced(derivedEquipmentModifiers(equipment, actor), "equipment", equipment.id),
       ...traitModifiers(equipment.traits, context, `equipment:${equipment.id}`),
     );
   }
@@ -262,7 +314,7 @@ function baseSources(actor: ActorState, selector: StatisticSelector): readonly S
     {
       kind: "proficiency",
       sourceId: `proficiency:${rank}`,
-      label: `${rank[0]?.toUpperCase()}${rank.slice(1)} proficiency`,
+      label: `${titleCase(rank)} proficiency`,
       value: proficiencyBonus(profile.level, rank),
       applied: true,
     },
@@ -293,29 +345,48 @@ function selectedTypedIndices(modifiers: readonly SourcedModifier[]): ReadonlySe
   return selected;
 }
 
+/**
+ * Equipment / Condition / Trait / Context contributions for one target, in deterministic
+ * order, each flagged with whether PF2e stacking selects it. Every statistic resolver
+ * shares this so bonus/penalty stacking is never re-implemented per statistic.
+ */
+export function resolveModifierStack(
+  actor: ActorState,
+  target: ModifierTarget,
+  context: StatisticResolutionContext,
+): readonly StatisticSource[] {
+  const modifiers = collectModifiers(actor, context).filter((modifier) => selectorMatches(modifier, target));
+  const selected = selectedTypedIndices(modifiers);
+  return modifiers.map((modifier, index) => ({
+    kind: modifier.sourceKind,
+    sourceId: modifier.sourceId,
+    label: modifier.label,
+    value: modifier.value,
+    modifierType: modifier.type,
+    applied: selected.has(index),
+  }));
+}
+
+/** Sums the applied sources of a base derivation and its modifier stack into one result. */
+export function combineStatisticSources(
+  ...groups: readonly (readonly StatisticSource[])[]
+): ResolvedStatistic {
+  const sources = groups.flat();
+  return {
+    value: sources.reduce((total, source) => total + (source.applied ? source.value : 0), 0),
+    sources,
+  };
+}
+
 export function resolveStatisticModifier(
   actor: ActorState,
   selector: StatisticSelector,
   context: StatisticResolutionContext,
 ): ResolvedStatistic {
-  const base = baseSources(actor, selector);
-  const modifiers = collectModifiers(actor, context).filter((modifier) => selectorMatches(modifier, selector));
-  const selected = selectedTypedIndices(modifiers);
-  const sources: StatisticSource[] = [
-    ...base,
-    ...modifiers.map((modifier, index) => ({
-      kind: modifier.sourceKind,
-      sourceId: modifier.sourceId,
-      label: modifier.label,
-      value: modifier.value,
-      modifierType: modifier.type,
-      applied: selected.has(index),
-    })),
-  ];
-  return {
-    value: sources.reduce((total, source) => total + (source.applied ? source.value : 0), 0),
-    sources,
-  };
+  return combineStatisticSources(
+    baseSources(actor, selector),
+    resolveModifierStack(actor, modifierTarget(selector), context),
+  );
 }
 
 export function resolveStatisticDC(
@@ -339,6 +410,86 @@ export function resolveInitiative(
   source: InitiativeStatisticSelector = { kind: "perception" },
 ): ResolvedStatistic {
   return resolveStatisticModifier(actor, source, context);
+}
+
+export function equippedArmor(
+  actor: Pick<ActorState, "equipmentIds">,
+  context: StatisticResolutionContext,
+): EquipmentDefinition | undefined {
+  for (const equipmentId of [...actor.equipmentIds].sort()) {
+    const equipment = context.content.equipment[equipmentId];
+    if (equipment?.armorProfile) return equipment;
+  }
+  return undefined;
+}
+
+export function effectiveDexterity(dexterity: number, armor: ArmorProfile | undefined): number {
+  return armor ? Math.min(dexterity, armor.dexCap) : dexterity;
+}
+
+function armorClassBaseSources(
+  actor: ActorState,
+  context: StatisticResolutionContext,
+): readonly StatisticSource[] {
+  if (actor.statProfile.kind === "creature") {
+    return [{
+      kind: "fixed",
+      sourceId: "creature:ac",
+      label: "Authored AC",
+      value: actor.statProfile.stats.ac,
+      applied: true,
+    }];
+  }
+
+  const profile = actor.statProfile.stats;
+  const armor = equippedArmor(actor, context)?.armorProfile;
+  const category: ArmorCategory = armor?.category ?? "unarmored";
+  const dexterity = profile.attributes.dex;
+  const capped = effectiveDexterity(dexterity, armor);
+  const rank = profile.defense.armorProficiencies[category];
+  return [
+    { kind: "dc", sourceId: "ac-base", label: "Base AC", value: 10, applied: true },
+    {
+      kind: "attribute",
+      sourceId: "attribute:dex",
+      label: armor && capped < dexterity ? `DEX (cap ${armor.dexCap})` : "DEX",
+      value: capped,
+      applied: true,
+    },
+    {
+      kind: "proficiency",
+      sourceId: `proficiency:${category}:${rank}`,
+      label: `${titleCase(rank)} ${category} armor proficiency`,
+      value: proficiencyBonus(profile.level, rank),
+      applied: true,
+    },
+  ];
+}
+
+/**
+ * `10 + capped DEX + armor proficiency` for Characters, authored AC for Creatures, both
+ * finished by the shared typed modifier stack. Nothing caches a final AC.
+ */
+export function resolveArmorClass(
+  actor: ActorState,
+  context: StatisticResolutionContext,
+): ResolvedStatistic {
+  return combineStatisticSources(
+    armorClassBaseSources(actor, context),
+    resolveModifierStack(actor, { kind: "ac" }, context),
+  );
+}
+
+export function deriveMaxHp(profile: CharacterStatProfile): number {
+  const { ancestryHp, classHpPerLevel } = profile.defense;
+  if (!Number.isInteger(profile.level) || profile.level < 1) {
+    throw new Error("Character level must be a positive integer to derive maximum HP.");
+  }
+  return ancestryHp + profile.level * (classHpPerLevel + profile.attributes.con);
+}
+
+export function resolveMaxHp(profile: ActorStatProfile): number {
+  return profile.kind === "creature" ? profile.stats.maxHp : deriveMaxHp(profile.stats);
 }
 
 export function formatStatisticSources(sources: readonly StatisticSource[]): readonly string[] {

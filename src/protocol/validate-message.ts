@@ -66,7 +66,12 @@ const loadout = {
     equipment: {
       type: "object",
       additionalProperties: false,
-      properties: { weapon: nonEmptyString, shield: nonEmptyString, feet: nonEmptyString },
+      properties: {
+        weapon: nonEmptyString,
+        armor: nonEmptyString,
+        shield: nonEmptyString,
+        feet: nonEmptyString,
+      },
     },
     preparedCards: { type: "array", maxItems: 32, items: nonEmptyString },
   },

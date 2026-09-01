@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { M5_ADVENTURE_ID, M5_COMPILED_PACK } from "../content";
+import { M6_ADVENTURE_ID, M6_COMPILED_PACK } from "../content";
 import { hashCombatState } from "../game";
 import {
   createSessionCoreState,
@@ -18,8 +18,8 @@ import type {
 } from "./types";
 
 const context: SessionAuthorityContext = {
-  pack: M5_COMPILED_PACK,
-  adventureId: M5_ADVENTURE_ID,
+  pack: M6_COMPILED_PACK,
+  adventureId: M6_ADVENTURE_ID,
 };
 const DEFAULT_PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
 
@@ -246,6 +246,9 @@ describe("pure M5 Session authority", () => {
       halberd: 1,
       shield: 2,
       "boots-of-fly": 2,
+      "scale-mail": 1,
+      "leather-armor": 1,
+      "half-plate": 1,
     });
     for (const memberId of ["party.hero-1", "party.hero-2", "party.hero-3"]) {
       const member = state.adventure?.party.members[memberId];

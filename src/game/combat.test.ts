@@ -15,7 +15,7 @@ import {
   validateActionIntent,
 } from "./queries";
 import { createCombatReplay, hashCombatState, replayCombat } from "./replay";
-import { getArmorClass } from "./rules";
+import { resolveArmorClass } from "./statistics";
 import { resolveStatisticDC } from "./statistics";
 import type {
   ActionSource,
@@ -37,7 +37,10 @@ function createM0Combat(
   return createCombat({ scenario, content, contentIdentity: M0_CONTENT_IDENTITY }, seed);
 }
 
-type ActorOverride = Partial<ActorSetup> & { readonly initiative?: number };
+type ActorOverride = Partial<ActorSetup> & {
+  readonly initiative?: number;
+  readonly authoredAc?: number;
+};
 
 function withInitiative(actor: ActorSetup, initiative: number): ActorSetup {
   return actor.statProfile.kind === "character"
@@ -61,6 +64,11 @@ function withInitiative(actor: ActorSetup, initiative: number): ActorSetup {
       };
 }
 
+function withAuthoredAc(actor: ActorSetup, ac: number): ActorSetup {
+  if (actor.statProfile.kind !== "creature") throw new Error("Only creatures author a fixed AC.");
+  return { ...actor, statProfile: { kind: "creature", stats: { ...actor.statProfile.stats, ac } } };
+}
+
 function scenarioWith(
   actorOverrides: Readonly<Record<string, ActorOverride>> = {},
 ): ScenarioDefinition {
@@ -68,8 +76,9 @@ function scenarioWith(
   return {
     ...scenario,
     actors: scenario.actors.map((actor) => {
-      const { initiative, ...override } = actorOverrides[actor.id] ?? {};
-      const merged = { ...actor, ...override };
+      const { initiative, authoredAc, ...override } = actorOverrides[actor.id] ?? {};
+      const withAc = { ...actor, ...override };
+      const merged = authoredAc === undefined ? withAc : withAuthoredAc(withAc, authoredAc);
       return initiative === undefined ? merged : withInitiative(merged, initiative);
     }),
   };
@@ -140,7 +149,10 @@ function twoReactionState(moverHp = 100): CombatState {
       ...scenario.actors.map((actor) => {
         if (actor.id === "hero") return withInitiative({ ...actor, position: { x: 1, y: 1 }, facing: "east" as const }, -100);
         if (actor.id === "goblin-skirmisher") {
-          return withInitiative({ ...actor, position: { x: 2, y: 1 }, facing: "east" as const, hp: moverHp, maxHp: moverHp, baseAc: -100 }, 100);
+          return withInitiative(
+            withAuthoredAc({ ...actor, position: { x: 2, y: 1 }, facing: "east" as const, hp: moverHp, maxHp: moverHp }, -100),
+            100,
+          );
         }
         return withInitiative({ ...actor, position: { x: 8, y: 6 } }, -102);
       }),
@@ -173,7 +185,7 @@ describe("M0 combat core", () => {
     const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     const second = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("df858702cb963b73");
+    expect(hashCombatState(first)).toBe("e24e80315af9e2a8");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -212,10 +224,10 @@ describe("M0 combat core", () => {
       M0_CONTENT,
     );
     expect(raised.state.actors.hero?.shieldRaised).toBe(true);
-    expect(getArmorClass(
+    expect(resolveArmorClass(
       raised.state.actors.hero as NonNullable<typeof raised.state.actors.hero>,
-      M0_CONTENT,
-    ).value).toBe(20);
+      { content: M0_CONTENT },
+    ).value).toBe(17);
 
     const beaconCard = raised.state.cardZones.hero?.hand.find(
       (card) => card.definitionId === "card.spirit-beacon",
@@ -1131,11 +1143,32 @@ describe("M0 combat core", () => {
     expect(replay.commands).toEqual([]);
   });
 
+  it("mutates only current HP on damage and keeps derived maximum HP intact", () => {
+    const scenario = heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, facing: "east" },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, authoredAc: -100 },
+    });
+    const state = createM0Combat(scenario, 91).state;
+    const before = state.actors["goblin-skirmisher"] as NonNullable<typeof state.actors["goblin-skirmisher"]>;
+    expect(before.hp).toBe(before.maxHp);
+
+    const struck = dispatchCombatCommand(
+      state,
+      command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
+      M0_CONTENT,
+    );
+    const after = struck.state.actors["goblin-skirmisher"] as NonNullable<typeof state.actors["goblin-skirmisher"]>;
+
+    expect(struck.accepted).toBe(true);
+    expect(after.hp).toBeLessThan(before.hp);
+    expect(after.maxHp).toBe(before.maxHp);
+  });
+
   it("ends in victory when all enemies are defeated", () => {
     const scenario = heroFirstScenario({
       hero: { position: { x: 1, y: 1 }, facing: "east" },
-      "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 1, maxHp: 1, baseAc: -100 },
-      "goblin-brute": { position: { x: 1, y: 2 }, hp: 1, maxHp: 1, baseAc: -100 },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 1, maxHp: 1, authoredAc: -100 },
+      "goblin-brute": { position: { x: 1, y: 2 }, hp: 1, maxHp: 1, authoredAc: -100 },
     });
     let state = createM0Combat(scenario, 77).state;
     for (const targetActorId of ["goblin-skirmisher", "goblin-brute"]) {

@@ -32,10 +32,11 @@ const actor: ActorState = {
   facing: "east",
   hp: 10,
   maxHp: 10,
-  baseAc: 10,
   statProfile: {
     kind: "creature",
     stats: {
+      ac: 10,
+      maxHp: 10,
       perception: 0,
       saves: { fortitude: 0, reflex: 0, will: 0 },
       skills: { athletics: 0 },

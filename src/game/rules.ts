@@ -78,24 +78,6 @@ export function getWeaponProfile(actor: ActorState, content: CombatContent): Wea
   );
 }
 
-export function getArmorClass(
-  actor: ActorState,
-  content: CombatContent,
-): { readonly value: number; readonly sources: readonly string[] } {
-  const sources: string[] = [`Base AC ${actor.baseAc}`];
-  let value = actor.baseAc;
-
-  if (actor.shieldRaised) {
-    const shield = getEquipment(actor, content).find((equipment) => equipment.shieldBonus);
-    if (shield?.shieldBonus) {
-      value += shield.shieldBonus;
-      sources.push(`${shield.name} +${shield.shieldBonus}`);
-    }
-  }
-
-  return { value, sources };
-}
-
 export const DIRECTION_VECTORS: Readonly<Record<Direction, GridPosition>> = {
   north: { x: 0, y: -1 },
   east: { x: 1, y: 0 },

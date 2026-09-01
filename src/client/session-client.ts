@@ -1,4 +1,4 @@
-import { M5_CONTENT_IDENTITY } from "../content";
+import { M6_CONTENT_IDENTITY } from "../content";
 import type {
   ClientHello,
   ClientIntentEnvelope,
@@ -140,7 +140,7 @@ export class SessionClient {
         sessionId: this.credential.sessionId,
         playerId: this.credential.playerId,
         reconnectToken: this.credential.reconnectToken,
-        contentIdentity: M5_CONTENT_IDENTITY,
+        contentIdentity: M6_CONTENT_IDENTITY,
       };
       socket.send(JSON.stringify(hello));
       if (this.outstanding) socket.send(JSON.stringify(this.outstanding.envelope));

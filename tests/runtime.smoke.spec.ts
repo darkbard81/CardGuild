@@ -188,12 +188,19 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await openAdventure(page);
   await page.getByRole("button", { name: "Manage Loadout" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "loadout");
-  await expect(page.locator(".collection-item")).toHaveCount(3);
+  await expect(page.locator(".collection-item")).toHaveCount(4);
   await expect(page.locator(".deck-contribution")).toHaveCount(4);
   await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
   await expect(page.locator('.deck-contribution[data-card-id="card.fly"]')).toContainText("Boots of Fly / Fly");
   await expect(page.locator('.deck-contribution[data-card-id="card.trip"]')).toContainText("Halberd / Trip");
   expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
+
+  await expect(page.locator("#loadout-detail")).toContainText("Scale Mail · medium");
+  await expect(page.locator("#loadout-detail")).toContainText("+3 item · DEX cap 2");
+  await page.locator('.equipment-slot[data-slot="armor"]').click();
+  await page.locator('.loadout-option[data-option-id="empty-armor"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("18 → 15");
+  await expect(page.locator("#loadout-detail")).toContainText("Unarmored · unarmored");
 
   await page.locator('.equipment-slot[data-slot="feet"]').click();
   await page.locator('.loadout-option[data-option-id="empty-feet"]').click();

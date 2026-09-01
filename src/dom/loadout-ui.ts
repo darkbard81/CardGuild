@@ -334,6 +334,11 @@ export class LoadoutUi {
       ["Reflex DC", preview?.after
         ? `${preview.before.statistics.reflex.dc} → ${preview.after.statistics.reflex.dc}`
         : String(shown.statistics.reflex.dc)],
+      ["HP", preview?.after
+        ? `${preview.before.statistics.maxHp} → ${preview.after.statistics.maxHp}`
+        : String(shown.statistics.maxHp)],
+      ["Armor", `${shown.armor.name} · ${shown.armor.category}`],
+      ["Armor bonus", `+${shown.armor.acItemBonus} item · DEX cap ${shown.armor.dexCap ?? "none"}`],
       ["Weapon", shown.weapon.name],
       ["Damage", `${shown.weapon.damage.count}d${shown.weapon.damage.sides}${shown.weapon.damage.modifier >= 0 ? "+" : ""}${shown.weapon.damage.modifier}`],
       ["Reach", `${shown.weapon.rangeFeet} ft`],

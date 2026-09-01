@@ -3,20 +3,39 @@
     "id": "halberd",
     "name": "Halberd",
     "slot": "weapon",
-    "traits": [{ "id": "weapon" }, { "id": "trip" }, { "id": "reach" }],
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "trip"
+      },
+      {
+        "id": "reach"
+      }
+    ],
     "statModifiers": [],
     "weaponProfile": {
       "name": "Halberd",
       "attackModifier": 8,
       "rangeFeet": 10,
-      "damage": { "count": 1, "sides": 12, "modifier": 4, "damageType": "slashing" }
+      "damage": {
+        "count": 1,
+        "sides": 12,
+        "modifier": 4,
+        "damageType": "slashing"
+      }
     }
   },
   {
     "id": "shield",
     "name": "Steel Shield",
     "slot": "shield",
-    "traits": [{ "id": "shield" }],
+    "traits": [
+      {
+        "id": "shield"
+      }
+    ],
     "statModifiers": [],
     "shieldBonus": 2
   },
@@ -24,9 +43,57 @@
     "id": "boots-of-fly",
     "name": "Boots of Fly",
     "slot": "feet",
-    "traits": [{ "id": "fly" }],
+    "traits": [
+      {
+        "id": "fly"
+      }
+    ],
     "statModifiers": [
-      { "selector": { "kind": "save", "id": "reflex" }, "type": "item", "value": 1, "label": "Boots of Fly" }
+      {
+        "selector": {
+          "kind": "save",
+          "id": "reflex"
+        },
+        "type": "item",
+        "value": 1,
+        "label": "Boots of Fly"
+      }
     ]
+  },
+  {
+    "id": "leather-armor",
+    "name": "Leather Armor",
+    "slot": "armor",
+    "traits": [],
+    "statModifiers": [],
+    "armorProfile": {
+      "category": "light",
+      "acItemBonus": 1,
+      "dexCap": 4
+    }
+  },
+  {
+    "id": "scale-mail",
+    "name": "Scale Mail",
+    "slot": "armor",
+    "traits": [],
+    "statModifiers": [],
+    "armorProfile": {
+      "category": "medium",
+      "acItemBonus": 3,
+      "dexCap": 2
+    }
+  },
+  {
+    "id": "half-plate",
+    "name": "Half Plate",
+    "slot": "armor",
+    "traits": [],
+    "statModifiers": [],
+    "armorProfile": {
+      "category": "heavy",
+      "acItemBonus": 5,
+      "dexCap": 1
+    }
   }
 ]

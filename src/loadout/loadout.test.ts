@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { M3_COMPILED_PACK, M3_CONTENT_IDENTITY, M3_ROAD_AMBUSH_ID } from "../content";
-import { createCombat } from "../game";
+import {
+  M3_COMPILED_PACK,
+  M3_CONTENT_IDENTITY,
+  M3_ROAD_AMBUSH_ID,
+  M6_COMBAT_DEFINITION,
+  M6_COMPILED_PACK,
+} from "../content";
+import { createCombat, resolveArmorClass } from "../game";
 import {
   createStartingCollection,
   deriveActorSetup,
@@ -205,5 +211,84 @@ describe("loadout ownership and derivation", () => {
     const snapshot = deriveLoadoutSnapshot(actor, candidate, content.combatContent, "party.hero-1");
     expect(snapshot.weapon.name).toBe("Halberd");
     expect(snapshot.contextActionIds).toEqual([]);
+  });
+});
+
+describe("armor loadout and derived defenses", () => {
+  const armoredContent: LoadoutContent = M6_COMPILED_PACK;
+  const aerin = M6_COMPILED_PACK.actorDefinitions["hero.aerin"] as NonNullable<
+    (typeof M6_COMPILED_PACK.actorDefinitions)["hero.aerin"]
+  >;
+
+  function armoredParty(loadout: PartyMemberLoadout = aerin.starterLoadout): LoadoutParty {
+    return { members: { "party.hero-1": { id: "party.hero-1", actorDefinitionId: aerin.id, loadout } } };
+  }
+
+  it("owns starter armor and keeps the armor slot in deterministic equipment order", () => {
+    expect(createStartingCollection(armoredParty(), armoredContent).equipment).toEqual({
+      halberd: 1,
+      "scale-mail": 1,
+      shield: 1,
+      "boots-of-fly": 1,
+    });
+    expect(deriveLoadoutSnapshot(aerin, aerin.starterLoadout, armoredContent.combatContent, "party.hero-1").equipmentIds)
+      .toEqual(["halberd", "scale-mail", "shield", "boots-of-fly"]);
+  });
+
+  it("rejects non-armor equipment in the armor slot", () => {
+    const invalid = armoredParty({ equipment: { armor: "halberd" }, preparedCards: [] });
+    expect(validatePartyLoadout(invalid, { equipment: { halberd: 1 }, cards: {} }, armoredContent).issues)
+      .toContainEqual(expect.objectContaining({ code: "SLOT_MISMATCH", slot: "armor", definitionId: "halberd" }));
+  });
+
+  it("previews an armor swap with the AC the next encounter actually resolves", () => {
+    const currentParty = armoredParty();
+    const collection = createStartingCollection(currentParty, armoredContent);
+    const unarmored: PartyMemberLoadout = {
+      equipment: { ...aerin.starterLoadout.equipment, armor: undefined },
+      preparedCards: [...aerin.starterLoadout.preparedCards],
+    };
+    const preview = previewLoadoutChange(currentParty, collection, armoredContent, "party.hero-1", unarmored);
+
+    expect(preview.legal).toBe(true);
+    expect(preview.before.statistics.ac).toBe(18);
+    expect(preview.after?.statistics.ac).toBe(15);
+    expect(preview.before.armor).toEqual({
+      id: "scale-mail",
+      name: "Scale Mail",
+      category: "medium",
+      acItemBonus: 3,
+      dexCap: 2,
+    });
+    expect(preview.after?.armor.category).toBe("unarmored");
+
+    const placement = { instanceId: "hero.probe", actorDefinitionId: aerin.id, team: "heroes" as const, position: { x: 0, y: 0 }, facing: "north" as const };
+    const fingerprints: string[] = [];
+    for (const [loadout, expected] of [[aerin.starterLoadout, 18], [unarmored, 15]] as const) {
+      const setup = deriveActorSetup(aerin, placement, loadout, armoredContent.combatContent, "party.hero-1");
+      const state = createCombat(
+        { ...M6_COMBAT_DEFINITION, scenario: { ...M6_COMBAT_DEFINITION.scenario, actors: [setup, ...M6_COMBAT_DEFINITION.scenario.actors] } },
+        7,
+      ).state;
+      const combatActor = state.actors["hero.probe"] as NonNullable<typeof state.actors["hero.probe"]>;
+      expect(resolveArmorClass(combatActor, { content: armoredContent.combatContent }).value).toBe(expected);
+      fingerprints.push(state.setupFingerprint);
+    }
+    expect(fingerprints[0]).not.toBe(fingerprints[1]);
+  });
+
+  it("derives max HP from the character profile and starts the encounter at full health", () => {
+    const setup = deriveActorSetup(
+      aerin,
+      { instanceId: "hero.probe", actorDefinitionId: aerin.id, team: "heroes", position: { x: 0, y: 0 }, facing: "north" },
+      aerin.starterLoadout,
+      armoredContent.combatContent,
+      "party.hero-1",
+    );
+
+    expect(setup.maxHp).toBe(21);
+    expect(setup.hp).toBe(setup.maxHp);
+    expect(deriveLoadoutSnapshot(aerin, aerin.starterLoadout, armoredContent.combatContent, "party.hero-1").statistics.maxHp)
+      .toBe(21);
   });
 });

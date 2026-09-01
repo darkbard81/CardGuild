@@ -1,5 +1,5 @@
 import { positionKey } from "../game/grid";
-import { isUntypedPenalty } from "../game/statistics";
+import { deriveMaxHp, isUntypedPenalty } from "../game/statistics";
 import type {
   ActionDefinition,
   ActionTargeting,
@@ -236,6 +236,12 @@ export function validateContentPackSemantics(
   source.equipment.forEach((definition, index) => {
     validateTraits(context, knownTraits, "equipment", definition.id, `[${index}].traits`, definition.traits);
     validateStatModifiers(context, "equipment", definition.id, `[${index}].statModifiers`, definition.statModifiers);
+    if (definition.slot === "armor" && !definition.armorProfile) {
+      addIssue(context, "equipment", `[${index}].armorProfile`, "ARMOR_PROFILE_REQUIRED", `Armor slot equipment "${definition.id}" must declare an armor profile.`, definition.id);
+    }
+    if (definition.slot !== "armor" && definition.armorProfile) {
+      addIssue(context, "equipment", `[${index}].armorProfile`, "ARMOR_PROFILE_SLOT_MISMATCH", `Equipment "${definition.id}" declares an armor profile but occupies the ${definition.slot} slot.`, definition.id);
+    }
     if (definition.weaponProfile) validateWeaponProfile(context, "equipment", definition.id, `[${index}].weaponProfile`, definition.weaponProfile);
   });
 
@@ -252,8 +258,15 @@ export function validateContentPackSemantics(
       );
     }
     validateWeaponProfile(context, "actors", actor.id, `[${index}].fallbackWeapon`, actor.fallbackWeapon);
-    if (actor.hp > actor.maxHp) {
-      addIssue(context, "actors", `[${index}].hp`, "HP_EXCEEDS_MAXIMUM", `Actor "${actor.id}" has ${actor.hp} HP but maximum HP is ${actor.maxHp}.`, actor.id);
+    if (actor.statProfile.kind === "character" && deriveMaxHp(actor.statProfile.stats) < 1) {
+      addIssue(
+        context,
+        "actors",
+        `[${index}].statProfile.stats.defense`,
+        "DERIVED_MAX_HP_NOT_POSITIVE",
+        `Actor "${actor.id}" derives ${deriveMaxHp(actor.statProfile.stats)} maximum HP; ancestry, class, and CON must total at least 1.`,
+        actor.id,
+      );
     }
     Object.entries(actor.starterLoadout.equipment).forEach(([slot, equipmentId]) => {
       if (!equipmentId) return;

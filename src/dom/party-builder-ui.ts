@@ -24,8 +24,8 @@ function playableActors(pack: CompiledContentPack): readonly ActorDefinition[] {
   return Object.values(pack.actorDefinitions)
     .filter((actor) => actor.traits.some((trait) => trait.id === "playable"))
     .sort((left, right) =>
-      archetypeRank(left, actorStatistics(left, pack).initiative) -
-        archetypeRank(right, actorStatistics(right, pack).initiative) ||
+      archetypeRank(left, actorStatistics(left, pack)) -
+        archetypeRank(right, actorStatistics(right, pack)) ||
       left.name.localeCompare(right.name));
 }
 
@@ -33,14 +33,16 @@ function actorStatistics(actor: ActorDefinition, pack: CompiledContentPack) {
   return deriveLoadoutSnapshot(actor, actor.starterLoadout, pack.combatContent, actor.id).statistics;
 }
 
-function archetypeRank(actor: ActorDefinition, initiative: number): number {
-  if (actor.speedFeet >= 30 || initiative >= 8) return 1;
-  if (actor.maxHp >= 40 || actor.baseAc >= 20) return 2;
+type ActorStatistics = ReturnType<typeof actorStatistics>;
+
+function archetypeRank(actor: ActorDefinition, statistics: ActorStatistics): number {
+  if (actor.speedFeet >= 30 || statistics.initiative >= 8) return 1;
+  if (statistics.maxHp >= 24 || statistics.ac >= 20) return 2;
   return 0;
 }
 
-function roleSummary(actor: ActorDefinition, initiative: number): string {
-  return ["Balanced controller", "Mobile skirmisher", "Durable guardian"][archetypeRank(actor, initiative)] ??
+function roleSummary(actor: ActorDefinition, statistics: ActorStatistics): string {
+  return ["Balanced controller", "Mobile skirmisher", "Durable guardian"][archetypeRank(actor, statistics)] ??
     "Balanced controller";
 }
 
@@ -187,12 +189,12 @@ export class PartyBuilderUi {
     const statistics = actorStatistics(actor, this.pack);
     details.append(
       element("h3", undefined, actor.name),
-      element("p", "party-role", roleSummary(actor, statistics.initiative)),
+      element("p", "party-role", roleSummary(actor, statistics)),
       element(
         "p",
         "party-stats",
-          "HP " + String(actor.maxHp) +
-          " · AC " + String(actor.baseAc) +
+          "HP " + String(statistics.maxHp) +
+          " · AC " + String(statistics.ac) +
           " · REF " + signed(statistics.reflex.modifier) +
           " · INIT " + signed(statistics.initiative) +
           " · " + String(actor.speedFeet) + "ft",

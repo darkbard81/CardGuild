@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v5",
+  "title": "CardGuild Content Pack v6",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures"],
@@ -20,6 +20,7 @@
     "attributeId": { "enum": ["str", "dex", "con", "int", "wis", "cha"] },
     "proficiencyRank": { "enum": ["untrained", "trained", "expert", "master", "legendary"] },
     "saveId": { "enum": ["fortitude", "reflex", "will"] },
+    "armorCategory": { "enum": ["unarmored", "light", "medium", "heavy"] },
     "skillId": { "enum": ["acrobatics", "arcana", "athletics", "crafting", "deception", "diplomacy", "intimidation", "medicine", "nature", "occultism", "performance", "religion", "society", "stealth", "survival", "thievery"] },
     "gridPosition": {
       "type": "object",
@@ -306,6 +307,12 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["kind"],
+          "properties": { "kind": { "const": "ac" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
           "properties": {
             "kind": { "const": "save" },
             "id": { "$ref": "#/$defs/saveId" }
@@ -342,11 +349,27 @@
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
-        "slot": { "enum": ["weapon", "shield", "feet"] },
+        "slot": { "enum": ["weapon", "armor", "shield", "feet"] },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
         "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } },
         "weaponProfile": { "$ref": "#/$defs/weaponProfile" },
+        "armorProfile": { "$ref": "#/$defs/armorProfile" },
         "shieldBonus": { "type": "integer", "minimum": 1 }
+      },
+      "if": { "required": ["slot"], "properties": { "slot": { "const": "armor" } } },
+      "then": {
+        "required": ["armorProfile"],
+        "properties": { "armorProfile": { "$ref": "#/$defs/armorProfile" } }
+      }
+    },
+    "armorProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["category", "acItemBonus", "dexCap"],
+      "properties": {
+        "category": { "enum": ["light", "medium", "heavy"] },
+        "acItemBonus": { "type": "integer", "minimum": 0 },
+        "dexCap": { "type": "integer", "minimum": 0 }
       }
     },
     "loadoutProfile": {
@@ -362,6 +385,7 @@
       "additionalProperties": false,
       "properties": {
         "weapon": { "$ref": "#/$defs/nonEmptyString" },
+        "armor": { "$ref": "#/$defs/nonEmptyString" },
         "shield": { "$ref": "#/$defs/nonEmptyString" },
         "feet": { "$ref": "#/$defs/nonEmptyString" }
       }
@@ -421,16 +445,38 @@
         "thievery": { "$ref": "#/$defs/proficiencyRank" }
       }
     },
+    "armorProficiencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unarmored", "light", "medium", "heavy"],
+      "properties": {
+        "unarmored": { "$ref": "#/$defs/proficiencyRank" },
+        "light": { "$ref": "#/$defs/proficiencyRank" },
+        "medium": { "$ref": "#/$defs/proficiencyRank" },
+        "heavy": { "$ref": "#/$defs/proficiencyRank" }
+      }
+    },
+    "characterDefenseProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ancestryHp", "classHpPerLevel", "armorProficiencies"],
+      "properties": {
+        "ancestryHp": { "type": "integer", "minimum": 1 },
+        "classHpPerLevel": { "type": "integer", "minimum": 1 },
+        "armorProficiencies": { "$ref": "#/$defs/armorProficiencies" }
+      }
+    },
     "characterStatProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["level", "attributes", "perception", "saves", "skills"],
+      "required": ["level", "attributes", "perception", "saves", "skills", "defense"],
       "properties": {
-        "level": { "type": "integer", "minimum": 0 },
+        "level": { "type": "integer", "minimum": 1 },
         "attributes": { "$ref": "#/$defs/characterAttributes" },
         "perception": { "$ref": "#/$defs/proficiencyRank" },
         "saves": { "$ref": "#/$defs/characterSaves" },
-        "skills": { "$ref": "#/$defs/characterSkills" }
+        "skills": { "$ref": "#/$defs/characterSkills" },
+        "defense": { "$ref": "#/$defs/characterDefenseProfile" }
       }
     },
     "fixedCreatureSaves": {
@@ -485,8 +531,10 @@
             "stats": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["perception", "saves", "skills"],
+              "required": ["ac", "maxHp", "perception", "saves", "skills"],
               "properties": {
+                "ac": { "type": "integer", "minimum": 0 },
+                "maxHp": { "type": "integer", "minimum": 1 },
                 "perception": { "type": "integer" },
                 "saves": { "$ref": "#/$defs/fixedCreatureSaves" },
                 "skills": { "$ref": "#/$defs/fixedCreatureSkills" }
@@ -499,13 +547,10 @@
     "actorDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "hp", "maxHp", "baseAc", "statProfile", "speedFeet", "fallbackWeapon", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
+      "required": ["id", "name", "statProfile", "speedFeet", "fallbackWeapon", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
-        "hp": { "type": "integer", "minimum": 0 },
-        "maxHp": { "type": "integer", "minimum": 1 },
-        "baseAc": { "type": "integer", "minimum": 0 },
         "statProfile": { "$ref": "#/$defs/actorStatProfile" },
         "speedFeet": { "type": "integer", "minimum": 0 },
         "fallbackWeapon": { "$ref": "#/$defs/weaponProfile" },
@@ -661,7 +706,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": { "const": 5 },
+        "schemaVersion": { "const": 6 },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

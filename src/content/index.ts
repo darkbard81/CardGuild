@@ -43,17 +43,17 @@ export {
   M4_SCENARIO,
 } from "./load-m3-content";
 export {
-  M5_ADVENTURE,
-  M5_ADVENTURE_ID,
-  M5_COMBAT_DEFINITION,
-  M5_COMPILED_PACK,
-  M5_CONTENT,
-  M5_CONTENT_IDENTITY,
-  M5_CONTENT_SOURCE,
-  M5_DEFAULT_SEED,
-  M5_GOBLIN_CHIEF_ID,
-  M5_ROAD_AMBUSH_ID,
-  M5_RUINED_GATE_ID,
-  M5_SCENARIO,
-} from "./load-m5-content";
+  M6_ADVENTURE,
+  M6_ADVENTURE_ID,
+  M6_COMBAT_DEFINITION,
+  M6_COMPILED_PACK,
+  M6_CONTENT,
+  M6_CONTENT_IDENTITY,
+  M6_CONTENT_SOURCE,
+  M6_DEFAULT_SEED,
+  M6_GOBLIN_CHIEF_ID,
+  M6_ROAD_AMBUSH_ID,
+  M6_RUINED_GATE_ID,
+  M6_SCENARIO,
+} from "./load-m6-content";
 export { formatContentValidationIssue, validateContentPackSemantics } from "./validate-semantics";

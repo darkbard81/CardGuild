@@ -5,7 +5,6 @@ import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
   getEquipment,
-  getArmorClass,
   getWeaponProfile,
   hasTrait,
   isDirectlyBehind,
@@ -14,6 +13,7 @@ import {
 } from "./rules";
 import {
   formatStatisticSources,
+  resolveArmorClass,
   resolveInitiative,
   resolveStatisticDC,
   resolveStatisticModifier,
@@ -389,7 +389,7 @@ function performWeaponAttack(
   const target = draft.actors[targetActorId];
   if (!actor || !target || definition.effect.kind !== "weapon-attack") return;
   const weapon = getWeaponProfile(actor, content);
-  const targetAc = getArmorClass(target, content);
+  const targetAc = resolveArmorClass(target, { content });
   const rearAdjustment = isDirectlyBehind(actor.position, target) ? -2 : 0;
   const modifier = weapon.attackModifier + mapPenalty;
   const check = rollCheck(draft.rng, modifier, targetAc.value + rearAdjustment);
@@ -408,7 +408,7 @@ function performWeaponAttack(
       `${weapon.name} ${weapon.attackModifier >= 0 ? "+" : ""}${weapon.attackModifier}`,
       ...(mapPenalty ? [`MAP ${mapPenalty}`] : []),
       ...(rearAdjustment ? ["Rear attack: target AC -2"] : []),
-      ...targetAc.sources,
+      ...formatStatisticSources(targetAc.sources),
     ],
   });
   if (!isSuccessful(check.degree)) return;

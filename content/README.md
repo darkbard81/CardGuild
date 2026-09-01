@@ -32,8 +32,8 @@ npm run content:check
 원본 파일, definition, JSON path와 원인을 출력합니다.
 
 ```text
-Pack: cardguild.m5
-Source: content/m5/equipment.json
+Pack: cardguild.m6
+Source: content/m6/equipment.json
 Definition: halberd
 Path: [0].traits[1].id
 UNKNOWN_TRAIT: Trait "tirp" is not defined.
@@ -52,9 +52,22 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 - Playable Actor는 `statProfile.kind = "character"`로 Level, 6 Attribute modifier,
   Perception/3 Save/16 General Skill proficiency rank를 저장합니다. 최종 Reflex,
   Athletics, Initiative modifier는 authoring하지 않습니다.
-- Creature/Enemy는 `statProfile.kind = "creature"`로 최종 Save, Skill, Perception을
-  간결하게 authoring할 수 있습니다. 두 profile 모두 runtime의 공통 statistic resolver를
-  사용합니다.
+- Creature/Enemy는 `statProfile.kind = "creature"`로 최종 AC, Max HP, Save, Skill,
+  Perception을 간결하게 authoring할 수 있습니다. 두 profile 모두 runtime의 공통 statistic
+  resolver를 사용합니다.
+- Actor는 최종 `hp`, `maxHp`, `baseAc`를 authoring하지 않습니다. Playable Character의
+  Max HP는 `defense.ancestryHp + level × (defense.classHpPerLevel + CON)`에서,
+  AC는 `10 + capped DEX + armor proficiency + typed modifier`에서 파생됩니다.
+  Creature는 `statProfile.stats`의 `ac`/`maxHp`를 그대로 사용합니다.
+- Character `defense`는 `ancestryHp`, `classHpPerLevel`, 4개 `armorProficiencies`
+  (`unarmored`/`light`/`medium`/`heavy`) rank를 선언합니다.
+- Equipment slot은 `weapon`/`armor`/`shield`/`feet`이고 이 순서가 deterministic한
+  equipment 순서입니다. `armor` slot equipment만 `armorProfile`(`category`,
+  `acItemBonus`, `dexCap`)을 선언하며, 다른 slot이 선언하면 거부됩니다. Armor를 입지
+  않은 Character는 별도 item 없이 `unarmored` proficiency와 cap 없는 DEX로 resolve됩니다.
+- Armor의 `acItemBonus`와 raised Shield의 `shieldBonus`는 authoring에서 중복 선언하지
+  않습니다. Runtime이 각각 AC item / circumstance contribution으로 같은 modifier
+  stack에 넣습니다.
 - Equipment, Condition, Trait의 `statModifiers`는 statistic selector와
   `circumstance`/`item`/`status`/`untyped` type을 선언합니다. 같은 typed bonus/penalty는
   각각 가장 큰 값만 적용되고 모든 untyped penalty는 누적됩니다.
@@ -69,8 +82,8 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   겹칠 수 없습니다. 모든 Adventure Encounter는 `partySize.max`만큼 slot을 제공합니다.
 - Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
   PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
-- `playable` Trait을 가진 Actor만 M5 Party Builder 후보입니다. 현재 authoritative pack은
-  `content/m5`의 `cardguild.m5@0.6.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
+- `playable` Trait을 가진 Actor만 Party Builder 후보입니다. 현재 authoritative pack은
+  `content/m6`의 `cardguild.m6@0.7.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
 - `remove-condition`은 지정한 Condition ID를 즉시 제거합니다. 판정이 필요한
@@ -89,5 +102,5 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 Schema shape를 호환되지 않게 바꿀 때는 기존 schema를 덮어써서 조용히 해석하지
 말고 `schemaVersion`을 올리고 명시적인 migration 또는 새 loader를 추가합니다.
-현재 pre-release repository에는 이전 pack runtime compatibility layer가 없으며 v5가
+현재 pre-release repository에는 이전 pack runtime compatibility layer가 없으며 v6가
 authoritative contract입니다.

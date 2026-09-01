@@ -26,7 +26,7 @@ import type {
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 5;
+  readonly schemaVersion: 6;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -35,9 +35,6 @@ export interface ContentPackManifest {
 export interface ActorDefinition {
   readonly id: ActorDefinitionId;
   readonly name: string;
-  readonly hp: number;
-  readonly maxHp: number;
-  readonly baseAc: number;
   readonly statProfile: ActorStatProfile;
   readonly speedFeet: number;
   readonly fallbackWeapon: WeaponProfile;

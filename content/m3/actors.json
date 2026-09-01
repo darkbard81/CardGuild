@@ -2,21 +2,51 @@
   {
     "id": "hero.aerin",
     "name": "Aerin",
-    "hp": 32,
-    "maxHp": 32,
-    "baseAc": 18,
     "statProfile": {
       "kind": "character",
       "stats": {
         "level": 1,
-        "attributes": { "str": 3, "dex": 2, "con": 3, "int": 1, "wis": 3, "cha": 0 },
+        "attributes": {
+          "str": 3,
+          "dex": 2,
+          "con": 3,
+          "int": 1,
+          "wis": 3,
+          "cha": 0
+        },
         "perception": "trained",
-        "saves": { "fortitude": "trained", "reflex": "trained", "will": "trained" },
+        "saves": {
+          "fortitude": "trained",
+          "reflex": "trained",
+          "will": "trained"
+        },
         "skills": {
-          "acrobatics": "trained", "arcana": "trained", "athletics": "expert", "crafting": "trained",
-          "deception": "untrained", "diplomacy": "trained", "intimidation": "trained", "medicine": "trained",
-          "nature": "trained", "occultism": "untrained", "performance": "untrained", "religion": "trained",
-          "society": "trained", "stealth": "trained", "survival": "trained", "thievery": "untrained"
+          "acrobatics": "trained",
+          "arcana": "trained",
+          "athletics": "expert",
+          "crafting": "trained",
+          "deception": "untrained",
+          "diplomacy": "trained",
+          "intimidation": "trained",
+          "medicine": "trained",
+          "nature": "trained",
+          "occultism": "untrained",
+          "performance": "untrained",
+          "religion": "trained",
+          "society": "trained",
+          "stealth": "trained",
+          "survival": "trained",
+          "thievery": "untrained"
+        },
+        "defense": {
+          "ancestryHp": 8,
+          "classHpPerLevel": 10,
+          "armorProficiencies": {
+            "unarmored": "trained",
+            "light": "trained",
+            "medium": "trained",
+            "heavy": "untrained"
+          }
         }
       }
     },
@@ -25,11 +55,25 @@
       "name": "Unarmed",
       "attackModifier": 6,
       "rangeFeet": 5,
-      "damage": { "count": 1, "sides": 4, "modifier": 2, "damageType": "bludgeoning" }
+      "damage": {
+        "count": 1,
+        "sides": 4,
+        "modifier": 2,
+        "damageType": "bludgeoning"
+      }
     },
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "hero" }],
-    "loadoutProfile": { "preparedCardCapacity": 2 },
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 2
+    },
     "starterLoadout": {
       "equipment": {
         "weapon": "halberd",
@@ -40,22 +84,36 @@
     },
     "innateActionIds": [],
     "baseCardGrants": [
-      { "cardDefinitionId": "card.spirit-beacon", "count": 2, "sourceId": "focus.spirit-beacon" },
-      { "cardDefinitionId": "card.reactive-strike", "count": 1, "sourceId": "feat.reactive-strike" }
+      {
+        "cardDefinitionId": "card.spirit-beacon",
+        "count": 2,
+        "sourceId": "focus.spirit-beacon"
+      },
+      {
+        "cardDefinitionId": "card.reactive-strike",
+        "count": 1,
+        "sourceId": "feat.reactive-strike"
+      }
     ]
   },
   {
     "id": "enemy.goblin-skirmisher",
     "name": "Goblin Skirmisher",
-    "hp": 18,
-    "maxHp": 18,
-    "baseAc": 16,
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "ac": 16,
+        "maxHp": 18,
         "perception": 5,
-        "saves": { "fortitude": 3, "reflex": 5, "will": 2 },
-        "skills": { "athletics": 4, "stealth": 7 }
+        "saves": {
+          "fortitude": 3,
+          "reflex": 5,
+          "will": 2
+        },
+        "skills": {
+          "athletics": 4,
+          "stealth": 7
+        }
       }
     },
     "speedFeet": 25,
@@ -63,27 +121,49 @@
       "name": "Goblin Blade",
       "attackModifier": 6,
       "rangeFeet": 5,
-      "damage": { "count": 1, "sides": 6, "modifier": 2, "damageType": "slashing" }
+      "damage": {
+        "count": 1,
+        "sides": 6,
+        "modifier": 2,
+        "damageType": "slashing"
+      }
     },
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "goblin"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
     "innateActionIds": [],
     "baseCardGrants": []
   },
   {
     "id": "enemy.goblin-brute",
     "name": "Goblin Brute",
-    "hp": 24,
-    "maxHp": 24,
-    "baseAc": 17,
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "ac": 17,
+        "maxHp": 24,
         "perception": 3,
-        "saves": { "fortitude": 7, "reflex": 3, "will": 4 },
-        "skills": { "athletics": 7 }
+        "saves": {
+          "fortitude": 7,
+          "reflex": 3,
+          "will": 4
+        },
+        "skills": {
+          "athletics": 7
+        }
       }
     },
     "speedFeet": 20,
@@ -91,27 +171,52 @@
       "name": "Heavy Club",
       "attackModifier": 7,
       "rangeFeet": 5,
-      "damage": { "count": 1, "sides": 8, "modifier": 3, "damageType": "bludgeoning" }
+      "damage": {
+        "count": 1,
+        "sides": 8,
+        "modifier": 3,
+        "damageType": "bludgeoning"
+      }
     },
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["knockdown"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "goblin"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "knockdown"
+    ],
     "baseCardGrants": []
   },
   {
     "id": "enemy.goblin-chief",
     "name": "Goblin Chief",
-    "hp": 34,
-    "maxHp": 34,
-    "baseAc": 18,
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "ac": 18,
+        "maxHp": 34,
         "perception": 6,
-        "saves": { "fortitude": 8, "reflex": 5, "will": 6 },
-        "skills": { "athletics": 8, "intimidation": 8 }
+        "saves": {
+          "fortitude": 8,
+          "reflex": 5,
+          "will": 6
+        },
+        "skills": {
+          "athletics": 8,
+          "intimidation": 8
+        }
       }
     },
     "speedFeet": 25,
@@ -119,13 +224,32 @@
       "name": "Chief's Glaive",
       "attackModifier": 9,
       "rangeFeet": 10,
-      "damage": { "count": 1, "sides": 10, "modifier": 4, "damageType": "slashing" }
+      "damage": {
+        "count": 1,
+        "sides": 10,
+        "modifier": 4,
+        "damageType": "slashing"
+      }
     },
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["knockdown"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "goblin"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "knockdown"
+    ],
     "baseCardGrants": []
   }
 ]

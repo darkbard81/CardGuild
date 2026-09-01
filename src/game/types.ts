@@ -3,7 +3,7 @@ export type ActionId = string;
 export type CardDefinitionId = string;
 export type CardInstanceId = string;
 export type EquipmentId = string;
-export type EquipmentSlotId = "weapon" | "shield" | "feet";
+export type EquipmentSlotId = "weapon" | "armor" | "shield" | "feet";
 export type EffectId = string;
 export type ObjectId = string;
 export type TraitId = string;
@@ -43,15 +43,33 @@ export type SkillId =
   | "thievery";
 export type ModifierType = "circumstance" | "item" | "status" | "untyped";
 
+export type ArmorCategory = "unarmored" | "light" | "medium" | "heavy";
+export type ArmoredCategory = Exclude<ArmorCategory, "unarmored">;
+
+export interface ArmorProfile {
+  readonly category: ArmoredCategory;
+  readonly acItemBonus: number;
+  readonly dexCap: number;
+}
+
+export interface CharacterDefenseProfile {
+  readonly ancestryHp: number;
+  readonly classHpPerLevel: number;
+  readonly armorProficiencies: Readonly<Record<ArmorCategory, ProficiencyRank>>;
+}
+
 export interface CharacterStatProfile {
   readonly level: number;
   readonly attributes: Readonly<Record<AttributeId, number>>;
   readonly perception: ProficiencyRank;
   readonly saves: Readonly<Record<SaveId, ProficiencyRank>>;
   readonly skills: Readonly<Record<SkillId, ProficiencyRank>>;
+  readonly defense: CharacterDefenseProfile;
 }
 
 export interface FixedCreatureStats {
+  readonly ac: number;
+  readonly maxHp: number;
   readonly perception: number;
   readonly saves: Readonly<Record<SaveId, number>>;
   readonly skills: Readonly<Partial<Record<SkillId, number>>>;
@@ -70,11 +88,23 @@ export type InitiativeStatisticSelector =
   | { readonly kind: "perception" }
   | { readonly kind: "skill"; readonly id: SkillId; readonly attributeOverride?: AttributeId };
 
+/**
+ * Key a modifier contribution is matched against. It carries no base-derivation
+ * detail (no `attributeOverride`) so every statistic — checks, DCs, and AC alike —
+ * shares one collection and stacking core.
+ */
+export type ModifierTarget =
+  | { readonly kind: "save"; readonly id: SaveId }
+  | { readonly kind: "skill"; readonly id: SkillId }
+  | { readonly kind: "perception" }
+  | { readonly kind: "ac" };
+
 export type StatisticModifierSelector =
   | { readonly kind: "all" }
   | { readonly kind: "save"; readonly id?: SaveId }
   | { readonly kind: "skill"; readonly id?: SkillId }
-  | { readonly kind: "perception" };
+  | { readonly kind: "perception" }
+  | { readonly kind: "ac" };
 
 export interface StatisticModifierContribution {
   readonly selector: StatisticModifierSelector;
@@ -156,7 +186,6 @@ export interface ActorState {
   readonly facing: Direction;
   readonly hp: number;
   readonly maxHp: number;
-  readonly baseAc: number;
   readonly statProfile: ActorStatProfile;
   readonly speedFeet: number;
   readonly fallbackWeapon: WeaponProfile;
@@ -442,6 +471,7 @@ export interface EquipmentDefinition {
   readonly traits: readonly TraitInstance[];
   readonly statModifiers: readonly StatisticModifierContribution[];
   readonly weaponProfile?: WeaponProfile;
+  readonly armorProfile?: ArmorProfile;
   readonly shieldBonus?: number;
 }
 

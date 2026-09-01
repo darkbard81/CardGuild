@@ -10,13 +10,17 @@ import {
 } from "./grid";
 import {
   getConditionActionGrants,
-  getArmorClass,
   getEquipmentActionGrants,
   getWeaponProfile,
   isDirectlyBehind,
   isInFrontOrSide,
 } from "./rules";
-import { formatStatisticSources, resolveStatisticDC, resolveStatisticModifier } from "./statistics";
+import {
+  formatStatisticSources,
+  resolveArmorClass,
+  resolveStatisticDC,
+  resolveStatisticModifier,
+} from "./statistics";
 import type {
   ActionDefinition,
   ActionPreview,
@@ -383,7 +387,10 @@ export function previewAction(
           const reflex = resolveStatisticDC(targetActor, { kind: "save", id: "reflex" }, { content });
           return { value: reflex.value, sources: formatStatisticSources(reflex.sources) };
         })()
-      : getArmorClass(targetActor, content);
+      : (() => {
+          const armorClass = resolveArmorClass(targetActor, { content });
+          return { value: armorClass.value, sources: formatStatisticSources(armorClass.sources) };
+        })();
     const dc = defense.value + rearBonus;
     const probabilities = degreeProbabilities(modifier, dc);
     const damage = getWeaponProfile(actor, content).damage;

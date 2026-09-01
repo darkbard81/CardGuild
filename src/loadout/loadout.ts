@@ -1,13 +1,15 @@
 import type { ActorDefinition, EncounterActorPlacement } from "../content/content-types";
 import {
-  getArmorClass,
   getEquipmentActionGrants,
   getEquipmentCardGrants,
   getWeaponProfile,
 } from "../game/rules";
 import {
   cloneActorStatProfile,
+  equippedArmor,
+  resolveArmorClass,
   resolveInitiative,
+  resolveMaxHp,
   resolveStatisticDC,
   resolveStatisticModifier,
 } from "../game/statistics";
@@ -15,12 +17,14 @@ import type {
   ActorSetup,
   ActorState,
   CombatContent,
+  EquipmentDefinition,
   DeckContribution,
   DeckContributionSource,
   EquipmentId,
 } from "../game/types";
 import {
   EQUIPMENT_SLOT_ORDER,
+  type DerivedArmorSummary,
   type DerivedDeck,
   type DerivedLoadoutSnapshot,
   type LoadoutCollection,
@@ -201,6 +205,8 @@ export function deriveActorSetup(
   memberId = placement.instanceId,
 ): ActorSetup {
   const deck = deriveTacticalDeck(actor, loadout, content, memberId);
+  // Encounters start at full health, and max HP is derived rather than authored.
+  const maxHp = resolveMaxHp(actor.statProfile);
   return {
     id: placement.instanceId,
     definitionId: actor.id,
@@ -208,9 +214,8 @@ export function deriveActorSetup(
     team: placement.team,
     position: { ...placement.position },
     facing: placement.facing,
-    hp: actor.hp,
-    maxHp: actor.maxHp,
-    baseAc: actor.baseAc,
+    hp: maxHp,
+    maxHp,
     statProfile: cloneActorStatProfile(actor.statProfile),
     speedFeet: actor.speedFeet,
     fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
@@ -241,20 +246,35 @@ export function deriveLoadoutSnapshot(
 ): DerivedLoadoutSnapshot {
   const ruleActor = actorForRules(actor, loadout, content);
   const contextActionIds = [...new Set(getEquipmentActionGrants(ruleActor, content).map((grant) => grant.actionId))].sort();
+  const armor = equippedArmor(ruleActor, { content });
   const resolvedReflex = resolveStatisticModifier(ruleActor, { kind: "save", id: "reflex" }, { content });
   const reflexDC = resolveStatisticDC(ruleActor, { kind: "save", id: "reflex" }, { content });
   return {
     equipmentIds: [...ruleActor.equipmentIds],
     deck: deriveTacticalDeck(actor, loadout, content, memberId),
     statistics: {
-      ac: getArmorClass(ruleActor, content).value,
+      maxHp: ruleActor.maxHp,
+      ac: resolveArmorClass(ruleActor, { content }).value,
       reflex: { modifier: resolvedReflex.value, dc: reflexDC.value },
       athletics: resolveStatisticModifier(ruleActor, { kind: "skill", id: "athletics" }, { content }).value,
       initiative: resolveInitiative(ruleActor, { content }).value,
     },
     weapon: { ...getWeaponProfile(ruleActor, content), damage: { ...getWeaponProfile(ruleActor, content).damage } },
+    armor: armorSummary(armor),
     contextActionIds,
   };
+}
+
+function armorSummary(armor: EquipmentDefinition | undefined): DerivedArmorSummary {
+  return armor?.armorProfile
+    ? {
+        id: armor.id,
+        name: armor.name,
+        category: armor.armorProfile.category,
+        acItemBonus: armor.armorProfile.acItemBonus,
+        dexCap: armor.armorProfile.dexCap,
+      }
+    : { id: null, name: "Unarmored", category: "unarmored", acItemBonus: 0, dexCap: null };
 }
 
 function contributionKey(contribution: DeckContribution): string {

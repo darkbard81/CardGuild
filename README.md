@@ -105,7 +105,7 @@ PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 
 
 ```text
 src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
-src/content JSON authoring DTO, semantic compiler, canonical fingerprint, v5 loader
+src/content JSON authoring DTO, semantic compiler, canonical fingerprint, v6 loader
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
@@ -142,8 +142,16 @@ fixed statistic을 제공하므로 PC용 16 Skill profile을 강제하지 않습
 bonus/penalty는 가장 큰 값만 적용되고, untyped는 penalty로만 존재하며 모두 누적됩니다.
 Initiative source는 Perception 또는 Skill로만 선택할 수 있습니다.
 
-M5 콘텐츠의 source of truth는 [`content/m5`](content/m5) JSON이며 pack identity는
-`cardguild.m5@0.6.0`, contract는 schema v5입니다. 기존 [`content/m3`](content/m3)의
+Armor Class와 Max HP도 같은 경계에서 파생합니다. Character AC는
+`10 + armor dexCap으로 제한된 DEX + 착용 category의 armor proficiency`를 base로 삼고,
+Armor의 item bonus와 raised Shield의 circumstance bonus는 별도 산술 없이 공통
+`resolveModifierStack()`을 통과합니다. Max HP는
+`ancestry HP + level × (class HP + CON)`에서 파생되어 Encounter 시작 시 materialize되고,
+current HP만 runtime mutable state입니다. Creature는 authored AC/Max HP를 유지합니다.
+Loadout Preview와 Combat, UI는 모두 같은 `resolveArmorClass()` 결과를 사용합니다.
+
+콘텐츠의 source of truth는 [`content/m6`](content/m6) JSON이며 pack identity는
+`cardguild.m6@0.7.0`, contract는 schema v6입니다. 기존 [`content/m3`](content/m3)의
 `cardguild.m4@0.4.1` pack은 회귀 fixture로 보존됩니다. Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
@@ -184,8 +192,8 @@ npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive s
 npm test             # unit + network + Playwright
 ```
 
-Vitest는 Content v5 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
-typed modifier stacking, playable 3인 profile과 1–3P spawn,
+Vitest는 Content v6 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
+typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 3인 profile과 1–3P spawn,
 Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
 deck/stat/context, Adventure 3전/Reward/실패/seed/Combat bridge,
 projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,

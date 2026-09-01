@@ -1,7 +1,7 @@
 import { WebSocket } from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { M5_ADVENTURE_ID, M5_COMPILED_PACK, M5_CONTENT_IDENTITY } from "../../src/content";
+import { M6_ADVENTURE_ID, M6_COMPILED_PACK, M6_CONTENT_IDENTITY } from "../../src/content";
 import type {
   ClientIntentEnvelope,
   ServerAck,
@@ -32,7 +32,7 @@ class SocketClient {
   public static async connect(
     origin: string,
     credential: SessionCredentialResponse,
-    contentIdentity = M5_CONTENT_IDENTITY,
+    contentIdentity = M6_CONTENT_IDENTITY,
     version: 1 | 2 = 2,
   ): Promise<SocketClient> {
     const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
@@ -163,7 +163,7 @@ describe("real WebSocket M5 cooperative session", () => {
     let playerSequence = 0;
     let tokenSequence = 0;
     running = await startCardGuildServer({
-      context: { pack: M5_COMPILED_PACK, adventureId: M5_ADVENTURE_ID },
+      context: { pack: M6_COMPILED_PACK, adventureId: M6_ADVENTURE_ID },
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
       sources: {
@@ -518,7 +518,7 @@ describe("real WebSocket M5 cooperative session", () => {
     expect(new Set(snapshots.map((snapshot) => snapshot.gameplayHash)).size).toBe(1);
     expect(snapshots.every((snapshot) => snapshot.state.revision === host.state.revision)).toBe(true);
 
-    const v1 = await SocketClient.connect(server.origin, hostCredential, M5_CONTENT_IDENTITY, 1);
+    const v1 = await SocketClient.connect(server.origin, hostCredential, M6_CONTENT_IDENTITY, 1);
     sockets.push(v1);
     const mismatch = await v1.waitFor(
       (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
@@ -610,7 +610,7 @@ describe("real WebSocket M5 cooperative session", () => {
     expect(host.state.lifecycle).toBe("active");
 
     const wrongContent = await SocketClient.connect(server.origin, credential, {
-      ...M5_CONTENT_IDENTITY,
+      ...M6_CONTENT_IDENTITY,
       fingerprint: "fnv1a64:wrong",
     });
     sockets.push(wrongContent);
@@ -646,7 +646,7 @@ describe("real WebSocket M5 cooperative session", () => {
   it("closes only a connection whose queued authority handler rejects", async () => {
     const authorityErrors = vi.fn();
     running = await startCardGuildServer({
-      context: { pack: M5_COMPILED_PACK, adventureId: M5_ADVENTURE_ID },
+      context: { pack: M6_COMPILED_PACK, adventureId: M6_ADVENTURE_ID },
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
       onInternalError: authorityErrors,

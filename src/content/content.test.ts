@@ -15,7 +15,7 @@ import { compileContentPack, getCombatDefinition } from "./compile-content";
 import type { ActorDefinition, ContentPackSource } from "./content-types";
 import { fingerprintContentPack } from "./fingerprint";
 import { M0_CONTENT_SOURCE, M0_SCENARIO_ID } from "./load-m0-content";
-import { M5_COMPILED_PACK, M5_CONTENT_SOURCE } from "./load-m5-content";
+import { M6_COMPILED_PACK, M6_CONTENT_SOURCE } from "./load-m6-content";
 import { validateContentPackStructure } from "./validate-content";
 import { formatContentValidationIssue, validateContentPackSemantics } from "./validate-semantics";
 
@@ -329,7 +329,7 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("requires playable actors to use bottom-up character statistics", () => {
-    const source = structuredClone(M5_CONTENT_SOURCE);
+    const source = structuredClone(M6_CONTENT_SOURCE);
     const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
     const playable = source.actors.find((actor) => actor.traits.some((trait) => trait.id === "playable"));
     if (!creature || !playable) throw new Error("M5 actor fixtures are missing.");
@@ -346,8 +346,67 @@ describe("content semantic validation and compilation", () => {
     }));
   });
 
+  it("keeps final AC and HP out of character authoring while creatures keep fixed stats", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const playable = source.actors.find((actor) => actor.traits.some((trait) => trait.id === "playable"));
+    const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
+    if (!playable || !creature || creature.statProfile.kind !== "creature") {
+      throw new Error("M6 actor fixtures are missing.");
+    }
+
+    expect(creature.statProfile.stats.ac).toBeGreaterThan(0);
+    expect(creature.statProfile.stats.maxHp).toBeGreaterThan(0);
+    for (const field of ["baseAc", "maxHp", "hp"] as const) {
+      const authored: ContentPackSource = {
+        ...source,
+        actors: source.actors.map((actor) => actor.id === playable.id
+          ? { ...actor, [field]: 20 } as typeof actor
+          : actor),
+      };
+      expect(validateContentPackStructure(authored, contentPackSchema)).toContainEqual(expect.objectContaining({
+        source: "actors",
+        code: "SCHEMA_ADDITIONAL_PROPERTIES",
+        path: `/actors/0/${field}`,
+        definitionId: playable.id,
+      }));
+    }
+  });
+
+  it("requires an armor profile exactly on armor slot equipment", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const armor = source.equipment.find((definition) => definition.slot === "armor");
+    const boots = source.equipment.find((definition) => definition.slot === "feet");
+    if (!armor || !boots) throw new Error("M6 equipment fixtures are missing.");
+
+    const withoutProfile: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === armor.id
+        ? { ...definition, armorProfile: undefined }
+        : definition),
+    };
+    expect(validateContentPackStructure(withoutProfile, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: armor.id,
+    }));
+    expect(validateContentPackSemantics(withoutProfile)).toContainEqual(expect.objectContaining({
+      code: "ARMOR_PROFILE_REQUIRED",
+      definitionId: armor.id,
+    }));
+
+    const misplaced: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === boots.id
+        ? { ...definition, armorProfile: { category: "light" as const, acItemBonus: 1, dexCap: 4 } }
+        : definition),
+    };
+    expect(validateContentPackSemantics(misplaced)).toContainEqual(expect.objectContaining({
+      code: "ARMOR_PROFILE_SLOT_MISMATCH",
+      definitionId: boots.id,
+    }));
+  });
+
   it("rejects positive untyped modifiers because PF2e untyped contributions are penalties", () => {
-    const source = structuredClone(M5_CONTENT_SOURCE);
+    const source = structuredClone(M6_CONTENT_SOURCE);
     const equipment = source.equipment.find((definition) => definition.statModifiers.length > 0);
     if (!equipment) throw new Error("M5 equipment fixtures are missing stat modifiers.");
     const invalid: ContentPackSource = {
@@ -379,8 +438,8 @@ describe("content semantic validation and compilation", () => {
 
 describe("M5 playable character content", () => {
   it("compiles three distinct playable profiles with validator-safe starter loadouts", () => {
-    expect(validateContentPackStructure(M5_CONTENT_SOURCE, contentPackSchema)).toEqual([]);
-    const playable = Object.values(M5_COMPILED_PACK.actorDefinitions)
+    expect(validateContentPackStructure(M6_CONTENT_SOURCE, contentPackSchema)).toEqual([]);
+    const playable = Object.values(M6_COMPILED_PACK.actorDefinitions)
       .filter((actor) => actor.traits.some((trait) => trait.id === "playable"));
     expect(playable.map((actor) => actor.id).sort()).toEqual([
       "hero.aerin",
@@ -391,15 +450,15 @@ describe("M5 playable character content", () => {
     const lyra = playable.find((actor) => actor.id === "hero.lyra");
     const brom = playable.find((actor) => actor.id === "hero.brom");
     if (!aerin || !lyra || !brom) throw new Error("Playable M5 profiles are missing.");
-    const aerinStats = deriveLoadoutSnapshot(aerin, aerin.starterLoadout, M5_COMPILED_PACK.combatContent, aerin.id).statistics;
-    const lyraStats = deriveLoadoutSnapshot(lyra, lyra.starterLoadout, M5_COMPILED_PACK.combatContent, lyra.id).statistics;
-    const bromStats = deriveLoadoutSnapshot(brom, brom.starterLoadout, M5_COMPILED_PACK.combatContent, brom.id).statistics;
+    const aerinStats = deriveLoadoutSnapshot(aerin, aerin.starterLoadout, M6_COMPILED_PACK.combatContent, aerin.id).statistics;
+    const lyraStats = deriveLoadoutSnapshot(lyra, lyra.starterLoadout, M6_COMPILED_PACK.combatContent, lyra.id).statistics;
+    const bromStats = deriveLoadoutSnapshot(brom, brom.starterLoadout, M6_COMPILED_PACK.combatContent, brom.id).statistics;
     expect(lyraStats.reflex.modifier).toBeGreaterThan(aerinStats.reflex.modifier);
     expect(lyraStats.initiative).toBeGreaterThan(aerinStats.initiative);
     expect(lyra?.speedFeet).toBeGreaterThan(aerin?.speedFeet ?? 0);
-    expect(lyra?.maxHp).toBeLessThan(aerin?.maxHp ?? 0);
-    expect(brom?.maxHp).toBeGreaterThan(aerin?.maxHp ?? 0);
-    expect(brom?.baseAc).toBeGreaterThan(aerin?.baseAc ?? 0);
+    expect(lyraStats.maxHp).toBeLessThan(aerinStats.maxHp);
+    expect(bromStats.maxHp).toBeGreaterThan(aerinStats.maxHp);
+    expect(bromStats.ac).toBeGreaterThan(aerinStats.ac);
     expect(bromStats.athletics).toBeGreaterThan(aerinStats.athletics);
     expect(brom?.speedFeet).toBeLessThan(aerin?.speedFeet ?? 0);
 
@@ -414,8 +473,8 @@ describe("M5 playable character content", () => {
         },
       ])),
     };
-    const collection = createStartingCollection(party, M5_COMPILED_PACK);
-    expect(validatePartyLoadout(party, collection, M5_COMPILED_PACK)).toEqual({ valid: true, issues: [] });
+    const collection = createStartingCollection(party, M6_COMPILED_PACK);
+    expect(validatePartyLoadout(party, collection, M6_COMPILED_PACK)).toEqual({ valid: true, issues: [] });
     expect(new Set(playable.map((actor) => JSON.stringify({
       equipment: actor.starterLoadout.equipment,
       baseCards: actor.baseCardGrants,
@@ -431,7 +490,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 5,
+        schemaVersion: 6,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),

@@ -1,6 +1,6 @@
 import type { AdventureState } from "../adventure";
 import { isTerminalHandshakeFailure, SessionClient, type SessionCredential } from "../client";
-import { M5_ADVENTURE, M5_COMPILED_PACK, M5_CONTENT_IDENTITY } from "../content";
+import { M6_ADVENTURE, M6_COMPILED_PACK, M6_CONTENT_IDENTITY } from "../content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
 import { SessionLobbyUi } from "../dom/session-lobby-ui";
@@ -60,18 +60,18 @@ export class AdventureController {
     private readonly catalog: AssetCatalog,
     private readonly root: HTMLElement,
   ) {
-    this.ui = new AdventureUi(M5_ADVENTURE, M5_COMPILED_PACK, {
+    this.ui = new AdventureUi(M6_ADVENTURE, M6_COMPILED_PACK, {
       onStart: () => this.sendIntent({ type: "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
       onChooseReward: (rewardId, choiceIndex) => this.sendIntent({ type: "choose-reward", rewardId, choiceIndex }),
       onOpenLoadout: () => this.openLoadout(),
       onRetry: () => undefined,
     });
-    this.loadoutUi = new LoadoutUi(M5_COMPILED_PACK, this.catalog, {
+    this.loadoutUi = new LoadoutUi(M6_COMPILED_PACK, this.catalog, {
       onSetLoadout: (memberId, loadout) => this.setMemberLoadout(memberId, loadout),
       onDone: () => this.closeLoadout(),
     });
-    this.lobbyUi = new SessionLobbyUi(M5_COMPILED_PACK, this.catalog, {
+    this.lobbyUi = new SessionLobbyUi(M6_COMPILED_PACK, this.catalog, {
       onCreate: (displayName) => void this.createSession(displayName),
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
       onSetParty: (actorDefinitionIds) => this.sendIntent({ type: "set-party-composition", actorDefinitionIds }),
@@ -205,14 +205,14 @@ export class AdventureController {
     this.ui.render(snapshot.state.adventure as AdventureState, {
       isHost: snapshot.state.hostPlayerId === viewer.playerId,
     });
-    const staticScenario = M5_COMPILED_PACK.scenarios[combat.scenarioId];
+    const staticScenario = M6_COMPILED_PACK.scenarios[combat.scenarioId];
     if (!staticScenario) throw new Error(`Scenario "${combat.scenarioId}" is missing.`);
     const events = combatEvents(snapshot.events);
     if (!this.battle) {
       this.battle = new BattleController(this.app, this.catalog, {
         definition: {
-          content: M5_COMPILED_PACK.combatContent,
-          contentIdentity: M5_CONTENT_IDENTITY,
+          content: M6_COMPILED_PACK.combatContent,
+          contentIdentity: M6_CONTENT_IDENTITY,
           scenario: {
             ...staticScenario,
             actors: Object.values(combat.actors),

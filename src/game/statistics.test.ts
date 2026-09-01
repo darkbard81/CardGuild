@@ -2,17 +2,25 @@ import { describe, expect, it } from "vitest";
 
 import type {
   ActorState,
+  ArmorProfile,
+  ArmoredCategory,
+  CharacterDefenseProfile,
   CombatContent,
+  EquipmentDefinition,
   InitiativeStatisticSelector,
   ProficiencyRank,
   SkillId,
   StatisticContextModifier,
 } from "./types";
 import {
+  ARMOR_CATEGORIES,
   SAVE_ATTRIBUTE,
   SKILL_ATTRIBUTE,
   SKILL_IDS,
+  deriveMaxHp,
+  formatStatisticSources,
   proficiencyBonus,
+  resolveArmorClass,
   resolveInitiative,
   resolveStatisticDC,
   resolveStatisticModifier,
@@ -37,6 +45,17 @@ const SKILLS: Readonly<Record<SkillId, ProficiencyRank>> = {
   thievery: "untrained",
 };
 
+const DEFENSE = {
+  ancestryHp: 8,
+  classHpPerLevel: 8,
+  armorProficiencies: {
+    unarmored: "trained",
+    light: "trained",
+    medium: "trained",
+    heavy: "untrained",
+  },
+} as const satisfies CharacterDefenseProfile;
+
 const EMPTY_CONTENT: CombatContent = {
   actions: {},
   cards: {},
@@ -55,7 +74,6 @@ function character(overrides: Partial<ActorState> = {}): ActorState {
     facing: "north",
     hp: 10,
     maxHp: 10,
-    baseAc: 10,
     statProfile: {
       kind: "character",
       stats: {
@@ -64,6 +82,7 @@ function character(overrides: Partial<ActorState> = {}): ActorState {
         perception: "trained",
         saves: { fortitude: "trained", reflex: "trained", will: "trained" },
         skills: { ...SKILLS },
+        defense: DEFENSE,
       },
     },
     speedFeet: 25,
@@ -145,6 +164,7 @@ describe("PF2e character statistic foundation", () => {
           perception: "trained",
           saves: { fortitude: "trained", reflex: "trained", will: "trained" },
           skills: Object.fromEntries(SKILL_IDS.map((id) => [id, "trained"])) as Record<SkillId, ProficiencyRank>,
+          defense: DEFENSE,
         },
       },
     });
@@ -182,6 +202,7 @@ describe("PF2e character statistic foundation", () => {
           perception: "expert",
           saves: { fortitude: "trained", reflex: "trained", will: "trained" },
           skills: { ...SKILLS, stealth: "trained" },
+          defense: DEFENSE,
         },
       },
     });
@@ -299,6 +320,8 @@ describe("PF2e character statistic foundation", () => {
       statProfile: {
         kind: "creature",
         stats: {
+          ac: 16,
+          maxHp: 20,
           perception: 7,
           saves: { fortitude: 8, reflex: 6, will: 5 },
           skills: { athletics: 9 },
@@ -317,6 +340,8 @@ describe("PF2e character statistic foundation", () => {
       statProfile: {
         kind: "creature",
         stats: {
+          ac: 16,
+          maxHp: 20,
           perception: 7,
           saves: { fortitude: 8, reflex: 6, will: 5 },
           skills: { athletics: 0 },
@@ -365,5 +390,214 @@ describe("PF2e character statistic foundation", () => {
       label: "Untyped penalty",
       sourceId: "context",
     }]))).not.toThrow();
+  });
+});
+
+describe("PF2e Armor Class and Hit Point derivation", () => {
+  const ARMORS: Readonly<Record<ArmoredCategory, ArmorProfile>> = {
+    light: { category: "light", acItemBonus: 1, dexCap: 4 },
+    medium: { category: "medium", acItemBonus: 3, dexCap: 2 },
+    heavy: { category: "heavy", acItemBonus: 5, dexCap: 1 },
+  };
+
+  function armorEquipment(id: string, profile: ArmorProfile): EquipmentDefinition {
+    return { id, name: titleOf(id), slot: "armor", traits: [], statModifiers: [], armorProfile: profile };
+  }
+
+  function titleOf(id: string): string {
+    return `${id[0]?.toUpperCase() ?? ""}${id.slice(1)}`;
+  }
+
+  function armored(
+    category: ArmoredCategory | "unarmored",
+    overrides: {
+      readonly dex?: number;
+      readonly ranks?: Partial<Record<ArmoredCategory | "unarmored", "untrained" | "trained" | "expert">>;
+      readonly extraEquipment?: Readonly<Record<string, EquipmentDefinition>>;
+      readonly actor?: Partial<ActorState>;
+    } = {},
+  ) {
+    const armor = category === "unarmored" ? undefined : ARMORS[category];
+    const equipment: Record<string, EquipmentDefinition> = {
+      ...(armor ? { [category]: armorEquipment(category, armor) } : {}),
+      ...overrides.extraEquipment,
+    };
+    const base = character();
+    const stats = base.statProfile.kind === "character" ? base.statProfile.stats : null;
+    if (!stats) throw new Error("The character fixture must use a character profile.");
+    const actor = character({
+      equipmentIds: Object.keys(equipment),
+      statProfile: {
+        kind: "character",
+        stats: {
+          ...stats,
+          attributes: { ...stats.attributes, dex: overrides.dex ?? stats.attributes.dex },
+          defense: {
+            ...DEFENSE,
+            armorProficiencies: {
+              unarmored: "trained",
+              light: "trained",
+              medium: "trained",
+              heavy: "trained",
+              ...overrides.ranks,
+            },
+          },
+        },
+      },
+      ...overrides.actor,
+    });
+    return { actor, context: { content: { ...EMPTY_CONTENT, equipment } } };
+  }
+
+  it("derives an unarmored AC from the full DEX and the unarmored proficiency", () => {
+    const { actor, context } = armored("unarmored", { dex: 4 });
+    const resolved = resolveArmorClass(actor, context);
+
+    expect(resolved.value).toBe(17);
+    expect(formatStatisticSources(resolved.sources)).toEqual(["Base AC +10", "DEX +4", "Trained unarmored armor proficiency +3"]);
+  });
+
+  it("uses the proficiency rank of the worn armor category", () => {
+    for (const category of ["light", "medium", "heavy"] as const) {
+      const trained = armored(category, { dex: 0 });
+      const expert = armored(category, { dex: 0, ranks: { [category]: "expert" } });
+      const trainedValue = resolveArmorClass(trained.actor, trained.context).value;
+
+      expect(trainedValue).toBe(10 + 3 + ARMORS[category].acItemBonus);
+      expect(resolveArmorClass(expert.actor, expert.context).value - trainedValue).toBe(2);
+    }
+    expect(ARMOR_CATEGORIES).toEqual(["unarmored", "light", "medium", "heavy"]);
+  });
+
+  it("caps DEX at the armor limit and leaves a lower DEX untouched", () => {
+    const capped = armored("heavy", { dex: 4 });
+    const resolvedCapped = resolveArmorClass(capped.actor, capped.context);
+    expect(resolvedCapped.value).toBe(10 + 1 + 3 + 5);
+    expect(resolvedCapped.sources.find((source) => source.kind === "attribute")?.label).toBe("DEX (cap 1)");
+
+    const uncapped = armored("heavy", { dex: 0 });
+    const resolvedUncapped = resolveArmorClass(uncapped.actor, uncapped.context);
+    expect(resolvedUncapped.value).toBe(10 + 0 + 3 + 5);
+    expect(resolvedUncapped.sources.find((source) => source.kind === "attribute")?.label).toBe("DEX");
+  });
+
+  it("applies armor as an item bonus that loses to a larger item bonus", () => {
+    const { actor, context } = armored("light", {
+      dex: 0,
+      extraEquipment: {
+        talisman: {
+          id: "talisman",
+          name: "Talisman",
+          slot: "feet",
+          traits: [],
+          statModifiers: [{ selector: { kind: "ac" }, type: "item", value: 2, label: "Talisman" }],
+        },
+      },
+    });
+    const resolved = resolveArmorClass(actor, context);
+
+    expect(resolved.value).toBe(10 + 0 + 3 + 2);
+    expect(resolved.sources.find((source) => source.label === "Light")?.applied).toBe(false);
+    expect(resolved.sources.find((source) => source.label === "Talisman")?.applied).toBe(true);
+  });
+
+  it("adds a raised shield as a circumstance bonus and drops it when lowered", () => {
+    const shield: EquipmentDefinition = {
+      id: "shield",
+      name: "Shield",
+      slot: "shield",
+      traits: [],
+      statModifiers: [],
+      shieldBonus: 2,
+    };
+    const lowered = armored("light", { dex: 0, extraEquipment: { shield } });
+    const raised = armored("light", { dex: 0, extraEquipment: { shield }, actor: { shieldRaised: true } });
+
+    expect(resolveArmorClass(lowered.actor, lowered.context).value).toBe(14);
+    const resolved = resolveArmorClass(raised.actor, raised.context);
+    expect(resolved.value).toBe(16);
+    expect(resolved.sources.find((source) => source.label === "Shield raised")?.modifierType).toBe("circumstance");
+  });
+
+  it("orders an item, circumstance, and status breakdown deterministically", () => {
+    const shield: EquipmentDefinition = {
+      id: "shield", name: "Shield", slot: "shield", traits: [], statModifiers: [], shieldBonus: 2,
+    };
+    const { actor, context } = armored("medium", { dex: 4, extraEquipment: { shield }, actor: { shieldRaised: true } });
+    const frightened = {
+      ...context,
+      content: {
+        ...context.content,
+        conditions: {
+          frightened: {
+            id: "frightened",
+            name: "Frightened",
+            traits: [],
+            statModifiers: [{ selector: { kind: "all" as const }, type: "status" as const, value: -1, label: "Frightened" }],
+          },
+        },
+      },
+    };
+    const afraid = { ...actor, conditions: [{ id: "frightened", sourceId: "spell" }] };
+    const resolved = resolveArmorClass(afraid, frightened);
+
+    expect(resolved.value).toBe(10 + 2 + 3 + 3 + 2 - 1);
+    expect(formatStatisticSources(resolved.sources)).toEqual([
+      "Base AC +10",
+      "DEX (cap 2) +2",
+      "Trained medium armor proficiency +3",
+      "Medium +3",
+      "Shield raised +2",
+      "Frightened -1",
+    ]);
+    expect(resolveArmorClass({ ...afraid, equipmentIds: [...afraid.equipmentIds].reverse() }, frightened)).toEqual(resolved);
+  });
+
+  it("keeps creature AC authored while still applying the shared modifier stack", () => {
+    const creature = character({
+      statProfile: {
+        kind: "creature",
+        stats: {
+          ac: 16,
+          maxHp: 20,
+          perception: 7,
+          saves: { fortitude: 8, reflex: 6, will: 5 },
+          skills: { athletics: 9 },
+        },
+      },
+      conditions: [{ id: "frightened", sourceId: "spell" }],
+    });
+    const context = {
+      content: {
+        ...EMPTY_CONTENT,
+        conditions: {
+          frightened: {
+            id: "frightened",
+            name: "Frightened",
+            traits: [],
+            statModifiers: [{ selector: { kind: "all" as const }, type: "status" as const, value: -1, label: "Frightened" }],
+          },
+        },
+      },
+    };
+
+    expect(resolveArmorClass(creature, context).value).toBe(15);
+    expect(resolveArmorClass(creature, context).sources[0]?.label).toBe("Authored AC");
+  });
+
+  it("derives max HP from ancestry, class, and CON across levels", () => {
+    const profile = {
+      level: 1,
+      attributes: { str: 0, dex: 0, con: 3, int: 0, wis: 0, cha: 0 },
+      perception: "trained" as const,
+      saves: { fortitude: "trained" as const, reflex: "trained" as const, will: "trained" as const },
+      skills: { ...SKILLS },
+      defense: { ...DEFENSE, ancestryHp: 8, classHpPerLevel: 10 },
+    };
+
+    expect(deriveMaxHp(profile)).toBe(21);
+    expect(deriveMaxHp({ ...profile, level: 4 })).toBe(8 + 4 * 13);
+    expect(deriveMaxHp({ ...profile, attributes: { ...profile.attributes, con: 5 } })).toBe(23);
+    expect(deriveMaxHp({ ...profile, level: 4, attributes: { ...profile.attributes, con: 5 } })).toBe(8 + 4 * 15);
   });
 });

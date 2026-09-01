@@ -1,6 +1,7 @@
 import type { ActorDefinition, CompiledContentPack } from "../content/content-types";
 import type {
   ActorDefinitionId,
+  ArmorCategory,
   CardDefinitionId,
   DeckContribution,
   EquipmentId,
@@ -8,7 +9,7 @@ import type {
   WeaponProfile,
 } from "../game/types";
 
-export const EQUIPMENT_SLOT_ORDER = ["weapon", "shield", "feet"] as const satisfies readonly EquipmentSlotId[];
+export const EQUIPMENT_SLOT_ORDER = ["weapon", "armor", "shield", "feet"] as const satisfies readonly EquipmentSlotId[];
 
 export interface PartyMemberLoadout {
   readonly equipment: Readonly<Partial<Record<EquipmentSlotId, EquipmentId>>>;
@@ -66,6 +67,7 @@ export interface DerivedLoadoutSnapshot {
   readonly equipmentIds: readonly EquipmentId[];
   readonly deck: DerivedDeck;
   readonly statistics: {
+    readonly maxHp: number;
     readonly ac: number;
     readonly reflex: {
       readonly modifier: number;
@@ -75,7 +77,17 @@ export interface DerivedLoadoutSnapshot {
     readonly initiative: number;
   };
   readonly weapon: WeaponProfile;
+  readonly armor: DerivedArmorSummary;
   readonly contextActionIds: readonly string[];
+}
+
+/** Equipped armor as the AC resolver sees it; `unarmored` when no armor is worn. */
+export interface DerivedArmorSummary {
+  readonly id: EquipmentId | null;
+  readonly name: string;
+  readonly category: ArmorCategory;
+  readonly acItemBonus: number;
+  readonly dexCap: number | null;
 }
 
 export interface LoadoutPreview {
