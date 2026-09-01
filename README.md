@@ -33,13 +33,8 @@ npm run start:production
 
 `start:production`은 `deploy/cardguild.production.env`를 읽어 `127.0.0.1:3011`에서
 `dist/` 정적 client와 `/api`, `/ws`를 같은 origin으로 제공합니다. 허용 origin은
-`https://card.krdp.ddns.net` 하나입니다. Caddy는 저장소의 설정으로 실행하거나 기존
-전역 Caddyfile에 같은 site block을 추가합니다.
-
-```bash
-caddy validate --config deploy/Caddyfile
-sudo caddy reload --config "$PWD/deploy/Caddyfile"
-```
+`https://card.krdp.ddns.net` 하나입니다. 운영 reverse proxy는 저장소 밖의 기존 Caddy
+설정에서 `127.0.0.1:3011`로 전달합니다.
 
 외부 client는 `https://card.krdp.ddns.net`만 사용하고, port 3011은 loopback에만
 바인딩되어 Caddy를 통해서만 접근합니다. 개발 서버는 계속 Vite가 `/api`와 `/ws`를
