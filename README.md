@@ -56,6 +56,8 @@ port 8787 backend로 proxy합니다.
 - 게스트 연결이 끊기면 claim은 유지된 채 해당 캐릭터의 Loadout/turn/reaction 제어만
   즉시 호스트로 fallback됩니다. 같은 credential로 재접속하면 미해결 경계에서도 제어를
   되찾고 최신 snapshot과 combat event history를 복구합니다.
+- HTTP join 뒤 한 번도 연결하지 않아 claim이 없는 offline guest는 로비 호스트가 제거해
+  seat를 복구할 수 있습니다. 제거된 reconnect credential은 즉시 폐기됩니다.
 - 호스트만 Party 편성, Adventure 시작, Encounter 진입, shared Reward 선택을 할 수
   있습니다. Party 편성은 게스트 claim이 생긴 뒤 잠기며, 시작 시 Party 크기는 접속한
   player 수 이상이어야 합니다.

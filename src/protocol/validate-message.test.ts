@@ -41,6 +41,13 @@ describe("protocol v2 structural validation", () => {
         loadout: { equipment: { feet: "boots-of-fly" }, preparedCards: [] },
       },
     }).ok).toBe(true);
+    expect(validateClientMessage({
+      v: 2,
+      type: "intent",
+      requestId: "remove-orphan",
+      expectedRevision: 5,
+      intent: { type: "remove-offline-guest", playerId: "player-orphan" },
+    }).ok).toBe(true);
   });
 
   it("rejects client authority fields, invalid party shapes, unknown properties, and protocol v1", () => {
@@ -101,6 +108,13 @@ describe("protocol v2 structural validation", () => {
         requestId: "implicit-loadout-owner",
         expectedRevision: 3,
         intent: { type: "set-loadout", loadout: { equipment: {}, preparedCards: [] } },
+      },
+      {
+        v: 2,
+        type: "intent",
+        requestId: "implicit-orphan",
+        expectedRevision: 3,
+        intent: { type: "remove-offline-guest" },
       },
     ]) expect(validateClientMessage(value).ok).toBe(false);
   });

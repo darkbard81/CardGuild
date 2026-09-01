@@ -20,6 +20,7 @@ export interface SessionLobbyHandlers {
   readonly onJoin: (sessionId: string, displayName: string) => void;
   readonly onSetParty: (actorDefinitionIds: readonly string[]) => void;
   readonly onSelectCharacter: (memberId: string) => void;
+  readonly onRemoveOfflineGuest: (playerId: string) => void;
   readonly onBegin: () => void;
 }
 
@@ -118,18 +119,35 @@ export class SessionLobbyUi {
       const claim = owner && owner.playerId !== state.hostPlayerId
         ? claimedMemberForPlayer(state, owner.playerId)
         : undefined;
+      const seatStatus = element("span", "session-seat-status");
+      seatStatus.append(element(
+        "small",
+        undefined,
+        owner?.playerId === state.hostPlayerId
+          ? connected.has(owner.playerId) ? "Host · Online" : "Host · Offline"
+          : owner
+            ? (claim ?? "Choosing character") + (connected.has(owner.playerId) ? " · Online" : " · Offline")
+            : "Invite pending",
+      ));
+      const removable = Boolean(
+        host &&
+        owner &&
+        owner.playerId !== state.hostPlayerId &&
+        !connected.has(owner.playerId) &&
+        !claim,
+      );
+      if (removable && owner) {
+        const remove = element("button", "session-seat-remove", "Remove");
+        remove.type = "button";
+        remove.dataset.playerId = owner.playerId;
+        remove.setAttribute("aria-label", "Remove offline guest " + owner.displayName);
+        remove.addEventListener("click", () => this.handlers.onRemoveOfflineGuest(owner.playerId));
+        seatStatus.append(remove);
+      }
       item.append(
         element("span", "seat-number", String(seat)),
         element("strong", undefined, owner?.displayName ?? "Open seat"),
-        element(
-          "small",
-          undefined,
-          owner?.playerId === state.hostPlayerId
-            ? connected.has(owner.playerId) ? "Host · Online" : "Host · Offline"
-            : owner
-              ? (claim ?? "Choosing character") + (connected.has(owner.playerId) ? " · Online" : " · Offline")
-              : "Invite pending",
-        ),
+        seatStatus,
       );
       seats.append(item);
     }

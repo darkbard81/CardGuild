@@ -60,6 +60,14 @@ export function authorizeSessionIntent(
       if (isHost || state.lifecycle !== "lobby") return "Only a guest can select a lobby character.";
       if (!state.partyPrepared) return "The host must prepare the party before guests select characters.";
       return undefined;
+    case "remove-offline-guest": {
+      if (!isHost || state.lifecycle !== "lobby") return "Only the lobby host can remove an abandoned guest seat.";
+      const guestSeat = seatForPlayer(state, intent.playerId);
+      if (!guestSeat || intent.playerId === state.hostPlayerId) return "Only a current guest seat can be removed.";
+      if (control.connectedPlayerIds.includes(intent.playerId)) return "A connected guest cannot be removed.";
+      if (claimedMemberForPlayer(state, intent.playerId)) return "A guest with a character claim cannot be removed.";
+      return undefined;
+    }
     case "begin-adventure": {
       if (!isHost || state.lifecycle !== "lobby") return "Only the host can begin the lobby adventure.";
       if (!state.partyPrepared) return "The host must prepare a party before beginning the adventure.";

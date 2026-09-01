@@ -233,6 +233,61 @@ describe("real WebSocket M5 cooperative session", () => {
     expect(actionable && host.control.effectiveControllerByMemberId[actionable]).toBe(credential.playerId);
   });
 
+  it("recovers a lobby after an HTTP-joined guest never attaches a WebSocket", async () => {
+    const server = await start();
+    const hostCredential = await create(server);
+    const hostClient = await SocketClient.connect(server.origin, hostCredential);
+    sockets.push(hostClient);
+    await hostClient.waitForSnapshot();
+    const host = server.store.get(hostCredential.sessionId) as NonNullable<ReturnType<typeof server.store.get>>;
+    await accepted(hostClient, host, "party", {
+      type: "set-party-composition",
+      actorDefinitionIds: PARTY,
+    });
+    const partyHash = hashSessionGameplayState(host.state);
+
+    const orphan = await post<SessionCredentialResponse>(
+      server.origin,
+      "/api/sessions/" + hostCredential.sessionId + "/join",
+      { displayName: "Never Attached" },
+    );
+    expect(orphan.status).toBe(200);
+    expect(host.state.seats.map((seat) => seat.playerId)).toEqual([
+      hostCredential.playerId,
+      orphan.body.playerId,
+    ]);
+    expect(host.control.connectedPlayerIds).toEqual([hostCredential.playerId]);
+    expect(hashSessionGameplayState(host.state)).toBe(partyHash);
+    expect((await rejected(hostClient, host, "blocked-begin", { type: "begin-adventure" })).code).toBe(
+      "FORBIDDEN",
+    );
+
+    await accepted(hostClient, host, "remove-orphan", {
+      type: "remove-offline-guest",
+      playerId: orphan.body.playerId,
+    });
+    expect(host.state.seats).toEqual([
+      { seat: 1, playerId: hostCredential.playerId, displayName: "Host" },
+    ]);
+    expect(hashSessionGameplayState(host.state)).toBe(partyHash);
+
+    const revoked = await SocketClient.connect(server.origin, orphan.body);
+    sockets.push(revoked);
+    expect((await revoked.waitFor(
+      (message): message is ServerError => message.type === "error" && message.code === "UNAUTHENTICATED",
+    )).code).toBe("UNAUTHENTICATED");
+    expect(revoked.messages.some((message) => message.type === "snapshot")).toBe(false);
+
+    await accepted(hostClient, host, "begin-after-cleanup", { type: "begin-adventure" });
+    expect(host.state.lifecycle).toBe("active");
+    expect(Object.keys(host.state.adventure?.party.members ?? {})).toHaveLength(3);
+    expect(host.control.effectiveControllerByMemberId).toEqual({
+      "party.hero-1": hostCredential.playerId,
+      "party.hero-2": hostCredential.playerId,
+      "party.hero-3": hostCredential.playerId,
+    });
+  });
+
   it("falls a guest character back to host without gameplay mutation and restores the claim on reconnect", async () => {
     const server = await start();
     const hostCredential = await create(server);
@@ -437,6 +492,12 @@ describe("real WebSocket M5 cooperative session", () => {
     sockets.push(client);
     await client.waitForSnapshot();
     const host = server.store.get(credential.sessionId) as NonNullable<ReturnType<typeof server.store.get>>;
+    let originalConnectionId: string | undefined;
+    const handleIntent = host.handleIntent.bind(host);
+    vi.spyOn(host, "handleIntent").mockImplementation((playerId, connectionId, value) => {
+      originalConnectionId ??= connectionId;
+      return handleIntent(playerId, connectionId, value);
+    });
 
     const partyEnvelope = envelope("idempotent-party", 0, {
       type: "set-party-composition",
@@ -493,6 +554,19 @@ describe("real WebSocket M5 cooperative session", () => {
       "party.hero-2": credential.playerId,
       "party.hero-3": credential.playerId,
     });
+    expect(originalConnectionId).toBeDefined();
+    const beforeReplacedIntent = host.state;
+    const replacementMark = replacement.mark();
+    await host.handleIntent(
+      credential.playerId,
+      originalConnectionId as string,
+      envelope("connection-boundary", beforeReplacedIntent.revision, { type: "begin-adventure" }),
+    );
+    await host.whenIdle();
+    expect(host.state).toBe(beforeReplacedIntent);
+    expect(replacement.messages.slice(replacementMark)).toEqual([]);
+    await accepted(replacement, host, "connection-boundary", { type: "begin-adventure" });
+    expect(host.state.lifecycle).toBe("active");
 
     const wrongContent = await SocketClient.connect(server.origin, credential, {
       ...M5_CONTENT_IDENTITY,

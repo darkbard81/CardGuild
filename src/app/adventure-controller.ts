@@ -76,6 +76,7 @@ export class AdventureController {
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
       onSetParty: (actorDefinitionIds) => this.sendIntent({ type: "set-party-composition", actorDefinitionIds }),
       onSelectCharacter: (memberId) => this.sendIntent({ type: "select-character", memberId }),
+      onRemoveOfflineGuest: (playerId) => this.sendIntent({ type: "remove-offline-guest", playerId }),
       onBegin: () => this.sendIntent({ type: "begin-adventure" }),
     });
     this.root.dataset.ready = "true";

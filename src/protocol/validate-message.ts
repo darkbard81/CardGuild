@@ -94,6 +94,12 @@ const intent = {
       required: ["type", "memberId"],
       properties: { type: { const: "select-character" }, memberId: nonEmptyString },
     },
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["type", "playerId"],
+      properties: { type: { const: "remove-offline-guest" }, playerId: nonEmptyString },
+    },
     { type: "object", additionalProperties: false, required: ["type"], properties: { type: { const: "begin-adventure" } } },
     { type: "object", additionalProperties: false, required: ["type"], properties: { type: { const: "start-encounter" } } },
     {

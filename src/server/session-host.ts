@@ -114,8 +114,13 @@ export class SessionHost {
     });
   }
 
-  public handleIntent(playerId: string, envelope: ClientIntentEnvelope): Promise<void> {
+  public handleIntent(
+    playerId: string,
+    connectionId: string,
+    envelope: ClientIntentEnvelope,
+  ): Promise<void> {
     return this.enqueue(async () => {
+      if (this.connections.get(playerId)?.id !== connectionId) return;
       const payloadHash = fingerprintValue(envelope);
       const playerJournal = this.journal.get(playerId) ?? new Map<string, RequestRecord>();
       this.journal.set(playerId, playerJournal);
@@ -163,6 +168,10 @@ export class SessionHost {
       }
 
       this.stateValue = result.state;
+      if (envelope.intent.type === "remove-offline-guest") {
+        this.reconnectDigests.delete(envelope.intent.playerId);
+        this.journal.delete(envelope.intent.playerId);
+      }
       this.updateCombatHistory(beforeCombat, result.events);
       const ack = this.ack(envelope.requestId, true, result.state.revision);
       playerJournal.set(envelope.requestId, { payloadHash, ack });
@@ -191,7 +200,11 @@ export class SessionHost {
   }
 
   private controlContext(): SessionControlContext {
-    return { effectiveControllerByMemberId: this.deriveControlView().effectiveControllerByMemberId };
+    const control = this.deriveControlView();
+    return {
+      connectedPlayerIds: control.connectedPlayerIds,
+      effectiveControllerByMemberId: control.effectiveControllerByMemberId,
+    };
   }
 
   private async pumpServerAuthority(): Promise<void> {

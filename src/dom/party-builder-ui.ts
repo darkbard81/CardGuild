@@ -123,21 +123,31 @@ export class PartyBuilderUi {
       this.draft.slice(this.draft.findIndex((id) => id === null)).every((id) => id === null);
     const unique = new Set(actorDefinitionIds).size === actorDefinitionIds.length;
     const validSize = actorDefinitionIds.length >= state.seats.length && actorDefinitionIds.length >= 1;
-    const apply = element("button", "session-primary party-apply", claimsLocked ? "Party Locked" : "Apply Party");
+    const unchanged = state.partyPrepared &&
+      actorDefinitionIds.length === state.partySlots.length &&
+      actorDefinitionIds.every((actorDefinitionId, index) =>
+        actorDefinitionId === state.partySlots[index]?.actorDefinitionId);
+    const apply = element(
+      "button",
+      "session-primary party-apply",
+      claimsLocked ? "Party Locked" : unchanged ? "Party Applied" : "Apply Party",
+    );
     apply.id = "apply-party";
     apply.type = "button";
-    apply.disabled = claimsLocked || !contiguous || !unique || !validSize;
+    apply.disabled = claimsLocked || unchanged || !contiguous || !unique || !validSize;
     apply.addEventListener("click", () => this.handlers.onSetParty(actorDefinitionIds));
     const gate = element(
       "p",
-      apply.disabled && !claimsLocked ? "party-gate invalid" : "party-gate",
+      apply.disabled && !claimsLocked && !unchanged ? "party-gate invalid" : "party-gate",
       claimsLocked
         ? "A guest claim locked party composition."
-        : !validSize
-          ? "Party size must cover every connected player."
-          : !contiguous || !unique
-            ? "Choose unique characters in consecutive slots."
-            : "Slot order fixes member identity and encounter spawn.",
+        : unchanged
+          ? "This party composition is already applied."
+          : !validSize
+            ? "Party size must cover every connected player."
+            : !contiguous || !unique
+              ? "Choose unique characters in consecutive slots."
+              : "Slot order fixes member identity and encounter spawn.",
     );
     root.append(slotEditor, apply, gate);
   }
@@ -192,7 +202,7 @@ export class PartyBuilderUi {
       const claimant = state.guestClaims.byMemberId[partySlot.memberId];
       const mine = claimant === viewerPlayerId;
       const hostCharacter = partySlot.slot === 1;
-      const available = !hostCharacter && (!claimant || mine);
+      const available = !hostCharacter && !claimant;
       const button = element("button", "guest-character-choice");
       button.type = "button";
       button.dataset.memberId = partySlot.memberId;

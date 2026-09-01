@@ -53,6 +53,7 @@ export interface SessionAuthorityContext {
 
 /** Ephemeral presence-derived authority supplied by SessionHost at dispatch time. */
 export interface SessionControlContext {
+  readonly connectedPlayerIds: readonly string[];
   readonly effectiveControllerByMemberId: Readonly<Record<string, string>>;
 }
 
@@ -69,6 +70,7 @@ export interface CreateSessionOptions extends SessionPlayerIdentity {
 export type SessionIntent =
   | { readonly type: "set-party-composition"; readonly actorDefinitionIds: readonly string[] }
   | { readonly type: "select-character"; readonly memberId: string }
+  | { readonly type: "remove-offline-guest"; readonly playerId: string }
   | { readonly type: "begin-adventure" }
   | { readonly type: "start-encounter" }
   | { readonly type: "choose-reward"; readonly rewardId: string; readonly choiceIndex: number }
@@ -93,6 +95,7 @@ export type SessionEvent =
   | AdventureEvent
   | CombatEvent
   | { readonly type: "SEAT_JOINED"; readonly seat: SessionSeatNumber }
+  | { readonly type: "SEAT_REMOVED"; readonly seat: SessionSeatNumber; readonly playerId: string }
   | { readonly type: "PARTY_COMPOSITION_SET"; readonly memberIds: readonly string[] }
   | { readonly type: "CHARACTER_SELECTED"; readonly playerId: string; readonly memberId: string };
 

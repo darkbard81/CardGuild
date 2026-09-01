@@ -37,6 +37,7 @@ function control(
 ): SessionControlContext {
   const connected = new Set(connectedPlayerIds);
   return {
+    connectedPlayerIds,
     effectiveControllerByMemberId: Object.fromEntries(state.partySlots.map((slot) => {
       const guest = state.guestClaims.byMemberId[slot.memberId];
       return [slot.memberId, guest && connected.has(guest) ? guest : state.hostPlayerId];
@@ -117,6 +118,13 @@ describe("pure M5 Session authority", () => {
     }
 
     state = prepare(state);
+    const unchanged = dispatch(state, state.hostPlayerId, {
+      type: "set-party-composition",
+      actorDefinitionIds: DEFAULT_PARTY,
+    });
+    expect(unchanged.accepted).toBe(false);
+    expect(unchanged.errorCode).toBe("DOMAIN_REJECTED");
+    expect(unchanged.state).toBe(state);
     state = claim(state, "player-b", "party.hero-2");
     const locked = dispatch(state, state.hostPlayerId, {
       type: "set-party-composition",
@@ -138,6 +146,13 @@ describe("pure M5 Session authority", () => {
     expect(beforeClaims.accepted).toBe(false);
 
     state = claim(state, "player-b", "party.hero-2");
+    const sameClaim = dispatch(state, "player-b", {
+      type: "select-character",
+      memberId: "party.hero-2",
+    });
+    expect(sameClaim.accepted).toBe(false);
+    expect(sameClaim.errorCode).toBe("DOMAIN_REJECTED");
+    expect(sameClaim.state).toBe(state);
     state = claim(state, "player-b", "party.hero-3");
     expect(state.guestClaims.byMemberId).toEqual({ "party.hero-3": "player-b" });
     state = claim(state, "player-c", "party.hero-2");
@@ -166,6 +181,42 @@ describe("pure M5 Session authority", () => {
     const late = joinSessionCore(begun.state, player("player-c"), context);
     expect(late.accepted).toBe(false);
     expect(late.errorCode).toBe("ROSTER_LOCKED");
+  });
+
+  it("lets the host remove only an offline unclaimed lobby guest without changing gameplay hash", () => {
+    const hostPlayerId = "player-a";
+    const guestPlayerId = "player-b";
+    let state = join(lobby(), player(guestPlayerId, "Guest B"));
+    state = prepare(state);
+    const removeIntent: SessionIntent = { type: "remove-offline-guest", playerId: guestPlayerId };
+
+    const connected = dispatch(state, hostPlayerId, removeIntent, [hostPlayerId, guestPlayerId]);
+    expect(connected.accepted).toBe(false);
+    expect(connected.state).toBe(state);
+    const byGuest = dispatch(state, guestPlayerId, removeIntent, [hostPlayerId]);
+    expect(byGuest.accepted).toBe(false);
+    expect(byGuest.state).toBe(state);
+
+    const claimed = claim(state, guestPlayerId, "party.hero-2");
+    const claimedOffline = dispatch(claimed, hostPlayerId, removeIntent, [hostPlayerId]);
+    expect(claimedOffline.accepted).toBe(false);
+    expect(claimedOffline.state).toBe(claimed);
+
+    const beforeHash = hashSessionGameplayState(state);
+    const removed = dispatch(state, hostPlayerId, removeIntent, [hostPlayerId]);
+    expect(removed.accepted).toBe(true);
+    expect(removed.state.revision).toBe(state.revision + 1);
+    expect(removed.state.seats).toEqual([{ seat: 1, playerId: hostPlayerId, displayName: "Host" }]);
+    expect(removed.state.partySlots).toEqual(state.partySlots);
+    expect(hashSessionGameplayState(removed.state)).toBe(beforeHash);
+    expect(removed.events).toContainEqual({ type: "SEAT_REMOVED", seat: 2, playerId: guestPlayerId });
+
+    const begun = dispatch(removed.state, hostPlayerId, { type: "begin-adventure" }, [hostPlayerId]);
+    expect(begun.accepted).toBe(true);
+    expect(Object.keys(begun.state.adventure?.party.members ?? {})).toHaveLength(3);
+    const activeRemoval = dispatch(begun.state, hostPlayerId, removeIntent, [hostPlayerId]);
+    expect(activeRemoval.accepted).toBe(false);
+    expect(activeRemoval.state).toBe(begun.state);
   });
 
   it("lets a 1P host edit every party member and uses all distinct starter profiles", () => {

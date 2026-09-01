@@ -873,6 +873,36 @@ button {
   color: #777a70;
 }
 
+.session-seat-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 0;
+  text-align: right;
+}
+
+.session-seat-remove {
+  min-height: 1.8rem;
+  padding: 0.25rem 0.55rem;
+  border: 1px solid #9d5746;
+  border-radius: 0.35rem;
+  color: #ffb2a2;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  background: #351b16;
+  cursor: pointer;
+}
+
+.session-seat-remove:hover,
+.session-seat-remove:focus-visible {
+  border-color: #e88b74;
+  background: #51251d;
+}
+
 .seat-number {
   display: grid;
   width: 1.8rem;
@@ -1616,6 +1646,16 @@ button {
   .session-primary,
   .session-secondary {
     width: 100%;
+  }
+
+  .session-seats li {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .session-seat-status {
+    grid-column: 2;
+    justify-content: space-between;
+    text-align: left;
   }
 
   .loadout-screen {

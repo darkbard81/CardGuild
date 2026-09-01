@@ -203,6 +203,14 @@ function setPartyComposition(
       return reject(state, "DOMAIN_REJECTED", 'Actor definition "' + actorDefinitionId + '" is not playable.');
     }
   }
+  if (
+    state.partyPrepared &&
+    actorDefinitionIds.length === state.partySlots.length &&
+    actorDefinitionIds.every((actorDefinitionId, index) =>
+      actorDefinitionId === state.partySlots[index]?.actorDefinitionId)
+  ) {
+    return reject(state, "DOMAIN_REJECTED", "Party composition is already applied.");
+  }
   const partySlots = actorDefinitionIds.map((actorDefinitionId, index): SessionPartySlot => {
     const slot = (index + 1) as SessionSeatNumber;
     return { slot, memberId: memberIdForPartySlot(slot), actorDefinitionId };
@@ -224,6 +232,9 @@ function selectCharacter(
   if (!slot) return reject(state, "DOMAIN_REJECTED", "Selected character is not in the prepared party.");
   if (slot.slot === 1) return reject(state, "FORBIDDEN", "Party Slot 1 is the Host Character.");
   const currentClaimant = state.guestClaims.byMemberId[memberId];
+  if (currentClaimant === playerId) {
+    return reject(state, "DOMAIN_REJECTED", "Character is already selected by this guest.");
+  }
   if (currentClaimant && currentClaimant !== playerId) {
     return reject(state, "CHARACTER_TAKEN", "Another guest already claimed this character.");
   }
@@ -259,6 +270,14 @@ export function dispatchSessionIntent(
       return setPartyComposition(state, intent.actorDefinitionIds, context);
     case "select-character":
       return selectCharacter(state, playerId, intent.memberId);
+    case "remove-offline-guest": {
+      const guestSeat = seatForPlayer(state, intent.playerId);
+      if (!guestSeat) return reject(state, "DOMAIN_REJECTED", "Guest seat does not exist.");
+      return commit(state, {
+        ...state,
+        seats: state.seats.filter((seat) => seat.playerId !== intent.playerId),
+      }, [{ type: "SEAT_REMOVED", seat: guestSeat.seat, playerId: intent.playerId }]);
+    }
     case "begin-adventure": {
       const ready = createAdventureSession(runtime, partyFromSlots(state, context), state.adventureSeed);
       const started = dispatchAdventureCommand(ready, { type: "start-adventure" }, runtime);

@@ -142,7 +142,7 @@ export function attachWebSocketGateway(
         socket.close(1011, "session authority unavailable");
         return;
       }
-      await host.handleIntent(identity.playerId, message);
+      await host.handleIntent(identity.playerId, connectionId, message);
     }
 
     socket.on("message", (data, isBinary) => {

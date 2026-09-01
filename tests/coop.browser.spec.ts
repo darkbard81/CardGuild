@@ -41,6 +41,8 @@ async function applyThreeCharacterParty(page: Page): Promise<void> {
   await page.locator("#apply-party").click();
   await expect(page.locator("#session-screen")).toHaveAttribute("data-session-id", /.+/);
   await expect(page.locator(".party-builder")).toHaveAttribute("data-party-prepared", "true");
+  await expect(page.locator("#apply-party")).toBeDisabled();
+  await expect(page.locator("#apply-party")).toHaveText("Party Applied");
 }
 
 async function joinGuest(player: BrowserPlayer, sessionId: string): Promise<void> {
@@ -139,6 +141,26 @@ test("single host prepares three women heroes and controls every changing combat
     await host.page.setViewportSize({ width: 1024, height: 768 });
 
     await applyThreeCharacterParty(host.page);
+    const sessionId = await host.page.locator("#invite-session-id").innerText();
+    const orphanResponse = await host.page.request.post(
+      "/api/sessions/" + encodeURIComponent(sessionId) + "/join",
+      { data: { displayName: "Never Attached" } },
+    );
+    expect(orphanResponse.ok()).toBe(true);
+    const orphanSeat = host.page.locator('.session-seats li[data-seat="2"]');
+    await expect(orphanSeat).toHaveAttribute("data-connected", "false");
+    await expect(orphanSeat).toContainText("Never Attached");
+    await expect(orphanSeat.locator(".session-seat-remove")).toBeVisible();
+    await host.page.setViewportSize({ width: 390, height: 844 });
+    expect(await host.page.evaluate(() =>
+      document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+    await host.page.screenshot({ path: testInfo.outputPath("cardguild-m5-orphan-cleanup-390.png"), fullPage: true });
+    const orphanRevision = await host.page.locator("#app").getAttribute("data-session-revision");
+    await orphanSeat.locator(".session-seat-remove").click();
+    await expect(orphanSeat).toHaveClass(/open/);
+    await expect(orphanSeat).toContainText("Open seat");
+    await expect(host.page.locator("#app")).not.toHaveAttribute("data-session-revision", orphanRevision ?? "");
+    await host.page.setViewportSize({ width: 1024, height: 768 });
     await expect(host.page.locator("#begin-adventure")).toBeEnabled();
     await host.page.locator("#begin-adventure").click();
     await expect(host.page.locator("#app")).toHaveAttribute("data-screen", "adventure");
@@ -188,6 +210,7 @@ test("2P guest disconnect transfers the live character to host and reconnect res
       "data-member-id",
       "party.hero-2",
     );
+    await expect(guest.page.locator('.guest-character-choice[data-claim-state="mine"]')).toBeDisabled();
     await expect(host.page.locator("#begin-adventure")).toBeEnabled();
     await host.page.locator("#begin-adventure").click();
     await expectConvergence([host.page, guest.page]);
