@@ -38,6 +38,10 @@ async function openAdventure(page: Page): Promise<void> {
   await page.locator("#session-display-name").fill("Solo Host");
   await page.locator("#create-session").click();
   await expect(page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "host");
+  await page.locator("#party-slot-2").selectOption("");
+  await page.locator("#party-slot-3").selectOption("");
+  await page.locator("#apply-party").click();
+  await expect(page.locator("#begin-adventure")).toBeEnabled();
   await page.locator("#begin-adventure").click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
 }
@@ -156,7 +160,7 @@ async function winRoadAmbush(page: Page): Promise<void> {
   await expect(page.locator("#adventure-content h1")).toHaveText("Choose one reward");
 }
 
-test("shows the Adventure shell before loading encounter WebP assets", async ({ page }, testInfo) => {
+test("shows the Adventure shell after reusing the lobby actor atlas without loading extra WebP assets", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpRequests: string[] = [];
   page.on("request", (request) => {
@@ -169,7 +173,7 @@ test("shows the Adventure shell before loading encounter WebP assets", async ({ 
   await expect(page.locator("#adventure-collection")).toContainText("Halberd ×1");
   await expect(page.locator("#adventure-collection")).toContainText("Steel Shield ×1");
   await expect(page.locator("#adventure-collection")).toContainText("Boots of Fly ×1");
-  expect(webpRequests).toEqual([]);
+  expect(new Set(webpRequests.map((url) => new URL(url).pathname))).toEqual(new Set(["/assets/m3-atlas.webp"]));
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-adventure.png"), fullPage: true });
 });

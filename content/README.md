@@ -32,8 +32,8 @@ npm run content:check
 원본 파일, definition, JSON path와 원인을 출력합니다.
 
 ```text
-Pack: cardguild.m4
-Source: content/m3/equipment.json
+Pack: cardguild.m5
+Source: content/m5/equipment.json
 Definition: halberd
 Path: [0].traits[1].id
 UNKNOWN_TRAIT: Trait "tirp" is not defined.
@@ -56,6 +56,8 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   겹칠 수 없습니다. 모든 Adventure Encounter는 `partySize.max`만큼 slot을 제공합니다.
 - Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
   PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
+- `playable` Trait을 가진 Actor만 M5 Party Builder 후보입니다. 현재 authoritative pack은
+  `content/m5`의 `cardguild.m5@0.5.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
 - `remove-condition`은 지정한 Condition ID를 즉시 제거합니다. 판정이 필요한

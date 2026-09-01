@@ -60,7 +60,7 @@ export class LoadoutUi {
   private editor: Editor = { kind: "equipment", slot: "weapon" };
   private pending: PendingCandidate | null = null;
   private state: AdventureState | null = null;
-  private editableMemberId: string | null = null;
+  private editableMemberIds: ReadonlySet<string> = new Set();
 
   public constructor(
     private readonly pack: CompiledContentPack,
@@ -72,16 +72,16 @@ export class LoadoutUi {
     this.screen.hidden = !visible;
   }
 
-  public render(state: AdventureState, editableMemberId: string | null = null): void {
+  public render(state: AdventureState, editableMemberIds: ReadonlySet<string> = new Set()): void {
     this.state = state;
-    this.editableMemberId = editableMemberId;
+    this.editableMemberIds = new Set(editableMemberIds);
     const members = Object.values(state.party.members).sort((left, right) => left.id.localeCompare(right.id));
     const member = members.find((candidate) => candidate.id === this.selectedMemberId) ??
-      members.find((candidate) => candidate.id === editableMemberId) ??
+      members.find((candidate) => this.editableMemberIds.has(candidate.id)) ??
       members[0];
     if (!member) throw new Error("Loadout Builder requires at least one party member.");
     this.selectedMemberId = member.id;
-    const editable = member.id === editableMemberId;
+    const editable = this.editableMemberIds.has(member.id);
     const actor = this.pack.actorDefinitions[member.actorDefinitionId];
     if (!actor) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
 
@@ -106,13 +106,13 @@ export class LoadoutUi {
         const tab = element("button", "loadout-member-tab", definition?.name ?? candidate.id);
         tab.type = "button";
         tab.dataset.memberId = candidate.id;
-        tab.dataset.owned = String(candidate.id === editableMemberId);
+        tab.dataset.owned = String(this.editableMemberIds.has(candidate.id));
         tab.setAttribute("role", "tab");
         tab.setAttribute("aria-selected", String(candidate.id === member.id));
         tab.addEventListener("click", () => {
           this.selectedMemberId = candidate.id;
           this.pending = null;
-          this.render(state, this.editableMemberId);
+          this.render(state, this.editableMemberIds);
         });
         tabs.append(tab);
       }
@@ -181,7 +181,7 @@ export class LoadoutUi {
     const member = state.party.members[memberId];
     if (!member) throw new Error(`Party member "${memberId}" is missing.`);
     const panel = element("section", "loadout-panel equipped-panel");
-    const editable = memberId === this.editableMemberId;
+    const editable = this.editableMemberIds.has(memberId);
     panel.dataset.editable = String(editable);
     panel.append(element("p", "loadout-panel-label", "Loadout"), element("h2", undefined, "Equipment"));
     const slots = element("div", "equipment-slots");
@@ -201,7 +201,7 @@ export class LoadoutUi {
       button.addEventListener("click", () => {
         this.editor = { kind: "equipment", slot };
         this.pending = null;
-        this.render(state, this.editableMemberId);
+        this.render(state, this.editableMemberIds);
       });
       slots.append(button);
     }
@@ -232,7 +232,7 @@ export class LoadoutUi {
     addCard.addEventListener("click", () => {
       this.editor = { kind: "cards" };
       this.pending = null;
-      this.render(state, this.editableMemberId);
+      this.render(state, this.editableMemberIds);
     });
     prepared.append(addCard);
     panel.append(prepared, this.renderEditor(state, memberId));
@@ -244,7 +244,7 @@ export class LoadoutUi {
     if (!member) throw new Error(`Party member "${memberId}" is missing.`);
     const editor = element("div", "loadout-editor");
     editor.append(element("p", "loadout-panel-label", this.editor.kind === "cards" ? "Available Cards" : `Available ${this.editor.slot}`));
-    if (memberId !== this.editableMemberId) {
+    if (!this.editableMemberIds.has(memberId)) {
       editor.append(element("p", "loadout-empty", "Only this character's owner can edit this loadout."));
       return editor;
     }
@@ -354,7 +354,7 @@ export class LoadoutUi {
       change.append(element("p", preview.legal ? "preview-legal" : "preview-illegal", preview.legal ? changes.join(" · ") || "No derived rule changes." : preview.validation.issues[0]?.message ?? "Unavailable"));
       const apply = element("button", "loadout-apply", "Apply Change");
       apply.type = "button";
-      apply.disabled = !preview.legal || memberId !== this.editableMemberId;
+      apply.disabled = !preview.legal || !this.editableMemberIds.has(memberId);
       apply.addEventListener("click", () => {
         if (!this.pending || !this.pending.preview.legal) return;
         const loadout = this.pending.loadout;

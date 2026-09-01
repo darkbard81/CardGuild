@@ -192,9 +192,105 @@
         "y": 1
       }
     },
-    "object.wall": {
+    "actor.hero.brom.back": {
       "frame": {
         "x": 262,
+        "y": 390,
+        "w": 256,
+        "h": 384
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 384
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.hero.brom.front": {
+      "frame": {
+        "x": 522,
+        "y": 390,
+        "w": 256,
+        "h": 384
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 384
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.hero.lyra.back": {
+      "frame": {
+        "x": 782,
+        "y": 390,
+        "w": 256,
+        "h": 384
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 384
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.hero.lyra.front": {
+      "frame": {
+        "x": 1042,
+        "y": 390,
+        "w": 256,
+        "h": 384
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 384
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "object.wall": {
+      "frame": {
+        "x": 1302,
         "y": 390,
         "w": 384,
         "h": 256
@@ -218,7 +314,7 @@
     },
     "object.crate": {
       "frame": {
-        "x": 650,
+        "x": 1690,
         "y": 390,
         "w": 256,
         "h": 256
@@ -242,8 +338,8 @@
     },
     "object.gate.closed": {
       "frame": {
-        "x": 910,
-        "y": 390,
+        "x": 2,
+        "y": 778,
         "w": 256,
         "h": 256
       },
@@ -266,8 +362,8 @@
     },
     "object.gate.open": {
       "frame": {
-        "x": 1170,
-        "y": 390,
+        "x": 262,
+        "y": 778,
         "w": 256,
         "h": 256
       },
@@ -290,8 +386,8 @@
     },
     "object.lever": {
       "frame": {
-        "x": 1430,
-        "y": 390,
+        "x": 522,
+        "y": 778,
         "w": 256,
         "h": 256
       },
@@ -313,102 +409,6 @@
       }
     },
     "terrain.chasm": {
-      "frame": {
-        "x": 1690,
-        "y": 390,
-        "w": 256,
-        "h": 256
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 256,
-        "h": 256
-      },
-      "sourceSize": {
-        "w": 256,
-        "h": 256
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "terrain.rubble": {
-      "frame": {
-        "x": 2,
-        "y": 778,
-        "w": 256,
-        "h": 256
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 256,
-        "h": 256
-      },
-      "sourceSize": {
-        "w": 256,
-        "h": 256
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "terrain.stone-floor": {
-      "frame": {
-        "x": 262,
-        "y": 778,
-        "w": 256,
-        "h": 256
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 256,
-        "h": 256
-      },
-      "sourceSize": {
-        "w": 256,
-        "h": 256
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "transition.web": {
-      "frame": {
-        "x": 522,
-        "y": 778,
-        "w": 256,
-        "h": 256
-      },
-      "rotated": false,
-      "trimmed": false,
-      "spriteSourceSize": {
-        "x": 0,
-        "y": 0,
-        "w": 256,
-        "h": 256
-      },
-      "sourceSize": {
-        "w": 256,
-        "h": 256
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      }
-    },
-    "ui.card.fly": {
       "frame": {
         "x": 782,
         "y": 778,
@@ -432,7 +432,7 @@
         "y": 0.5
       }
     },
-    "ui.card.reactive-strike": {
+    "terrain.rubble": {
       "frame": {
         "x": 1042,
         "y": 778,
@@ -456,7 +456,7 @@
         "y": 0.5
       }
     },
-    "ui.card.spirit-beacon": {
+    "terrain.stone-floor": {
       "frame": {
         "x": 1302,
         "y": 778,
@@ -480,7 +480,7 @@
         "y": 0.5
       }
     },
-    "ui.card.trip": {
+    "transition.web": {
       "frame": {
         "x": 1562,
         "y": 778,
@@ -504,7 +504,7 @@
         "y": 0.5
       }
     },
-    "ui.equipment.boots-of-fly": {
+    "ui.card.fly": {
       "frame": {
         "x": 2,
         "y": 1038,
@@ -528,7 +528,7 @@
         "y": 0.5
       }
     },
-    "ui.equipment.halberd": {
+    "ui.card.reactive-strike": {
       "frame": {
         "x": 262,
         "y": 1038,
@@ -552,9 +552,105 @@
         "y": 0.5
       }
     },
-    "ui.equipment.shield": {
+    "ui.card.spirit-beacon": {
       "frame": {
         "x": 522,
+        "y": 1038,
+        "w": 256,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.trip": {
+      "frame": {
+        "x": 782,
+        "y": 1038,
+        "w": 256,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.boots-of-fly": {
+      "frame": {
+        "x": 1042,
+        "y": 1038,
+        "w": 256,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.halberd": {
+      "frame": {
+        "x": 1302,
+        "y": 1038,
+        "w": 256,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.shield": {
+      "frame": {
+        "x": 1562,
         "y": 1038,
         "w": 256,
         "h": 256

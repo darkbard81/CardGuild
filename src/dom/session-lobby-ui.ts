@@ -1,4 +1,8 @@
-import type { SessionCoreState } from "../session";
+import type { CompiledContentPack } from "../content";
+import type { AssetCatalog } from "../presentation";
+import type { ServerControlView } from "../protocol";
+import { claimedMemberForPlayer, type SessionCoreState } from "../session";
+import { PartyBuilderUi } from "./party-builder-ui";
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -14,17 +18,28 @@ function element<K extends keyof HTMLElementTagNameMap>(
 export interface SessionLobbyHandlers {
   readonly onCreate: (displayName: string) => void;
   readonly onJoin: (sessionId: string, displayName: string) => void;
+  readonly onSetParty: (actorDefinitionIds: readonly string[]) => void;
+  readonly onSelectCharacter: (memberId: string) => void;
   readonly onBegin: () => void;
 }
 
 export class SessionLobbyUi {
   private readonly screen: HTMLElement;
+  private readonly partyBuilder: PartyBuilderUi;
   private status = "호스트가 방을 만들고 세션 ID를 초대할 플레이어에게 전달합니다.";
 
-  public constructor(private readonly handlers: SessionLobbyHandlers) {
+  public constructor(
+    pack: CompiledContentPack,
+    catalog: AssetCatalog,
+    private readonly handlers: SessionLobbyHandlers,
+  ) {
     const screen = document.querySelector<HTMLElement>("#session-screen");
     if (!screen) throw new Error("Session screen is missing.");
     this.screen = screen;
+    this.partyBuilder = new PartyBuilderUi(pack, catalog, {
+      onSetParty: handlers.onSetParty,
+      onSelectCharacter: handlers.onSelectCharacter,
+    });
   }
 
   public renderLanding(): void {
@@ -60,8 +75,13 @@ export class SessionLobbyUi {
     this.setVisible(true);
   }
 
-  public renderLobby(state: SessionCoreState, viewerPlayerId: string): void {
+  public renderLobby(
+    state: SessionCoreState,
+    viewerPlayerId: string,
+    control: ServerControlView,
+  ): void {
     const host = state.hostPlayerId === viewerPlayerId;
+    const connected = new Set(control.connectedPlayerIds);
     this.screen.dataset.sessionId = state.sessionId;
     this.screen.dataset.viewerRole = host ? "host" : "guest";
     this.screen.replaceChildren();
@@ -70,8 +90,8 @@ export class SessionLobbyUi {
       element("p", "eyebrow", host ? "You are the host" : "Host invitation accepted"),
       element("h1", undefined, "Party Lobby"),
       element("p", "session-description", host
-        ? "아래 세션 ID만 공유하세요. 재접속 credential은 이 탭의 sessionStorage에만 보관됩니다."
-        : "호스트가 Adventure를 시작할 때까지 기다리세요."),
+        ? "Players와 출전 Party를 따로 준비합니다. Session ID만 게스트에게 공유하세요."
+        : "호스트가 준비한 잔여 캐릭터 중 하나를 선택하세요."),
     );
 
     const invite = element("div", "invite-code");
@@ -84,29 +104,71 @@ export class SessionLobbyUi {
     copy.addEventListener("click", () => {
       void navigator.clipboard?.writeText(state.sessionId);
       this.setStatus("Session ID copied. Credential은 공유되지 않았습니다.");
-      this.renderLobby(state, viewerPlayerId);
     });
     invite.append(code, copy);
 
+    const playersPanel = element("section", "lobby-players");
+    playersPanel.append(element("p", "party-builder-label", "PLAYERS"));
     const seats = element("ol", "session-seats");
     for (const seat of [1, 2, 3] as const) {
       const owner = state.seats.find((candidate) => candidate.seat === seat);
       const item = element("li", owner ? "occupied" : "open");
       item.dataset.seat = String(seat);
+      item.dataset.connected = String(Boolean(owner && connected.has(owner.playerId)));
+      const claim = owner && owner.playerId !== state.hostPlayerId
+        ? claimedMemberForPlayer(state, owner.playerId)
+        : undefined;
       item.append(
         element("span", "seat-number", String(seat)),
         element("strong", undefined, owner?.displayName ?? "Open seat"),
-        element("small", undefined, owner?.playerId === state.hostPlayerId ? "Host" : owner ? "Player" : "Invite pending"),
+        element(
+          "small",
+          undefined,
+          owner?.playerId === state.hostPlayerId
+            ? connected.has(owner.playerId) ? "Host · Online" : "Host · Offline"
+            : owner
+              ? (claim ?? "Choosing character") + (connected.has(owner.playerId) ? " · Online" : " · Offline")
+              : "Invite pending",
+        ),
       );
       seats.append(item);
     }
+    playersPanel.append(seats);
 
+    const everyGuestClaimed = state.seats
+      .filter((seat) => seat.playerId !== state.hostPlayerId)
+      .every((seat) => Boolean(claimedMemberForPlayer(state, seat.playerId)));
+    const canBegin = host &&
+      state.lifecycle === "lobby" &&
+      state.partyPrepared &&
+      state.partySlots.length >= state.seats.length &&
+      everyGuestClaimed;
     const begin = element("button", "session-primary", host ? "Begin Adventure" : "Waiting for Host");
     begin.id = "begin-adventure";
     begin.type = "button";
-    begin.disabled = !host || state.lifecycle !== "lobby";
+    begin.disabled = !canBegin;
     begin.addEventListener("click", this.handlers.onBegin);
-    card.append(invite, seats, begin, this.statusLine());
+    const beginGate = element(
+      "p",
+      canBegin ? "party-gate" : "party-gate invalid",
+      !state.partyPrepared
+        ? "Apply a party before beginning."
+        : state.partySlots.length < state.seats.length
+          ? "Party size must cover every player."
+          : !everyGuestClaimed
+            ? "Every guest must choose exactly one character."
+            : host
+              ? "Party and guest claims are ready."
+              : "Waiting for the host to begin.",
+    );
+    card.append(
+      invite,
+      playersPanel,
+      this.partyBuilder.render(state, viewerPlayerId),
+      begin,
+      beginGate,
+      this.statusLine(),
+    );
     this.screen.append(card);
     this.setVisible(true);
   }

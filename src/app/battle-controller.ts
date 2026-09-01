@@ -15,7 +15,7 @@ import type {
   LegalAction,
   LegalTarget,
 } from "../game";
-import type { SessionGameplayIntent } from "../session";
+import type { SessionIntent } from "../session";
 import {
   hoveredRingEntry,
   IDLE_INTERACTION,
@@ -37,9 +37,8 @@ export interface BattleControllerOptions {
   readonly definition: CombatDefinition;
   readonly state: CombatState;
   readonly history: readonly CombatEvent[];
-  readonly viewerMemberId: string;
-  readonly controlledActorId: string;
-  readonly onIntent: (intent: SessionGameplayIntent) => boolean;
+  readonly controlledActorIds: ReadonlySet<string>;
+  readonly onIntent: (intent: SessionIntent) => boolean;
 }
 
 function samePosition(left: GridPosition, right: GridPosition): boolean {
@@ -78,9 +77,9 @@ function legalTargetToActionTarget(target: LegalTarget, fallbackFacing: Directio
 
 export class BattleController {
   private readonly definition: CombatDefinition;
-  private readonly viewerMemberId: string;
-  private readonly controlledActorId: string;
-  private readonly onIntent: (intent: SessionGameplayIntent) => boolean;
+  private controlledActorIds: ReadonlySet<string>;
+  private presentedActorId: string;
+  private readonly onIntent: (intent: SessionIntent) => boolean;
   private state: CombatState;
   private history: CombatEvent[];
   private interaction: Interaction = IDLE_INTERACTION;
@@ -94,11 +93,12 @@ export class BattleController {
 
   public constructor(app: Application, catalog: AssetCatalog, options: BattleControllerOptions) {
     this.definition = options.definition;
-    this.viewerMemberId = options.viewerMemberId;
-    this.controlledActorId = options.controlledActorId;
+    this.controlledActorIds = new Set(options.controlledActorIds);
+    this.presentedActorId = [...this.controlledActorIds][0] ?? options.state.turn.activeActorId;
     this.onIntent = options.onIntent;
     this.state = options.state;
     this.history = [...options.history];
+    this.syncPresentedActor();
     const stage = this.requireElement<HTMLElement>(".combat-stage");
     this.view = new BattleView(app, catalog, {
       onPick: (pick, screen) => this.handlePick(pick, screen),
@@ -129,12 +129,28 @@ export class BattleController {
   }
 
   private activeHeroId(): string | null {
-    const actor = this.state.actors[this.controlledActorId];
-    return actor?.team === "heroes" && this.state.turn.activeActorId === actor.id ? actor.id : null;
+    const actor = this.state.actors[this.state.turn.activeActorId];
+    return actor?.team === "heroes" && this.controlledActorIds.has(actor.id) ? actor.id : null;
   }
 
   private heroId(): string {
-    return this.controlledActorId;
+    return this.presentedActorId;
+  }
+
+  private syncPresentedActor(): void {
+    const reactionActorId = this.state.pendingReaction?.candidates[0]?.actorId;
+    if (reactionActorId && this.controlledActorIds.has(reactionActorId)) {
+      this.presentedActorId = reactionActorId;
+      return;
+    }
+    const activeActorId = this.state.turn.activeActorId;
+    if (this.controlledActorIds.has(activeActorId)) {
+      this.presentedActorId = activeActorId;
+      return;
+    }
+    if (!this.controlledActorIds.has(this.presentedActorId)) {
+      this.presentedActorId = [...this.controlledActorIds][0] ?? activeActorId;
+    }
   }
 
   private targetsFor(action: LegalAction | null): readonly LegalTarget[] {
@@ -182,13 +198,14 @@ export class BattleController {
     const stateHash = hashCombatState(this.state);
     const canControl = Boolean(this.activeHeroId()) && !this.state.pendingReaction && !this.state.outcome;
     const app = this.requireElement<HTMLElement>("#app");
-    app.dataset.viewerMemberId = this.viewerMemberId;
+    app.dataset.viewerMemberId = this.presentedActorId;
+    app.dataset.controlledActorIds = [...this.controlledActorIds].sort().join(",");
     this.view.render(this.state, this.highlights(), events);
     this.ui.render(this.state, this.history, {
       selectedAction: interactionAction(this.interaction),
       prompt: this.prompt,
       stateHash,
-      controlledActorId: this.controlledActorId,
+      controlledActorId: this.presentedActorId,
       canControl,
     });
     this.renderDetail();
@@ -425,13 +442,13 @@ export class BattleController {
   private resolveReaction(use: boolean): void {
     const pending = this.state.pendingReaction;
     const candidate = pending?.candidates[0];
-    if (!pending || !candidate || candidate.actorId !== this.controlledActorId) return;
+    if (!pending || !candidate || !this.controlledActorIds.has(candidate.actorId)) return;
     this.sendIntent(use
       ? { type: "use-reaction", triggerId: pending.triggerId, cardInstanceId: candidate.cardInstanceId }
       : { type: "pass-reaction", triggerId: pending.triggerId });
   }
 
-  private sendIntent(intent: SessionGameplayIntent): void {
+  private sendIntent(intent: SessionIntent): void {
     if (!this.onIntent(intent)) {
       this.prompt = "서버 응답을 기다리는 중입니다.";
       this.render();
@@ -447,13 +464,20 @@ export class BattleController {
     this.render();
   }
 
-  public update(state: CombatState, events: readonly CombatEvent[], replaceHistory = false): void {
+  public update(
+    state: CombatState,
+    events: readonly CombatEvent[],
+    replaceHistory = false,
+    controlledActorIds: ReadonlySet<string> = this.controlledActorIds,
+  ): void {
     this.state = state;
+    this.controlledActorIds = new Set(controlledActorIds);
+    this.syncPresentedActor();
     this.history = replaceHistory ? [...events] : [...this.history, ...events];
     this.goIdle();
     const pendingOwner = state.pendingReaction?.candidates[0]?.actorId;
     this.prompt = state.pendingReaction
-      ? pendingOwner === this.controlledActorId
+      ? pendingOwner !== undefined && this.controlledActorIds.has(pendingOwner)
         ? "Reaction을 사용하거나 Pass하세요."
         : `${state.actors[pendingOwner ?? ""]?.name ?? "다른 플레이어"}의 Reaction을 기다리는 중입니다.`
       : state.outcome

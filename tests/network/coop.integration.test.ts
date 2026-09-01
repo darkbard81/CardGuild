@@ -1,7 +1,7 @@
 import { WebSocket } from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { M4_ADVENTURE_ID, M4_COMPILED_PACK, M4_CONTENT_IDENTITY } from "../../src/content";
+import { M5_ADVENTURE_ID, M5_COMPILED_PACK, M5_CONTENT_IDENTITY } from "../../src/content";
 import type {
   ClientIntentEnvelope,
   ServerAck,
@@ -12,9 +12,11 @@ import type {
 import { digestReconnectToken } from "../../src/server/credentials";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
 import type { SessionCredentialResponse } from "../../src/server/session-store";
-import { hashSessionGameplayState, type SessionGameplayIntent } from "../../src/session";
+import { hashSessionGameplayState, type SessionIntent } from "../../src/session";
 
 const TEST_ORIGIN = "http://cardguild.test";
+const PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
+const REACTION_PARTY = ["hero.brom", "hero.aerin", "hero.lyra"] as const;
 
 class SocketClient {
   public readonly messages: ServerMessage[] = [];
@@ -30,7 +32,8 @@ class SocketClient {
   public static async connect(
     origin: string,
     credential: SessionCredentialResponse,
-    contentIdentity = M4_CONTENT_IDENTITY,
+    contentIdentity = M5_CONTENT_IDENTITY,
+    version: 1 | 2 = 2,
   ): Promise<SocketClient> {
     const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
     const client = new SocketClient(socket);
@@ -39,7 +42,7 @@ class SocketClient {
       socket.once("error", reject);
     });
     socket.send(JSON.stringify({
-      v: 1,
+      v: version,
       type: "hello",
       sessionId: credential.sessionId,
       playerId: credential.playerId,
@@ -67,7 +70,9 @@ class SocketClient {
     return new Promise<T>((resolve, reject) => {
       const timeout = setTimeout(() => {
         this.socket.off("message", listener);
-        reject(new Error(`Timed out waiting for message after index ${from}: ${JSON.stringify(this.messages.slice(from))}`));
+        reject(new Error(
+          "Timed out waiting after index " + String(from) + ": " + JSON.stringify(this.messages.slice(from)),
+        ));
       }, timeoutMs);
       const listener = (): void => {
         const found = this.messages.slice(from).find(predicate);
@@ -80,10 +85,12 @@ class SocketClient {
     });
   }
 
-  public waitForSnapshot(from = 0, revision?: number): Promise<ServerSnapshot> {
+  public waitForSnapshot(
+    from = 0,
+    predicate: (snapshot: ServerSnapshot) => boolean = () => true,
+  ): Promise<ServerSnapshot> {
     return this.waitFor(
-      (message): message is ServerSnapshot => message.type === "snapshot" &&
-        (revision === undefined || message.revision === revision),
+      (message): message is ServerSnapshot => message.type === "snapshot" && predicate(message),
       from,
     );
   }
@@ -97,8 +104,12 @@ class SocketClient {
   }
 }
 
-async function post<T>(origin: string, path: string, body: unknown): Promise<{ readonly status: number; readonly body: T }> {
-  const response = await fetch(`${origin}${path}`, {
+async function post<T>(
+  origin: string,
+  path: string,
+  body: unknown,
+): Promise<{ readonly status: number; readonly body: T }> {
+  const response = await fetch(origin + path, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(body),
@@ -106,13 +117,77 @@ async function post<T>(origin: string, path: string, body: unknown): Promise<{ r
   return { status: response.status, body: await response.json() as T };
 }
 
-function intent(requestId: string, expectedRevision: number, value: SessionGameplayIntent): ClientIntentEnvelope {
-  return { v: 1, type: "intent", requestId, expectedRevision, intent: value };
+function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
+  return { v: 2, type: "intent", requestId, expectedRevision, intent: value };
 }
 
-describe("real WebSocket cooperative session", () => {
+async function accepted(
+  client: SocketClient,
+  host: NonNullable<ReturnType<RunningCardGuildServer["store"]["get"]>>,
+  requestId: string,
+  value: SessionIntent,
+): Promise<ServerAck> {
+  const mark = client.mark();
+  client.send(envelope(requestId, host.state.revision, value));
+  const ack = await client.waitFor(
+    (message): message is ServerAck => message.type === "ack" && message.requestId === requestId,
+    mark,
+  );
+  expect(ack.accepted).toBe(true);
+  await host.whenIdle();
+  return ack;
+}
+
+async function rejected(
+  client: SocketClient,
+  host: NonNullable<ReturnType<RunningCardGuildServer["store"]["get"]>>,
+  requestId: string,
+  value: SessionIntent,
+): Promise<ServerError> {
+  const mark = client.mark();
+  client.send(envelope(requestId, host.state.revision, value));
+  const error = await client.waitFor(
+    (message): message is ServerError => message.type === "error" && message.requestId === requestId,
+    mark,
+  );
+  await host.whenIdle();
+  return error;
+}
+
+describe("real WebSocket M5 cooperative session", () => {
   let running: RunningCardGuildServer | null = null;
   const sockets: SocketClient[] = [];
+
+  async function start(): Promise<RunningCardGuildServer> {
+    let sessionSequence = 0;
+    let playerSequence = 0;
+    let tokenSequence = 0;
+    running = await startCardGuildServer({
+      context: { pack: M5_COMPILED_PACK, adventureId: M5_ADVENTURE_ID },
+      allowedOrigins: new Set([TEST_ORIGIN]),
+      heartbeatMs: 60_000,
+      sources: {
+        sessionId: () => "session-" + String(++sessionSequence),
+        playerId: () => "player-" + String(++playerSequence),
+        reconnectCredential: () => {
+          const token = "reconnect-" + String(++tokenSequence);
+          return { token, digest: digestReconnectToken(token) };
+        },
+        adventureSeed: () => 1,
+      },
+    });
+    return running;
+  }
+
+  async function create(server: RunningCardGuildServer): Promise<SessionCredentialResponse> {
+    const result = await post<SessionCredentialResponse>(
+      server.origin,
+      "/api/sessions",
+      { displayName: "Host" },
+    );
+    expect(result.status).toBe(201);
+    return result.body;
+  }
 
   afterEach(async () => {
     await Promise.all(sockets.splice(0).map((socket) => socket.close()));
@@ -121,227 +196,306 @@ describe("real WebSocket cooperative session", () => {
     vi.restoreAllMocks();
   });
 
-  it("creates, joins, orders, authorizes, converges, and reconnects three real clients", async () => {
-    let sessionSequence = 0;
-    let playerSequence = 0;
-    let tokenSequence = 0;
-    running = await startCardGuildServer({
-      context: { pack: M4_COMPILED_PACK, adventureId: M4_ADVENTURE_ID, actorDefinitionId: "hero.aerin" },
-      allowedOrigins: new Set([TEST_ORIGIN]),
-      heartbeatMs: 60_000,
-      sources: {
-        sessionId: () => `session-${++sessionSequence}`,
-        playerId: () => `player-${++playerSequence}`,
-        reconnectCredential: () => {
-          const token = `reconnect-${++tokenSequence}`;
-          return { token, digest: digestReconnectToken(token) };
-        },
-        adventureSeed: () => 1,
-      },
+  it("runs a 1P session with the host controlling and editing all three characters", async () => {
+    const server = await start();
+    const credential = await create(server);
+    const client = await SocketClient.connect(server.origin, credential);
+    sockets.push(client);
+    const initial = await client.waitForSnapshot(0, (snapshot) => snapshot.revision === 0);
+    expect(initial.controlRevision).toBe(1);
+    const host = server.store.get(credential.sessionId) as NonNullable<ReturnType<typeof server.store.get>>;
+
+    await accepted(client, host, "party", {
+      type: "set-party-composition",
+      actorDefinitionIds: PARTY,
+    });
+    expect(host.state.partySlots.map((slot) => slot.actorDefinitionId)).toEqual(PARTY);
+    expect(host.control.effectiveControllerByMemberId).toEqual({
+      "party.hero-1": credential.playerId,
+      "party.hero-2": credential.playerId,
+      "party.hero-3": credential.playerId,
     });
 
-    const created = await post<SessionCredentialResponse & { readonly invite: { readonly sessionId: string } }>(
-      running.origin,
-      "/api/sessions",
-      { displayName: "Host" },
-    );
-    expect(created.status).toBe(201);
-    expect(created.body.invite).toEqual({ sessionId: created.body.sessionId });
-    expect(JSON.stringify(created.body.invite)).not.toContain(created.body.reconnectToken);
-    const joinedB = await post<SessionCredentialResponse>(running.origin, `/api/sessions/${created.body.sessionId}/join`, { displayName: "B" });
-    const joinedC = await post<SessionCredentialResponse>(running.origin, `/api/sessions/${created.body.sessionId}/join`, { displayName: "C" });
-    const full = await post<{ readonly code: string }>(running.origin, `/api/sessions/${created.body.sessionId}/join`, { displayName: "D" });
-    expect([joinedB.status, joinedC.status, full.status, full.body.code]).toEqual([200, 200, 409, "SESSION_FULL"]);
+    await accepted(client, host, "begin", { type: "begin-adventure" });
+    for (const memberId of ["party.hero-1", "party.hero-2", "party.hero-3"]) {
+      const member = host.state.adventure?.party.members[memberId];
+      expect(member).toBeDefined();
+      await accepted(client, host, "loadout-" + memberId, {
+        type: "set-loadout",
+        memberId,
+        loadout: member?.loadout as NonNullable<typeof member>["loadout"],
+      });
+    }
+    await accepted(client, host, "encounter", { type: "start-encounter" });
+    expect(Object.keys(host.state.combat?.actors ?? {}).filter((id) => id.startsWith("party.hero-"))).toHaveLength(3);
+    const actionable = host.state.combat?.pendingReaction?.candidates[0]?.actorId ??
+      host.state.combat?.turn.activeActorId;
+    expect(actionable && host.control.effectiveControllerByMemberId[actionable]).toBe(credential.playerId);
+  });
 
-    const clients = await Promise.all([
-      SocketClient.connect(running.origin, created.body),
-      SocketClient.connect(running.origin, joinedB.body),
-      SocketClient.connect(running.origin, joinedC.body),
-    ]);
-    sockets.push(...clients);
-    const [hostClient, clientB, clientC] = clients as [SocketClient, SocketClient, SocketClient];
-    const credentials = [created.body, joinedB.body, joinedC.body] as const;
-    const initial = await Promise.all(clients.map((client) => client.waitForSnapshot(0, 2)));
-    expect(initial.every((snapshot) => snapshot.state.seats.length === 3)).toBe(true);
-    const host = running.store.get(created.body.sessionId) as NonNullable<ReturnType<typeof running.store.get>>;
+  it("falls a guest character back to host without gameplay mutation and restores the claim on reconnect", async () => {
+    const server = await start();
+    const hostCredential = await create(server);
+    const hostClient = await SocketClient.connect(server.origin, hostCredential);
+    sockets.push(hostClient);
+    await hostClient.waitForSnapshot();
+    const host = server.store.get(hostCredential.sessionId) as NonNullable<ReturnType<typeof server.store.get>>;
+    await accepted(hostClient, host, "party", {
+      type: "set-party-composition",
+      actorDefinitionIds: REACTION_PARTY,
+    });
 
-    const guestMark = clientB.mark();
-    clientB.send(intent("guest-begin", 2, { type: "begin-adventure" }));
-    const guestError = await clientB.waitFor(
-      (message): message is ServerError => message.type === "error" && message.requestId === "guest-begin",
-      guestMark,
+    const joined = await post<SessionCredentialResponse>(
+      server.origin,
+      "/api/sessions/" + hostCredential.sessionId + "/join",
+      { displayName: "Guest B" },
     );
-    expect(guestError.code).toBe("FORBIDDEN");
-    expect(host.state.revision).toBe(2);
+    expect(joined.status).toBe(200);
+    const guestClient = await SocketClient.connect(server.origin, joined.body);
+    sockets.push(guestClient);
+    await guestClient.waitForSnapshot();
+    await accepted(guestClient, host, "claim", { type: "select-character", memberId: "party.hero-2" });
+    expect(host.control.effectiveControllerByMemberId["party.hero-2"]).toBe(joined.body.playerId);
 
-    const beginEnvelope = intent("host-begin", 2, { type: "begin-adventure" });
-    const beginMarks = clients.map((client) => client.mark());
-    hostClient.send(beginEnvelope);
-    const beginAck = await hostClient.waitFor(
-      (message): message is ServerAck => message.type === "ack" && message.requestId === "host-begin",
-      beginMarks[0],
-    );
-    expect(beginAck.accepted).toBe(true);
+    await accepted(hostClient, host, "begin", { type: "begin-adventure" });
+    const guestLoadout = host.state.adventure?.party.members["party.hero-2"]?.loadout;
+    expect(guestLoadout).toBeDefined();
+    expect((await rejected(hostClient, host, "host-steal", {
+      type: "set-loadout",
+      memberId: "party.hero-2",
+      loadout: guestLoadout as NonNullable<typeof guestLoadout>,
+    })).code).toBe("FORBIDDEN");
+    await accepted(guestClient, host, "guest-loadout", {
+      type: "set-loadout",
+      memberId: "party.hero-2",
+      loadout: guestLoadout as NonNullable<typeof guestLoadout>,
+    });
+
+    await accepted(hostClient, host, "encounter", { type: "start-encounter" });
+    for (let index = 0; index < 48; index += 1) {
+      const combat = host.state.combat;
+      if (!combat) throw new Error("Combat ended before reaching the guest reaction boundary.");
+      if (combat.pendingReaction?.candidates[0]?.actorId === "party.hero-2") break;
+      const actorId = combat.pendingReaction?.candidates[0]?.actorId ?? combat.turn.activeActorId;
+      const controller = host.control.effectiveControllerByMemberId[actorId];
+      const ownerClient = controller === hostCredential.playerId ? hostClient : guestClient;
+      await accepted(ownerClient, host, "advance-" + String(index), combat.pendingReaction
+        ? { type: "pass-reaction", triggerId: combat.pendingReaction.triggerId }
+        : { type: "end-turn" });
+    }
+    const boundaryCombat = host.state.combat;
+    const boundaryReaction = boundaryCombat?.pendingReaction;
+    expect(boundaryReaction?.candidates[0]?.actorId).toBe("party.hero-2");
+
+    const beforeState = host.state;
+    const beforeHash = hashSessionGameplayState(beforeState);
+    const beforeRevision = beforeState.revision;
+    const beforeControlRevision = host.controlRevision;
+    const hostMark = hostClient.mark();
+    await guestClient.close();
     await host.whenIdle();
-    await Promise.all(clients.map((client, index) => client.waitForSnapshot(beginMarks[index], host.state.revision)));
-    expect(host.state.adventure?.party.members).toHaveProperty("party.hero-3");
+    const fallback = await hostClient.waitForSnapshot(
+      hostMark,
+      (snapshot) => snapshot.cause?.kind === "control" &&
+        snapshot.controlRevision === beforeControlRevision + 1,
+    );
+    expect(fallback.events).toEqual([]);
+    expect(fallback.revision).toBe(beforeRevision);
+    expect(fallback.gameplayHash).toBe(beforeHash);
+    expect(fallback.state).toEqual(beforeState);
+    expect(fallback.control.effectiveControllerByMemberId["party.hero-2"]).toBe(hostCredential.playerId);
 
-    const retryRevision = host.state.revision;
-    const retryMark = hostClient.mark();
-    hostClient.send(beginEnvelope);
-    const retryAck = await hostClient.waitFor(
-      (message): message is ServerAck => message.type === "ack" && message.requestId === "host-begin",
+    const beforeResolveReconnect = await SocketClient.connect(server.origin, joined.body);
+    sockets.push(beforeResolveReconnect);
+    const recoveredBeforeResolve = await beforeResolveReconnect.waitForSnapshot(
+      0,
+      (snapshot) => snapshot.cause?.kind === "resync",
+    );
+    await host.whenIdle();
+    expect(recoveredBeforeResolve.revision).toBe(beforeRevision);
+    expect(recoveredBeforeResolve.gameplayHash).toBe(beforeHash);
+    expect(recoveredBeforeResolve.state.combat?.pendingReaction?.triggerId).toBe(boundaryReaction?.triggerId);
+    expect(recoveredBeforeResolve.control.effectiveControllerByMemberId["party.hero-2"]).toBe(
+      joined.body.playerId,
+    );
+    expect((await rejected(hostClient, host, "host-reaction-while-guest-online", {
+      type: "pass-reaction",
+      triggerId: boundaryReaction?.triggerId ?? "",
+    })).code).toBe("FORBIDDEN");
+
+    const secondFallbackRevision = host.controlRevision;
+    const secondHostMark = hostClient.mark();
+    await beforeResolveReconnect.close();
+    await host.whenIdle();
+    const secondFallback = await hostClient.waitForSnapshot(
+      secondHostMark,
+      (snapshot) => snapshot.cause?.kind === "control" &&
+        snapshot.controlRevision === secondFallbackRevision + 1,
+    );
+    expect(secondFallback.events).toEqual([]);
+    expect(secondFallback.revision).toBe(beforeRevision);
+    expect(secondFallback.gameplayHash).toBe(beforeHash);
+    expect(secondFallback.control.effectiveControllerByMemberId["party.hero-2"]).toBe(
+      hostCredential.playerId,
+    );
+
+    await accepted(hostClient, host, "fallback-reaction", {
+      type: "pass-reaction",
+      triggerId: boundaryReaction?.triggerId ?? "",
+    });
+
+    const reconnect = await SocketClient.connect(server.origin, joined.body);
+    sockets.push(reconnect);
+    const recovered = await reconnect.waitForSnapshot(
+      0,
+      (snapshot) => snapshot.cause?.kind === "resync",
+    );
+    expect(recovered.state.guestClaims.byMemberId["party.hero-2"]).toBe(joined.body.playerId);
+    expect(recovered.control.effectiveControllerByMemberId["party.hero-2"]).toBe(joined.body.playerId);
+    expect(recovered.revision).toBe(host.state.revision);
+    expect(recovered.gameplayHash).toBe(hashSessionGameplayState(host.state));
+  }, 30_000);
+
+  it("serializes a 3P claim race, assigns one character each, and converges every client", async () => {
+    const server = await start();
+    const hostCredential = await create(server);
+    const hostClient = await SocketClient.connect(server.origin, hostCredential);
+    sockets.push(hostClient);
+    await hostClient.waitForSnapshot();
+    const host = server.store.get(hostCredential.sessionId) as NonNullable<ReturnType<typeof server.store.get>>;
+    await accepted(hostClient, host, "party", { type: "set-party-composition", actorDefinitionIds: PARTY });
+
+    const joinedB = await post<SessionCredentialResponse>(
+      server.origin,
+      "/api/sessions/" + hostCredential.sessionId + "/join",
+      { displayName: "Guest B" },
+    );
+    const joinedC = await post<SessionCredentialResponse>(
+      server.origin,
+      "/api/sessions/" + hostCredential.sessionId + "/join",
+      { displayName: "Guest C" },
+    );
+    expect([joinedB.status, joinedC.status]).toEqual([200, 200]);
+    const clientB = await SocketClient.connect(server.origin, joinedB.body);
+    const clientC = await SocketClient.connect(server.origin, joinedC.body);
+    sockets.push(clientB, clientC);
+    await Promise.all([clientB.waitForSnapshot(), clientC.waitForSnapshot()]);
+
+    const raceRevision = host.state.revision;
+    const markB = clientB.mark();
+    const markC = clientC.mark();
+    clientB.send(envelope("race-b", raceRevision, { type: "select-character", memberId: "party.hero-2" }));
+    clientC.send(envelope("race-c", raceRevision, { type: "select-character", memberId: "party.hero-2" }));
+    const [ackB, ackC] = await Promise.all([
+      clientB.waitFor(
+        (message): message is ServerAck => message.type === "ack" && message.requestId === "race-b",
+        markB,
+      ),
+      clientC.waitFor(
+        (message): message is ServerAck => message.type === "ack" && message.requestId === "race-c",
+        markC,
+      ),
+    ]);
+    await host.whenIdle();
+    expect([ackB.accepted, ackC.accepted].sort()).toEqual([false, true]);
+    const winnerId = host.state.guestClaims.byMemberId["party.hero-2"];
+    const loserClient = winnerId === joinedB.body.playerId ? clientC : clientB;
+    const loserPlayerId = winnerId === joinedB.body.playerId ? joinedC.body.playerId : joinedB.body.playerId;
+    await accepted(loserClient, host, "claim-other", { type: "select-character", memberId: "party.hero-3" });
+    expect(new Set(Object.values(host.state.guestClaims.byMemberId))).toEqual(
+      new Set([winnerId, loserPlayerId]),
+    );
+
+    await accepted(hostClient, host, "begin", { type: "begin-adventure" });
+    expect(host.control.effectiveControllerByMemberId).toEqual({
+      "party.hero-1": hostCredential.playerId,
+      "party.hero-2": winnerId,
+      "party.hero-3": loserPlayerId,
+    });
+    const clients = [hostClient, clientB, clientC];
+    const marks = clients.map((client) => client.mark());
+    await accepted(hostClient, host, "encounter", { type: "start-encounter" });
+    const snapshots = await Promise.all(clients.map((client, index) => client.waitForSnapshot(
+      marks[index],
+      (snapshot) => snapshot.revision === host.state.revision,
+    )));
+    expect(new Set(snapshots.map((snapshot) => snapshot.gameplayHash)).size).toBe(1);
+    expect(snapshots.every((snapshot) => snapshot.state.revision === host.state.revision)).toBe(true);
+
+    const v1 = await SocketClient.connect(server.origin, hostCredential, M5_CONTENT_IDENTITY, 1);
+    sockets.push(v1);
+    const mismatch = await v1.waitFor(
+      (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
+    );
+    expect(mismatch.code).toBe("PROTOCOL_MISMATCH");
+  }, 30_000);
+
+  it("preserves request, credential, payload, and newest-connection transport boundaries", async () => {
+    const server = await start();
+    const credential = await create(server);
+    const client = await SocketClient.connect(server.origin, credential);
+    sockets.push(client);
+    await client.waitForSnapshot();
+    const host = server.store.get(credential.sessionId) as NonNullable<ReturnType<typeof server.store.get>>;
+
+    const partyEnvelope = envelope("idempotent-party", 0, {
+      type: "set-party-composition",
+      actorDefinitionIds: PARTY,
+    });
+    const firstMark = client.mark();
+    client.send(partyEnvelope);
+    const firstAck = await client.waitFor(
+      (message): message is ServerAck => message.type === "ack" && message.requestId === "idempotent-party",
+      firstMark,
+    );
+    await host.whenIdle();
+    expect(firstAck.accepted).toBe(true);
+    expect(host.state.revision).toBe(1);
+
+    const retryMark = client.mark();
+    client.send(partyEnvelope);
+    const retryAck = await client.waitFor(
+      (message): message is ServerAck => message.type === "ack" && message.requestId === "idempotent-party",
       retryMark,
     );
-    expect(retryAck).toEqual(beginAck);
     await host.whenIdle();
-    expect(host.state.revision).toBe(retryRevision);
+    expect(retryAck).toEqual(firstAck);
+    expect(host.state.revision).toBe(1);
 
-    const reuseMark = hostClient.mark();
-    hostClient.send({ ...beginEnvelope, intent: { type: "start-encounter" } });
-    const reuse = await hostClient.waitFor(
+    const reuseMark = client.mark();
+    client.send({ ...partyEnvelope, intent: { type: "begin-adventure" } });
+    expect((await client.waitFor(
       (message): message is ServerError => message.type === "error" && message.code === "REQUEST_ID_REUSE",
       reuseMark,
-    );
-    expect(reuse.requestId).toBe("host-begin");
-    expect(host.state.revision).toBe(retryRevision);
+    )).requestId).toBe("idempotent-party");
+    expect(host.state.revision).toBe(1);
 
-    const concurrentRevision = host.state.revision;
-    const markA = hostClient.mark();
-    const markB = clientB.mark();
-    hostClient.send(intent("loadout-a", concurrentRevision, {
-      type: "set-loadout",
-      loadout: { equipment: { weapon: "halberd", feet: "boots-of-fly" }, preparedCards: [] },
-    }));
-    clientB.send(intent("loadout-b", concurrentRevision, {
-      type: "set-loadout",
-      loadout: { equipment: { weapon: "halberd", feet: "boots-of-fly" }, preparedCards: [] },
-    }));
-    const [ackA, ackB] = await Promise.all([
-      hostClient.waitFor((message): message is ServerAck => message.type === "ack" && message.requestId === "loadout-a", markA),
-      clientB.waitFor((message): message is ServerAck => message.type === "ack" && message.requestId === "loadout-b", markB),
-    ]);
-    expect([ackA.accepted, ackB.accepted].sort()).toEqual([false, true]);
-    await host.whenIdle();
-    expect(host.state.revision).toBe(concurrentRevision + 1);
-
-    const staleClient = ackA.accepted ? clientB : hostClient;
-    const stalePlayer = ackA.accepted ? joinedB.body : created.body;
-    const retryLoadoutId = ackA.accepted ? "loadout-b-retry" : "loadout-a-retry";
-    const staleMark = staleClient.mark();
-    staleClient.send(intent(retryLoadoutId, host.state.revision, {
-      type: "set-loadout",
-      loadout: { equipment: { weapon: "halberd", feet: "boots-of-fly" }, preparedCards: [] },
-    }));
-    await staleClient.waitFor(
-      (message): message is ServerAck => message.type === "ack" && message.requestId === retryLoadoutId && message.accepted,
+    const staleMark = client.mark();
+    client.send(envelope("stale-party", 0, { type: "set-party-composition", actorDefinitionIds: PARTY }));
+    expect((await client.waitFor(
+      (message): message is ServerError => message.type === "error" && message.code === "STALE_REVISION",
       staleMark,
-    );
-    await host.whenIdle();
-    expect(host.state.adventure?.party.members[`party.hero-${stalePlayer.seat}`]?.loadout.equipment.shield).toBeUndefined();
+    )).revision).toBe(1);
 
-    const cMark = clientC.mark();
-    clientC.send(intent("loadout-c", host.state.revision, {
-      type: "set-loadout",
-      loadout: { equipment: { weapon: "halberd", feet: "boots-of-fly" }, preparedCards: [] },
-    }));
-    await clientC.waitFor((message): message is ServerAck => message.type === "ack" && message.requestId === "loadout-c" && message.accepted, cMark);
-    await host.whenIdle();
-
-    const startMarks = clients.map((client) => client.mark());
-    hostClient.send(intent("start-encounter", host.state.revision, { type: "start-encounter" }));
-    await hostClient.waitFor(
-      (message): message is ServerAck => message.type === "ack" && message.requestId === "start-encounter" && message.accepted,
-      startMarks[0],
-    );
-    await host.whenIdle();
-    await Promise.all(clients.map((client, index) => client.waitForSnapshot(startMarks[index], host.state.revision)));
-    expect(host.state.combat).not.toBeNull();
-
-    let sawReaction = Boolean(host.state.combat?.pendingReaction);
-    let recoveredReactionOwner = false;
-    const serverSnapshotCount = (): number => clients.flatMap((client) => client.messages)
-      .filter((message) => message.type === "snapshot" && message.cause?.kind === "server").length;
-    const initialServerSnapshots = serverSnapshotCount();
-    for (let turn = 0; turn < 12 && host.state.combat; turn += 1) {
-      const combat = host.state.combat;
-      const controlledActorId = combat.pendingReaction?.candidates[0]?.actorId ?? combat.turn.activeActorId;
-      const ownerSeat = host.state.seats.find((seat) => seat.memberId === controlledActorId);
-      if (!ownerSeat) throw new Error(`Server stopped outside a human boundary at ${controlledActorId}.`);
-      if (combat.pendingReaction && !recoveredReactionOwner) {
-        const disconnected = clients[ownerSeat.seat - 1] as SocketClient;
-        const beforeDisconnect = host.state;
-        const beforeHash = hashSessionGameplayState(beforeDisconnect);
-        await disconnected.close();
-        expect(host.state).toBe(beforeDisconnect);
-        const replacement = await SocketClient.connect(
-          running.origin,
-          credentials[ownerSeat.seat - 1] as SessionCredentialResponse,
-        );
-        sockets.push(replacement);
-        clients[ownerSeat.seat - 1] = replacement;
-        const recovered = await replacement.waitForSnapshot(0, beforeDisconnect.revision);
-        expect(recovered.state).toEqual(beforeDisconnect);
-        expect(recovered.gameplayHash).toBe(beforeHash);
-        expect(recovered.state.combat?.pendingReaction).toEqual(combat.pendingReaction);
-        expect(recovered.events.length).toBeGreaterThan(0);
-        recoveredReactionOwner = true;
-      }
-      const owner = clients[ownerSeat.seat - 1] as SocketClient;
-      const nonOwner = clients[ownerSeat.seat % clients.length] as SocketClient;
-      const gameplayIntent: SessionGameplayIntent = combat.pendingReaction
-        ? { type: "pass-reaction", triggerId: combat.pendingReaction.triggerId }
-        : { type: "end-turn" };
-      sawReaction ||= Boolean(combat.pendingReaction);
-
-      const forbiddenId = `forbidden-${turn}`;
-      const forbiddenMark = nonOwner.mark();
-      nonOwner.send(intent(forbiddenId, host.state.revision, gameplayIntent));
-      const forbidden = await nonOwner.waitFor(
-        (message): message is ServerError => message.type === "error" && message.requestId === forbiddenId,
-        forbiddenMark,
-      );
-      expect(forbidden.code).toBe("FORBIDDEN");
-
-      const acceptedId = `human-${turn}`;
-      const ownerMark = owner.mark();
-      owner.send(intent(acceptedId, host.state.revision, gameplayIntent));
-      await owner.waitFor(
-        (message): message is ServerAck => message.type === "ack" && message.requestId === acceptedId && message.accepted,
-        ownerMark,
-      );
-      await host.whenIdle();
-    }
-    expect(serverSnapshotCount()).toBeGreaterThan(initialServerSnapshots);
-    expect(sawReaction).toBe(true);
-    expect(recoveredReactionOwner).toBe(true);
-
-    const finalRevision = host.state.revision;
-    const finalHash = host.state.combat ? host.state.combat.setupFingerprint : host.state.adventure?.phase;
-    const convergence = await Promise.all(clients.map((client) => client.waitForSnapshot(0, finalRevision)));
-    expect(new Set(convergence.map((snapshot) => snapshot.gameplayHash)).size).toBe(1);
-    expect(convergence.every((snapshot) => snapshot.state.revision === finalRevision)).toBe(true);
-
-    const beforeDisconnect = host.state;
-    await (clients[1] as SocketClient).close();
-    expect(host.state).toBe(beforeDisconnect);
-    const reconnect = await SocketClient.connect(running.origin, joinedB.body);
-    sockets.push(reconnect);
-    clients[1] = reconnect;
-    const recovered = await reconnect.waitForSnapshot(0, finalRevision);
-    expect(recovered.gameplayHash).toBe(convergence[0]?.gameplayHash);
-    expect(recovered.state.combat?.setupFingerprint ?? recovered.state.adventure?.phase).toBe(finalHash);
-    if (recovered.state.combat) expect(recovered.events.length).toBeGreaterThan(0);
-
-    const replacementClosed = new Promise<number>((resolve) => reconnect.socket.once("close", (code) => resolve(code)));
-    const replacement = await SocketClient.connect(running.origin, joinedB.body);
+    const controlRevision = host.controlRevision;
+    const replacedClose = new Promise<number>((resolve) => client.socket.once("close", (code) => resolve(code)));
+    const replacement = await SocketClient.connect(server.origin, credential);
     sockets.push(replacement);
-    clients[1] = replacement;
-    expect(await replacementClosed).toBe(4001);
-    await replacement.waitForSnapshot(0, finalRevision);
+    const replacementSnapshot = await replacement.waitForSnapshot(
+      0,
+      (snapshot) => snapshot.cause?.kind === "resync",
+    );
+    expect(await replacedClose).toBe(4001);
+    await host.whenIdle();
+    expect(host.controlRevision).toBe(controlRevision);
+    expect(replacementSnapshot.control.effectiveControllerByMemberId).toEqual({
+      "party.hero-1": credential.playerId,
+      "party.hero-2": credential.playerId,
+      "party.hero-3": credential.playerId,
+    });
 
-    const wrongContent = await SocketClient.connect(running.origin, created.body, {
-      ...M4_CONTENT_IDENTITY,
+    const wrongContent = await SocketClient.connect(server.origin, credential, {
+      ...M5_CONTENT_IDENTITY,
       fingerprint: "fnv1a64:wrong",
     });
     sockets.push(wrongContent);
@@ -351,14 +505,13 @@ describe("real WebSocket cooperative session", () => {
     expect(contentFailure.code).toBe("CONTENT_MISMATCH");
     expect(wrongContent.messages.some((message) => message.type === "snapshot")).toBe(false);
 
-    const wrongToken = await SocketClient.connect(running.origin, { ...created.body, reconnectToken: "wrong" });
+    const wrongToken = await SocketClient.connect(server.origin, { ...credential, reconnectToken: "wrong" });
     sockets.push(wrongToken);
-    const tokenFailure = await wrongToken.waitFor(
+    expect((await wrongToken.waitFor(
       (message): message is ServerError => message.type === "error" && message.code === "UNAUTHENTICATED",
-    );
-    expect(tokenFailure.code).toBe("UNAUTHENTICATED");
+    )).code).toBe("UNAUTHENTICATED");
 
-    const invalid = new WebSocket(running.origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
+    const invalid = new WebSocket(server.origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
     await new Promise<void>((resolve) => invalid.once("open", () => resolve()));
     const invalidError = new Promise<ServerError>((resolve) => invalid.on("message", (data) => {
       const message = JSON.parse(data.toString()) as ServerMessage;
@@ -368,17 +521,17 @@ describe("real WebSocket cooperative session", () => {
     expect((await invalidError).code).toBe("INVALID_MESSAGE");
     invalid.terminate();
 
-    const oversized = new WebSocket(running.origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
+    const oversized = new WebSocket(server.origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
     await new Promise<void>((resolve) => oversized.once("open", () => resolve()));
     const oversizedClose = new Promise<number>((resolve) => oversized.once("close", (code) => resolve(code)));
     oversized.send("x".repeat(70 * 1024));
     expect(await oversizedClose).toBe(1009);
   }, 30_000);
 
-  it("observes a rejected SessionHost intent and closes only that gateway connection with 1011", async () => {
+  it("closes only a connection whose queued authority handler rejects", async () => {
     const authorityErrors = vi.fn();
     running = await startCardGuildServer({
-      context: { pack: M4_COMPILED_PACK, adventureId: M4_ADVENTURE_ID, actorDefinitionId: "hero.aerin" },
+      context: { pack: M5_COMPILED_PACK, adventureId: M5_ADVENTURE_ID },
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
       onInternalError: authorityErrors,
@@ -395,16 +548,17 @@ describe("real WebSocket cooperative session", () => {
     const created = await post<SessionCredentialResponse>(running.origin, "/api/sessions", { displayName: "Host" });
     const client = await SocketClient.connect(running.origin, created.body);
     sockets.push(client);
-    await client.waitForSnapshot(0, 0);
+    await client.waitForSnapshot();
     const host = running.store.get(created.body.sessionId) as NonNullable<ReturnType<typeof running.store.get>>;
     const authorityFailure = new Error("private invariant detail");
     vi.spyOn(host, "handleIntent").mockRejectedValueOnce(authorityFailure);
     const closed = new Promise<{ readonly code: number; readonly reason: string }>((resolve) => {
       client.socket.once("close", (code, reason) => resolve({ code, reason: reason.toString() }));
     });
-
-    client.send(intent("trigger-authority-failure", host.state.revision, { type: "begin-adventure" }));
-
+    client.send(envelope("trigger-authority-failure", host.state.revision, {
+      type: "set-party-composition",
+      actorDefinitionIds: PARTY,
+    }));
     await expect(closed).resolves.toEqual({ code: 1011, reason: "session authority failure" });
     expect(authorityErrors).toHaveBeenCalledOnce();
     expect(authorityErrors).toHaveBeenCalledWith(authorityFailure);

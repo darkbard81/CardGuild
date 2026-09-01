@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 
 import contentPackSchema from "../../content/schema/content-pack.schema.json";
+import type { PartyState } from "../adventure";
 import { createCombat, dispatchCombatCommand } from "../game/engine";
 import { listLegalActions } from "../game/queries";
 import type { CombatCommand } from "../game/types";
+import { clonePartyLoadout, createStartingCollection, validatePartyLoadout } from "../loadout";
 import { compileContentPack, getCombatDefinition } from "./compile-content";
 import type { ContentPackSource } from "./content-types";
 import { fingerprintContentPack } from "./fingerprint";
 import { M0_CONTENT_SOURCE, M0_SCENARIO_ID } from "./load-m0-content";
+import { M5_COMPILED_PACK, M5_CONTENT_SOURCE } from "./load-m5-content";
 import { validateContentPackStructure } from "./validate-content";
 import { formatContentValidationIssue, validateContentPackSemantics } from "./validate-semantics";
 
@@ -288,6 +291,48 @@ describe("content semantic validation and compilation", () => {
       actorId: "hero",
       condition: "custom-condition",
     });
+  });
+});
+
+describe("M5 playable character content", () => {
+  it("compiles three distinct playable profiles with validator-safe starter loadouts", () => {
+    expect(validateContentPackStructure(M5_CONTENT_SOURCE, contentPackSchema)).toEqual([]);
+    const playable = Object.values(M5_COMPILED_PACK.actorDefinitions)
+      .filter((actor) => actor.traits.some((trait) => trait.id === "playable"));
+    expect(playable.map((actor) => actor.id).sort()).toEqual([
+      "hero.aerin",
+      "hero.brom",
+      "hero.lyra",
+    ]);
+    const aerin = playable.find((actor) => actor.id === "hero.aerin");
+    const lyra = playable.find((actor) => actor.id === "hero.lyra");
+    const brom = playable.find((actor) => actor.id === "hero.brom");
+    expect(lyra?.reflexModifier).toBeGreaterThan(aerin?.reflexModifier ?? 0);
+    expect(lyra?.initiativeModifier).toBeGreaterThan(aerin?.initiativeModifier ?? 0);
+    expect(lyra?.speedFeet).toBeGreaterThan(aerin?.speedFeet ?? 0);
+    expect(lyra?.maxHp).toBeLessThan(aerin?.maxHp ?? 0);
+    expect(brom?.maxHp).toBeGreaterThan(aerin?.maxHp ?? 0);
+    expect(brom?.baseAc).toBeGreaterThan(aerin?.baseAc ?? 0);
+    expect(brom?.athleticsModifier).toBeGreaterThan(aerin?.athleticsModifier ?? 0);
+    expect(brom?.speedFeet).toBeLessThan(aerin?.speedFeet ?? 0);
+
+    const party: PartyState = {
+      members: Object.fromEntries(playable.map((actor, index) => [
+        "party.hero-" + String(index + 1),
+        {
+          id: "party.hero-" + String(index + 1),
+          seat: index + 1 as 1 | 2 | 3,
+          actorDefinitionId: actor.id,
+          loadout: clonePartyLoadout(actor.starterLoadout),
+        },
+      ])),
+    };
+    const collection = createStartingCollection(party, M5_COMPILED_PACK);
+    expect(validatePartyLoadout(party, collection, M5_COMPILED_PACK)).toEqual({ valid: true, issues: [] });
+    expect(new Set(playable.map((actor) => JSON.stringify({
+      equipment: actor.starterLoadout.equipment,
+      baseCards: actor.baseCardGrants,
+    }))).size).toBe(3);
   });
 });
 

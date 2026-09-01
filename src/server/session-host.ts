@@ -4,6 +4,7 @@ import type {
   ClientIntentEnvelope,
   ProtocolErrorCode,
   ServerAck,
+  ServerControlView,
   ServerError,
   ServerMessage,
   ServerSnapshot,
@@ -15,6 +16,7 @@ import {
   joinSessionCore,
   sameContentIdentity,
   type SessionAuthorityContext,
+  type SessionControlContext,
   type SessionCoreState,
   type SessionEvent,
   type SessionPlayerIdentity,
@@ -39,6 +41,7 @@ export type AttachResult =
 
 export class SessionHost {
   private stateValue: SessionCoreState;
+  private controlRevisionValue = 0;
   private readonly reconnectDigests = new Map<string, string>();
   private readonly connections = new Map<string, SessionConnection>();
   private readonly journal = new Map<string, Map<string, RequestRecord>>();
@@ -58,6 +61,14 @@ export class SessionHost {
     return this.stateValue;
   }
 
+  public get controlRevision(): number {
+    return this.controlRevisionValue;
+  }
+
+  public get control(): ServerControlView {
+    return this.deriveControlView();
+  }
+
   public addPlayer(player: SessionPlayerIdentity, reconnectDigest: string): Promise<ReturnType<typeof joinSessionCore>> {
     return this.enqueue(() => {
       const result = joinSessionCore(this.stateValue, player, this.context);
@@ -74,23 +85,33 @@ export class SessionHost {
     reconnectToken: string,
     contentIdentity: SessionCoreState["contentIdentity"],
     connection: SessionConnection,
-  ): AttachResult {
-    if (!sameContentIdentity(contentIdentity, this.stateValue.contentIdentity)) {
-      return { ok: false, code: "CONTENT_MISMATCH", message: "Client content does not match the session content." };
-    }
-    const digest = this.reconnectDigests.get(playerId);
-    if (!digest || !reconnectTokenMatches(reconnectToken, digest)) {
-      return { ok: false, code: "UNAUTHENTICATED", message: "Reconnect credential is invalid." };
-    }
-    const previous = this.connections.get(playerId);
-    if (previous && previous.id !== connection.id) previous.close(4001, "A newer connection replaced this client.");
-    this.connections.set(playerId, connection);
-    connection.send(this.snapshot(this.combatEventHistory, { kind: "resync" }));
-    return { ok: true };
+  ): Promise<AttachResult> {
+    return this.enqueue(() => {
+      if (!sameContentIdentity(contentIdentity, this.stateValue.contentIdentity)) {
+        return { ok: false, code: "CONTENT_MISMATCH", message: "Client content does not match the session content." };
+      }
+      const digest = this.reconnectDigests.get(playerId);
+      if (!digest || !reconnectTokenMatches(reconnectToken, digest)) {
+        return { ok: false, code: "UNAUTHENTICATED", message: "Reconnect credential is invalid." };
+      }
+      const previous = this.connections.get(playerId);
+      const presenceChanged = !previous;
+      if (previous && previous.id !== connection.id) previous.close(4001, "A newer connection replaced this client.");
+      this.connections.set(playerId, connection);
+      if (presenceChanged) this.controlRevisionValue += 1;
+      connection.send(this.snapshot(this.combatEventHistory, { kind: "resync" }));
+      if (presenceChanged) this.broadcastControlSnapshot(connection.id);
+      return { ok: true };
+    });
   }
 
-  public detach(playerId: string, connectionId: string): void {
-    if (this.connections.get(playerId)?.id === connectionId) this.connections.delete(playerId);
+  public detach(playerId: string, connectionId: string): Promise<void> {
+    return this.enqueue(() => {
+      if (this.connections.get(playerId)?.id !== connectionId) return;
+      this.connections.delete(playerId);
+      this.controlRevisionValue += 1;
+      this.broadcastControlSnapshot();
+    });
   }
 
   public handleIntent(playerId: string, envelope: ClientIntentEnvelope): Promise<void> {
@@ -113,7 +134,7 @@ export class SessionHost {
       if (envelope.expectedRevision !== this.stateValue.revision) {
         const error = this.errorMessage(
           "STALE_REVISION",
-          `Expected revision ${this.stateValue.revision}, received ${envelope.expectedRevision}.`,
+          "Expected revision " + String(this.stateValue.revision) + ", received " + String(envelope.expectedRevision) + ".",
           envelope.requestId,
         );
         const ack = this.ack(envelope.requestId, false, this.stateValue.revision);
@@ -124,7 +145,13 @@ export class SessionHost {
       }
 
       const beforeCombat = this.stateValue.combat;
-      const result = dispatchSessionIntent(this.stateValue, playerId, envelope.intent, this.context);
+      const result = dispatchSessionIntent(
+        this.stateValue,
+        playerId,
+        envelope.intent,
+        this.context,
+        this.controlContext(),
+      );
       if (!result.accepted) {
         const code = result.errorCode ?? "DOMAIN_REJECTED";
         const error = this.errorMessage(code, result.error ?? "Session rejected intent.", envelope.requestId);
@@ -147,6 +174,24 @@ export class SessionHost {
 
   public whenIdle(): Promise<void> {
     return this.enqueue(() => undefined);
+  }
+
+  private deriveControlView(): ServerControlView {
+    const connectedPlayerIds = [...this.connections.keys()].sort((left, right) => left.localeCompare(right));
+    const connected = new Set(connectedPlayerIds);
+    const effectiveControllerByMemberId = Object.fromEntries(
+      this.stateValue.partySlots.map((slot) => {
+        const guestPlayerId = this.stateValue.guestClaims.byMemberId[slot.memberId];
+        return [slot.memberId, guestPlayerId && connected.has(guestPlayerId)
+          ? guestPlayerId
+          : this.stateValue.hostPlayerId];
+      }),
+    );
+    return { connectedPlayerIds, effectiveControllerByMemberId };
+  }
+
+  private controlContext(): SessionControlContext {
+    return { effectiveControllerByMemberId: this.deriveControlView().effectiveControllerByMemberId };
   }
 
   private async pumpServerAuthority(): Promise<void> {
@@ -177,7 +222,7 @@ export class SessionHost {
       if (!command) throw new Error("Server AI reached a non-human boundary without a command.");
       const beforeCombat = this.stateValue.combat;
       const result = dispatchServerCombatCommand(this.stateValue, command, this.context);
-      if (!result.accepted) throw new Error(`Server AI command was rejected: ${result.error ?? "unknown error"}`);
+      if (!result.accepted) throw new Error("Server AI command was rejected: " + (result.error ?? "unknown error"));
       this.stateValue = result.state;
       this.updateCombatHistory(beforeCombat, result.events);
       this.broadcastSnapshot(result.events, { kind: "server" });
@@ -198,27 +243,39 @@ export class SessionHost {
 
   private snapshot(events: readonly SessionEvent[], cause: NonNullable<ServerSnapshot["cause"]>): ServerSnapshot {
     return {
-      v: 1,
+      v: 2,
       type: "snapshot",
       revision: this.stateValue.revision,
+      controlRevision: this.controlRevisionValue,
       gameplayHash: hashSessionGameplayState(this.stateValue),
       state: this.stateValue,
+      control: this.deriveControlView(),
       cause,
       events,
     };
   }
 
-  private broadcastSnapshot(events: readonly SessionEvent[], cause: NonNullable<ServerSnapshot["cause"]>): void {
+  private broadcastControlSnapshot(excludedConnectionId?: string): void {
+    this.broadcastSnapshot([], { kind: "control" }, excludedConnectionId);
+  }
+
+  private broadcastSnapshot(
+    events: readonly SessionEvent[],
+    cause: NonNullable<ServerSnapshot["cause"]>,
+    excludedConnectionId?: string,
+  ): void {
     const snapshot = this.snapshot(events, cause);
-    for (const connection of this.connections.values()) connection.send(snapshot);
+    for (const connection of this.connections.values()) {
+      if (connection.id !== excludedConnectionId) connection.send(snapshot);
+    }
   }
 
   private ack(requestId: string, accepted: boolean, committedRevision: number): ServerAck {
-    return { v: 1, type: "ack", requestId, accepted, committedRevision };
+    return { v: 2, type: "ack", requestId, accepted, committedRevision };
   }
 
   private errorMessage(code: ProtocolErrorCode, message: string, requestId?: string): ServerError {
-    return { v: 1, type: "error", code, message, requestId, revision: this.stateValue.revision };
+    return { v: 2, type: "error", code, message, requestId, revision: this.stateValue.revision };
   }
 
   private sendError(playerId: string, code: ProtocolErrorCode, message: string, requestId?: string): void {

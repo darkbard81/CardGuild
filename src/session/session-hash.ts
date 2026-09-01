@@ -10,9 +10,9 @@ export function sameContentIdentity(left: ContentIdentity, right: ContentIdentit
 export function hashSessionGameplayState(state: SessionCoreState): string {
   return fingerprintValue({
     contentIdentity: state.contentIdentity,
-    roster: [...state.seats]
-      .sort((left, right) => left.seat - right.seat)
-      .map(({ seat, memberId, actorDefinitionId }) => ({ seat, memberId, actorDefinitionId })),
+    party: [...state.partySlots]
+      .sort((left, right) => left.slot - right.slot)
+      .map(({ slot, memberId, actorDefinitionId }) => ({ slot, memberId, actorDefinitionId })),
     adventure: state.adventure,
     combat: state.combat,
   });

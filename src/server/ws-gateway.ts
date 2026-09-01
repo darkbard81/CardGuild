@@ -4,6 +4,7 @@ import { WebSocket, WebSocketServer, type RawData } from "ws";
 
 import {
   MAX_WS_PAYLOAD_BYTES,
+  PROTOCOL_VERSION,
   parseClientMessage,
   type ClientHello,
   type ProtocolErrorCode,
@@ -21,7 +22,7 @@ export interface WebSocketGatewayOptions {
 }
 
 function errorMessage(code: ProtocolErrorCode, message: string): ServerError {
-  return { v: 1, type: "error", code, message };
+  return { v: 2, type: "error", code, message };
 }
 
 function send(socket: WebSocket, message: unknown): void {
@@ -41,8 +42,12 @@ function classifyMessage(data: RawData):
   const text = rawText(data);
   try {
     const value = JSON.parse(text) as unknown;
-    if (value && typeof value === "object" && "v" in value && (value as { readonly v?: unknown }).v !== 1) {
-      return { ok: false, code: "PROTOCOL_MISMATCH", error: "Only protocol version 1 is supported." };
+    if (value && typeof value === "object" && "v" in value && (value as { readonly v?: unknown }).v !== PROTOCOL_VERSION) {
+      return {
+        ok: false,
+        code: "PROTOCOL_MISMATCH",
+        error: "Only protocol version " + String(PROTOCOL_VERSION) + " is supported.",
+      };
     }
   } catch {
     return { ok: false, code: "INVALID_MESSAGE", error: "Message is not valid JSON." };
@@ -80,15 +85,16 @@ export function attachWebSocketGateway(
     alive.set(socket, true);
     socket.on("error", () => {
       // Protocol errors such as maxPayload violations are followed by a close.
-      // Keeping the listener prevents transport failures from escaping the gateway.
     });
     const connectionId = createOpaqueId("socket");
     let identity: { readonly sessionId: string; readonly playerId: string } | null = null;
+    let messageQueue: Promise<void> = Promise.resolve();
     const deadline = setTimeout(() => {
       if (!identity) socket.close(4003, "hello timeout");
     }, options.helloDeadlineMs ?? 5_000);
     socket.on("pong", () => alive.set(socket, true));
-    socket.on("message", (data, isBinary) => {
+
+    async function handleIncoming(data: RawData, isBinary: boolean): Promise<void> {
       if (isBinary) {
         send(socket, errorMessage("INVALID_MESSAGE", "Binary gameplay messages are not supported."));
         socket.close(1003, "text JSON required");
@@ -117,7 +123,7 @@ export function attachWebSocketGateway(
           send: (serverMessage) => send(socket, serverMessage),
           close: (code, reason) => socket.close(code, reason),
         };
-        const attached = host.attach(hello.playerId, hello.reconnectToken, hello.contentIdentity, connection);
+        const attached = await host.attach(hello.playerId, hello.reconnectToken, hello.contentIdentity, connection);
         if (!attached.ok) {
           send(socket, errorMessage(attached.code, attached.message));
           socket.close(4003, attached.code.toLowerCase());
@@ -136,7 +142,15 @@ export function attachWebSocketGateway(
         socket.close(1011, "session authority unavailable");
         return;
       }
-      void host.handleIntent(identity.playerId, message).catch((error: unknown) => {
+      await host.handleIntent(identity.playerId, message);
+    }
+
+    socket.on("message", (data, isBinary) => {
+      const operation = messageQueue.then(
+        () => handleIncoming(data, isBinary),
+        () => handleIncoming(data, isBinary),
+      );
+      messageQueue = operation.catch((error: unknown) => {
         try {
           options.onInternalError?.(error);
         } catch {
@@ -150,7 +164,7 @@ export function attachWebSocketGateway(
     socket.on("close", () => {
       clearTimeout(deadline);
       alive.delete(socket);
-      if (identity) store.get(identity.sessionId)?.detach(identity.playerId, connectionId);
+      if (identity) void store.get(identity.sessionId)?.detach(identity.playerId, connectionId);
     });
   });
 

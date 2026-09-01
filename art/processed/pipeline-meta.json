@@ -198,6 +198,74 @@
         "y": 1
       }
     },
+    "actor.hero.lyra.front": {
+      "source": "art/source/actors/lyra-front-back.png",
+      "output": "art/processed/actors/lyra/front.png",
+      "sourceBox": {
+        "left": 16,
+        "top": 92,
+        "width": 493,
+        "height": 1343
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.268771,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.hero.lyra.back": {
+      "source": "art/source/actors/lyra-front-back.png",
+      "output": "art/processed/actors/lyra/back.png",
+      "sourceBox": {
+        "left": 32,
+        "top": 113,
+        "width": 468,
+        "height": 1317
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.268771,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.hero.brom.front": {
+      "source": "art/source/actors/brom-front-back.png",
+      "output": "art/processed/actors/brom/front.png",
+      "sourceBox": {
+        "left": 0,
+        "top": 107,
+        "width": 512,
+        "height": 1256
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.287389,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.hero.brom.back": {
+      "source": "art/source/actors/brom-front-back.png",
+      "output": "art/processed/actors/brom/back.png",
+      "sourceBox": {
+        "left": 0,
+        "top": 109,
+        "width": 512,
+        "height": 1240
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.287389,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
     "actor.goblin-skirmisher.front": {
       "source": "art/source/actors/goblin-skirmisher-front-back.png",
       "output": "art/processed/actors/goblin-skirmisher/front.png",

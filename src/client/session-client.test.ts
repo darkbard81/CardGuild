@@ -61,14 +61,16 @@ const credential: SessionCredential = {
   seat: 1,
 };
 
-function snapshot(revision: number): ServerSnapshot {
+function snapshot(revision: number, controlRevision = 0, cause: "resync" | "control" = "resync"): ServerSnapshot {
   return {
-    v: 1,
+    v: 2,
     type: "snapshot",
     revision,
+    controlRevision,
     gameplayHash: `hash-${revision}`,
-    cause: { kind: "resync" },
+    cause: { kind: cause },
     state: {},
+    control: { connectedPlayerIds: [], effectiveControllerByMemberId: {} },
     events: [],
   } as unknown as ServerSnapshot;
 }
@@ -149,7 +151,7 @@ describe("SessionClient reconnect handshake", () => {
   });
 
   it("clears a rejected credential and never schedules another connection", async () => {
-    storage.set("cardguild.session.v1", JSON.stringify(credential));
+    storage.set("cardguild.session.v2", JSON.stringify(credential));
     const statuses: string[] = [];
     const errors: ServerError[] = [];
     const client = new SessionClient(credential, {
@@ -161,17 +163,36 @@ describe("SessionClient reconnect handshake", () => {
     const socket = FakeWebSocket.instances[0] as FakeWebSocket;
     socket.open();
     socket.message({
-      v: 1,
+      v: 2,
       type: "error",
       code: "SESSION_NOT_FOUND",
       message: "Session was not found.",
     } satisfies ServerError);
 
-    expect(storage.has("cardguild.session.v1")).toBe(false);
+    expect(storage.has("cardguild.session.v2")).toBe(false);
     expect(statuses.at(-1)).toBe("closed");
     expect(errors.map((error) => error.code)).toEqual(["SESSION_NOT_FOUND"]);
     await vi.advanceTimersByTimeAsync(10_000);
     client.connect();
     expect(FakeWebSocket.instances).toHaveLength(1);
+  });
+
+  it("applies a newer control revision even when gameplay revision is unchanged", () => {
+    const applied: ServerSnapshot[] = [];
+    const client = new SessionClient(credential, {
+      onSnapshot: (value) => applied.push(value),
+      onError: () => undefined,
+      onStatus: () => undefined,
+    });
+    client.connect();
+    const socket = FakeWebSocket.instances[0] as FakeWebSocket;
+    socket.open();
+    socket.message(snapshot(4, 2));
+    socket.message(snapshot(4, 3, "control"));
+    socket.message(snapshot(4, 2, "control"));
+    expect(applied.map((value) => [value.revision, value.controlRevision])).toEqual([
+      [4, 2],
+      [4, 3],
+    ]);
   });
 });

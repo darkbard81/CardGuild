@@ -1,8 +1,8 @@
 # CardGuild
 
 Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Adventure입니다.
-결정론적 전투 코어와 JSON Content Pipeline 위에 M4 server-authoritative 1–3인 협동,
-Collection/Loadout Builder, top-down 2.5D board presentation을 연결했습니다. 전투 화면은 canvas 전체를 전장으로
+결정론적 전투 코어와 JSON Content Pipeline 위에 M5 server-authoritative 1–3인 협동,
+호스트 Party Builder와 캐릭터별 Control, Collection/Loadout Builder, top-down 2.5D board presentation을 연결했습니다. 전투 화면은 canvas 전체를 전장으로
 쓰고 HUD는 그 위에 떠 있는 반투명 패널로만 배치합니다. Adventure Reward는 Collection
 소유권으로 남으며, 다음 Encounter 전에 장비와 준비 카드를 편성할 수 있습니다.
 
@@ -28,27 +28,46 @@ Production build는 client와 server entry를 모두 생성합니다.
 
 ```bash
 npm run build
-CARDGUILD_ALLOWED_ORIGINS=https://game.example.com \
-CARDGUILD_HOST=0.0.0.0 CARDGUILD_PORT=8787 npm run start:server
+npm run start:production
 ```
 
-`start:server`는 기본적으로 `dist/` 정적 client와 `/api`, `/ws`를 같은 origin에서 제공합니다.
-개발 서버는 Vite가 `/api`와 `/ws`를 port 8787 backend로 proxy합니다.
+`start:production`은 `deploy/cardguild.production.env`를 읽어 `127.0.0.1:3011`에서
+`dist/` 정적 client와 `/api`, `/ws`를 같은 origin으로 제공합니다. 허용 origin은
+`https://card.krdp.ddns.net` 하나입니다. Caddy는 저장소의 설정으로 실행하거나 기존
+전역 Caddyfile에 같은 site block을 추가합니다.
 
-## M4 호스트 초대 협동
+```bash
+caddy validate --config deploy/Caddyfile
+sudo caddy reload --config "$PWD/deploy/Caddyfile"
+```
 
-- 한 세션은 1–3개의 고정 seat를 가지며 한 player가 `party.hero-1`부터 하나의
-  PartyMember만 소유합니다. 네트워크 player ID와 gameplay actor ID는 분리됩니다.
-- 호스트만 Adventure 시작, Encounter 진입, shared Reward 선택을 할 수 있습니다.
-  호스트도 다른 player의 Loadout이나 Combat actor는 조작할 수 없습니다.
+외부 client는 `https://card.krdp.ddns.net`만 사용하고, port 3011은 loopback에만
+바인딩되어 Caddy를 통해서만 접근합니다. 개발 서버는 계속 Vite가 `/api`와 `/ws`를
+port 8787 backend로 proxy합니다.
+
+## M5 파티 편성과 캐릭터 제어
+
+- Players와 Party는 서로 다른 모델입니다. 한 세션에는 1–3명의 player seat가 있고,
+  호스트는 3명의 playable character 중 중복 없이 1–3명을 골라 `party.hero-1`부터
+  순서대로 편성합니다. 네트워크 player ID, 영속 PartyMember ID, 전투 actor ID는 분리됩니다.
+- Slot 1은 항상 호스트 소유입니다. 게스트는 편성된 Slot 2/3 중 비어 있는 캐릭터 하나를
+  선택하거나 원자적으로 다른 캐릭터로 바꿉니다. 호스트는 온라인 게스트가 선택한
+  캐릭터를 조작할 수 없고, 선택되지 않았거나 오프라인인 캐릭터를 모두 조작합니다.
+- 게스트 연결이 끊기면 claim은 유지된 채 해당 캐릭터의 Loadout/turn/reaction 제어만
+  즉시 호스트로 fallback됩니다. 같은 credential로 재접속하면 미해결 경계에서도 제어를
+  되찾고 최신 snapshot과 combat event history를 복구합니다.
+- 호스트만 Party 편성, Adventure 시작, Encounter 진입, shared Reward 선택을 할 수
+  있습니다. Party 편성은 게스트 claim이 생긴 뒤 잠기며, 시작 시 Party 크기는 접속한
+  player 수 이상이어야 합니다.
 - 브라우저는 intent만 전송합니다. seed, state, outcome, command sequence/ID와 적 AI는
   server가 만들고 기존 pure reducer로 다시 검증합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- 연결이 끊겨도 같은 server process의 state는 그대로 남습니다. 같은 credential로
-  재접속하면 최신 snapshot과 combat event history를 복구하고, 중복 연결은 최신 연결이
-  이전 연결을 대체합니다. server restart persistence와 host migration은 지원하지 않습니다.
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v2 control-only
+  snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
+  판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. server restart persistence와
+  host migration은 지원하지 않습니다.
 
 ## 플레이
 
@@ -94,7 +113,7 @@ content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
 src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
-src/protocol protocol v1 type/schema와 strict Ajv validation
+src/protocol protocol v2 type/schema, gameplay/control revision과 strict Ajv validation
 src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
@@ -120,8 +139,9 @@ Setup Fingerprint를 보존하며 콘텐츠나 loadout setup이 다르면 첫 re
 Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Recovery Action도
 자신을 클릭했을 때 열리는 링 메뉴에 함께 나타나므로 별도 UI 분기가 없습니다.
 
-M4 콘텐츠의 source of truth는 기존 authoring 경로를 유지한 [`content/m3`](content/m3)
-JSON이며 pack identity는 `cardguild.m4@0.4.0`, contract는 schema v4입니다. Schema와
+M5 콘텐츠의 source of truth는 [`content/m5`](content/m5) JSON이며 pack identity는
+`cardguild.m5@0.5.0`, contract는 schema v4입니다. 기존 [`content/m3`](content/m3)의
+`cardguild.m4@0.4.0` pack은 회귀 fixture로 보존됩니다. Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.
@@ -142,8 +162,8 @@ HP 뱃지는 역스케일해 작은 창에서도 화면 크기를 유지합니�
 시야에 넣습니다(zoom 1에서는 전체가 보이므로 아무 일도 하지 않습니다). 캐릭터는 front/back 양면 paper standee이며
 north는 back, 나머지 cardinal 방향은 front와 projected facing arrow로 표시합니다.
 
-설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M4 구현
-범위는 GitHub 이슈 `#5`를 따릅니다.
+설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M5 구현
+범위와 protocol 정정 사항은 GitHub 이슈 `#6`을 따릅니다.
 
 ## 검증
 
@@ -160,7 +180,8 @@ npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive s
 npm test             # unit + network + Playwright
 ```
 
-Vitest는 Content v4 Schema/reference/fingerprint와 1–3P spawn, Collection/Loadout ownership와 파생
+Vitest는 Content v4 Schema/reference/fingerprint, playable 3인 profile과 1–3P spawn,
+Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
 deck/stat/context, Adventure 3전/Reward/실패/seed/Combat bridge,
 projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
@@ -168,12 +189,13 @@ Reaction lifecycle, replay setup identity/hash, victory/defeat를 검증합니�
 Adventure shell, responsive Loadout Builder, 지연 WebP atlas 로딩, 실제 perspective board
 hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 → 다음 Encounter 실제
 손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
-Network integration은 실제 `ws` client 3개로 queue/revision/idempotency/authorization,
-server AI/reaction, newest-wins reconnect, wrong token/content, invalid/oversized message를 검증합니다.
-Playwright는 별도 BrowserContext 3개로 host create/invite/join, ownership, 실시간 hash 수렴,
-reaction owner UI, reload resync와 기존 링 메뉴/Facing/HUD camera를 함께 검증합니다.
+Network integration은 실제 `ws` client 3개로 queue/gameplay·control revision/idempotency,
+claim race와 authorization, turn/reaction disconnect fallback·reconnect, server AI,
+newest-wins reconnect와 protocol v1 fail-fast를 검증합니다. Playwright는 별도
+BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어, 2P fallback,
+3P 분산 제어와 hash 수렴을 검증하며 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
 
-## M4 범위 밖
+## M5 범위 밖
 
 계정/OAuth, matchmaking/public room, late join/spectator, host migration/kick, chat,
 hidden-hand/PvP, prediction/rollback/delta protocol, DB·Redis·다중 process·server restart 복구,

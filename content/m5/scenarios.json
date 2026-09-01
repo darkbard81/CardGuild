@@ -1,0 +1,175 @@
+[
+{
+  "id": "encounter.road-ambush",
+  "name": "Road Ambush",
+  "objective": {
+    "kind": "defeat-all-enemies",
+    "description": "폐허로 가는 길을 막은 고블린 척후병을 쓰러뜨리세요."
+  },
+  "placements": [
+    { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 2, "y": 1 }, "facing": "west" }
+  ],
+  "partySpawnSlots": [
+    { "seat": 1, "position": { "x": 0, "y": 1 }, "facing": "east" },
+    { "seat": 2, "position": { "x": 0, "y": 0 }, "facing": "east" },
+    { "seat": 3, "position": { "x": 0, "y": 2 }, "facing": "east" }
+  ],
+  "map": {
+    "width": 3,
+    "height": 3,
+    "tiles": [
+      { "id": "road-0,0", "position": { "x": 0, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "road-1,0", "position": { "x": 1, "y": 0 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "road-2,0", "position": { "x": 2, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "road-0,1", "position": { "x": 0, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "road-1,1", "position": { "x": 1, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "road-2,1", "position": { "x": 2, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "road-0,2", "position": { "x": 0, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "road-1,2", "position": { "x": 1, "y": 2 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "road-2,2", "position": { "x": 2, "y": 2 }, "traits": [{ "id": "open" }] }
+    ],
+    "objects": []
+  }
+},
+{
+  "id": "encounter.ruined-gate",
+  "name": "Ruined Gate",
+  "objective": {
+    "kind": "defeat-all-enemies",
+    "description": "레버로 문을 열고 두 고블린을 쓰러뜨리세요."
+  },
+  "placements": [
+    { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 7, "y": 2 }, "facing": "west" },
+    { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 7, "y": 4 }, "facing": "west" }
+  ],
+  "partySpawnSlots": [
+    { "seat": 1, "position": { "x": 1, "y": 3 }, "facing": "east" },
+    { "seat": 2, "position": { "x": 1, "y": 4 }, "facing": "east" },
+    { "seat": 3, "position": { "x": 1, "y": 5 }, "facing": "east" }
+  ],
+  "map": {
+    "width": 9,
+    "height": 7,
+    "tiles": [
+      { "id": "tile-0,0", "position": { "x": 0, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-1,0", "position": { "x": 1, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-2,0", "position": { "x": 2, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-3,0", "position": { "x": 3, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-4,0", "position": { "x": 4, "y": 0 }, "traits": [{ "id": "blocked" }, { "id": "stone" }] },
+      { "id": "tile-5,0", "position": { "x": 5, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-6,0", "position": { "x": 6, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-7,0", "position": { "x": 7, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-8,0", "position": { "x": 8, "y": 0 }, "traits": [{ "id": "open" }] },
+
+      { "id": "tile-0,1", "position": { "x": 0, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-1,1", "position": { "x": 1, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-2,1", "position": { "x": 2, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-3,1", "position": { "x": 3, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-4,1", "position": { "x": 4, "y": 1 }, "traits": [{ "id": "blocked" }, { "id": "stone" }] },
+      { "id": "tile-5,1", "position": { "x": 5, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-6,1", "position": { "x": 6, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-7,1", "position": { "x": 7, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-8,1", "position": { "x": 8, "y": 1 }, "traits": [{ "id": "open" }] },
+
+      { "id": "tile-0,2", "position": { "x": 0, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-1,2", "position": { "x": 1, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-2,2", "position": { "x": 2, "y": 2 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "tile-3,2", "position": { "x": 3, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-4,2", "position": { "x": 4, "y": 2 }, "traits": [{ "id": "blocked" }, { "id": "stone" }] },
+      { "id": "tile-5,2", "position": { "x": 5, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-6,2", "position": { "x": 6, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-7,2", "position": { "x": 7, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-8,2", "position": { "x": 8, "y": 2 }, "traits": [{ "id": "open" }] },
+
+      { "id": "tile-0,3", "position": { "x": 0, "y": 3 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-1,3", "position": { "x": 1, "y": 3 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-2,3", "position": { "x": 2, "y": 3 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "tile-3,3", "position": { "x": 3, "y": 3 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-4,3", "position": { "x": 4, "y": 3 }, "traits": [{ "id": "blocked" }, { "id": "gate" }] },
+      { "id": "tile-5,3", "position": { "x": 5, "y": 3 }, "traits": [{ "id": "open" }, { "id": "difficult" }, { "id": "web" }] },
+      { "id": "tile-6,3", "position": { "x": 6, "y": 3 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-7,3", "position": { "x": 7, "y": 3 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-8,3", "position": { "x": 8, "y": 3 }, "traits": [{ "id": "open" }] },
+
+      { "id": "tile-0,4", "position": { "x": 0, "y": 4 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-1,4", "position": { "x": 1, "y": 4 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-2,4", "position": { "x": 2, "y": 4 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-3,4", "position": { "x": 3, "y": 4 }, "traits": [{ "id": "impassable" }] },
+      { "id": "tile-4,4", "position": { "x": 4, "y": 4 }, "traits": [{ "id": "blocked" }, { "id": "stone" }] },
+      { "id": "tile-5,4", "position": { "x": 5, "y": 4 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-6,4", "position": { "x": 6, "y": 4 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-7,4", "position": { "x": 7, "y": 4 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-8,4", "position": { "x": 8, "y": 4 }, "traits": [{ "id": "open" }] },
+
+      { "id": "tile-0,5", "position": { "x": 0, "y": 5 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-1,5", "position": { "x": 1, "y": 5 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-2,5", "position": { "x": 2, "y": 5 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-3,5", "position": { "x": 3, "y": 5 }, "traits": [{ "id": "impassable" }] },
+      { "id": "tile-4,5", "position": { "x": 4, "y": 5 }, "traits": [{ "id": "blocked" }, { "id": "stone" }] },
+      { "id": "tile-5,5", "position": { "x": 5, "y": 5 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-6,5", "position": { "x": 6, "y": 5 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-7,5", "position": { "x": 7, "y": 5 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-8,5", "position": { "x": 8, "y": 5 }, "traits": [{ "id": "open" }] },
+
+      { "id": "tile-0,6", "position": { "x": 0, "y": 6 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-1,6", "position": { "x": 1, "y": 6 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-2,6", "position": { "x": 2, "y": 6 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-3,6", "position": { "x": 3, "y": 6 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-4,6", "position": { "x": 4, "y": 6 }, "traits": [{ "id": "blocked" }, { "id": "stone" }] },
+      { "id": "tile-5,6", "position": { "x": 5, "y": 6 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-6,6", "position": { "x": 6, "y": 6 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-7,6", "position": { "x": 7, "y": 6 }, "traits": [{ "id": "open" }] },
+      { "id": "tile-8,6", "position": { "x": 8, "y": 6 }, "traits": [{ "id": "open" }] }
+    ],
+    "objects": [
+      {
+        "id": "gate-lever",
+        "name": "Ancient Gate Lever",
+        "position": { "x": 1, "y": 2 },
+        "traits": [{ "id": "interactable" }, { "id": "lever" }],
+        "interaction": { "kind": "open-gate", "targetTileId": "tile-4,3" },
+        "used": false
+      }
+    ]
+  }
+},
+{
+  "id": "encounter.goblin-chief",
+  "name": "Goblin Chief",
+  "objective": {
+    "kind": "defeat-all-enemies",
+    "description": "폐허 안뜰의 고블린 대장을 쓰러뜨리세요."
+  },
+  "placements": [
+    { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 4, "y": 0 }, "facing": "west" },
+    { "instanceId": "goblin-chief", "actorDefinitionId": "enemy.goblin-chief", "team": "enemies", "position": { "x": 4, "y": 2 }, "facing": "west" }
+  ],
+  "partySpawnSlots": [
+    { "seat": 1, "position": { "x": 0, "y": 1 }, "facing": "east" },
+    { "seat": 2, "position": { "x": 0, "y": 0 }, "facing": "east" },
+    { "seat": 3, "position": { "x": 0, "y": 2 }, "facing": "east" }
+  ],
+  "map": {
+    "width": 5,
+    "height": 3,
+    "tiles": [
+      { "id": "chief-0,0", "position": { "x": 0, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-1,0", "position": { "x": 1, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-2,0", "position": { "x": 2, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-3,0", "position": { "x": 3, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-4,0", "position": { "x": 4, "y": 0 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-0,1", "position": { "x": 0, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-1,1", "position": { "x": 1, "y": 1 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "chief-2,1", "position": { "x": 2, "y": 1 }, "traits": [{ "id": "impassable" }] },
+      { "id": "chief-3,1", "position": { "x": 3, "y": 1 }, "traits": [{ "id": "open" }, { "id": "difficult" }] },
+      { "id": "chief-4,1", "position": { "x": 4, "y": 1 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-0,2", "position": { "x": 0, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-1,2", "position": { "x": 1, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-2,2", "position": { "x": 2, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-3,2", "position": { "x": 3, "y": 2 }, "traits": [{ "id": "open" }] },
+      { "id": "chief-4,2", "position": { "x": 4, "y": 2 }, "traits": [{ "id": "open" }] }
+    ],
+    "objects": []
+  }
+}
+]

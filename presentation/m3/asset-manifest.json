@@ -127,6 +127,42 @@
       },
       "displayHeight": 152
     },
+    "actor.hero.lyra.front": {
+      "frame": "actor.hero.lyra.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 148
+    },
+    "actor.hero.lyra.back": {
+      "frame": "actor.hero.lyra.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 148
+    },
+    "actor.hero.brom.front": {
+      "frame": "actor.hero.brom.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 158
+    },
+    "actor.hero.brom.back": {
+      "frame": "actor.hero.brom.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 158
+    },
     "actor.goblin-skirmisher.front": {
       "frame": "actor.goblin-skirmisher.front",
       "kind": "actor",
@@ -256,6 +292,14 @@
     "hero.aerin": {
       "front": "actor.hero.aerin.front",
       "back": "actor.hero.aerin.back"
+    },
+    "hero.lyra": {
+      "front": "actor.hero.lyra.front",
+      "back": "actor.hero.lyra.back"
+    },
+    "hero.brom": {
+      "front": "actor.hero.brom.front",
+      "back": "actor.hero.brom.back"
     },
     "enemy.goblin-skirmisher": {
       "front": "actor.goblin-skirmisher.front",

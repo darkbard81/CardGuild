@@ -113,6 +113,30 @@
       "prompt": "Reference art/STYLE.md, documents/Template.png, and documents/view_modify.png. 2D high detailed Japanese anime style elf maid Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
+      "input": "art/source/actors/lyra-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "hero.lyra",
+      "grid": { "rows": 1, "cols": 2 },
+      "canvas": { "width": 256, "height": 384 },
+      "frames": [
+        { "assetId": "actor.hero.lyra.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 148 } },
+        { "assetId": "actor.hero.lyra.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 148 } }
+      ],
+      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female mobile adventurer Lyra with Boots of Fly Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/brom-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "hero.brom",
+      "grid": { "rows": 1, "cols": 2 },
+      "canvas": { "width": 256, "height": 384 },
+      "frames": [
+        { "assetId": "actor.hero.brom.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 158 } },
+        { "assetId": "actor.hero.brom.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 158 } }
+      ],
+      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female durable guardian Brom with heavy armor and shield Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
       "input": "art/source/actors/goblin-skirmisher-front-back.png",
       "mode": "two-sided-actor",
       "definitionId": "enemy.goblin-skirmisher",

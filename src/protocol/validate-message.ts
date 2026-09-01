@@ -1,6 +1,6 @@
 import Ajv, { type ErrorObject } from "ajv";
 
-import type { ClientMessage } from "./v1-types";
+import type { ClientMessage } from "./v2-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {
@@ -73,6 +73,27 @@ const loadout = {
 } as const;
 const intent = {
   oneOf: [
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["type", "actorDefinitionIds"],
+      properties: {
+        type: { const: "set-party-composition" },
+        actorDefinitionIds: {
+          type: "array",
+          minItems: 1,
+          maxItems: 3,
+          uniqueItems: true,
+          items: nonEmptyString,
+        },
+      },
+    },
+    {
+      type: "object",
+      additionalProperties: false,
+      required: ["type", "memberId"],
+      properties: { type: { const: "select-character" }, memberId: nonEmptyString },
+    },
     { type: "object", additionalProperties: false, required: ["type"], properties: { type: { const: "begin-adventure" } } },
     { type: "object", additionalProperties: false, required: ["type"], properties: { type: { const: "start-encounter" } } },
     {
@@ -84,8 +105,8 @@ const intent = {
     {
       type: "object",
       additionalProperties: false,
-      required: ["type", "loadout"],
-      properties: { type: { const: "set-loadout" }, loadout },
+      required: ["type", "memberId", "loadout"],
+      properties: { type: { const: "set-loadout" }, memberId: nonEmptyString, loadout },
     },
     {
       type: "object",
@@ -116,7 +137,7 @@ const clientMessageSchema = {
       additionalProperties: false,
       required: ["v", "type", "sessionId", "playerId", "reconnectToken", "contentIdentity"],
       properties: {
-        v: { const: 1 },
+        v: { const: 2 },
         type: { const: "hello" },
         sessionId: nonEmptyString,
         playerId: nonEmptyString,
@@ -134,7 +155,7 @@ const clientMessageSchema = {
       additionalProperties: false,
       required: ["v", "type", "requestId", "expectedRevision", "intent"],
       properties: {
-        v: { const: 1 },
+        v: { const: 2 },
         type: { const: "intent" },
         requestId: nonEmptyString,
         expectedRevision: { type: "integer", minimum: 0 },

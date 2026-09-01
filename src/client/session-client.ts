@@ -1,4 +1,4 @@
-import { M4_CONTENT_IDENTITY } from "../content";
+import { M5_CONTENT_IDENTITY } from "../content";
 import type {
   ClientHello,
   ClientIntentEnvelope,
@@ -7,9 +7,9 @@ import type {
   ServerMessage,
   ServerSnapshot,
 } from "../protocol";
-import type { SessionGameplayIntent } from "../session";
+import type { SessionIntent } from "../session";
 
-const STORAGE_KEY = "cardguild.session.v1";
+const STORAGE_KEY = "cardguild.session.v2";
 const TERMINAL_HANDSHAKE_FAILURES = new Set<ProtocolErrorCode>([
   "SESSION_NOT_FOUND",
   "UNAUTHENTICATED",
@@ -135,12 +135,12 @@ export class SessionClient {
     socket.addEventListener("open", () => {
       if (this.socket !== socket) return;
       const hello: ClientHello = {
-        v: 1,
+        v: 2,
         type: "hello",
         sessionId: this.credential.sessionId,
         playerId: this.credential.playerId,
         reconnectToken: this.credential.reconnectToken,
-        contentIdentity: M4_CONTENT_IDENTITY,
+        contentIdentity: M5_CONTENT_IDENTITY,
       };
       socket.send(JSON.stringify(hello));
       if (this.outstanding) socket.send(JSON.stringify(this.outstanding.envelope));
@@ -155,7 +155,7 @@ export class SessionClient {
       if (this.destroyed || this.terminallyClosed) return;
       if (event.code === 4001) {
         this.stopTerminal({
-          v: 1,
+          v: 2,
           type: "error",
           code: "UNAUTHENTICATED",
           message: "This session was opened in a newer connection.",
@@ -164,7 +164,7 @@ export class SessionClient {
       }
       if (event.code === 4003 || event.code === 4004) {
         this.stopTerminal({
-          v: 1,
+          v: 2,
           type: "error",
           code: event.code === 4004 ? "SESSION_NOT_FOUND" : "UNAUTHENTICATED",
           message: event.reason || "The session handshake was rejected.",
@@ -178,12 +178,12 @@ export class SessionClient {
     });
   }
 
-  public sendIntent(intent: SessionGameplayIntent): boolean {
+  public sendIntent(intent: SessionIntent): boolean {
     const socket = this.socket;
     const snapshot = this.snapshotValue;
     if (!socket || socket.readyState !== WebSocket.OPEN || !snapshot || this.outstanding) return false;
     const envelope: ClientIntentEnvelope = {
-      v: 1,
+      v: 2,
       type: "intent",
       requestId: crypto.randomUUID(),
       expectedRevision: snapshot.revision,
@@ -219,6 +219,10 @@ export class SessionClient {
     }
     const shouldApply = !this.snapshotValue ||
       message.revision > this.snapshotValue.revision ||
+      (
+        message.revision === this.snapshotValue.revision &&
+        message.controlRevision > this.snapshotValue.controlRevision
+      ) ||
       message.cause?.kind === "resync";
     if (!shouldApply) return;
     if (this.authenticatedSocket !== socket) {

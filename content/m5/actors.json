@@ -1,0 +1,160 @@
+[
+  {
+    "id": "hero.aerin",
+    "name": "Aerin",
+    "hp": 32,
+    "maxHp": 32,
+    "baseAc": 18,
+    "reflexModifier": 5,
+    "athleticsModifier": 8,
+    "initiativeModifier": 6,
+    "speedFeet": 25,
+    "fallbackWeapon": {
+      "name": "Unarmed",
+      "attackModifier": 6,
+      "rangeFeet": 5,
+      "damage": { "count": 1, "sides": 4, "modifier": 2, "damageType": "bludgeoning" }
+    },
+    "initialConditions": [],
+    "traits": [{ "id": "actor" }, { "id": "hero" }, { "id": "playable" }],
+    "loadoutProfile": { "preparedCardCapacity": 2 },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "halberd",
+        "shield": "shield",
+        "feet": "boots-of-fly"
+      },
+      "preparedCards": []
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      { "cardDefinitionId": "card.spirit-beacon", "count": 2, "sourceId": "focus.spirit-beacon" },
+      { "cardDefinitionId": "card.reactive-strike", "count": 1, "sourceId": "feat.reactive-strike" }
+    ]
+  },
+  {
+    "id": "hero.lyra",
+    "name": "Lyra",
+    "hp": 24,
+    "maxHp": 24,
+    "baseAc": 16,
+    "reflexModifier": 7,
+    "athleticsModifier": 5,
+    "initiativeModifier": 8,
+    "speedFeet": 30,
+    "fallbackWeapon": {
+      "name": "Light Blade",
+      "attackModifier": 7,
+      "rangeFeet": 5,
+      "damage": { "count": 1, "sides": 6, "modifier": 2, "damageType": "slashing" }
+    },
+    "initialConditions": [],
+    "traits": [{ "id": "actor" }, { "id": "hero" }, { "id": "playable" }],
+    "loadoutProfile": { "preparedCardCapacity": 2 },
+    "starterLoadout": {
+      "equipment": { "feet": "boots-of-fly" },
+      "preparedCards": []
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      { "cardDefinitionId": "card.spirit-beacon", "count": 1, "sourceId": "focus.wind-beacon" }
+    ]
+  },
+  {
+    "id": "hero.brom",
+    "name": "Brom",
+    "hp": 42,
+    "maxHp": 42,
+    "baseAc": 20,
+    "reflexModifier": 3,
+    "athleticsModifier": 10,
+    "initiativeModifier": 2,
+    "speedFeet": 20,
+    "fallbackWeapon": {
+      "name": "Guardian Mace",
+      "attackModifier": 8,
+      "rangeFeet": 5,
+      "damage": { "count": 1, "sides": 8, "modifier": 3, "damageType": "bludgeoning" }
+    },
+    "initialConditions": [],
+    "traits": [{ "id": "actor" }, { "id": "hero" }, { "id": "playable" }],
+    "loadoutProfile": { "preparedCardCapacity": 2 },
+    "starterLoadout": {
+      "equipment": { "shield": "shield" },
+      "preparedCards": []
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      { "cardDefinitionId": "card.reactive-strike", "count": 2, "sourceId": "feat.guardian-sentinel" }
+    ]
+  },
+  {
+    "id": "enemy.goblin-skirmisher",
+    "name": "Goblin Skirmisher",
+    "hp": 18,
+    "maxHp": 18,
+    "baseAc": 16,
+    "reflexModifier": 5,
+    "athleticsModifier": 4,
+    "initiativeModifier": 5,
+    "speedFeet": 25,
+    "fallbackWeapon": {
+      "name": "Goblin Blade",
+      "attackModifier": 6,
+      "rangeFeet": 5,
+      "damage": { "count": 1, "sides": 6, "modifier": 2, "damageType": "slashing" }
+    },
+    "initialConditions": [],
+    "traits": [{ "id": "actor" }, { "id": "goblin" }],
+    "loadoutProfile": { "preparedCardCapacity": 0 },
+    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "innateActionIds": [],
+    "baseCardGrants": []
+  },
+  {
+    "id": "enemy.goblin-brute",
+    "name": "Goblin Brute",
+    "hp": 24,
+    "maxHp": 24,
+    "baseAc": 17,
+    "reflexModifier": 3,
+    "athleticsModifier": 7,
+    "initiativeModifier": 3,
+    "speedFeet": 20,
+    "fallbackWeapon": {
+      "name": "Heavy Club",
+      "attackModifier": 7,
+      "rangeFeet": 5,
+      "damage": { "count": 1, "sides": 8, "modifier": 3, "damageType": "bludgeoning" }
+    },
+    "initialConditions": [],
+    "traits": [{ "id": "actor" }, { "id": "goblin" }],
+    "loadoutProfile": { "preparedCardCapacity": 0 },
+    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "innateActionIds": ["knockdown"],
+    "baseCardGrants": []
+  },
+  {
+    "id": "enemy.goblin-chief",
+    "name": "Goblin Chief",
+    "hp": 34,
+    "maxHp": 34,
+    "baseAc": 18,
+    "reflexModifier": 5,
+    "athleticsModifier": 8,
+    "initiativeModifier": 6,
+    "speedFeet": 25,
+    "fallbackWeapon": {
+      "name": "Chief's Glaive",
+      "attackModifier": 9,
+      "rangeFeet": 10,
+      "damage": { "count": 1, "sides": 10, "modifier": 4, "damageType": "slashing" }
+    },
+    "initialConditions": [],
+    "traits": [{ "id": "actor" }, { "id": "goblin" }],
+    "loadoutProfile": { "preparedCardCapacity": 0 },
+    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "innateActionIds": ["knockdown"],
+    "baseCardGrants": []
+  }
+]

@@ -1,6 +1,6 @@
 import type { AdventureState } from "../adventure";
 import { isTerminalHandshakeFailure, SessionClient, type SessionCredential } from "../client";
-import { M4_ADVENTURE, M4_COMPILED_PACK, M4_CONTENT_IDENTITY } from "../content";
+import { M5_ADVENTURE, M5_COMPILED_PACK, M5_CONTENT_IDENTITY } from "../content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
 import { SessionLobbyUi } from "../dom/session-lobby-ui";
@@ -8,7 +8,7 @@ import type { CombatEvent, CombatState } from "../game";
 import type { PartyMemberLoadout } from "../loadout";
 import type { AssetCatalog } from "../presentation";
 import type { ServerSnapshot } from "../protocol";
-import type { SessionEvent, SessionGameplayIntent, SessionSeat } from "../session";
+import type { SessionEvent, SessionIntent, SessionSeat } from "../session";
 import { BattleController } from "./battle-controller";
 import type { Application } from "pixi.js";
 
@@ -60,20 +60,22 @@ export class AdventureController {
     private readonly catalog: AssetCatalog,
     private readonly root: HTMLElement,
   ) {
-    this.ui = new AdventureUi(M4_ADVENTURE, M4_COMPILED_PACK, {
+    this.ui = new AdventureUi(M5_ADVENTURE, M5_COMPILED_PACK, {
       onStart: () => this.sendIntent({ type: "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
       onChooseReward: (rewardId, choiceIndex) => this.sendIntent({ type: "choose-reward", rewardId, choiceIndex }),
       onOpenLoadout: () => this.openLoadout(),
       onRetry: () => undefined,
     });
-    this.loadoutUi = new LoadoutUi(M4_COMPILED_PACK, this.catalog, {
+    this.loadoutUi = new LoadoutUi(M5_COMPILED_PACK, this.catalog, {
       onSetLoadout: (memberId, loadout) => this.setMemberLoadout(memberId, loadout),
       onDone: () => this.closeLoadout(),
     });
-    this.lobbyUi = new SessionLobbyUi({
+    this.lobbyUi = new SessionLobbyUi(M5_COMPILED_PACK, this.catalog, {
       onCreate: (displayName) => void this.createSession(displayName),
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
+      onSetParty: (actorDefinitionIds) => this.sendIntent({ type: "set-party-composition", actorDefinitionIds }),
+      onSelectCharacter: (memberId) => this.sendIntent({ type: "select-character", memberId }),
       onBegin: () => this.sendIntent({ type: "begin-adventure" }),
     });
     this.root.dataset.ready = "true";
@@ -132,8 +134,10 @@ export class AdventureController {
     this.root.dataset.screen = "session";
     delete this.root.dataset.sessionId;
     delete this.root.dataset.sessionRevision;
+    delete this.root.dataset.controlRevision;
     delete this.root.dataset.sessionHash;
     delete this.root.dataset.viewerMemberId;
+    delete this.root.dataset.controlledActorIds;
     delete this.root.dataset.viewerRole;
     this.ui.setVisible(false);
     this.loadoutUi.setVisible(false);
@@ -145,6 +149,14 @@ export class AdventureController {
     return snapshot.state.seats.find((seat) => seat.playerId === this.client?.credential.playerId);
   }
 
+  private controlledMemberIds(snapshot: ServerSnapshot, playerId: string): ReadonlySet<string> {
+    return new Set(
+      Object.entries(snapshot.control.effectiveControllerByMemberId)
+        .filter(([, controllerPlayerId]) => controllerPlayerId === playerId)
+        .map(([memberId]) => memberId),
+    );
+  }
+
   private async renderSnapshot(snapshot: ServerSnapshot): Promise<void> {
     if (this.snapshot !== snapshot) return;
     const state = snapshot.state;
@@ -152,15 +164,18 @@ export class AdventureController {
     if (!viewer) throw new Error("Authenticated player does not own a session seat.");
     this.root.dataset.sessionId = state.sessionId;
     this.root.dataset.sessionRevision = String(snapshot.revision);
+    this.root.dataset.controlRevision = String(snapshot.controlRevision);
     this.root.dataset.sessionHash = snapshot.gameplayHash;
-    this.root.dataset.viewerMemberId = viewer.memberId;
+    const controlledMemberIds = this.controlledMemberIds(snapshot, viewer.playerId);
+    this.root.dataset.viewerMemberId = [...controlledMemberIds][0] ?? "";
+    this.root.dataset.controlledActorIds = [...controlledMemberIds].sort().join(",");
     this.root.dataset.viewerRole = state.hostPlayerId === viewer.playerId ? "host" : "guest";
 
     if (state.lifecycle === "lobby") {
       this.battle?.destroy();
       this.battle = null;
       this.root.dataset.screen = "session";
-      this.lobbyUi.renderLobby(state, viewer.playerId);
+      this.lobbyUi.renderLobby(state, viewer.playerId, snapshot.control);
       this.ui.setVisible(false);
       this.loadoutUi.setVisible(false);
       return;
@@ -189,14 +204,14 @@ export class AdventureController {
     this.ui.render(snapshot.state.adventure as AdventureState, {
       isHost: snapshot.state.hostPlayerId === viewer.playerId,
     });
-    const staticScenario = M4_COMPILED_PACK.scenarios[combat.scenarioId];
+    const staticScenario = M5_COMPILED_PACK.scenarios[combat.scenarioId];
     if (!staticScenario) throw new Error(`Scenario "${combat.scenarioId}" is missing.`);
     const events = combatEvents(snapshot.events);
     if (!this.battle) {
       this.battle = new BattleController(this.app, this.catalog, {
         definition: {
-          content: M4_COMPILED_PACK.combatContent,
-          contentIdentity: M4_CONTENT_IDENTITY,
+          content: M5_COMPILED_PACK.combatContent,
+          contentIdentity: M5_CONTENT_IDENTITY,
           scenario: {
             ...staticScenario,
             actors: Object.values(combat.actors),
@@ -205,12 +220,16 @@ export class AdventureController {
         },
         state: combat,
         history: events,
-        viewerMemberId: viewer.memberId,
-        controlledActorId: viewer.memberId,
+        controlledActorIds: this.controlledMemberIds(snapshot, viewer.playerId),
         onIntent: (intent) => this.sendIntent(intent),
       });
     } else {
-      this.battle.update(combat, events, snapshot.cause?.kind === "resync");
+      this.battle.update(
+        combat,
+        events,
+        snapshot.cause?.kind === "resync",
+        this.controlledMemberIds(snapshot, viewer.playerId),
+      );
     }
   }
 
@@ -228,7 +247,11 @@ export class AdventureController {
     if (this.view === "loadout" && (state.phase === "ready" || state.phase === "between-encounters")) {
       this.root.dataset.screen = "loadout";
       this.ui.setVisible(false);
-      this.loadoutUi.render(state, viewer.memberId);
+      const snapshot = this.snapshot;
+      this.loadoutUi.render(
+        state,
+        snapshot ? this.controlledMemberIds(snapshot, viewer.playerId) : new Set(),
+      );
     } else {
       this.view = "adventure";
       this.root.dataset.screen = "adventure";
@@ -259,11 +282,11 @@ export class AdventureController {
   private setMemberLoadout(memberId: string, loadout: PartyMemberLoadout): void {
     const snapshot = this.snapshot;
     const viewer = snapshot ? this.viewerSeat(snapshot) : undefined;
-    if (!viewer || memberId !== viewer.memberId) return;
-    this.sendIntent({ type: "set-loadout", loadout });
+    if (!snapshot || !viewer || !this.controlledMemberIds(snapshot, viewer.playerId).has(memberId)) return;
+    this.sendIntent({ type: "set-loadout", memberId, loadout });
   }
 
-  private sendIntent(intent: SessionGameplayIntent): boolean {
+  private sendIntent(intent: SessionIntent): boolean {
     return this.client?.sendIntent(intent) ?? false;
   }
 

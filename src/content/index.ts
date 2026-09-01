@@ -42,4 +42,18 @@ export {
   M4_RUINED_GATE_ID,
   M4_SCENARIO,
 } from "./load-m3-content";
+export {
+  M5_ADVENTURE,
+  M5_ADVENTURE_ID,
+  M5_COMBAT_DEFINITION,
+  M5_COMPILED_PACK,
+  M5_CONTENT,
+  M5_CONTENT_IDENTITY,
+  M5_CONTENT_SOURCE,
+  M5_DEFAULT_SEED,
+  M5_GOBLIN_CHIEF_ID,
+  M5_ROAD_AMBUSH_ID,
+  M5_RUINED_GATE_ID,
+  M5_SCENARIO,
+} from "./load-m5-content";
 export { formatContentValidationIssue, validateContentPackSemantics } from "./validate-semantics";
