@@ -1,6 +1,7 @@
 import { equipmentTraits } from "./rules";
 import { proficiencyBonus, resolveModifierStack, titleCase, type StatisticResolutionContext } from "./statistics";
 import type {
+  ActionMapContext,
   ActorState,
   AttributeId,
   CharacterStatProfile,
@@ -83,6 +84,15 @@ export function resolveStrikeSource(actor: ActorState, context: StatisticResolut
   }
   const unarmedStrike = stats.offense.unarmedStrike;
   return { kind: "unarmed", profile: unarmedStrike, traits: unarmedStrike.traits, stats };
+}
+
+/**
+ * How many attacks the MAP ladder should count for this Action. PF2e applies MAP only
+ * inside the actor's own turn sequence, so an off-turn Reaction resolves at no penalty —
+ * the policy lives here rather than as a literal at a reaction executor call site.
+ */
+export function attacksForMap(context: ActionMapContext, hasAttackTrait: boolean): number {
+  return context.kind === "turn" && hasAttackTrait ? context.attacksThisTurn : 0;
 }
 
 /**

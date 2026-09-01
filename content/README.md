@@ -120,15 +120,42 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 - Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
   PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
 - `playable` Trait을 가진 Actor만 Party Builder 후보입니다. 현재 authoritative pack은
-  `content/m6`의 `cardguild.m6@0.8.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
+  `content/m6`의 `cardguild.m6@0.9.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
-- `remove-condition`은 지정한 Condition ID를 즉시 제거합니다. 판정이 필요한
-  회복은 `recovery-check`와 degree outcome을 사용합니다.
+
+## Action resolution
+
+- `ActionDefinition`이 gameplay 규칙을 소유하고 `CardDefinition`은 `actionId` 참조와
+  deck/provenance만 담당합니다. `SpellCardDefinition` 같은 카드 종류별 타입은 없습니다.
+  `spell`/`focus`/`feat` 분류는 Trait metadata로만 남고 실행 분기 key가 되지 않습니다.
+- Action은 `resolution`으로 판정 방식과 효과를 함께 선언합니다. 네 가지뿐입니다.
+  - `move` — 판정 없음. 기존 path/reaction continuation을 씁니다.
+  - `strike` — #9 `ResolvedStrikeProfile` vs 대상 AC(#8). `damageMultiplier`와
+    4개 degree outcome을 가집니다.
+  - `check` — `check.roller`(`actor`/`target`), `check.statistic`, `check.dc`와
+    4개 degree outcome을 가집니다.
+  - `direct` — 판정 없이 effect primitive를 authored 순서대로 실행합니다.
+- `check.statistic`은 `skill`/`save`/`perception` 중 하나를 **이름으로** 가리킵니다.
+  최종 `+N`을 카드나 액션에 적지 않습니다. `attributeOverride`는 Character에 이미 저장된
+  Attribute modifier 중 어느 것을 이 판정에 쓸지 고르는 것뿐이며 proficiency rank를
+  바꾸거나 Attribute를 새로 만들지 않습니다.
+- `check.dc`는 `fixed` / `armor-class`(#8) / `statistic-dc`(#7) / `class-dc`(#9) 중
+  하나이고 `owner`로 actor·target을 지정합니다. `spellAttackModifier`나 `spellDc` 같은
+  별도 Character statistic은 추가하지 않습니다.
+- degree outcome과 `direct.effects`는 같은 effect primitive 목록을 씁니다.
+  `apply-condition` / `remove-condition` / `lock-action` / `damage` /
+  `create-sustained-effect` / `sustain-effect` / `raise-shield` / `interact`.
+  `owner`가 `target`인 primitive는 `targeting: "enemy"` Action에서만 쓸 수 있습니다.
+- `range`는 Action이 무엇을 하는지와 분리됩니다. `weapon-reach`는 `strike`
+  resolution이나 `attack` trait을 가진 Action에서만 허용되고, `feet`은 5의 양의 배수여야
+  합니다. 선언이 없으면 5ft입니다.
+- MAP은 카드 수치가 아니라 resolver context입니다. `attack` trait이 있으면 #9 MAP
+  resolver가 적용하고, 자기 turn 밖의 Reaction에는 적용되지 않습니다.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `7`입니다.
+- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `8`입니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면
   version을 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key,

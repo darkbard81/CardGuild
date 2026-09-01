@@ -1,3 +1,16 @@
+export {
+  actionRangeFeet,
+  buildResolvedActionPlan,
+  resolveActionDc,
+  resolveActionStatistic,
+  turnMapContext,
+} from "./action-plan";
+export type {
+  ActionParticipants,
+  ResolvedActionCheck,
+  ResolvedActionPlan,
+  ResolvedActionResolution,
+} from "./action-plan";
 export { chooseAiCommand } from "./ai";
 export { createCombat, dispatchCombatCommand } from "./engine";
 export { computeCombatSetupFingerprint, fingerprintValue, fnv1a64, stableSerialize } from "./determinism";
@@ -15,6 +28,7 @@ export { equipmentTraits, facingToward, isDirectlyBehind, isInFrontOrSide } from
 export {
   WEAPON_CATEGORIES,
   equippedWeapon,
+  attacksForMap,
   resolveMapPenalty,
   resolveStrike,
   resolveStrikeSource,

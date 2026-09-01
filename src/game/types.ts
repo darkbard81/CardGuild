@@ -143,6 +143,7 @@ export type StatisticSourceKind =
   | "fixed"
   | "dc"
   | "map"
+  | "position"
   | "equipment"
   | "condition"
   | "trait"
@@ -453,7 +454,68 @@ export type ActionTiming =
 
 export type ActionTargeting = "none" | "self" | "enemy" | "tile" | "object" | "effect";
 
-export type ActionEffect =
+/** Who an Action's check or effect refers to. Cards never name a concrete actor. */
+export type ActionParticipant = "actor" | "target";
+
+/**
+ * Which Character statistic a check reads. It names the statistic, never a number:
+ * the value comes from the shared #7 resolvers and the Character's own profile.
+ * `attributeOverride` only picks a different already-stored Attribute modifier for
+ * this check — it never changes the proficiency rank or the Character's Attributes.
+ */
+export type ActionStatisticRef =
+  | { readonly kind: "skill"; readonly skill: SkillId; readonly attributeOverride?: AttributeId }
+  | { readonly kind: "save"; readonly save: SaveId }
+  | { readonly kind: "perception" };
+
+/** Where a check's DC comes from: fixed, Armor Class (#8), a statistic DC (#7) or Class DC (#9). */
+export type ActionDcRef =
+  | { readonly kind: "fixed"; readonly value: number }
+  | { readonly kind: "armor-class"; readonly owner: ActionParticipant }
+  | {
+      readonly kind: "statistic-dc";
+      readonly owner: ActionParticipant;
+      readonly statistic: ActionStatisticRef;
+    }
+  | { readonly kind: "class-dc"; readonly owner: ActionParticipant };
+
+/** Reach of an Action, separated from what the Action does. */
+export type ActionRange =
+  | { readonly kind: "weapon-reach" }
+  | { readonly kind: "feet"; readonly value: number };
+
+/**
+ * The small, explicit primitives a resolution may apply, in authored order. New behaviour
+ * adds a primitive here — never a formula string or script in content.
+ */
+export type ActionOutcomeEffect =
+  | { readonly kind: "apply-condition"; readonly owner: ActionParticipant; readonly condition: ConditionId }
+  | { readonly kind: "remove-condition"; readonly owner: ActionParticipant; readonly condition: ConditionId }
+  | { readonly kind: "lock-action"; readonly actionId: ActionId }
+  | {
+      readonly kind: "damage";
+      readonly owner: ActionParticipant;
+      readonly dice: { readonly count: number; readonly sides: number };
+      readonly flatModifier: number;
+      readonly damageType: DamageType;
+      readonly multiplier?: number;
+    }
+  | { readonly kind: "create-sustained-effect"; readonly effectName: string }
+  | { readonly kind: "sustain-effect" }
+  | { readonly kind: "raise-shield" }
+  | { readonly kind: "interact" };
+
+export interface ActionCheckDefinition {
+  readonly roller: ActionParticipant;
+  readonly statistic: ActionStatisticRef;
+  readonly dc: ActionDcRef;
+}
+
+/**
+ * How an Action resolves. Deliberately four shapes rather than one union member per
+ * action: a Card selects a resolution, never its own executor.
+ */
+export type ActionResolution =
   | {
       readonly kind: "move";
       readonly movementMode: MovementMode;
@@ -461,23 +523,16 @@ export type ActionEffect =
       readonly triggersReactions: boolean;
     }
   | {
-      readonly kind: "weapon-attack";
+      readonly kind: "strike";
       readonly damageMultiplier: number;
-      readonly applyCondition?: ConditionId;
-    }
-  | { readonly kind: "trip" }
-  | { readonly kind: "remove-condition"; readonly condition: ConditionId }
-  | {
-      readonly kind: "recovery-check";
-      readonly condition: ConditionId;
-      readonly modifier: "athletics";
-      readonly dc: number;
       readonly outcomes: DegreeOutcomeMap;
     }
-  | { readonly kind: "raise-shield" }
-  | { readonly kind: "interact" }
-  | { readonly kind: "create-sustained-effect"; readonly effectName: string }
-  | { readonly kind: "sustain-effect" };
+  | {
+      readonly kind: "check";
+      readonly check: ActionCheckDefinition;
+      readonly outcomes: DegreeOutcomeMap;
+    }
+  | { readonly kind: "direct"; readonly effects: readonly ActionOutcomeEffect[] };
 
 export interface ActionDefinition {
   readonly id: ActionId;
@@ -486,8 +541,18 @@ export interface ActionDefinition {
   readonly timing: ActionTiming;
   readonly traits: readonly TraitInstance[];
   readonly targeting: ActionTargeting;
-  readonly effect: ActionEffect;
+  readonly range?: ActionRange;
+  readonly resolution: ActionResolution;
 }
+
+/**
+ * Whether the multiple attack penalty applies at all. PF2e counts MAP only within the
+ * actor's own turn sequence, so an off-turn Reaction carries no penalty — that policy
+ * lives here and in the offense resolver, never as a literal at an executor call site.
+ */
+export type ActionMapContext =
+  | { readonly kind: "turn"; readonly attacksThisTurn: number }
+  | { readonly kind: "off-turn" };
 
 export interface CardDefinition {
   readonly id: CardDefinitionId;
@@ -535,12 +600,8 @@ export interface ConditionDefinition {
   readonly statModifiers?: readonly StatisticModifierContribution[];
 }
 
-export type DegreeOutcomeEffect =
-  | { readonly kind: "remove-condition"; readonly condition: ConditionId }
-  | { readonly kind: "lock-action"; readonly actionId: ActionId };
-
 export type DegreeOutcomeMap = Readonly<
-  Record<DegreeOfSuccess, readonly DegreeOutcomeEffect[]>
+  Record<DegreeOfSuccess, readonly ActionOutcomeEffect[]>
 >;
 
 export interface EquipmentDefinition {
@@ -619,7 +680,10 @@ export type CombatEvent =
   | { readonly type: "FACING_CHANGED"; readonly actorId: EntityId; readonly facing: Direction }
   | {
       readonly type: "CHECK_ROLLED";
-      readonly actorId: EntityId;
+      /** Whose Action this is. */
+      readonly actionActorId: EntityId;
+      /** Who actually rolled — the same actor for a Strike, the target for a save. */
+      readonly rollerActorId: EntityId;
       readonly targetActorId?: EntityId;
       readonly label: string;
       readonly roll: number;
@@ -708,6 +772,8 @@ export type LegalTarget =
 export interface ActionPreview {
   readonly legal: boolean;
   readonly reason?: string;
+  /** Every check resolution exposes this; Strike UI derives hit/critical chance from it. */
+  readonly degreeProbabilities?: Readonly<Record<DegreeOfSuccess, number>>;
   readonly hitChance?: number;
   readonly criticalChance?: number;
   readonly damageRange?: readonly [number, number];

@@ -61,7 +61,7 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v2 control-only
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v3 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
   판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. server restart persistence와
   host migration은 지원하지 않습니다.
@@ -111,7 +111,7 @@ content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
 src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
-src/protocol protocol v2 type/schema, gameplay/control revision과 strict Ajv validation
+src/protocol protocol v3 type/schema, gameplay/control revision과 strict Ajv validation
 src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
@@ -166,9 +166,23 @@ Reactive Strike가 모두 이 하나의 `ResolvedStrikeProfile`을 소비하므�
 구분된 별도 statistic입니다. Creature/Enemy는 authored fixed strike를 유지하고 PC용
 weapon proficiency 공식을 강제하지 않습니다.
 
+Card와 Action은 한 경계를 공유합니다. `CardDefinition`은 규칙을 소유하지 않고
+`ActionDefinition`을 참조하는 deck/provenance wrapper이며, Action은 `move`/`strike`/
+`check`/`direct` 네 가지 `resolution` 중 하나를 선언합니다. Card는 최종 modifier나 DC를
+저장하지 않고 **어떤 Skill/Save/Perception을 쓰는지**와 **DC를 어디서 가져오는지**만
+선언하므로, Trip은 Athletics vs 대상 Reflex DC, Escape는 Athletics vs 고정 DC,
+Spell tag가 붙은 Card는 대상 Save vs 시전자 Skill DC로 각각 #7/#8/#9 resolver를
+조합해 계산됩니다. `spell`/`focus` Trait은 metadata일 뿐 executor를 고르지 않습니다.
+`buildResolvedActionPlan()`이 RNG를 건드리지 않고 `ResolvedActionPlan`을 만들고
+Preview와 실행이 같은 plan을 소비하므로 Preview modifier/DC와 실제 roll이 구조적으로
+같습니다. Basic/Context/Innate/Card와 Reaction까지 모두 같은
+`executeResolvedAction()`을 지나며, Reaction의 MAP도 executor가 `0`을 적어 넣는 대신
+off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `rollerActorId`를
+따로 보고하므로 대상이 굴리는 Save도 모호하지 않습니다.
+
 콘텐츠의 source of truth는 [`content/m6`](content/m6) JSON이며 pack identity는
-`cardguild.m6@0.8.0`, contract는 schema v7입니다. 기존 [`content/m3`](content/m3)의
-`cardguild.m4@0.5.0` pack은 회귀 fixture로 보존됩니다. Schema와
+`cardguild.m6@0.9.0`, contract는 schema v8입니다. 기존 [`content/m3`](content/m3)의
+`cardguild.m4@0.6.0` pack은 회귀 fixture로 보존됩니다. Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.

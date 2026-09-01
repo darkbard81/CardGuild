@@ -1,7 +1,11 @@
 import { positionKey } from "../game/grid";
-import { deriveMaxHp, isUntypedPenalty } from "../game/statistics";
+import { ATTRIBUTE_IDS, SAVE_IDS, SKILL_IDS, deriveMaxHp, isUntypedPenalty } from "../game/statistics";
 import type {
+  ActionCheckDefinition,
   ActionDefinition,
+  ActionOutcomeEffect,
+  ActionResolution,
+  ActionStatisticRef,
   ActionTargeting,
   CharacterWeaponProfile,
   ConditionId,
@@ -22,17 +26,21 @@ interface ValidationContext {
   readonly issues: ContentValidationIssue[];
 }
 
-const EXPECTED_TARGETING: Readonly<Record<ActionDefinition["effect"]["kind"], ActionTargeting>> = {
-  move: "tile",
-  "weapon-attack": "enemy",
-  trip: "enemy",
-  "remove-condition": "self",
-  "recovery-check": "self",
-  "raise-shield": "self",
+/** Which targeting a resolution can legally pair with, replacing the old 1:1 effect table. */
+const RESOLUTION_TARGETING: Readonly<Record<ActionResolution["kind"], readonly ActionTargeting[]>> = {
+  move: ["tile"],
+  strike: ["enemy"],
+  check: ["enemy", "self"],
+  direct: ["none", "self", "object", "effect"],
+};
+
+/** Targeting each effect primitive needs in order to have something to act on. */
+const EFFECT_TARGETING: Readonly<Partial<Record<ActionOutcomeEffect["kind"], ActionTargeting>>> = {
   interact: "object",
-  "create-sustained-effect": "self",
   "sustain-effect": "effect",
 };
+
+const DEGREES = ["critical-success", "success", "failure", "critical-failure"] as const;
 
 function sourcePath(context: ValidationContext, category: ContentSourceCategory): string {
   return context.locations[category] ?? category;
@@ -151,6 +159,79 @@ function validateStrikeShape(
   validateTraits(context, knownTraits, category, definitionId, `${path}.traits`, strike.traits);
 }
 
+function hasAttackTrait(definition: ActionDefinition): boolean {
+  return definition.traits.some((trait) => trait.id === "attack");
+}
+
+function statisticRefIssue(statistic: ActionStatisticRef): string | null {
+  if (statistic.kind === "skill") {
+    if (!SKILL_IDS.includes(statistic.skill)) return `Skill "${statistic.skill}" is not a known skill.`;
+    if (statistic.attributeOverride && !ATTRIBUTE_IDS.includes(statistic.attributeOverride)) {
+      return `Attribute "${statistic.attributeOverride}" is not a known attribute.`;
+    }
+    return null;
+  }
+  if (statistic.kind === "save" && !SAVE_IDS.includes(statistic.save)) {
+    return `Save "${statistic.save}" is not a known save.`;
+  }
+  return null;
+}
+
+function validateActionCheck(
+  context: ValidationContext,
+  definition: ActionDefinition,
+  path: string,
+  check: ActionCheckDefinition,
+): void {
+  const statisticIssue = statisticRefIssue(check.statistic);
+  if (statisticIssue) {
+    addIssue(context, "actions", `${path}.statistic`, "INVALID_STATISTIC_REF", statisticIssue, definition.id);
+  }
+  // A check that reads the target — as roller or as DC owner — needs an enemy to read.
+  const needsTarget = check.roller === "target" || (check.dc.kind !== "fixed" && check.dc.owner === "target");
+  if (needsTarget && definition.targeting !== "enemy") {
+    addIssue(context, "actions", `${path}`, "CHECK_REQUIRES_TARGET", `Action "${definition.id}" reads the target but does not target an enemy.`, definition.id);
+  }
+  if (check.dc.kind === "fixed" && (!Number.isInteger(check.dc.value) || check.dc.value <= 0)) {
+    addIssue(context, "actions", `${path}.dc.value`, "INVALID_FIXED_DC", "A fixed DC must be a positive integer.", definition.id);
+  }
+  if (check.dc.kind === "statistic-dc") {
+    const dcIssue = statisticRefIssue(check.dc.statistic);
+    if (dcIssue) addIssue(context, "actions", `${path}.dc.statistic`, "INVALID_STATISTIC_REF", dcIssue, definition.id);
+  }
+}
+
+function validateOutcomeEffect(
+  context: ValidationContext,
+  knownConditions: ReadonlySet<ConditionId>,
+  knownActions: ReadonlySet<string>,
+  definition: ActionDefinition,
+  path: string,
+  effect: ActionOutcomeEffect,
+): void {
+  if (effect.kind === "apply-condition" || effect.kind === "remove-condition") {
+    validateConditionReference(context, knownConditions, definition, effect.condition, `${path}.condition`);
+    if (effect.owner === "target" && definition.targeting !== "enemy") {
+      addIssue(context, "actions", `${path}.owner`, "EFFECT_REQUIRES_TARGET", `Action "${definition.id}" affects the target but does not target an enemy.`, definition.id);
+    }
+  }
+  if (effect.kind === "lock-action" && !knownActions.has(effect.actionId)) {
+    addIssue(context, "actions", `${path}.actionId`, "UNKNOWN_ACTION", `Action "${effect.actionId}" is not defined.`, definition.id);
+  }
+  if (effect.kind === "damage") {
+    if (!Number.isInteger(effect.dice.count) || effect.dice.count < 1 || !Number.isInteger(effect.dice.sides) || effect.dice.sides < 2) {
+      addIssue(context, "actions", `${path}.dice`, "INVALID_DAMAGE_DICE", "Damage dice must have a positive count and at least 2 sides.", definition.id);
+    }
+    if (effect.owner === "target" && definition.targeting !== "enemy") {
+      addIssue(context, "actions", `${path}.owner`, "EFFECT_REQUIRES_TARGET", `Action "${definition.id}" damages the target but does not target an enemy.`, definition.id);
+    }
+  }
+  const requiredTargeting = EFFECT_TARGETING[effect.kind];
+  if (requiredTargeting && definition.targeting !== requiredTargeting) {
+    addIssue(context, "actions", `${path}`, "INCOMPATIBLE_TARGETING", `Effect "${effect.kind}" requires targeting "${requiredTargeting}".`, definition.id);
+  }
+}
+
 export function validateContentPackSemantics(
   source: ContentPackSource,
   locations: ContentSourceLocations = {},
@@ -206,26 +287,38 @@ export function validateContentPackSemantics(
 
   source.actions.forEach((definition, index) => {
     validateTraits(context, knownTraits, "actions", definition.id, `[${index}].traits`, definition.traits);
-    const expectedTargeting = EXPECTED_TARGETING[definition.effect.kind];
-    if (definition.targeting !== expectedTargeting) {
-      addIssue(context, "actions", `[${index}].targeting`, "INCOMPATIBLE_TARGETING", `Effect "${definition.effect.kind}" requires targeting "${expectedTargeting}".`, definition.id);
+    const resolution = definition.resolution;
+    const path = `[${index}]`;
+    if (!RESOLUTION_TARGETING[resolution.kind].includes(definition.targeting)) {
+      addIssue(context, "actions", `${path}.targeting`, "INCOMPATIBLE_TARGETING", `Resolution "${resolution.kind}" cannot use targeting "${definition.targeting}".`, definition.id);
     }
-    const effect = definition.effect;
-    if (effect.kind === "weapon-attack" && effect.applyCondition) {
-      validateConditionReference(context, knownConditions, definition, effect.applyCondition, `[${index}].effect.applyCondition`);
-    } else if (effect.kind === "remove-condition" || effect.kind === "recovery-check") {
-      validateConditionReference(context, knownConditions, definition, effect.condition, `[${index}].effect.condition`);
+    // Reach is only meaningful where a weapon is actually involved.
+    if (definition.range?.kind === "weapon-reach" && resolution.kind !== "strike" && !hasAttackTrait(definition)) {
+      addIssue(context, "actions", `${path}.range`, "WEAPON_REACH_NOT_APPLICABLE", `Action "${definition.id}" uses weapon reach without a Strike resolution or the attack trait.`, definition.id);
     }
-    if (effect.kind === "recovery-check") {
-      for (const [degree, outcomes] of Object.entries(effect.outcomes)) {
+    if (definition.range?.kind === "feet" && (!Number.isInteger(definition.range.value) || definition.range.value <= 0 || definition.range.value % 5 !== 0)) {
+      addIssue(context, "actions", `${path}.range.value`, "INVALID_ACTION_RANGE", "Action range must be a positive multiple of 5 feet.", definition.id);
+    }
+
+    if (resolution.kind === "check") {
+      validateActionCheck(context, definition, `${path}.resolution.check`, resolution.check);
+    }
+    if (resolution.kind === "check" || resolution.kind === "strike") {
+      for (const degree of DEGREES) {
+        const outcomes = resolution.outcomes[degree];
+        if (!outcomes) {
+          addIssue(context, "actions", `${path}.resolution.outcomes.${degree}`, "INCOMPLETE_DEGREE_OUTCOMES", `Action "${definition.id}" does not declare outcomes for "${degree}".`, definition.id);
+          continue;
+        }
         outcomes.forEach((outcome, outcomeIndex) => {
-          if (outcome.kind === "remove-condition") {
-            validateConditionReference(context, knownConditions, definition, outcome.condition, `[${index}].effect.outcomes.${degree}[${outcomeIndex}].condition`);
-          } else if (!knownActions.has(outcome.actionId)) {
-            addIssue(context, "actions", `[${index}].effect.outcomes.${degree}[${outcomeIndex}].actionId`, "UNKNOWN_ACTION", `Action "${outcome.actionId}" is not defined.`, definition.id);
-          }
+          validateOutcomeEffect(context, knownConditions, knownActions, definition, `${path}.resolution.outcomes.${degree}[${outcomeIndex}]`, outcome);
         });
       }
+    }
+    if (resolution.kind === "direct") {
+      resolution.effects.forEach((outcome, outcomeIndex) => {
+        validateOutcomeEffect(context, knownConditions, knownActions, definition, `${path}.resolution.effects[${outcomeIndex}]`, outcome);
+      });
     }
   });
 

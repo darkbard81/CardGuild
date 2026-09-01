@@ -239,7 +239,7 @@ describe("content semantic validation and compilation", () => {
           timing: { kind: "turn", actions: 1 },
           traits: [{ id: "move" }],
           targeting: "self",
-          effect: { kind: "remove-condition", condition: "custom-condition" },
+          resolution: { kind: "direct", effects: [{ kind: "remove-condition", owner: "actor", condition: "custom-condition" }] },
         },
       ],
       traits: [
@@ -573,6 +573,120 @@ describe("content semantic validation and compilation", () => {
     }));
   });
 
+  it("keeps Cards a reference to an Action instead of an authored modifier or DC", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const card = source.cards[0];
+    if (!card) throw new Error("M6 card fixtures are missing.");
+    expect(Object.keys(card).sort()).toEqual(["actionId", "id", "name", "traits"]);
+
+    const authored = { ...source, cards: source.cards.map((entry, index) => index === 0 ? { ...entry, modifier: 7, dc: 18 } : entry) };
+    expect(validateContentPackStructure(authored as ContentPackSource, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "cards",
+      definitionId: card.id,
+    }));
+  });
+
+  it("rejects unknown statistic, attribute, and DC references in a check resolution", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const trip = source.actions.find((action) => action.id === "trip");
+    if (trip?.resolution.kind !== "check") throw new Error("M6 Trip fixture is missing.");
+    const tripResolution = trip.resolution;
+    const tripCheck = tripResolution.check;
+
+    const withCheck = (check: unknown): ContentPackSource => ({
+      ...source,
+      actions: source.actions.map((action) => action.id === trip.id
+        ? { ...action, resolution: { kind: "check" as const, check, outcomes: tripResolution.outcomes } }
+        : action),
+    } as ContentPackSource);
+
+    for (const broken of [
+      { ...tripCheck, statistic: { kind: "skill" as const, skill: "juggling" } },
+      { ...tripCheck, statistic: { kind: "skill" as const, skill: "athletics", attributeOverride: "luck" } },
+      { ...tripCheck, dc: { kind: "statistic-dc" as const, owner: "target" as const, statistic: { kind: "save" as const, save: "sanity" } } },
+      { ...tripCheck, dc: { kind: "fixed" as const, value: 0 } },
+    ]) {
+      expect(validateContentPackStructure(withCheck(broken), contentPackSchema)).toContainEqual(expect.objectContaining({
+        source: "actions",
+        definitionId: trip.id,
+      }));
+    }
+
+    // A JSON expression is not a statistic reference; the closed union rejects it outright.
+    expect(validateContentPackStructure(withCheck({ ...tripCheck, statistic: "athletics + 2" }), contentPackSchema))
+      .toContainEqual(expect.objectContaining({ source: "actions", definitionId: trip.id }));
+  });
+
+  it("requires all four degree outcomes and compatible targeting for a resolution", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const trip = source.actions.find((action) => action.id === "trip");
+    const stand = source.actions.find((action) => action.id === "stand");
+    if (trip?.resolution.kind !== "check" || !stand) throw new Error("M6 action fixtures are missing.");
+    const tripResolution = trip.resolution;
+
+    const missingDegree = {
+      ...source,
+      actions: source.actions.map((action) => action.id === trip.id
+        ? { ...action, resolution: { ...tripResolution, outcomes: { ...tripResolution.outcomes, failure: undefined } } }
+        : action),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(missingDegree, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "actions",
+      definitionId: trip.id,
+    }));
+
+    // A Direct resolution cannot target a tile, and a self Action cannot affect a target.
+    const badTargeting: ContentPackSource = {
+      ...source,
+      actions: source.actions.map((action) => action.id === stand.id ? { ...action, targeting: "tile" as const } : action),
+    };
+    expect(validateContentPackSemantics(badTargeting)).toContainEqual(expect.objectContaining({
+      code: "INCOMPATIBLE_TARGETING",
+      definitionId: stand.id,
+    }));
+    const targetFromSelf: ContentPackSource = {
+      ...source,
+      actions: source.actions.map((action) => action.id === stand.id
+        ? { ...action, resolution: { kind: "direct" as const, effects: [{ kind: "apply-condition" as const, owner: "target" as const, condition: "prone" }] } }
+        : action),
+    };
+    expect(validateContentPackSemantics(targetFromSelf)).toContainEqual(expect.objectContaining({
+      code: "EFFECT_REQUIRES_TARGET",
+      definitionId: stand.id,
+    }));
+  });
+
+  it("allows weapon reach only where a weapon is actually involved", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const strike = source.actions.find((action) => action.id === "strike");
+    const spell = source.actions.find((action) => action.id === "spirit-lance");
+    if (!strike || !spell) throw new Error("M6 action fixtures are missing.");
+    expect(strike.range).toEqual({ kind: "weapon-reach" });
+    expect(spell.range).toEqual({ kind: "feet", value: 30 });
+
+    const reachingSpell: ContentPackSource = {
+      ...source,
+      actions: source.actions.map((action) => action.id === spell.id
+        ? { ...action, range: { kind: "weapon-reach" as const } }
+        : action),
+    };
+    expect(validateContentPackSemantics(reachingSpell)).toContainEqual(expect.objectContaining({
+      code: "WEAPON_REACH_NOT_APPLICABLE",
+      definitionId: spell.id,
+    }));
+
+    const oddRange: ContentPackSource = {
+      ...source,
+      actions: source.actions.map((action) => action.id === spell.id
+        ? { ...action, range: { kind: "feet" as const, value: 7 } }
+        : action),
+    };
+    expect(validateContentPackSemantics(oddRange)).toContainEqual(expect.objectContaining({
+      code: "INVALID_ACTION_RANGE",
+      definitionId: spell.id,
+    }));
+  });
+
   it("rejects positive untyped modifiers because PF2e untyped contributions are penalties", () => {
     const source = structuredClone(M6_CONTENT_SOURCE);
     const equipment = source.equipment.find((definition) => definition.statModifiers.length > 0);
@@ -658,7 +772,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 7,
+        schemaVersion: 8,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),

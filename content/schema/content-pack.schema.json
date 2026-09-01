@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v7",
+  "title": "CardGuild Content Pack v8",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures"],
@@ -137,14 +137,115 @@
         }
       ]
     },
-    "degreeOutcomeEffect": {
+    "actionParticipant": { "enum": ["actor", "target"] },
+    "actionStatisticRef": {
       "oneOf": [
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "condition"],
+          "required": ["kind", "skill"],
+          "properties": {
+            "kind": { "const": "skill" },
+            "skill": { "$ref": "#/$defs/skillId" },
+            "attributeOverride": { "$ref": "#/$defs/attributeId" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "save"],
+          "properties": {
+            "kind": { "const": "save" },
+            "save": { "$ref": "#/$defs/saveId" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "perception" } }
+        }
+      ]
+    },
+    "actionDcRef": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "fixed" },
+            "value": { "type": "integer", "minimum": 1 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "owner"],
+          "properties": {
+            "kind": { "const": "armor-class" },
+            "owner": { "$ref": "#/$defs/actionParticipant" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "owner", "statistic"],
+          "properties": {
+            "kind": { "const": "statistic-dc" },
+            "owner": { "$ref": "#/$defs/actionParticipant" },
+            "statistic": { "$ref": "#/$defs/actionStatisticRef" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "owner"],
+          "properties": {
+            "kind": { "const": "class-dc" },
+            "owner": { "$ref": "#/$defs/actionParticipant" }
+          }
+        }
+      ]
+    },
+    "actionRange": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "weapon-reach" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "value"],
+          "properties": {
+            "kind": { "const": "feet" },
+            "value": { "type": "integer", "minimum": 1 }
+          }
+        }
+      ]
+    },
+    "actionOutcomeEffect": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "owner", "condition"],
+          "properties": {
+            "kind": { "const": "apply-condition" },
+            "owner": { "$ref": "#/$defs/actionParticipant" },
+            "condition": { "$ref": "#/$defs/nonEmptyString" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "owner", "condition"],
           "properties": {
             "kind": { "const": "remove-condition" },
+            "owner": { "$ref": "#/$defs/actionParticipant" },
             "condition": { "$ref": "#/$defs/nonEmptyString" }
           }
         },
@@ -156,81 +257,27 @@
             "kind": { "const": "lock-action" },
             "actionId": { "$ref": "#/$defs/nonEmptyString" }
           }
-        }
-      ]
-    },
-    "degreeOutcomeMap": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["critical-success", "success", "failure", "critical-failure"],
-      "properties": {
-        "critical-success": { "type": "array", "items": { "$ref": "#/$defs/degreeOutcomeEffect" } },
-        "success": { "type": "array", "items": { "$ref": "#/$defs/degreeOutcomeEffect" } },
-        "failure": { "type": "array", "items": { "$ref": "#/$defs/degreeOutcomeEffect" } },
-        "critical-failure": { "type": "array", "items": { "$ref": "#/$defs/degreeOutcomeEffect" } }
-      }
-    },
-    "actionEffect": {
-      "oneOf": [
+        },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "movementMode", "step", "triggersReactions"],
+          "required": ["kind", "owner", "dice", "flatModifier", "damageType"],
           "properties": {
-            "kind": { "const": "move" },
-            "movementMode": { "enum": ["land", "fly"] },
-            "step": { "type": "boolean" },
-            "triggersReactions": { "type": "boolean" }
+            "kind": { "const": "damage" },
+            "owner": { "$ref": "#/$defs/actionParticipant" },
+            "dice": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["count", "sides"],
+              "properties": {
+                "count": { "type": "integer", "minimum": 1 },
+                "sides": { "type": "integer", "minimum": 2 }
+              }
+            },
+            "flatModifier": { "type": "integer" },
+            "damageType": { "enum": ["slashing", "piercing", "bludgeoning", "force"] },
+            "multiplier": { "type": "number", "exclusiveMinimum": 0 }
           }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "damageMultiplier"],
-          "properties": {
-            "kind": { "const": "weapon-attack" },
-            "damageMultiplier": { "type": "number", "exclusiveMinimum": 0 },
-            "applyCondition": { "$ref": "#/$defs/nonEmptyString" }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "trip" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "condition"],
-          "properties": {
-            "kind": { "const": "remove-condition" },
-            "condition": { "$ref": "#/$defs/nonEmptyString" }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "condition", "modifier", "dc", "outcomes"],
-          "properties": {
-            "kind": { "const": "recovery-check" },
-            "condition": { "$ref": "#/$defs/nonEmptyString" },
-            "modifier": { "const": "athletics" },
-            "dc": { "type": "integer", "minimum": 1 },
-            "outcomes": { "$ref": "#/$defs/degreeOutcomeMap" }
-          }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "raise-shield" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "interact" } }
         },
         {
           "type": "object",
@@ -246,13 +293,90 @@
           "additionalProperties": false,
           "required": ["kind"],
           "properties": { "kind": { "const": "sustain-effect" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "raise-shield" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "interact" } }
+        }
+      ]
+    },
+    "degreeOutcomeMap": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["critical-success", "success", "failure", "critical-failure"],
+      "properties": {
+        "critical-success": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } },
+        "success": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } },
+        "failure": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } },
+        "critical-failure": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } }
+      }
+    },
+    "actionCheckDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["roller", "statistic", "dc"],
+      "properties": {
+        "roller": { "$ref": "#/$defs/actionParticipant" },
+        "statistic": { "$ref": "#/$defs/actionStatisticRef" },
+        "dc": { "$ref": "#/$defs/actionDcRef" }
+      }
+    },
+    "actionResolution": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "movementMode", "step", "triggersReactions"],
+          "properties": {
+            "kind": { "const": "move" },
+            "movementMode": { "enum": ["land", "fly"] },
+            "step": { "type": "boolean" },
+            "triggersReactions": { "type": "boolean" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "damageMultiplier", "outcomes"],
+          "properties": {
+            "kind": { "const": "strike" },
+            "damageMultiplier": { "type": "number", "exclusiveMinimum": 0 },
+            "outcomes": { "$ref": "#/$defs/degreeOutcomeMap" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "check", "outcomes"],
+          "properties": {
+            "kind": { "const": "check" },
+            "check": { "$ref": "#/$defs/actionCheckDefinition" },
+            "outcomes": { "$ref": "#/$defs/degreeOutcomeMap" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "effects"],
+          "properties": {
+            "kind": { "const": "direct" },
+            "effects": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } }
+          }
         }
       ]
     },
     "actionDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "description", "timing", "traits", "targeting", "effect"],
+      "required": ["id", "name", "description", "timing", "traits", "targeting", "resolution"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
@@ -260,7 +384,8 @@
         "timing": { "$ref": "#/$defs/actionTiming" },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
         "targeting": { "enum": ["none", "self", "enemy", "tile", "object", "effect"] },
-        "effect": { "$ref": "#/$defs/actionEffect" }
+        "range": { "$ref": "#/$defs/actionRange" },
+        "resolution": { "$ref": "#/$defs/actionResolution" }
       }
     },
     "cardDefinition": {
@@ -790,7 +915,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": { "const": 7 },
+        "schemaVersion": { "const": 8 },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

@@ -186,7 +186,7 @@ describe("M0 combat core", () => {
     const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     const second = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("903d0ea398955e75");
+    expect(hashCombatState(first)).toBe("db862b47690638c2");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -916,7 +916,7 @@ describe("M0 combat core", () => {
       timing: { kind: "turn", actions: 1 },
       traits: [{ id: "move" }],
       targeting: "self",
-      effect: { kind: "remove-condition", condition: "test-condition" },
+      resolution: { kind: "direct", effects: [{ kind: "remove-condition", owner: "actor", condition: "test-condition" }] },
     };
     const providerContent: CombatContent = {
       ...M0_CONTENT,

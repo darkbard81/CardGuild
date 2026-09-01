@@ -256,7 +256,7 @@ export class SessionHost {
 
   private snapshot(events: readonly SessionEvent[], cause: NonNullable<ServerSnapshot["cause"]>): ServerSnapshot {
     return {
-      v: 2,
+      v: 3,
       type: "snapshot",
       revision: this.stateValue.revision,
       controlRevision: this.controlRevisionValue,
@@ -284,11 +284,11 @@ export class SessionHost {
   }
 
   private ack(requestId: string, accepted: boolean, committedRevision: number): ServerAck {
-    return { v: 2, type: "ack", requestId, accepted, committedRevision };
+    return { v: 3, type: "ack", requestId, accepted, committedRevision };
   }
 
   private errorMessage(code: ProtocolErrorCode, message: string, requestId?: string): ServerError {
-    return { v: 2, type: "error", code, message, requestId, revision: this.stateValue.revision };
+    return { v: 3, type: "error", code, message, requestId, revision: this.stateValue.revision };
   }
 
   private sendError(playerId: string, code: ProtocolErrorCode, message: string, requestId?: string): void {

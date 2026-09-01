@@ -63,7 +63,7 @@ const credential: SessionCredential = {
 
 function snapshot(revision: number, controlRevision = 0, cause: "resync" | "control" = "resync"): ServerSnapshot {
   return {
-    v: 2,
+    v: 3,
     type: "snapshot",
     revision,
     controlRevision,
@@ -163,7 +163,7 @@ describe("SessionClient reconnect handshake", () => {
     const socket = FakeWebSocket.instances[0] as FakeWebSocket;
     socket.open();
     socket.message({
-      v: 2,
+      v: 3,
       type: "error",
       code: "SESSION_NOT_FOUND",
       message: "Session was not found.",

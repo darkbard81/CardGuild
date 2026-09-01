@@ -27,6 +27,7 @@
   { "id": "reaction", "name": "Reaction", "cardGrants": [], "actionGrants": [] },
   { "id": "shield", "name": "Shield", "cardGrants": [], "actionGrants": [{ "actionId": "raise-shield", "contextGroup": "shield" }] },
   { "id": "skill", "name": "Skill", "cardGrants": [], "actionGrants": [] },
+  { "id": "spell", "name": "Spell", "cardGrants": [], "actionGrants": [] },
   { "id": "stone", "name": "Stone", "cardGrants": [], "actionGrants": [] },
   { "id": "sustained", "name": "Sustained", "cardGrants": [], "actionGrants": [] },
   { "id": "thrown", "name": "Thrown", "cardGrants": [], "actionGrants": [] },

@@ -1,3 +1,4 @@
+import { actionRangeFeet, buildResolvedActionPlan, turnMapContext } from "./action-plan";
 import { degreeProbabilities } from "./checks";
 import {
   canStepOnto,
@@ -8,19 +9,12 @@ import {
   hasLineOfSight,
   positionKey,
 } from "./grid";
-import { resolveMapPenalty, resolveStrike, strikeDamageTotal } from "./offense";
+import { strikeDamageTotal } from "./offense";
 import {
   getConditionActionGrants,
   getEquipmentActionGrants,
-  isDirectlyBehind,
   isInFrontOrSide,
 } from "./rules";
-import {
-  formatStatisticSources,
-  resolveArmorClass,
-  resolveStatisticDC,
-  resolveStatisticModifier,
-} from "./statistics";
 import type {
   ActionDefinition,
   ActionPreview,
@@ -129,8 +123,8 @@ function movementTargets(
   actor: ActorState,
   definition: ActionDefinition,
 ): readonly LegalTarget[] {
-  if (definition.effect.kind !== "move") return [];
-  const moveEffect = definition.effect;
+  if (definition.resolution.kind !== "move") return [];
+  const moveEffect = definition.resolution;
   if (hasCondition(actor, "prone")) return [];
   if (hasCondition(actor, "grabbed")) return [];
 
@@ -160,8 +154,7 @@ function enemyTargets(
   definition: ActionDefinition,
   content: CombatContent,
 ): readonly LegalTarget[] {
-  const strike = resolveStrike(actor, { content });
-  const range = definition.effect.kind === "trip" || definition.effect.kind === "weapon-attack" ? strike.rangeFeet : 5;
+  const range = actionRangeFeet(definition, actor, { content });
 
   return Object.values(state.actors)
     .filter(
@@ -183,7 +176,7 @@ function listCandidateTargets(
   definition: ActionDefinition,
   content: CombatContent,
 ): readonly LegalTarget[] {
-  if (definition.effect.kind === "move") return movementTargets(state, actor, definition);
+  if (definition.resolution.kind === "move") return movementTargets(state, actor, definition);
   if (definition.targeting === "enemy") return enemyTargets(state, actor, definition, content);
   if (definition.targeting === "object") {
     return Object.values(state.map.objects)
@@ -331,11 +324,6 @@ export function listLegalActions(
   });
 }
 
-/** Attacks already taken this turn, as the MAP resolver counts them for this action. */
-function attacksBefore(state: CombatState, definition: ActionDefinition): number {
-  return definition.traits.some((trait) => trait.id === "attack") ? state.turn.attacksThisTurn : 0;
-}
-
 export function previewAction(
   state: CombatState,
   actorId: string,
@@ -349,10 +337,9 @@ export function previewAction(
   if (!validation.legal) return { legal: false, reason: validation.reason, notes: [] };
   const resolved = resolveActionSource(state, actor, source, content);
   if (!resolved) return { legal: false, reason: "Unknown action source.", notes: [] };
-  const legalTargets = listCandidateTargets(state, actor, resolved.definition, content);
 
   if (target.kind === "tile") {
-    const legal = legalTargets.find(
+    const legal = listCandidateTargets(state, actor, resolved.definition, content).find(
       (candidate) => candidate.kind === "tile" && positionKey(candidate.position) === positionKey(target.position),
     );
     return {
@@ -362,61 +349,37 @@ export function previewAction(
     };
   }
 
-  if (target.kind === "actor") {
-    const targetActor = state.actors[target.actorId];
-    if (!targetActor) return { legal: false, reason: "Unknown target.", notes: [] };
-    const attacksThisTurn = attacksBefore(state, resolved.definition);
-    const isTrip = resolved.definition.effect.kind === "trip";
-    const penalty = resolveMapPenalty(attacksThisTurn);
-    const athletics = isTrip
-      ? resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, {
-          content,
-          modifiers: penalty ? [{
-            selector: { kind: "skill", id: "athletics" },
-            type: "untyped",
-            value: penalty,
-            label: "Multiple attack penalty",
-            sourceId: "multiple-attack-penalty",
-          }] : [],
-        })
-      : null;
-    // The preview reads the same resolver the execution path does, MAP included.
-    const strike = resolveStrike(actor, { content }, { attacksThisTurn });
-    const modifier = athletics?.value ?? strike.attackModifier;
-    const rearBonus = !isTrip && isDirectlyBehind(actor.position, targetActor) ? -2 : 0;
-    const defense = isTrip
-      ? (() => {
-          const reflex = resolveStatisticDC(targetActor, { kind: "save", id: "reflex" }, { content });
-          return { value: reflex.value, sources: formatStatisticSources(reflex.sources) };
-        })()
-      : (() => {
-          const armorClass = resolveArmorClass(targetActor, { content });
-          return { value: armorClass.value, sources: formatStatisticSources(armorClass.sources) };
-        })();
-    const dc = defense.value + rearBonus;
-    const probabilities = degreeProbabilities(modifier, dc);
-    const damage = strike.damage;
-    return {
-      legal: true,
-      hitChance: probabilities.success + probabilities["critical-success"],
-      criticalChance: probabilities["critical-success"],
-      damageRange:
-        resolved.definition.effect.kind === "weapon-attack"
-          ? [
-              // Both ends run the execution helper, so the minimum-1 rule cannot drift.
-              strikeDamageTotal(damage.count, damage.flatModifier, resolved.definition.effect.damageMultiplier),
-              strikeDamageTotal(damage.count * damage.sides, damage.flatModifier, resolved.definition.effect.damageMultiplier),
-            ]
-          : undefined,
-      notes: [
-        ...(isTrip && athletics
-          ? formatStatisticSources(athletics.sources)
-          : [strike.weaponName, ...formatStatisticSources(strike.sources)]),
-        ...(rearBonus ? ["Rear attack: target AC -2"] : []),
-        ...defense.sources,
-      ],
-    };
+  // Preview reads the very plan the executor will roll against — it never recomputes
+  // modifiers or DCs of its own, and it consumes no RNG.
+  const plan = buildResolvedActionPlan(
+    resolved.definition,
+    actor,
+    target,
+    source,
+    state,
+    content,
+    turnMapContext(state),
+  );
+  if (!plan) return { legal: false, reason: "Action cannot be resolved.", notes: [] };
+  const resolution = plan.resolution;
+  if (resolution.kind === "move" || resolution.kind === "direct") {
+    return { legal: true, notes: plan.notes };
   }
 
-  return { legal: true, notes: [] };
+  const probabilities = degreeProbabilities(resolution.check.modifier, resolution.check.dc);
+  const damage = resolution.kind === "strike" ? resolution.strike.damage : null;
+  return {
+    legal: true,
+    degreeProbabilities: probabilities,
+    hitChance: probabilities.success + probabilities["critical-success"],
+    criticalChance: probabilities["critical-success"],
+    damageRange: damage && resolution.kind === "strike"
+      ? [
+          // Both ends run the execution helper, so the minimum-1 rule cannot drift.
+          strikeDamageTotal(damage.count, damage.flatModifier, resolution.damageMultiplier),
+          strikeDamageTotal(damage.count * damage.sides, damage.flatModifier, resolution.damageMultiplier),
+        ]
+      : undefined,
+    notes: plan.notes,
+  };
 }

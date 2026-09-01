@@ -33,7 +33,7 @@ class SocketClient {
     origin: string,
     credential: SessionCredentialResponse,
     contentIdentity = M6_CONTENT_IDENTITY,
-    version: 1 | 2 = 2,
+    version: 1 | 3 = 3,
   ): Promise<SocketClient> {
     const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
     const client = new SocketClient(socket);
@@ -118,7 +118,7 @@ async function post<T>(
 }
 
 function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
-  return { v: 2, type: "intent", requestId, expectedRevision, intent: value };
+  return { v: 3, type: "intent", requestId, expectedRevision, intent: value };
 }
 
 async function accepted(

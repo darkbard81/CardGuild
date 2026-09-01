@@ -22,7 +22,7 @@ export interface WebSocketGatewayOptions {
 }
 
 function errorMessage(code: ProtocolErrorCode, message: string): ServerError {
-  return { v: 2, type: "error", code, message };
+  return { v: 3, type: "error", code, message };
 }
 
 function send(socket: WebSocket, message: unknown): void {

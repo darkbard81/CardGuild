@@ -6,7 +6,7 @@ import { validateClientMessage } from "./validate-message";
 describe("protocol v2 structural validation", () => {
   it("accepts hello, party/claim intents, and actor-id-free combat intents", () => {
     expect(validateClientMessage({
-      v: 2,
+      v: 3,
       type: "hello",
       sessionId: "session-a",
       playerId: "player-a",
@@ -14,14 +14,14 @@ describe("protocol v2 structural validation", () => {
       contentIdentity: M6_CONTENT_IDENTITY,
     }).ok).toBe(true);
     expect(validateClientMessage({
-      v: 2,
+      v: 3,
       type: "intent",
       requestId: "request-a",
       expectedRevision: 3,
       intent: { type: "end-turn" },
     }).ok).toBe(true);
     expect(validateClientMessage({
-      v: 2,
+      v: 3,
       type: "intent",
       requestId: "request-party",
       expectedRevision: 3,
@@ -31,7 +31,7 @@ describe("protocol v2 structural validation", () => {
       },
     }).ok).toBe(true);
     expect(validateClientMessage({
-      v: 2,
+      v: 3,
       type: "intent",
       requestId: "request-loadout",
       expectedRevision: 4,
@@ -42,7 +42,7 @@ describe("protocol v2 structural validation", () => {
       },
     }).ok).toBe(true);
     expect(validateClientMessage({
-      v: 2,
+      v: 3,
       type: "intent",
       requestId: "remove-orphan",
       expectedRevision: 5,
@@ -53,35 +53,35 @@ describe("protocol v2 structural validation", () => {
   it("rejects client authority fields, invalid party shapes, unknown properties, and protocol v1", () => {
     for (const value of [
       {
-        v: 2,
+        v: 3,
         type: "intent",
         requestId: "actor-injection",
         expectedRevision: 3,
         intent: { type: "end-turn", actorId: "enemy.goblin" },
       },
       {
-        v: 2,
+        v: 3,
         type: "intent",
         requestId: "state-injection",
         expectedRevision: 3,
         intent: { type: "begin-adventure", adventureState: {} },
       },
       {
-        v: 2,
+        v: 3,
         type: "intent",
         requestId: "outcome-injection",
         expectedRevision: 3,
         intent: { type: "accept-combat-result", outcome: "victory" },
       },
       {
-        v: 2,
+        v: 3,
         type: "intent",
         requestId: "seed-injection",
         expectedRevision: 3,
         intent: { type: "begin-adventure", seed: 1234 },
       },
       {
-        v: 2,
+        v: 3,
         type: "intent",
         requestId: "command-order-injection",
         expectedRevision: 3,
@@ -96,21 +96,21 @@ describe("protocol v2 structural validation", () => {
         contentIdentity: M6_CONTENT_IDENTITY,
       },
       {
-        v: 2,
+        v: 3,
         type: "intent",
         requestId: "duplicate-party",
         expectedRevision: 3,
         intent: { type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.aerin"] },
       },
       {
-        v: 2,
+        v: 3,
         type: "intent",
         requestId: "implicit-loadout-owner",
         expectedRevision: 3,
         intent: { type: "set-loadout", loadout: { equipment: {}, preparedCards: [] } },
       },
       {
-        v: 2,
+        v: 3,
         type: "intent",
         requestId: "implicit-orphan",
         expectedRevision: 3,

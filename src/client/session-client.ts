@@ -135,7 +135,7 @@ export class SessionClient {
     socket.addEventListener("open", () => {
       if (this.socket !== socket) return;
       const hello: ClientHello = {
-        v: 2,
+        v: 3,
         type: "hello",
         sessionId: this.credential.sessionId,
         playerId: this.credential.playerId,
@@ -155,7 +155,7 @@ export class SessionClient {
       if (this.destroyed || this.terminallyClosed) return;
       if (event.code === 4001) {
         this.stopTerminal({
-          v: 2,
+          v: 3,
           type: "error",
           code: "UNAUTHENTICATED",
           message: "This session was opened in a newer connection.",
@@ -164,7 +164,7 @@ export class SessionClient {
       }
       if (event.code === 4003 || event.code === 4004) {
         this.stopTerminal({
-          v: 2,
+          v: 3,
           type: "error",
           code: event.code === 4004 ? "SESSION_NOT_FOUND" : "UNAUTHENTICATED",
           message: event.reason || "The session handshake was rejected.",
@@ -183,7 +183,7 @@ export class SessionClient {
     const snapshot = this.snapshotValue;
     if (!socket || socket.readyState !== WebSocket.OPEN || !snapshot || this.outstanding) return false;
     const envelope: ClientIntentEnvelope = {
-      v: 2,
+      v: 3,
       type: "intent",
       requestId: crypto.randomUUID(),
       expectedRevision: snapshot.revision,

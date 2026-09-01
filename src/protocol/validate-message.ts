@@ -1,6 +1,6 @@
 import Ajv, { type ErrorObject } from "ajv";
 
-import type { ClientMessage } from "./v2-types";
+import type { ClientMessage } from "./v3-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {
@@ -148,7 +148,7 @@ const clientMessageSchema = {
       additionalProperties: false,
       required: ["v", "type", "sessionId", "playerId", "reconnectToken", "contentIdentity"],
       properties: {
-        v: { const: 2 },
+        v: { const: 3 },
         type: { const: "hello" },
         sessionId: nonEmptyString,
         playerId: nonEmptyString,
@@ -166,7 +166,7 @@ const clientMessageSchema = {
       additionalProperties: false,
       required: ["v", "type", "requestId", "expectedRevision", "intent"],
       properties: {
-        v: { const: 2 },
+        v: { const: 3 },
         type: { const: "intent" },
         requestId: nonEmptyString,
         expectedRevision: { type: "integer", minimum: 0 },

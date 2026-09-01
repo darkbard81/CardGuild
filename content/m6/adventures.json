@@ -23,7 +23,7 @@
         "afterEncounterId": "encounter.ruined-gate",
         "choices": [
           { "kind": "equipment", "definitionId": "shield" },
-          { "kind": "card", "definitionId": "card.spirit-beacon" }
+          { "kind": "card", "definitionId": "card.spirit-lance" }
         ]
       }
     ]
