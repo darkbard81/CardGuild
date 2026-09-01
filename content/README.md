@@ -45,8 +45,8 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   같은 ID를 사용할 수 있습니다.
 - Content에서 사용하는 모든 Trait ID를 `traits.json`에 먼저 등록합니다.
 - Card, provider, Actor와 effect가 참조하는 ID는 같은 pack 안에 존재해야 합니다.
-- Equipment는 `weapon`, `shield`, `feet` 중 정확한 `slot`을 선언합니다. slot은 편성
-  metadata이며 효과는 계속 Statistic/Trait provider로 정의합니다.
+- Equipment는 `weapon`, `armor`, `shield`, `feet` 중 정확한 `slot`을 선언합니다. slot은
+  편성 metadata이며 효과는 계속 Statistic/Trait provider로 정의합니다.
 - Actor는 `loadoutProfile.preparedCardCapacity`와 `starterLoadout`을 선언합니다.
   `baseCardGrants`는 Collection copy를 소비하는 prepared card와 분리합니다.
 - Playable Actor는 `statProfile.kind = "character"`로 Level, 6 Attribute modifier,
@@ -65,6 +65,10 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   equipment 순서입니다. `armor` slot equipment만 `armorProfile`(`category`,
   `acItemBonus`, `dexCap`)을 선언하며, 다른 slot이 선언하면 거부됩니다. Armor를 입지
   않은 Character는 별도 item 없이 `unarmored` proficiency와 cap 없는 DEX로 resolve됩니다.
+- `shieldBonus`는 `shield` slot equipment만 선언할 수 있습니다. Raise Shield는 착용한
+  shield slot equipment의 값만 AC circumstance contribution으로 제공합니다.
+- Armor의 `acItemBonus`는 Character AC 공식의 한 항이므로 Character에게만 적용됩니다.
+  Creature의 authored AC는 완결된 top-down 값이라 장비 armor로 다시 올라가지 않습니다.
 - Armor의 `acItemBonus`와 raised Shield의 `shieldBonus`는 authoring에서 중복 선언하지
   않습니다. Runtime이 각각 AC item / circumstance contribution으로 같은 modifier
   stack에 넣습니다.
@@ -91,7 +95,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `5`입니다.
+- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `6`입니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면
   version을 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key,

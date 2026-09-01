@@ -152,7 +152,7 @@ Loadout Preview와 Combat, UI는 모두 같은 `resolveArmorClass()` 결과를 �
 
 콘텐츠의 source of truth는 [`content/m6`](content/m6) JSON이며 pack identity는
 `cardguild.m6@0.7.0`, contract는 schema v6입니다. 기존 [`content/m3`](content/m3)의
-`cardguild.m4@0.4.1` pack은 회귀 fixture로 보존됩니다. Schema와
+`cardguild.m4@0.4.2` pack은 회귀 fixture로 보존됩니다. Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.

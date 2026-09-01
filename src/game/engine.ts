@@ -12,6 +12,7 @@ import {
   isSuccessful,
 } from "./rules";
 import {
+  cloneActorStatProfile,
   formatStatisticSources,
   resolveArmorClass,
   resolveInitiative,
@@ -65,24 +66,7 @@ interface CombatDraft {
 function cloneActor(actor: ActorState): ActorState {
   return {
     ...actor,
-    statProfile: actor.statProfile.kind === "character"
-      ? {
-          kind: "character",
-          stats: {
-            ...actor.statProfile.stats,
-            attributes: { ...actor.statProfile.stats.attributes },
-            saves: { ...actor.statProfile.stats.saves },
-            skills: { ...actor.statProfile.stats.skills },
-          },
-        }
-      : {
-          kind: "creature",
-          stats: {
-            ...actor.statProfile.stats,
-            saves: { ...actor.statProfile.stats.saves },
-            skills: { ...actor.statProfile.stats.skills },
-          },
-        },
+    statProfile: cloneActorStatProfile(actor.statProfile),
     position: { ...actor.position },
     fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
     conditions: actor.conditions.map((condition) => ({ ...condition })),

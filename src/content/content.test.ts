@@ -399,8 +399,35 @@ describe("content semantic validation and compilation", () => {
         ? { ...definition, armorProfile: { category: "light" as const, acItemBonus: 1, dexCap: 4 } }
         : definition),
     };
+    expect(validateContentPackStructure(misplaced, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: boots.id,
+    }));
     expect(validateContentPackSemantics(misplaced)).toContainEqual(expect.objectContaining({
       code: "ARMOR_PROFILE_SLOT_MISMATCH",
+      definitionId: boots.id,
+    }));
+  });
+
+  it("keeps a shield bonus on the shield slot it belongs to", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const boots = source.equipment.find((definition) => definition.slot === "feet");
+    const shield = source.equipment.find((definition) => definition.shieldBonus !== undefined);
+    if (!boots || !shield) throw new Error("M6 equipment fixtures are missing.");
+    expect(shield.slot).toBe("shield");
+
+    const misplaced: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === boots.id
+        ? { ...definition, shieldBonus: 3 }
+        : definition),
+    };
+    expect(validateContentPackStructure(misplaced, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: boots.id,
+    }));
+    expect(validateContentPackSemantics(misplaced)).toContainEqual(expect.objectContaining({
+      code: "SHIELD_BONUS_SLOT_MISMATCH",
       definitionId: boots.id,
     }));
   });

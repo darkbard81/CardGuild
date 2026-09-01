@@ -242,6 +242,9 @@ export function validateContentPackSemantics(
     if (definition.slot !== "armor" && definition.armorProfile) {
       addIssue(context, "equipment", `[${index}].armorProfile`, "ARMOR_PROFILE_SLOT_MISMATCH", `Equipment "${definition.id}" declares an armor profile but occupies the ${definition.slot} slot.`, definition.id);
     }
+    if (definition.slot !== "shield" && definition.shieldBonus !== undefined) {
+      addIssue(context, "equipment", `[${index}].shieldBonus`, "SHIELD_BONUS_SLOT_MISMATCH", `Equipment "${definition.id}" declares a shield bonus but occupies the ${definition.slot} slot.`, definition.id);
+    }
     if (definition.weaponProfile) validateWeaponProfile(context, "equipment", definition.id, `[${index}].weaponProfile`, definition.weaponProfile);
   });
 

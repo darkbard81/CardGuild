@@ -356,11 +356,20 @@
         "armorProfile": { "$ref": "#/$defs/armorProfile" },
         "shieldBonus": { "type": "integer", "minimum": 1 }
       },
-      "if": { "required": ["slot"], "properties": { "slot": { "const": "armor" } } },
-      "then": {
-        "required": ["armorProfile"],
-        "properties": { "armorProfile": { "$ref": "#/$defs/armorProfile" } }
-      }
+      "allOf": [
+        {
+          "if": { "required": ["slot"], "properties": { "slot": { "const": "armor" } } },
+          "then": {
+            "required": ["armorProfile"],
+            "properties": { "armorProfile": { "$ref": "#/$defs/armorProfile" } }
+          },
+          "else": { "properties": { "armorProfile": false } }
+        },
+        {
+          "if": { "required": ["shieldBonus"], "properties": { "shieldBonus": { "type": "integer" } } },
+          "then": { "properties": { "slot": { "const": "shield" } } }
+        }
+      ]
     },
     "armorProfile": {
       "type": "object",

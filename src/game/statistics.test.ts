@@ -585,6 +585,62 @@ describe("PF2e Armor Class and Hit Point derivation", () => {
     expect(resolveArmorClass(creature, context).sources[0]?.label).toBe("Authored AC");
   });
 
+  it("never re-applies an armor item bonus on top of an authored creature AC", () => {
+    const armor = armorEquipment("scale-mail", ARMORS.medium);
+    const creature = character({
+      equipmentIds: ["scale-mail"],
+      conditions: [{ id: "frightened", sourceId: "spell" }],
+      statProfile: {
+        kind: "creature",
+        stats: {
+          ac: 16,
+          maxHp: 20,
+          perception: 7,
+          saves: { fortitude: 8, reflex: 6, will: 5 },
+          skills: { athletics: 9 },
+        },
+      },
+    });
+    const context = {
+      content: {
+        ...EMPTY_CONTENT,
+        equipment: { "scale-mail": armor },
+        conditions: {
+          frightened: {
+            id: "frightened",
+            name: "Frightened",
+            traits: [],
+            statModifiers: [{ selector: { kind: "all" as const }, type: "status" as const, value: -1, label: "Frightened" }],
+          },
+        },
+      },
+    };
+    const resolved = resolveArmorClass(creature, context);
+
+    expect(resolved.value).toBe(15);
+    expect(resolved.sources.some((source) => source.label === "Scale-mail")).toBe(false);
+    expect(formatStatisticSources(resolved.sources)).toEqual(["Authored AC +16", "Frightened -1"]);
+  });
+
+  it("counts a raised shield only from the shield slot it is authored on", () => {
+    const shield: EquipmentDefinition = {
+      id: "shield", name: "Shield", slot: "shield", traits: [], statModifiers: [], shieldBonus: 2,
+    };
+    const misplaced: EquipmentDefinition = {
+      id: "boots", name: "Boots", slot: "feet", traits: [], statModifiers: [], shieldBonus: 3,
+    };
+    const { actor, context } = armored("light", {
+      dex: 0,
+      extraEquipment: { shield, boots: misplaced },
+      actor: { shieldRaised: true },
+    });
+    const resolved = resolveArmorClass(actor, context);
+
+    expect(resolved.value).toBe(10 + 0 + 3 + 1 + 2);
+    expect(resolved.sources.map((source) => source.label)).toContain("Shield raised");
+    expect(resolved.sources.map((source) => source.label)).not.toContain("Boots raised");
+  });
+
   it("derives max HP from ancestry, class, and CON across levels", () => {
     const profile = {
       level: 1,

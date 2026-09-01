@@ -201,13 +201,22 @@ function assertUntypedIsPenalty(modifier: SourcedModifier): void {
 /**
  * Armor and a raised Shield reach AC as ordinary typed contributions instead of
  * special-case arithmetic, so they stack under the same rules as everything else.
+ *
+ * The armor item bonus is one term of the Character formula (capped DEX + armor
+ * proficiency + item bonus), so it is only derived for Characters: a Creature's
+ * authored AC is a complete top-down value and must not absorb half a bottom-up
+ * derivation. A shield bonus counts only from the shield slot it is authored for.
  */
 function derivedEquipmentModifiers(
   equipment: EquipmentDefinition,
-  actor: Pick<ActorState, "shieldRaised">,
+  actor: Pick<ActorState, "shieldRaised" | "statProfile">,
 ): readonly StatisticModifierContribution[] {
   const derived: StatisticModifierContribution[] = [];
-  if (equipment.armorProfile && equipment.armorProfile.acItemBonus !== 0) {
+  if (
+    actor.statProfile.kind === "character" &&
+    equipment.armorProfile &&
+    equipment.armorProfile.acItemBonus !== 0
+  ) {
     derived.push({
       selector: { kind: "ac" },
       type: "item",
@@ -215,7 +224,7 @@ function derivedEquipmentModifiers(
       label: equipment.name,
     });
   }
-  if (equipment.shieldBonus && actor.shieldRaised) {
+  if (equipment.slot === "shield" && equipment.shieldBonus && actor.shieldRaised) {
     derived.push({
       selector: { kind: "ac" },
       type: "circumstance",

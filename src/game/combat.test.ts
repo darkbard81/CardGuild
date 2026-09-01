@@ -1143,6 +1143,26 @@ describe("M0 combat core", () => {
     expect(replay.commands).toEqual([]);
   });
 
+  it("clones nested character profiles instead of sharing them across states", () => {
+    const state = createM0Combat(heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, facing: "east" },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, authoredAc: -100 },
+    }), 12).state;
+    const struck = dispatchCombatCommand(
+      state,
+      command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
+      M0_CONTENT,
+    );
+    const before = state.actors.hero?.statProfile;
+    const after = struck.state.actors.hero?.statProfile;
+    if (before?.kind !== "character" || after?.kind !== "character") throw new Error("The M0 hero must be a character.");
+
+    expect(after).toEqual(before);
+    expect(after.stats.defense).not.toBe(before.stats.defense);
+    expect(after.stats.defense.armorProficiencies).not.toBe(before.stats.defense.armorProficiencies);
+    expect(after.stats.attributes).not.toBe(before.stats.attributes);
+  });
+
   it("mutates only current HP on damage and keeps derived maximum HP intact", () => {
     const scenario = heroFirstScenario({
       hero: { position: { x: 1, y: 1 }, facing: "east" },
