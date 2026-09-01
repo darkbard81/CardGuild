@@ -138,7 +138,9 @@ Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Re
 Playable Character의 Save/Skill/Perception/Initiative는 Level, Attribute modifier,
 Proficiency Rank와 Equipment/Condition/Trait modifier contribution을 입력으로 받는 하나의
 deterministic resolver에서 파생합니다. Creature/Enemy는 같은 resolver 경계에 authored
-fixed statistic을 제공하므로 PC용 16 Skill profile을 강제하지 않습니다.
+fixed statistic을 제공하므로 PC용 16 Skill profile을 강제하지 않습니다. 같은 typed
+bonus/penalty는 가장 큰 값만 적용되고, untyped는 penalty로만 존재하며 모두 누적됩니다.
+Initiative source는 Perception 또는 Skill로만 선택할 수 있습니다.
 
 M5 콘텐츠의 source of truth는 [`content/m5`](content/m5) JSON이며 pack identity는
 `cardguild.m5@0.6.0`, contract는 schema v5입니다. 기존 [`content/m3`](content/m3)의

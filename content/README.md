@@ -57,7 +57,11 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   사용합니다.
 - Equipment, Condition, Trait의 `statModifiers`는 statistic selector와
   `circumstance`/`item`/`status`/`untyped` type을 선언합니다. 같은 typed bonus/penalty는
-  각각 가장 큰 값만 적용되고 untyped contribution은 모두 누적됩니다.
+  각각 가장 큰 값만 적용되고 모든 untyped penalty는 누적됩니다.
+- PF2e Remaster에는 untyped bonus가 없습니다. `type = "untyped"`인 modifier는 penalty
+  (`value < 0`)만 authoring할 수 있고, 양수 untyped는 schema와 semantic validation
+  (`UNTYPED_MODIFIER_MUST_BE_PENALTY`) 양쪽에서 거부됩니다. Runtime context modifier도
+  같은 invariant를 fail-fast로 강제합니다.
 - Scenario의 `placements`에는 enemy/NPC/static actor만 작성하고 party hero는 넣지 않습니다.
   `partySpawnSlots`는 seat 1–3을 각각 한 번씩 선언합니다. 배열 순서가 아니라 `seat`가
   runtime 배치를 결정합니다.

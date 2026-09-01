@@ -66,6 +66,10 @@ export type StatisticSelector =
   | { readonly kind: "skill"; readonly id: SkillId; readonly attributeOverride?: AttributeId }
   | { readonly kind: "perception" };
 
+export type InitiativeStatisticSelector =
+  | { readonly kind: "perception" }
+  | { readonly kind: "skill"; readonly id: SkillId; readonly attributeOverride?: AttributeId };
+
 export type StatisticModifierSelector =
   | { readonly kind: "all" }
   | { readonly kind: "save"; readonly id?: SaveId }

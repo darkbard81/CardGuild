@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type {
   ActorState,
   CombatContent,
+  InitiativeStatisticSelector,
   ProficiencyRank,
   SkillId,
   StatisticContextModifier,
@@ -193,7 +194,15 @@ describe("PF2e character statistic foundation", () => {
     expect(resolveInitiative(actor, context, { kind: "skill", id: "stealth" }).value).toBe(9);
   });
 
-  it("stacks typed bonuses and penalties and accumulates untyped contributions deterministically", () => {
+  it("restricts the Initiative source to Perception or Skill selectors", () => {
+    const skillSource: InitiativeStatisticSelector = { kind: "skill", id: "stealth" };
+    // @ts-expect-error Initiative is never derived from a Save statistic.
+    const saveSource: InitiativeStatisticSelector = { kind: "save", id: "reflex" };
+    expect(skillSource.kind).toBe("skill");
+    expect(saveSource.kind).toBe("save");
+  });
+
+  it("stacks typed bonuses and penalties and accumulates untyped penalties deterministically", () => {
     const actor = character();
     const modifiers: readonly StatisticContextModifier[] = [
       { selector: { kind: "all" }, type: "item", value: 1, label: "Lesser item", sourceId: "item-a" },
@@ -301,5 +310,60 @@ describe("PF2e character statistic foundation", () => {
     expect(resolveStatisticDC(actor, { kind: "save", id: "reflex" }, context).value).toBe(16);
     expect(resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, context).value).toBe(9);
     expect(resolveInitiative(actor, context).value).toBe(7);
+  });
+
+  it("labels an unlisted creature Skill separately from an authored zero", () => {
+    const actor = character({
+      statProfile: {
+        kind: "creature",
+        stats: {
+          perception: 7,
+          saves: { fortitude: 8, reflex: 6, will: 5 },
+          skills: { athletics: 0 },
+        },
+      },
+    });
+    const context = { content: EMPTY_CONTENT };
+    const authored = resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, context);
+    const unlisted = resolveStatisticModifier(actor, { kind: "skill", id: "arcana" }, context);
+
+    expect(authored.value).toBe(0);
+    expect(unlisted.value).toBe(0);
+    expect(authored.sources[0]?.label).toBe("Authored Athletics");
+    expect(unlisted.sources[0]?.label).toBe("Unlisted Arcana");
+    expect(authored.sources[0]?.sourceId).not.toBe(unlisted.sources[0]?.sourceId);
+  });
+
+  it("rejects positive untyped modifiers from authored content and runtime context alike", () => {
+    const actor = character({ equipmentIds: ["charm"] });
+    const context: CombatContent = {
+      ...EMPTY_CONTENT,
+      equipment: {
+        charm: {
+          id: "charm",
+          name: "Charm",
+          slot: "feet",
+          traits: [],
+          statModifiers: [{ selector: { kind: "all" }, type: "untyped", value: 2, label: "Untyped charm" }],
+        },
+      },
+    };
+
+    expect(() => resolveStatisticModifier(actor, { kind: "save", id: "reflex" }, { content: context }))
+      .toThrow(/Untyped modifier "Untyped charm" from equipment "charm" must be a penalty/);
+    expect(() => resolveStatisticModifier(character(), { kind: "skill", id: "athletics" }, contextModifiers([{
+      selector: { kind: "all" },
+      type: "untyped",
+      value: 0,
+      label: "Untyped zero",
+      sourceId: "context",
+    }]))).toThrow(/must be a penalty \(value < 0\) but is 0\./);
+    expect(() => resolveStatisticModifier(character(), { kind: "skill", id: "athletics" }, contextModifiers([{
+      selector: { kind: "all" },
+      type: "untyped",
+      value: -2,
+      label: "Untyped penalty",
+      sourceId: "context",
+    }]))).not.toThrow();
   });
 });

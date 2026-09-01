@@ -345,6 +345,36 @@ describe("content semantic validation and compilation", () => {
       definitionId: playable.id,
     }));
   });
+
+  it("rejects positive untyped modifiers because PF2e untyped contributions are penalties", () => {
+    const source = structuredClone(M5_CONTENT_SOURCE);
+    const equipment = source.equipment.find((definition) => definition.statModifiers.length > 0);
+    if (!equipment) throw new Error("M5 equipment fixtures are missing stat modifiers.");
+    const invalid: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === equipment.id
+        ? {
+            ...definition,
+            statModifiers: [
+              { selector: { kind: "all" }, type: "untyped", value: 2, label: "Untyped bonus" },
+              { selector: { kind: "all" }, type: "untyped", value: -1, label: "Untyped penalty" },
+            ],
+          }
+        : definition),
+    };
+
+    expect(validateContentPackStructure(invalid, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: equipment.id,
+    }));
+    const semantic = validateContentPackSemantics(invalid).filter(
+      (issue) => issue.code === "UNTYPED_MODIFIER_MUST_BE_PENALTY",
+    );
+    expect(semantic).toEqual([expect.objectContaining({
+      definitionId: equipment.id,
+      message: 'Untyped modifier "Untyped bonus" must be a penalty (value < 0) but is 2.',
+    })]);
+  });
 });
 
 describe("M5 playable character content", () => {

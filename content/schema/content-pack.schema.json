@@ -331,7 +331,9 @@
         "type": { "enum": ["circumstance", "item", "status", "untyped"] },
         "value": { "type": "integer" },
         "label": { "$ref": "#/$defs/nonEmptyString" }
-      }
+      },
+      "if": { "required": ["type"], "properties": { "type": { "const": "untyped" } } },
+      "then": { "properties": { "value": { "type": "integer", "maximum": -1 } } }
     },
     "equipmentDefinition": {
       "type": "object",

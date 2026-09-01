@@ -3,6 +3,8 @@ import type {
   ActorState,
   AttributeId,
   CombatContent,
+  FixedCreatureStats,
+  InitiativeStatisticSelector,
   ModifierType,
   ProficiencyRank,
   ResolvedStatistic,
@@ -160,6 +162,19 @@ function traitModifiers(
     ));
 }
 
+export function isUntypedPenalty(modifier: Pick<StatisticModifierContribution, "type" | "value">): boolean {
+  return modifier.type !== "untyped" || modifier.value < 0;
+}
+
+function assertUntypedIsPenalty(modifier: SourcedModifier): void {
+  // PF2e Remaster has no untyped bonus: every untyped contribution is a penalty and they all stack.
+  if (isUntypedPenalty(modifier)) return;
+  throw new Error(
+    `Untyped modifier "${modifier.label}" from ${modifier.sourceKind} "${modifier.sourceId}" must be a penalty ` +
+    `(value < 0) but is ${modifier.value}.`,
+  );
+}
+
 function collectModifiers(actor: ActorState, context: StatisticResolutionContext): readonly SourcedModifier[] {
   const modifiers: SourcedModifier[] = [
     ...traitModifiers(actor.traits, context, `actor:${actor.id}`),
@@ -186,6 +201,7 @@ function collectModifiers(actor: ActorState, context: StatisticResolutionContext
     sourceKind: "context" as const,
     sourceId,
   })));
+  for (const modifier of modifiers) assertUntypedIsPenalty(modifier);
   return modifiers.sort((left, right) =>
     SOURCE_KIND_ORDER[left.sourceKind] - SOURCE_KIND_ORDER[right.sourceKind] ||
     left.sourceId.localeCompare(right.sourceId) ||
@@ -194,20 +210,34 @@ function collectModifiers(actor: ActorState, context: StatisticResolutionContext
     left.value - right.value);
 }
 
+function creatureBaseSource(stats: FixedCreatureStats, selector: StatisticSelector): StatisticSource {
+  const authored = selector.kind === "perception"
+    ? stats.perception
+    : selector.kind === "save"
+      ? stats.saves[selector.id]
+      : stats.skills[selector.id];
+  // Creatures may author statistics partially. An unlisted Skill defaults to +0 but keeps a
+  // provenance label distinct from an explicitly authored 0 so debug output stays honest.
+  return authored === undefined
+    ? {
+        kind: "fixed",
+        sourceId: `creature:${selectorKey(selector)}:unlisted`,
+        label: `Unlisted ${selectorLabel(selector)}`,
+        value: 0,
+        applied: true,
+      }
+    : {
+        kind: "fixed",
+        sourceId: `creature:${selectorKey(selector)}`,
+        label: `Authored ${selectorLabel(selector)}`,
+        value: authored,
+        applied: true,
+      };
+}
+
 function baseSources(actor: ActorState, selector: StatisticSelector): readonly StatisticSource[] {
   if (actor.statProfile.kind === "creature") {
-    const fixed = selector.kind === "perception"
-      ? actor.statProfile.stats.perception
-      : selector.kind === "save"
-        ? actor.statProfile.stats.saves[selector.id]
-        : actor.statProfile.stats.skills[selector.id] ?? 0;
-    return [{
-      kind: "fixed",
-      sourceId: `creature:${selectorKey(selector)}`,
-      label: `Authored ${selectorLabel(selector)}`,
-      value: fixed,
-      applied: true,
-    }];
+    return [creatureBaseSource(actor.statProfile.stats, selector)];
   }
 
   const profile = actor.statProfile.stats;
@@ -243,7 +273,7 @@ function selectedTypedIndices(modifiers: readonly SourcedModifier[]): ReadonlySe
   const selected = new Set<number>();
   const typed = ["circumstance", "item", "status"] as const satisfies readonly ModifierType[];
   modifiers.forEach((modifier, index) => {
-    if (modifier.type === "untyped") selected.add(index);
+    if (modifier.type === "untyped") selected.add(index); // every untyped penalty stacks
   });
   for (const type of typed) {
     let bonusIndex: number | null = null;
@@ -306,7 +336,7 @@ export function resolveStatisticDC(
 export function resolveInitiative(
   actor: ActorState,
   context: StatisticResolutionContext,
-  source: StatisticSelector = { kind: "perception" },
+  source: InitiativeStatisticSelector = { kind: "perception" },
 ): ResolvedStatistic {
   return resolveStatisticModifier(actor, source, context);
 }

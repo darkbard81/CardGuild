@@ -1,8 +1,10 @@
 import { positionKey } from "../game/grid";
+import { isUntypedPenalty } from "../game/statistics";
 import type {
   ActionDefinition,
   ActionTargeting,
   ConditionId,
+  StatisticModifierContribution,
   TraitInstance,
   WeaponProfile,
 } from "../game/types";
@@ -91,6 +93,27 @@ function validateTraits(
   });
 }
 
+function validateStatModifiers(
+  context: ValidationContext,
+  category: "traits" | "conditions" | "equipment",
+  definitionId: string,
+  path: string,
+  modifiers: readonly StatisticModifierContribution[] | undefined,
+): void {
+  (modifiers ?? []).forEach((modifier, index) => {
+    if (!isUntypedPenalty(modifier)) {
+      addIssue(
+        context,
+        category,
+        `${path}[${index}].value`,
+        "UNTYPED_MODIFIER_MUST_BE_PENALTY",
+        `Untyped modifier "${modifier.label}" must be a penalty (value < 0) but is ${modifier.value}.`,
+        definitionId,
+      );
+    }
+  });
+}
+
 function validateConditionReference(
   context: ValidationContext,
   knownConditions: ReadonlySet<ConditionId>,
@@ -149,6 +172,7 @@ export function validateContentPackSemantics(
   const knownActors = new Set(source.actors.map((definition) => definition.id));
 
   source.traits.forEach((definition, definitionIndex) => {
+    validateStatModifiers(context, "traits", definition.id, `[${definitionIndex}].statModifiers`, definition.statModifiers);
     const grantKeys = new Set<string>();
     definition.cardGrants.forEach((grant, index) => {
       const key = `card:${grant.cardDefinitionId}`;
@@ -174,6 +198,7 @@ export function validateContentPackSemantics(
 
   source.conditions.forEach((definition, index) => {
     validateTraits(context, knownTraits, "conditions", definition.id, `[${index}].traits`, definition.traits);
+    validateStatModifiers(context, "conditions", definition.id, `[${index}].statModifiers`, definition.statModifiers);
   });
 
   source.actions.forEach((definition, index) => {
@@ -210,6 +235,7 @@ export function validateContentPackSemantics(
 
   source.equipment.forEach((definition, index) => {
     validateTraits(context, knownTraits, "equipment", definition.id, `[${index}].traits`, definition.traits);
+    validateStatModifiers(context, "equipment", definition.id, `[${index}].statModifiers`, definition.statModifiers);
     if (definition.weaponProfile) validateWeaponProfile(context, "equipment", definition.id, `[${index}].weaponProfile`, definition.weaponProfile);
   });
 
