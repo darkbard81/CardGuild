@@ -37,6 +37,7 @@ export interface ActionParticipants {
 }
 
 export interface ResolvedActionCheck {
+  readonly roller: ActionParticipant;
   readonly rollerActorId: EntityId;
   readonly modifier: number;
   readonly dc: number;
@@ -129,7 +130,11 @@ export function resolveActionDc(
   const owner = participant(participants, dc.owner);
   if (!owner) return null;
   if (dc.kind === "armor-class") return resolveArmorClass(owner, context);
-  if (dc.kind === "class-dc") return resolveClassDC(owner, context);
+  if (dc.kind === "class-dc") {
+    // Class DC is Character-only (#9). A Creature owner is a legal authoring shape that
+    // this participant cannot satisfy, so the plan is unresolvable instead of throwing.
+    return owner.statProfile.kind === "character" ? resolveClassDC(owner, context) : null;
+  }
   const selector = dc.statistic.kind === "skill"
     ? { kind: "skill" as const, id: dc.statistic.skill, attributeOverride: dc.statistic.attributeOverride }
     : dc.statistic.kind === "save"
@@ -156,6 +161,7 @@ function resolveCheck(
     definition.roller === "actor" ? mapPenalty : 0,
   );
   return {
+    roller: definition.roller,
     rollerActorId: roller.id,
     modifier: modifier.value,
     dc: dc.value,
@@ -181,6 +187,7 @@ function resolveStrikeCheck(
   return {
     strike,
     check: {
+      roller: "actor",
       rollerActorId: actor.id,
       modifier: strike.attackModifier,
       dc: armorClass.value + rearAdjustment,

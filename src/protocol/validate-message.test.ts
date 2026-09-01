@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { M6_CONTENT_IDENTITY } from "../content";
 import { validateClientMessage } from "./validate-message";
 
-describe("protocol v2 structural validation", () => {
+describe("protocol v3 structural validation", () => {
   it("accepts hello, party/claim intents, and actor-id-free combat intents", () => {
     expect(validateClientMessage({
       v: 3,

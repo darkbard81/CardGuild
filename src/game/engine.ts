@@ -435,7 +435,9 @@ function applyOutcomeEffect(
     }
     case "raise-shield": {
       const actor = draft.actors[plan.actionActorId];
-      const shield = actor ? getEquipment(actor, content).find((equipment) => equipment.shieldBonus) : undefined;
+      const shield = actor
+        ? getEquipment(actor, content).find((equipment) => equipment.slot === "shield" && equipment.shieldBonus)
+        : undefined;
       if (actor && shield?.shieldBonus) {
         replaceActor(draft, { ...actor, shieldRaised: true });
         events.push({ type: "SHIELD_RAISED", actorId: actor.id, bonus: shield.shieldBonus });

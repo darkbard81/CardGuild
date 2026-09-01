@@ -338,19 +338,8 @@ export function previewAction(
   const resolved = resolveActionSource(state, actor, source, content);
   if (!resolved) return { legal: false, reason: "Unknown action source.", notes: [] };
 
-  if (target.kind === "tile") {
-    const legal = listCandidateTargets(state, actor, resolved.definition, content).find(
-      (candidate) => candidate.kind === "tile" && positionKey(candidate.position) === positionKey(target.position),
-    );
-    return {
-      legal: true,
-      pathCostFeet: legal?.kind === "tile" ? legal.costFeet : undefined,
-      notes: [`Face ${target.facing} after moving.`],
-    };
-  }
-
-  // Preview reads the very plan the executor will roll against — it never recomputes
-  // modifiers or DCs of its own, and it consumes no RNG.
+  // Every resolution, movement included, goes through the plan; only path legality stays
+  // in the movement resolver, which owns reachability and cost.
   const plan = buildResolvedActionPlan(
     resolved.definition,
     actor,
@@ -362,24 +351,44 @@ export function previewAction(
   );
   if (!plan) return { legal: false, reason: "Action cannot be resolved.", notes: [] };
   const resolution = plan.resolution;
-  if (resolution.kind === "move" || resolution.kind === "direct") {
+
+  if (resolution.kind === "move") {
+    const reached = target.kind === "tile"
+      ? listCandidateTargets(state, actor, resolved.definition, content).find(
+          (candidate) => candidate.kind === "tile" && positionKey(candidate.position) === positionKey(target.position),
+        )
+      : undefined;
+    return {
+      legal: true,
+      pathCostFeet: reached?.kind === "tile" ? reached.costFeet : undefined,
+      notes: plan.notes,
+    };
+  }
+  if (resolution.kind === "direct") {
     return { legal: true, notes: plan.notes };
   }
 
-  const probabilities = degreeProbabilities(resolution.check.modifier, resolution.check.dc);
-  const damage = resolution.kind === "strike" ? resolution.strike.damage : null;
-  return {
+  const check = resolution.check;
+  // Probabilities are always the roller's. Only a Strike has actor-side hit semantics, so
+  // a target's save is never reported as the acting Character's hit or critical chance.
+  const probabilities = degreeProbabilities(check.modifier, check.dc);
+  const checkPreview = {
     legal: true,
+    check: { roller: check.roller, rollerActorId: check.rollerActorId, modifier: check.modifier, dc: check.dc },
     degreeProbabilities: probabilities,
+    notes: plan.notes,
+  };
+  if (resolution.kind === "check") return checkPreview;
+
+  const strike = resolution.strike;
+  return {
+    ...checkPreview,
     hitChance: probabilities.success + probabilities["critical-success"],
     criticalChance: probabilities["critical-success"],
-    damageRange: damage && resolution.kind === "strike"
-      ? [
-          // Both ends run the execution helper, so the minimum-1 rule cannot drift.
-          strikeDamageTotal(damage.count, damage.flatModifier, resolution.damageMultiplier),
-          strikeDamageTotal(damage.count * damage.sides, damage.flatModifier, resolution.damageMultiplier),
-        ]
-      : undefined,
-    notes: plan.notes,
+    damageRange: [
+      // Both ends run the execution helper, so the minimum-1 rule cannot drift.
+      strikeDamageTotal(strike.damage.count, strike.damage.flatModifier, resolution.damageMultiplier),
+      strikeDamageTotal(strike.damage.count * strike.damage.sides, strike.damage.flatModifier, resolution.damageMultiplier),
+    ],
   };
 }

@@ -769,11 +769,21 @@ export type LegalTarget =
   | { readonly kind: "effect"; readonly effectId: EffectId; readonly label: string }
   | { readonly kind: "none" };
 
+/** Who rolls a previewed check, so a target-side save is never read as the actor's hit. */
+export interface ActionPreviewCheck {
+  readonly roller: ActionParticipant;
+  readonly rollerActorId: EntityId;
+  readonly modifier: number;
+  readonly dc: number;
+}
+
 export interface ActionPreview {
   readonly legal: boolean;
   readonly reason?: string;
-  /** Every check resolution exposes this; Strike UI derives hit/critical chance from it. */
+  readonly check?: ActionPreviewCheck;
+  /** The generic source of truth for any check, always from the roller's perspective. */
   readonly degreeProbabilities?: Readonly<Record<DegreeOfSuccess, number>>;
+  /** Only a Strike has actor-side hit semantics; a target's save must never fill these. */
   readonly hitChance?: number;
   readonly criticalChance?: number;
   readonly damageRange?: readonly [number, number];

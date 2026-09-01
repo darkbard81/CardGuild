@@ -243,6 +243,36 @@ describe("M0 combat core", () => {
     expect(Object.values(beacon.state.effects)).toHaveLength(1);
   });
 
+  it("does not raise a non-shield item that carries malformed shield data", () => {
+    const malformedId = "malformed-shield-boots";
+    const malformedContent: CombatContent = {
+      ...M0_CONTENT,
+      equipment: {
+        ...M0_CONTENT.equipment,
+        [malformedId]: {
+          id: malformedId,
+          name: "Malformed Shield Boots",
+          slot: "feet",
+          traits: [{ id: "shield" }],
+          statModifiers: [],
+          shieldBonus: 3,
+        },
+      },
+    };
+    const state = createM0Combat(heroFirstScenario({ hero: { equipmentIds: [malformedId] } }), 10, malformedContent).state;
+    const raise = listLegalActions(state, "hero", malformedContent).find((action) => action.actionId === "raise-shield");
+    expect(raise?.enabled).toBe(true);
+
+    const result = dispatchCombatCommand(
+      state,
+      command(state, "hero", raise?.source as ActionSource, { kind: "none" }),
+      malformedContent,
+    );
+    expect(result.accepted).toBe(true);
+    expect(result.state.actors.hero?.shieldRaised).toBe(false);
+    expect(result.events.some((event) => event.type === "SHIELD_RAISED")).toBe(false);
+  });
+
   it("requires explicit facing and applies front/rear combat rules", () => {
     const scenario = heroFirstScenario({
       hero: { position: { x: 1, y: 1 }, facing: "west" },

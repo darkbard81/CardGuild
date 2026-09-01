@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 
 import { M6_COMBAT_DEFINITION, M6_CONTENT } from "../content/load-m6-content";
 import { buildResolvedActionPlan, resolveActionStatistic, turnMapContext } from "./action-plan";
+import { degreeProbabilities } from "./checks";
 import { createCombat, dispatchCombatCommand } from "./engine";
 import { previewAction } from "./queries";
 import { hashCombatState } from "./replay";
 import { resolveClassDC, resolveStatisticDC, resolveStatisticModifier } from "./statistics";
 import type {
+  ActionDcRef,
+  ActionDefinition,
   ActionSource,
   ActionTarget,
   ActorSetup,
@@ -121,6 +124,76 @@ describe("resolved action plan", () => {
     expect(resolveClassDC(hero, context).value).toBe(16);
   });
 
+  it("resolves Class DC for Character owners and returns null for Creature owners", () => {
+    const state = heroFirst();
+    const hero = state.actors.hero as NonNullable<CombatState["actors"][string]>;
+    const goblin = state.actors["goblin-skirmisher"] as NonNullable<CombatState["actors"][string]>;
+    const trip = M6_CONTENT.actions.trip as NonNullable<(typeof M6_CONTENT.actions)["trip"]>;
+    if (trip.resolution.kind !== "check") throw new Error("M6 Trip fixture is missing.");
+    const tripResolution = trip.resolution;
+    const withDc = (dc: ActionDcRef): ActionDefinition => ({
+      ...trip,
+      resolution: { ...tripResolution, check: { ...tripResolution.check, dc } },
+    });
+    const characterTargetId = "character-target";
+    const withCharacterTarget: CombatState = {
+      ...state,
+      actors: { ...state.actors, [characterTargetId]: { ...hero, id: characterTargetId } },
+    };
+    const characterTarget: ActionTarget = { kind: "actor", actorId: characterTargetId };
+    const source: ActionSource = { kind: "basic", id: "trip" };
+
+    const actorClassDc = buildResolvedActionPlan(
+      withDc({ kind: "class-dc", owner: "actor" }),
+      hero,
+      ENEMY,
+      source,
+      state,
+      M6_CONTENT,
+      turnMapContext(state),
+    );
+    const targetClassDc = buildResolvedActionPlan(
+      withDc({ kind: "class-dc", owner: "target" }),
+      hero,
+      characterTarget,
+      source,
+      withCharacterTarget,
+      M6_CONTENT,
+      turnMapContext(withCharacterTarget),
+    );
+    if (actorClassDc?.resolution.kind !== "check" || targetClassDc?.resolution.kind !== "check") {
+      throw new Error("Character Class DC plans did not resolve.");
+    }
+    expect(actorClassDc.resolution.check.dc).toBe(resolveClassDC(hero, { content: M6_CONTENT }).value);
+    expect(targetClassDc.resolution.check.dc).toBe(resolveClassDC(
+      withCharacterTarget.actors[characterTargetId] as NonNullable<CombatState["actors"][string]>,
+      { content: M6_CONTENT },
+    ).value);
+
+    const creatureTargetPlan = () => buildResolvedActionPlan(
+      withDc({ kind: "class-dc", owner: "target" }),
+      hero,
+      ENEMY,
+      source,
+      state,
+      M6_CONTENT,
+      turnMapContext(state),
+    );
+    const creatureActorPlan = () => buildResolvedActionPlan(
+      withDc({ kind: "class-dc", owner: "actor" }),
+      goblin,
+      characterTarget,
+      source,
+      withCharacterTarget,
+      M6_CONTENT,
+      turnMapContext(withCharacterTarget),
+    );
+    expect(creatureTargetPlan).not.toThrow();
+    expect(creatureActorPlan).not.toThrow();
+    expect(creatureTargetPlan()).toBeNull();
+    expect(creatureActorPlan()).toBeNull();
+  });
+
   it("reads a Skill's default Attribute and honours an override without touching the rank", () => {
     // Authored Attributes, not the initiative-forcing fixture, so WIS stays Aerin's own.
     const state = createCombat(M6_COMBAT_DEFINITION, 33).state;
@@ -176,6 +249,9 @@ describe("resolved action plan", () => {
     if (check?.type !== "CHECK_ROLLED" || plan?.resolution.kind !== "strike") throw new Error("Strike did not resolve.");
     expect([check.modifier, check.dc]).toEqual([plan.resolution.check.modifier, plan.resolution.check.dc]);
     expect(check.modifierSources).toEqual(preview.notes);
+    expect(preview.check?.roller).toBe("actor");
+    expect(preview.hitChance).toBeDefined();
+    expect(preview.criticalChance).toBeDefined();
   });
 });
 
@@ -209,6 +285,29 @@ describe("target-side save resolution", () => {
     );
     // No Actor carries a spell attack or spell DC field of its own.
     expect(hero.statProfile.kind === "character" ? hero.statProfile.stats : {}).not.toHaveProperty("spellDc");
+  });
+
+  it("previews target-side saves from the target roller's perspective without legacy hit labels", () => {
+    const { state, source } = castSpiritLance();
+    const goblin = state.actors["goblin-skirmisher"] as NonNullable<CombatState["actors"][string]>;
+    const hero = state.actors.hero as NonNullable<CombatState["actors"][string]>;
+    const modifier = resolveStatisticModifier(goblin, { kind: "save", id: "reflex" }, { content: M6_CONTENT }).value;
+    const dc = resolveStatisticDC(
+      hero,
+      { kind: "skill", id: "arcana", attributeOverride: "wis" },
+      { content: M6_CONTENT },
+    ).value;
+
+    const preview = previewAction(state, "hero", source, ENEMY, M6_CONTENT);
+    expect(preview.check).toEqual({
+      roller: "target",
+      rollerActorId: "goblin-skirmisher",
+      modifier,
+      dc,
+    });
+    expect(preview.degreeProbabilities).toEqual(degreeProbabilities(modifier, dc));
+    expect(preview).not.toHaveProperty("hitChance");
+    expect(preview).not.toHaveProperty("criticalChance");
   });
 
   it("runs a spell-tagged Card through the ordinary Card path and degree outcomes", () => {
