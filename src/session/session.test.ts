@@ -183,6 +183,26 @@ describe("pure M5 Session authority", () => {
     expect(late.errorCode).toBe("ROSTER_LOCKED");
   });
 
+  it("rejects a join when party capacity is full despite a hole in player seat numbers", () => {
+    let state = join(lobby(), player("player-b", "Guest B"));
+    state = join(state, player("player-c", "Guest C"));
+    const removed = dispatch(
+      state,
+      state.hostPlayerId,
+      { type: "remove-offline-guest", playerId: "player-b" },
+      [state.hostPlayerId, "player-c"],
+    );
+    expect(removed.accepted).toBe(true);
+    state = prepare(removed.state, ["hero.aerin", "hero.lyra"]);
+    expect(state.seats.map((seat) => seat.seat)).toEqual([1, 3]);
+
+    const full = joinSessionCore(state, player("player-d", "Guest D"), context);
+
+    expect(full.accepted).toBe(false);
+    expect(full.errorCode).toBe("SESSION_FULL");
+    expect(full.state).toBe(state);
+  });
+
   it("lets the host remove only an offline unclaimed lobby guest without changing gameplay hash", () => {
     const hostPlayerId = "player-a";
     const guestPlayerId = "player-b";

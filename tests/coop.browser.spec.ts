@@ -126,6 +126,28 @@ test("clears a stale v2 stored credential, returns to landing, and stops reconne
   }
 });
 
+test("shows a non-contiguous party draft as invalid instead of already applied", async ({ browser }) => {
+  const host = await createPlayer(browser, "Draft Host");
+  try {
+    await createHost(host);
+    await host.page.locator("#party-slot-3").selectOption("");
+    await host.page.locator("#apply-party").click();
+    await expect(host.page.locator("#apply-party")).toHaveText("Party Applied");
+
+    await host.page.locator("#party-slot-2").selectOption("");
+    await host.page.locator("#party-slot-3").selectOption("hero.lyra");
+
+    await expect(host.page.locator("#apply-party")).toHaveText("Apply Party");
+    await expect(host.page.locator("#apply-party")).toBeDisabled();
+    await expect(host.page.locator(".party-builder .party-gate.invalid")).toHaveText(
+      "Choose unique characters in consecutive slots.",
+    );
+    expect(host.errors).toEqual([]);
+  } finally {
+    await host.context.close();
+  }
+});
+
 test("single host prepares three women heroes and controls every changing combat HUD", async ({ browser }, testInfo) => {
   test.setTimeout(60_000);
   const host = await createPlayer(browser, "Solo Host");

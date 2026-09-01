@@ -123,7 +123,7 @@ export class PartyBuilderUi {
       this.draft.slice(this.draft.findIndex((id) => id === null)).every((id) => id === null);
     const unique = new Set(actorDefinitionIds).size === actorDefinitionIds.length;
     const validSize = actorDefinitionIds.length >= state.seats.length && actorDefinitionIds.length >= 1;
-    const unchanged = state.partyPrepared &&
+    const unchanged = contiguous && state.partyPrepared &&
       actorDefinitionIds.length === state.partySlots.length &&
       actorDefinitionIds.every((actorDefinitionId, index) =>
         actorDefinitionId === state.partySlots[index]?.actorDefinitionId);

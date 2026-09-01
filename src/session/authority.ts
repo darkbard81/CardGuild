@@ -107,8 +107,11 @@ export function joinSessionCore(
   if (seatForPlayer(state, player.playerId)) return reject(state, "FORBIDDEN", "Player already owns a seat.");
   const adventureMaximum = adventureContext(context).definition.partySize.max;
   const maximum = state.partyPrepared ? Math.min(adventureMaximum, state.partySlots.length) : adventureMaximum;
+  if (state.seats.length >= maximum) {
+    return reject(state, "SESSION_FULL", "Session has no player seat within the prepared party capacity.");
+  }
   const occupied = new Set(state.seats.map((seat) => seat.seat));
-  const seat = ([1, 2, 3] as const).find((candidate) => candidate <= maximum && !occupied.has(candidate));
+  const seat = ([1, 2, 3] as const).find((candidate) => candidate <= adventureMaximum && !occupied.has(candidate));
   if (!seat) return reject(state, "SESSION_FULL", "Session has no player seat within the prepared party capacity.");
   const joined = makeSeat(seat, player);
   return commit(state, {

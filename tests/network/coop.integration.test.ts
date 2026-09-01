@@ -288,6 +288,47 @@ describe("real WebSocket M5 cooperative session", () => {
     });
   });
 
+  it("returns SESSION_FULL when a full prepared party has a hole in player seat numbers", async () => {
+    const server = await start();
+    const hostCredential = await create(server);
+    const hostClient = await SocketClient.connect(server.origin, hostCredential);
+    sockets.push(hostClient);
+    await hostClient.waitForSnapshot();
+    const host = server.store.get(hostCredential.sessionId) as NonNullable<ReturnType<typeof server.store.get>>;
+
+    const joinedB = await post<SessionCredentialResponse>(
+      server.origin,
+      "/api/sessions/" + hostCredential.sessionId + "/join",
+      { displayName: "Guest B" },
+    );
+    const joinedC = await post<SessionCredentialResponse>(
+      server.origin,
+      "/api/sessions/" + hostCredential.sessionId + "/join",
+      { displayName: "Guest C" },
+    );
+    expect([joinedB.status, joinedC.status]).toEqual([200, 200]);
+
+    await accepted(hostClient, host, "remove-middle-seat", {
+      type: "remove-offline-guest",
+      playerId: joinedB.body.playerId,
+    });
+    await accepted(hostClient, host, "prepare-two", {
+      type: "set-party-composition",
+      actorDefinitionIds: PARTY.slice(0, 2),
+    });
+    expect(host.state.seats.map((seat) => seat.seat)).toEqual([1, 3]);
+
+    const full = await post<{ readonly code: string; readonly message: string }>(
+      server.origin,
+      "/api/sessions/" + hostCredential.sessionId + "/join",
+      { displayName: "Guest D" },
+    );
+
+    expect(full.status).toBe(409);
+    expect(full.body.code).toBe("SESSION_FULL");
+    expect(host.state.seats.map((seat) => seat.seat)).toEqual([1, 3]);
+  });
+
   it("falls a guest character back to host without gameplay mutation and restores the claim on reconnect", async () => {
     const server = await start();
     const hostCredential = await create(server);
