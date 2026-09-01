@@ -5,6 +5,7 @@ import type {
   ArmorProfile,
   AttributeId,
   CharacterStatProfile,
+  CharacterWeaponProfile,
   CombatContent,
   EquipmentDefinition,
   FixedCreatureStats,
@@ -36,6 +37,11 @@ export function cloneActorStatProfile(profile: ActorStatProfile): ActorStatProfi
             ...profile.stats.defense,
             armorProficiencies: { ...profile.stats.defense.armorProficiencies },
           },
+          offense: {
+            ...profile.stats.offense,
+            weaponProficiencies: { ...profile.stats.offense.weaponProficiencies },
+            unarmedStrike: cloneCharacterWeaponProfile(profile.stats.offense.unarmedStrike),
+          },
         },
       }
     : {
@@ -44,8 +50,21 @@ export function cloneActorStatProfile(profile: ActorStatProfile): ActorStatProfi
           ...profile.stats,
           saves: { ...profile.stats.saves },
           skills: { ...profile.stats.skills },
+          strike: {
+            ...profile.stats.strike,
+            damage: { ...profile.stats.strike.damage },
+            traits: profile.stats.strike.traits.map((trait) => ({ ...trait })),
+          },
         },
       };
+}
+
+function cloneCharacterWeaponProfile(profile: CharacterWeaponProfile): CharacterWeaponProfile {
+  return {
+    ...profile,
+    damage: { ...profile.damage },
+    traits: profile.traits.map((trait) => ({ ...trait })),
+  };
 }
 
 export const SAVE_ATTRIBUTE: Readonly<Record<SaveId, AttributeId>> = {
@@ -133,7 +152,7 @@ function selectorKey(selector: StatisticSelector): string {
   return `${selector.kind}:${selector.id}`;
 }
 
-function titleCase(value: string): string {
+export function titleCase(value: string): string {
   return `${value[0]?.toUpperCase() ?? ""}${value.slice(1)}`;
 }
 
@@ -143,13 +162,18 @@ function selectorLabel(selector: StatisticSelector): string {
 }
 
 /**
- * `all` reaches every target the stack serves, AC included — that is what makes a
- * Frightened status penalty hit checks and Armor Class from one authored contribution.
+ * `all` reaches every check and DC the stack serves — AC, attack rolls and Class DC
+ * included — which is what makes one authored Frightened contribution hit all of them.
+ * It deliberately stops at damage: damage is not a check, and a status penalty to
+ * checks and DCs never reduces the damage a Strike deals.
  */
 function selectorMatches(contribution: StatisticModifierContribution, target: ModifierTarget): boolean {
-  if (contribution.selector.kind === "all") return true;
+  if (contribution.selector.kind === "all") return target.kind !== "damage";
   if (contribution.selector.kind === "perception") return target.kind === "perception";
   if (contribution.selector.kind === "ac") return target.kind === "ac";
+  if (contribution.selector.kind === "attack") return target.kind === "attack";
+  if (contribution.selector.kind === "damage") return target.kind === "damage";
+  if (contribution.selector.kind === "class-dc") return target.kind === "class-dc";
   if (contribution.selector.kind === "save" && target.kind === "save") {
     return contribution.selector.id === undefined || contribution.selector.id === target.id;
   }
@@ -499,6 +523,42 @@ export function deriveMaxHp(profile: CharacterStatProfile): number {
 
 export function resolveMaxHp(profile: ActorStatProfile): number {
   return profile.kind === "creature" ? profile.stats.maxHp : deriveMaxHp(profile.stats);
+}
+
+/**
+ * `10 + Key Attribute + Class DC proficiency`, finished by the shared modifier stack.
+ * Deliberately distinct from Save DCs, Skill DCs and any future Spell DC: no single
+ * conflated "power DC" number exists.
+ */
+export function resolveClassDC(
+  actor: ActorState,
+  context: StatisticResolutionContext,
+): ResolvedStatistic {
+  if (actor.statProfile.kind !== "character") {
+    throw new Error(`Class DC is a Character statistic, but actor "${actor.id}" uses a creature profile.`);
+  }
+  const profile = actor.statProfile.stats;
+  const { keyAttribute, classDcProficiency } = profile.offense;
+  return combineStatisticSources(
+    [
+      { kind: "dc", sourceId: "class-dc-base", label: "DC base", value: 10, applied: true },
+      {
+        kind: "attribute",
+        sourceId: `attribute:${keyAttribute}`,
+        label: `${keyAttribute.toUpperCase()} (key)`,
+        value: profile.attributes[keyAttribute],
+        applied: true,
+      },
+      {
+        kind: "proficiency",
+        sourceId: `proficiency:class-dc:${classDcProficiency}`,
+        label: `${titleCase(classDcProficiency)} class DC proficiency`,
+        value: proficiencyBonus(profile.level, classDcProficiency),
+        applied: true,
+      },
+    ],
+    resolveModifierStack(actor, { kind: "class-dc" }, context),
+  );
 }
 
 export function formatStatisticSources(sources: readonly StatisticSource[]): readonly string[] {

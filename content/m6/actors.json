@@ -47,21 +47,39 @@
             "medium": "trained",
             "heavy": "untrained"
           }
+        },
+        "offense": {
+          "keyAttribute": "str",
+          "weaponProficiencies": {
+            "unarmed": "trained",
+            "simple": "trained",
+            "martial": "expert",
+            "advanced": "untrained"
+          },
+          "classDcProficiency": "trained",
+          "unarmedStrike": {
+            "name": "Fist",
+            "category": "unarmed",
+            "attackMode": "melee",
+            "rangeFeet": 5,
+            "damage": {
+              "count": 1,
+              "sides": 4,
+              "damageType": "bludgeoning"
+            },
+            "traits": [
+              {
+                "id": "agile"
+              },
+              {
+                "id": "finesse"
+              }
+            ]
+          }
         }
       }
     },
     "speedFeet": 25,
-    "fallbackWeapon": {
-      "name": "Unarmed",
-      "attackModifier": 6,
-      "rangeFeet": 5,
-      "damage": {
-        "count": 1,
-        "sides": 4,
-        "modifier": 2,
-        "damageType": "bludgeoning"
-      }
-    },
     "initialConditions": [],
     "traits": [
       {
@@ -148,21 +166,39 @@
             "medium": "untrained",
             "heavy": "untrained"
           }
+        },
+        "offense": {
+          "keyAttribute": "dex",
+          "weaponProficiencies": {
+            "unarmed": "trained",
+            "simple": "trained",
+            "martial": "trained",
+            "advanced": "untrained"
+          },
+          "classDcProficiency": "trained",
+          "unarmedStrike": {
+            "name": "Fist",
+            "category": "unarmed",
+            "attackMode": "melee",
+            "rangeFeet": 5,
+            "damage": {
+              "count": 1,
+              "sides": 4,
+              "damageType": "bludgeoning"
+            },
+            "traits": [
+              {
+                "id": "agile"
+              },
+              {
+                "id": "finesse"
+              }
+            ]
+          }
         }
       }
     },
     "speedFeet": 30,
-    "fallbackWeapon": {
-      "name": "Light Blade",
-      "attackModifier": 7,
-      "rangeFeet": 5,
-      "damage": {
-        "count": 1,
-        "sides": 6,
-        "modifier": 2,
-        "damageType": "slashing"
-      }
-    },
     "initialConditions": [],
     "traits": [
       {
@@ -180,6 +216,7 @@
     },
     "starterLoadout": {
       "equipment": {
+        "weapon": "light-blade",
         "armor": "leather-armor",
         "feet": "boots-of-fly"
       },
@@ -242,21 +279,39 @@
             "medium": "trained",
             "heavy": "expert"
           }
+        },
+        "offense": {
+          "keyAttribute": "str",
+          "weaponProficiencies": {
+            "unarmed": "trained",
+            "simple": "trained",
+            "martial": "trained",
+            "advanced": "untrained"
+          },
+          "classDcProficiency": "trained",
+          "unarmedStrike": {
+            "name": "Fist",
+            "category": "unarmed",
+            "attackMode": "melee",
+            "rangeFeet": 5,
+            "damage": {
+              "count": 1,
+              "sides": 4,
+              "damageType": "bludgeoning"
+            },
+            "traits": [
+              {
+                "id": "agile"
+              },
+              {
+                "id": "finesse"
+              }
+            ]
+          }
         }
       }
     },
     "speedFeet": 20,
-    "fallbackWeapon": {
-      "name": "Guardian Mace",
-      "attackModifier": 8,
-      "rangeFeet": 5,
-      "damage": {
-        "count": 1,
-        "sides": 8,
-        "modifier": 3,
-        "damageType": "bludgeoning"
-      }
-    },
     "initialConditions": [],
     "traits": [
       {
@@ -274,6 +329,7 @@
     },
     "starterLoadout": {
       "equipment": {
+        "weapon": "guardian-mace",
         "armor": "half-plate",
         "shield": "shield"
       },
@@ -296,6 +352,18 @@
       "stats": {
         "ac": 16,
         "maxHp": 18,
+        "strike": {
+          "name": "Goblin Blade",
+          "attackModifier": 6,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 2,
+            "damageType": "slashing"
+          },
+          "traits": []
+        },
         "perception": 5,
         "saves": {
           "fortitude": 3,
@@ -309,17 +377,6 @@
       }
     },
     "speedFeet": 25,
-    "fallbackWeapon": {
-      "name": "Goblin Blade",
-      "attackModifier": 6,
-      "rangeFeet": 5,
-      "damage": {
-        "count": 1,
-        "sides": 6,
-        "modifier": 2,
-        "damageType": "slashing"
-      }
-    },
     "initialConditions": [],
     "traits": [
       {
@@ -347,6 +404,18 @@
       "stats": {
         "ac": 17,
         "maxHp": 24,
+        "strike": {
+          "name": "Heavy Club",
+          "attackModifier": 7,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 8,
+            "modifier": 3,
+            "damageType": "bludgeoning"
+          },
+          "traits": []
+        },
         "perception": 3,
         "saves": {
           "fortitude": 7,
@@ -359,17 +428,6 @@
       }
     },
     "speedFeet": 20,
-    "fallbackWeapon": {
-      "name": "Heavy Club",
-      "attackModifier": 7,
-      "rangeFeet": 5,
-      "damage": {
-        "count": 1,
-        "sides": 8,
-        "modifier": 3,
-        "damageType": "bludgeoning"
-      }
-    },
     "initialConditions": [],
     "traits": [
       {
@@ -399,6 +457,18 @@
       "stats": {
         "ac": 18,
         "maxHp": 34,
+        "strike": {
+          "name": "Chief's Glaive",
+          "attackModifier": 9,
+          "rangeFeet": 10,
+          "damage": {
+            "count": 1,
+            "sides": 10,
+            "modifier": 4,
+            "damageType": "slashing"
+          },
+          "traits": []
+        },
         "perception": 6,
         "saves": {
           "fortitude": 8,
@@ -412,17 +482,6 @@
       }
     },
     "speedFeet": 25,
-    "fallbackWeapon": {
-      "name": "Chief's Glaive",
-      "attackModifier": 9,
-      "rangeFeet": 10,
-      "damage": {
-        "count": 1,
-        "sides": 10,
-        "modifier": 4,
-        "damageType": "slashing"
-      }
-    },
     "initialConditions": [],
     "traits": [
       {

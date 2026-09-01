@@ -72,7 +72,8 @@ port 8787 backend로 proxy합니다.
 - 전투 승리 후 두 Reward 중 하나를 획득하며, `Manage Loadout`에서 장비 slot과 준비
   카드를 click/select 방식으로 편성합니다. 장착해도 Collection 수량은 차감되지 않습니다.
 - Builder Preview와 다음 전투는 같은 loadout resolver를 사용합니다. AC/Reflex,
-  Weapon profile, Trait-granted Card, Context Action과 카드 provenance가 함께 갱신됩니다.
+  Class DC, resolved Strike(attack/damage/range/trait), Trait-granted Card,
+  Context Action과 카드 provenance가 함께 갱신됩니다.
 - 각 Encounter는 영속 party identity/loadout으로 새 CombatState와 파생 seed를 만듭니다.
 - 전투 HP, Condition, Reaction, 손패와 지속 효과는 다음 Encounter로 이월하지 않습니다.
 
@@ -150,9 +151,22 @@ Armor의 item bonus와 raised Shield의 circumstance bonus는 별도 산술 없�
 current HP만 runtime mutable state입니다. Creature는 authored AC/Max HP를 유지합니다.
 Loadout Preview와 Combat, UI는 모두 같은 `resolveArmorClass()` 결과를 사용합니다.
 
+Strike와 Class DC도 같은 경계에 있습니다. Playable Character의 weapon은 최종 공격
+수치를 저장하지 않고 `무엇을 쓰는지`(category/attackMode/dice/trait)만 선언하며,
+`resolveStrike()`가 `attack Attribute + weapon proficiency + typed modifier + MAP`과
+`weapon dice + 합법적인 Attribute contribution`을 계산합니다. melee는 STR, ranged와
+thrown은 DEX를 쓰고 `finesse`는 둘 중 높은 쪽을 결정적으로 고릅니다. MAP은
+`resolveMapPenalty()` 한 곳에서만 계산되어 agile weapon Strike만 `0 / -4 / -8`로
+완화됩니다. Legality query, Ring/Menu preview, Loadout Preview, 일반 Strike,
+Reactive Strike가 모두 이 하나의 `ResolvedStrikeProfile`을 소비하므로 UI가 스스로
+`STR + proficiency`를 더하지 않습니다. Class DC는
+`10 + key Attribute + class DC proficiency + typed modifier`에서 파생되며 Save/Skill DC와
+구분된 별도 statistic입니다. Creature/Enemy는 authored fixed strike를 유지하고 PC용
+weapon proficiency 공식을 강제하지 않습니다.
+
 콘텐츠의 source of truth는 [`content/m6`](content/m6) JSON이며 pack identity는
-`cardguild.m6@0.7.0`, contract는 schema v6입니다. 기존 [`content/m3`](content/m3)의
-`cardguild.m4@0.4.2` pack은 회귀 fixture로 보존됩니다. Schema와
+`cardguild.m6@0.8.0`, contract는 schema v7입니다. 기존 [`content/m3`](content/m3)의
+`cardguild.m4@0.5.0` pack은 회귀 fixture로 보존됩니다. Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.

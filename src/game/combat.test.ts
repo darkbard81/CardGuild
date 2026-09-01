@@ -14,6 +14,7 @@ import {
   previewAction,
   validateActionIntent,
 } from "./queries";
+import { resolveStrike } from "./offense";
 import { createCombatReplay, hashCombatState, replayCombat } from "./replay";
 import { resolveArmorClass } from "./statistics";
 import { resolveStatisticDC } from "./statistics";
@@ -185,7 +186,7 @@ describe("M0 combat core", () => {
     const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     const second = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("e24e80315af9e2a8");
+    expect(hashCombatState(first)).toBe("903d0ea398955e75");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -300,6 +301,51 @@ describe("M0 combat core", () => {
     );
     expect(fourth.accepted).toBe(false);
     expect(fourth.error).toMatch(/actions/i);
+  });
+
+  it("gives the action preview the same Strike numbers the execution rolls", () => {
+    const scenario = heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, facing: "east" },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 100, maxHp: 100 },
+      "goblin-brute": { position: { x: 8, y: 6 } },
+    });
+    let state = createM0Combat(scenario, 33).state;
+    const previews: string[][] = [];
+    for (let index = 0; index < 3; index += 1) {
+      const source: ActionSource = { kind: "basic", id: "strike" };
+      const target = { kind: "actor" as const, actorId: "goblin-skirmisher" };
+      const preview = previewAction(state, "hero", source, target, M0_CONTENT);
+      const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+      const check = result.events.find((event) => event.type === "CHECK_ROLLED");
+      expect(check?.type === "CHECK_ROLLED" ? check.modifierSources : []).toEqual(preview.notes);
+      previews.push([...preview.notes]);
+      state = result.state;
+    }
+    // Each view walks the same MAP ladder because both read the one resolver.
+    expect(previews[0]).not.toContain("Multiple attack penalty -5");
+    expect(previews[1]).toContain("Multiple attack penalty -5");
+    expect(previews[2]).toContain("Multiple attack penalty -10");
+  });
+
+  it("keeps a Creature's authored Strike out of the Character weapon formula", () => {
+    const scenario = scenarioWith({
+      hero: { position: { x: 1, y: 1 }, hp: 100, maxHp: 100, initiative: -100 },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, facing: "west", initiative: 100 },
+      "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
+    });
+    const state = createM0Combat(scenario, 21).state;
+    const result = dispatchCombatCommand(
+      state,
+      command(state, "goblin-skirmisher", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "hero" }),
+      M0_CONTENT,
+    );
+    expect(result.accepted).toBe(true);
+    const check = result.events.find((event) => event.type === "CHECK_ROLLED");
+    expect(check?.type === "CHECK_ROLLED" ? check.modifier : null).toBe(6);
+    expect(check?.type === "CHECK_ROLLED" ? check.modifierSources.slice(0, 2) : []).toEqual([
+      "Goblin Blade",
+      "Authored Goblin Blade +6",
+    ]);
   });
 
   it("charges a two-action activity before rejecting another unaffordable use", () => {
@@ -472,6 +518,11 @@ describe("M0 combat core", () => {
     expect(reaction.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
     expect(reaction.state.actors.hero?.reactionAvailable).toBe(false);
     expect(reaction.events.filter((event) => event.type === "ACTOR_MOVED")).toHaveLength(1);
+    // The Reactive Strike reads the same offense resolver a normal Strike does.
+    const reactor = movement.state.actors.hero as NonNullable<CombatState["actors"][string]>;
+    const reactiveCheck = reaction.events.find((event) => event.type === "CHECK_ROLLED");
+    expect(reactiveCheck?.type === "CHECK_ROLLED" ? reactiveCheck.modifier : null)
+      .toBe(resolveStrike(reactor, { content: M0_CONTENT }).attackModifier);
 
     const secondUse = dispatchCombatCommand(
       reaction.state,

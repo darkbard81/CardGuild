@@ -17,14 +17,15 @@
     "statModifiers": [],
     "weaponProfile": {
       "name": "Halberd",
-      "attackModifier": 8,
+      "category": "martial",
+      "attackMode": "melee",
       "rangeFeet": 10,
       "damage": {
         "count": 1,
-        "sides": 12,
-        "modifier": 4,
+        "sides": 10,
         "damageType": "slashing"
-      }
+      },
+      "traits": []
     }
   },
   {
@@ -94,6 +95,84 @@
       "category": "heavy",
       "acItemBonus": 5,
       "dexCap": 1
+    }
+  },
+  {
+    "id": "light-blade",
+    "name": "Light Blade",
+    "slot": "weapon",
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "agile"
+      },
+      {
+        "id": "finesse"
+      }
+    ],
+    "statModifiers": [],
+    "weaponProfile": {
+      "name": "Light Blade",
+      "category": "martial",
+      "attackMode": "melee",
+      "rangeFeet": 5,
+      "damage": {
+        "count": 1,
+        "sides": 6,
+        "damageType": "slashing"
+      },
+      "traits": []
+    }
+  },
+  {
+    "id": "guardian-mace",
+    "name": "Guardian Mace",
+    "slot": "weapon",
+    "traits": [
+      {
+        "id": "weapon"
+      }
+    ],
+    "statModifiers": [],
+    "weaponProfile": {
+      "name": "Guardian Mace",
+      "category": "martial",
+      "attackMode": "melee",
+      "rangeFeet": 5,
+      "damage": {
+        "count": 1,
+        "sides": 8,
+        "damageType": "bludgeoning"
+      },
+      "traits": []
+    }
+  },
+  {
+    "id": "composite-shortbow",
+    "name": "Composite Shortbow",
+    "slot": "weapon",
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "propulsive"
+      }
+    ],
+    "statModifiers": [],
+    "weaponProfile": {
+      "name": "Composite Shortbow",
+      "category": "martial",
+      "attackMode": "ranged",
+      "rangeFeet": 60,
+      "damage": {
+        "count": 1,
+        "sides": 6,
+        "damageType": "piercing"
+      },
+      "traits": []
     }
   }
 ]

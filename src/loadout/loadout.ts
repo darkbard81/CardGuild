@@ -1,13 +1,14 @@
 import type { ActorDefinition, EncounterActorPlacement } from "../content/content-types";
+import { resolveStrike } from "../game/offense";
 import {
   getEquipmentActionGrants,
   getEquipmentCardGrants,
-  getWeaponProfile,
 } from "../game/rules";
 import {
   cloneActorStatProfile,
   equippedArmor,
   resolveArmorClass,
+  resolveClassDC,
   resolveInitiative,
   resolveMaxHp,
   resolveStatisticDC,
@@ -218,7 +219,6 @@ export function deriveActorSetup(
     maxHp,
     statProfile: cloneActorStatProfile(actor.statProfile),
     speedFeet: actor.speedFeet,
-    fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
     conditions: (actor.initialConditions ?? []).map((condition) => ({ ...condition })),
     traits: actor.traits.map((trait) => ({ ...trait, params: trait.params ? { ...trait.params } : undefined })),
     equipmentIds: [...equipmentIds(loadout)],
@@ -255,11 +255,12 @@ export function deriveLoadoutSnapshot(
     statistics: {
       maxHp: ruleActor.maxHp,
       ac: resolveArmorClass(ruleActor, { content }).value,
+      classDc: resolveClassDC(ruleActor, { content }).value,
       reflex: { modifier: resolvedReflex.value, dc: reflexDC.value },
       athletics: resolveStatisticModifier(ruleActor, { kind: "skill", id: "athletics" }, { content }).value,
       initiative: resolveInitiative(ruleActor, { content }).value,
     },
-    weapon: { ...getWeaponProfile(ruleActor, content), damage: { ...getWeaponProfile(ruleActor, content).damage } },
+    strike: resolveStrike(ruleActor, { content }),
     armor: armorSummary(armor),
     contextActionIds,
   };

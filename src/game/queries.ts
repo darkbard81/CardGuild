@@ -8,10 +8,10 @@ import {
   hasLineOfSight,
   positionKey,
 } from "./grid";
+import { resolveMapPenalty, resolveStrike } from "./offense";
 import {
   getConditionActionGrants,
   getEquipmentActionGrants,
-  getWeaponProfile,
   isDirectlyBehind,
   isInFrontOrSide,
 } from "./rules";
@@ -160,8 +160,8 @@ function enemyTargets(
   definition: ActionDefinition,
   content: CombatContent,
 ): readonly LegalTarget[] {
-  const weapon = getWeaponProfile(actor, content);
-  const range = definition.effect.kind === "trip" || definition.effect.kind === "weapon-attack" ? weapon.rangeFeet : 5;
+  const strike = resolveStrike(actor, { content });
+  const range = definition.effect.kind === "trip" || definition.effect.kind === "weapon-attack" ? strike.rangeFeet : 5;
 
   return Object.values(state.actors)
     .filter(
@@ -331,10 +331,9 @@ export function listLegalActions(
   });
 }
 
-function mapPenalty(state: CombatState, definition: ActionDefinition): number {
-  if (!definition.traits.some((trait) => trait.id === "attack")) return 0;
-  const stage = Math.min(2, state.turn.attacksThisTurn);
-  return [0, -5, -10][stage] as number;
+/** Attacks already taken this turn, as the MAP resolver counts them for this action. */
+function attacksBefore(state: CombatState, definition: ActionDefinition): number {
+  return definition.traits.some((trait) => trait.id === "attack") ? state.turn.attacksThisTurn : 0;
 }
 
 export function previewAction(
@@ -366,8 +365,9 @@ export function previewAction(
   if (target.kind === "actor") {
     const targetActor = state.actors[target.actorId];
     if (!targetActor) return { legal: false, reason: "Unknown target.", notes: [] };
-    const penalty = mapPenalty(state, resolved.definition);
+    const attacksThisTurn = attacksBefore(state, resolved.definition);
     const isTrip = resolved.definition.effect.kind === "trip";
+    const penalty = resolveMapPenalty(attacksThisTurn);
     const athletics = isTrip
       ? resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, {
           content,
@@ -380,7 +380,9 @@ export function previewAction(
           }] : [],
         })
       : null;
-    const modifier = athletics?.value ?? getWeaponProfile(actor, content).attackModifier + penalty;
+    // The preview reads the same resolver the execution path does, MAP included.
+    const strike = resolveStrike(actor, { content }, { attacksThisTurn });
+    const modifier = athletics?.value ?? strike.attackModifier;
     const rearBonus = !isTrip && isDirectlyBehind(actor.position, targetActor) ? -2 : 0;
     const defense = isTrip
       ? (() => {
@@ -393,7 +395,7 @@ export function previewAction(
         })();
     const dc = defense.value + rearBonus;
     const probabilities = degreeProbabilities(modifier, dc);
-    const damage = getWeaponProfile(actor, content).damage;
+    const damage = strike.damage;
     return {
       legal: true,
       hitChance: probabilities.success + probabilities["critical-success"],
@@ -401,12 +403,14 @@ export function previewAction(
       damageRange:
         resolved.definition.effect.kind === "weapon-attack"
           ? [
-              (damage.count + damage.modifier) * resolved.definition.effect.damageMultiplier,
-              (damage.count * damage.sides + damage.modifier) * resolved.definition.effect.damageMultiplier,
+              (damage.count + damage.flatModifier) * resolved.definition.effect.damageMultiplier,
+              (damage.count * damage.sides + damage.flatModifier) * resolved.definition.effect.damageMultiplier,
             ]
           : undefined,
       notes: [
-        ...(isTrip && athletics ? formatStatisticSources(athletics.sources) : [`MAP ${penalty}`]),
+        ...(isTrip && athletics
+          ? formatStatisticSources(athletics.sources)
+          : [strike.weaponName, ...formatStatisticSources(strike.sources)]),
         ...(rearBonus ? ["Rear attack: target AC -2"] : []),
         ...defense.sources,
       ],

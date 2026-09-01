@@ -11,7 +11,15 @@ export {
   validateActionIntent,
 } from "./queries";
 export { createCombatReplay, hashCombatState, replayCombat } from "./replay";
-export { facingToward, getWeaponProfile, isDirectlyBehind, isInFrontOrSide } from "./rules";
+export { facingToward, isDirectlyBehind, isInFrontOrSide } from "./rules";
+export {
+  WEAPON_CATEGORIES,
+  equippedWeapon,
+  resolveMapPenalty,
+  resolveStrike,
+  resolveStrikeSource,
+} from "./offense";
+export type { StrikeResolutionOptions, StrikeSource } from "./offense";
 export {
   ARMOR_CATEGORIES,
   ATTRIBUTE_IDS,
@@ -27,6 +35,7 @@ export {
   formatStatisticSources,
   proficiencyBonus,
   resolveArmorClass,
+  resolveClassDC,
   resolveInitiative,
   resolveMaxHp,
   resolveModifierStack,

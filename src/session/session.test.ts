@@ -243,7 +243,9 @@ describe("pure M5 Session authority", () => {
     let state = prepare(lobby());
     state = dispatch(state, state.hostPlayerId, { type: "begin-adventure" }).state;
     expect(state.adventure?.collection.equipment).toEqual({
+      "guardian-mace": 1,
       halberd: 1,
+      "light-blade": 1,
       shield: 2,
       "boots-of-fly": 2,
       "scale-mail": 1,

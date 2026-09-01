@@ -66,7 +66,6 @@ export function cloneScenario(scenarioDefinition: ScenarioDefinition): ScenarioD
       ...actor,
       statProfile: cloneActorStatProfile(actor.statProfile),
       position: { ...actor.position },
-      fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
       conditions: actor.conditions.map((condition) => ({ ...condition })),
       traits: actor.traits.map((trait) => ({ ...trait, params: trait.params ? { ...trait.params } : undefined })),
       equipmentIds: [...actor.equipmentIds],

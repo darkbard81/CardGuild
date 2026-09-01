@@ -6,7 +6,7 @@ import type {
   DeckContribution,
   EquipmentId,
   EquipmentSlotId,
-  WeaponProfile,
+  ResolvedStrikeProfile,
 } from "../game/types";
 
 export const EQUIPMENT_SLOT_ORDER = ["weapon", "armor", "shield", "feet"] as const satisfies readonly EquipmentSlotId[];
@@ -69,6 +69,7 @@ export interface DerivedLoadoutSnapshot {
   readonly statistics: {
     readonly maxHp: number;
     readonly ac: number;
+    readonly classDc: number;
     readonly reflex: {
       readonly modifier: number;
       readonly dc: number;
@@ -76,7 +77,8 @@ export interface DerivedLoadoutSnapshot {
     readonly athletics: number;
     readonly initiative: number;
   };
-  readonly weapon: WeaponProfile;
+  /** The same resolved Strike combat rolls against, never a raw weapon profile. */
+  readonly strike: ResolvedStrikeProfile;
   readonly armor: DerivedArmorSummary;
   readonly contextActionIds: readonly string[];
 }

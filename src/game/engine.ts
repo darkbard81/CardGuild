@@ -1,11 +1,11 @@
 import { rollCheck } from "./checks";
 import { computeCombatSetupFingerprint } from "./determinism";
 import { findPath, getTile, gridDistance, hasLineOfSight, positionKey } from "./grid";
+import { resolveMapPenalty, resolveStrike } from "./offense";
 import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
   getEquipment,
-  getWeaponProfile,
   hasTrait,
   isDirectlyBehind,
   isInFrontOrSide,
@@ -68,7 +68,6 @@ function cloneActor(actor: ActorState): ActorState {
     ...actor,
     statProfile: cloneActorStatProfile(actor.statProfile),
     position: { ...actor.position },
-    fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
     conditions: actor.conditions.map((condition) => ({ ...condition })),
     traits: actor.traits.map((trait) => ({ ...trait, params: trait.params ? { ...trait.params } : undefined })),
     equipmentIds: [...actor.equipmentIds],
@@ -356,10 +355,6 @@ function applyDamage(
   checkCombatOutcome(draft, events);
 }
 
-function currentMapPenalty(draft: CombatDraft): number {
-  return [0, -5, -10][Math.min(2, draft.turn.attacksThisTurn)] as number;
-}
-
 function performWeaponAttack(
   draft: CombatDraft,
   actorId: string,
@@ -367,15 +362,15 @@ function performWeaponAttack(
   definition: ActionDefinition,
   content: CombatContent,
   events: CombatEvent[],
-  mapPenalty: number,
+  attacksThisTurn: number,
 ): void {
   const actor = draft.actors[actorId];
   const target = draft.actors[targetActorId];
   if (!actor || !target || definition.effect.kind !== "weapon-attack") return;
-  const weapon = getWeaponProfile(actor, content);
+  const strike = resolveStrike(actor, { content }, { attacksThisTurn });
   const targetAc = resolveArmorClass(target, { content });
   const rearAdjustment = isDirectlyBehind(actor.position, target) ? -2 : 0;
-  const modifier = weapon.attackModifier + mapPenalty;
+  const modifier = strike.attackModifier;
   const check = rollCheck(draft.rng, modifier, targetAc.value + rearAdjustment);
   draft.rng = check.rng;
   events.push({
@@ -389,22 +384,22 @@ function performWeaponAttack(
     baseDegree: check.baseDegree,
     degree: check.degree,
     modifierSources: [
-      `${weapon.name} ${weapon.attackModifier >= 0 ? "+" : ""}${weapon.attackModifier}`,
-      ...(mapPenalty ? [`MAP ${mapPenalty}`] : []),
+      strike.weaponName,
+      ...formatStatisticSources(strike.sources),
       ...(rearAdjustment ? ["Rear attack: target AC -2"] : []),
       ...formatStatisticSources(targetAc.sources),
     ],
   });
   if (!isSuccessful(check.degree)) return;
 
-  const damageRoll = rollDice(draft.rng, weapon.damage.count, weapon.damage.sides);
+  const damageRoll = rollDice(draft.rng, strike.damage.count, strike.damage.sides);
   draft.rng = damageRoll.rng;
   const criticalMultiplier = check.degree === "critical-success" ? 2 : 1;
   const damage = Math.max(
     0,
-    (damageRoll.total + weapon.damage.modifier) * definition.effect.damageMultiplier * criticalMultiplier,
+    (damageRoll.total + strike.damage.flatModifier) * definition.effect.damageMultiplier * criticalMultiplier,
   );
-  applyDamage(draft, actorId, targetActorId, damage, weapon.damage.damageType, events);
+  applyDamage(draft, actorId, targetActorId, damage, strike.damage.damageType, events);
   if (definition.effect.applyCondition && !draft.actors[targetActorId]?.defeated) {
     addCondition(draft, targetActorId, definition.effect.applyCondition, definition.id, events);
   }
@@ -417,11 +412,13 @@ function performTrip(
   definition: ActionDefinition,
   content: CombatContent,
   events: CombatEvent[],
-  mapPenalty: number,
+  attacksThisTurn: number,
 ): void {
   const actor = draft.actors[actorId];
   const target = draft.actors[targetActorId];
   if (!actor || !target) return;
+  // An Attack-trait Skill Action never gets the agile ladder, even from an agile weapon.
+  const mapPenalty = resolveMapPenalty(attacksThisTurn);
   const reflex = resolveStatisticDC(target, { kind: "save", id: "reflex" }, { content });
   const athletics = resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, {
     content,
@@ -462,9 +459,9 @@ function eligibleMoveReactions(
   return Object.values(draft.actors)
     .filter((actor) => {
       if (actor.team === mover.team || actor.defeated || !actor.reactionAvailable) return false;
-      const weapon = getWeaponProfile(actor, content);
+      const strike = resolveStrike(actor, { content });
       return (
-        gridDistance(actor.position, mover.position) <= weapon.rangeFeet &&
+        gridDistance(actor.position, mover.position) <= strike.rangeFeet &&
         isInFrontOrSide(actor, mover.position) &&
         hasLineOfSight(draft.map, actor.position, mover.position)
       );
@@ -669,11 +666,12 @@ function executeRecoveryCheck(
   definition: ActionDefinition,
   content: CombatContent,
   events: CombatEvent[],
-  mapPenalty: number,
+  attacksThisTurn: number,
 ): void {
   if (definition.effect.kind !== "recovery-check") return;
   const actor = draft.actors[actorId];
   if (!actor) return;
+  const mapPenalty = resolveMapPenalty(attacksThisTurn);
   const athletics = resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, {
     content,
     modifiers: mapPenalty ? [{
@@ -782,7 +780,7 @@ function executeAction(
   target: Extract<CombatCommand, { type: "use-action" }>["target"],
   content: CombatContent,
   events: CombatEvent[],
-  mapPenalty: number,
+  attacksThisTurn: number,
 ): void {
   switch (definition.effect.kind) {
     case "move":
@@ -790,17 +788,17 @@ function executeAction(
       break;
     case "weapon-attack":
       if (target.kind === "actor") {
-        performWeaponAttack(draft, actorId, target.actorId, definition, content, events, mapPenalty);
+        performWeaponAttack(draft, actorId, target.actorId, definition, content, events, attacksThisTurn);
       }
       break;
     case "trip":
-      if (target.kind === "actor") performTrip(draft, actorId, target.actorId, definition, content, events, mapPenalty);
+      if (target.kind === "actor") performTrip(draft, actorId, target.actorId, definition, content, events, attacksThisTurn);
       break;
     case "remove-condition":
       executeRemoveCondition(draft, actorId, definition, events);
       break;
     case "recovery-check":
-      executeRecoveryCheck(draft, actorId, definition, content, events, mapPenalty);
+      executeRecoveryCheck(draft, actorId, definition, content, events, attacksThisTurn);
       break;
     case "raise-shield": {
       const actor = draft.actors[actorId];
@@ -904,7 +902,7 @@ function useAction(
   const events: CombatEvent[] = [];
   beginAcceptedCommand(draft, command);
   const cost = resolved.definition.timing.actions;
-  const mapPenalty = currentMapPenalty(draft);
+  const attacksThisTurn = draft.turn.attacksThisTurn;
   draft.turn = {
     ...draft.turn,
     actionsRemaining: draft.turn.actionsRemaining - cost,
@@ -919,7 +917,7 @@ function useAction(
     remaining: draft.turn.actionsRemaining,
   });
   if (resolved.card) discardCard(draft, actor.id, resolved.card.id, events);
-  executeAction(draft, actor.id, command.action, resolved.definition, command.target, content, events, mapPenalty);
+  executeAction(draft, actor.id, command.action, resolved.definition, command.target, content, events, attacksThisTurn);
   checkCombatOutcome(draft, events);
   return { accepted: true, state: asState(draft), events };
 }
@@ -976,8 +974,8 @@ function isReactionCandidateValid(
     !card ||
     content.cards[card.definitionId]?.actionId !== candidate.actionId
   ) return false;
-  const weapon = getWeaponProfile(reactor, content);
-  return gridDistance(reactor.position, mover.position) <= weapon.rangeFeet &&
+  const strike = resolveStrike(reactor, { content });
+  return gridDistance(reactor.position, mover.position) <= strike.rangeFeet &&
     isInFrontOrSide(reactor, mover.position) &&
     hasLineOfSight(draft.map, reactor.position, mover.position);
 }

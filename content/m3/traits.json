@@ -1,10 +1,12 @@
 [
   { "id": "actor", "name": "Actor", "cardGrants": [], "actionGrants": [] },
+  { "id": "agile", "name": "Agile", "cardGrants": [], "actionGrants": [] },
   { "id": "attack", "name": "Attack", "cardGrants": [], "actionGrants": [] },
   { "id": "blocked", "name": "Blocked", "cardGrants": [], "actionGrants": [] },
   { "id": "concentrate", "name": "Concentrate", "cardGrants": [], "actionGrants": [] },
   { "id": "condition", "name": "Condition", "cardGrants": [], "actionGrants": [] },
   { "id": "difficult", "name": "Difficult", "cardGrants": [], "actionGrants": [] },
+  { "id": "finesse", "name": "Finesse", "cardGrants": [], "actionGrants": [] },
   { "id": "fly", "name": "Fly", "cardGrants": [{ "cardDefinitionId": "card.fly", "count": 2 }], "actionGrants": [] },
   { "id": "focus", "name": "Focus", "cardGrants": [], "actionGrants": [] },
   { "id": "gate", "name": "Gate", "cardGrants": [], "actionGrants": [] },

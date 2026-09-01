@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v6",
+  "title": "CardGuild Content Pack v7",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures"],
@@ -70,15 +70,41 @@
         "damageType": { "enum": ["slashing", "piercing", "bludgeoning", "force"] }
       }
     },
-    "weaponProfile": {
+    "weaponCategory": { "enum": ["unarmed", "simple", "martial", "advanced"] },
+    "weaponAttackMode": { "enum": ["melee", "ranged"] },
+    "weaponDamageDice": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "attackModifier", "rangeFeet", "damage"],
+      "required": ["count", "sides", "damageType"],
+      "properties": {
+        "count": { "type": "integer", "minimum": 1 },
+        "sides": { "type": "integer", "minimum": 2 },
+        "damageType": { "enum": ["slashing", "piercing", "bludgeoning", "force"] }
+      }
+    },
+    "characterWeaponProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "category", "attackMode", "rangeFeet", "damage", "traits"],
+      "properties": {
+        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "category": { "$ref": "#/$defs/weaponCategory" },
+        "attackMode": { "$ref": "#/$defs/weaponAttackMode" },
+        "rangeFeet": { "type": "integer", "minimum": 1 },
+        "damage": { "$ref": "#/$defs/weaponDamageDice" },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
+      }
+    },
+    "fixedStrikeProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "attackModifier", "rangeFeet", "damage", "traits"],
       "properties": {
         "name": { "$ref": "#/$defs/nonEmptyString" },
         "attackModifier": { "type": "integer" },
         "rangeFeet": { "type": "integer", "minimum": 1 },
-        "damage": { "$ref": "#/$defs/damageDie" }
+        "damage": { "$ref": "#/$defs/damageDie" },
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
       }
     },
     "cardGrant": {
@@ -313,6 +339,24 @@
           "type": "object",
           "additionalProperties": false,
           "required": ["kind"],
+          "properties": { "kind": { "const": "attack" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "damage" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "class-dc" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
           "properties": {
             "kind": { "const": "save" },
             "id": { "$ref": "#/$defs/saveId" }
@@ -352,11 +396,19 @@
         "slot": { "enum": ["weapon", "armor", "shield", "feet"] },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
         "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } },
-        "weaponProfile": { "$ref": "#/$defs/weaponProfile" },
+        "weaponProfile": { "$ref": "#/$defs/characterWeaponProfile" },
         "armorProfile": { "$ref": "#/$defs/armorProfile" },
         "shieldBonus": { "type": "integer", "minimum": 1 }
       },
       "allOf": [
+        {
+          "if": { "required": ["slot"], "properties": { "slot": { "const": "weapon" } } },
+          "then": {
+            "required": ["weaponProfile"],
+            "properties": { "weaponProfile": { "$ref": "#/$defs/characterWeaponProfile" } }
+          },
+          "else": { "properties": { "weaponProfile": false } }
+        },
         {
           "if": { "required": ["slot"], "properties": { "slot": { "const": "armor" } } },
           "then": {
@@ -465,6 +517,28 @@
         "heavy": { "$ref": "#/$defs/proficiencyRank" }
       }
     },
+    "weaponProficiencies": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["unarmed", "simple", "martial", "advanced"],
+      "properties": {
+        "unarmed": { "$ref": "#/$defs/proficiencyRank" },
+        "simple": { "$ref": "#/$defs/proficiencyRank" },
+        "martial": { "$ref": "#/$defs/proficiencyRank" },
+        "advanced": { "$ref": "#/$defs/proficiencyRank" }
+      }
+    },
+    "characterOffenseProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["keyAttribute", "weaponProficiencies", "classDcProficiency", "unarmedStrike"],
+      "properties": {
+        "keyAttribute": { "$ref": "#/$defs/attributeId" },
+        "weaponProficiencies": { "$ref": "#/$defs/weaponProficiencies" },
+        "classDcProficiency": { "$ref": "#/$defs/proficiencyRank" },
+        "unarmedStrike": { "$ref": "#/$defs/characterWeaponProfile" }
+      }
+    },
     "characterDefenseProfile": {
       "type": "object",
       "additionalProperties": false,
@@ -478,14 +552,15 @@
     "characterStatProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["level", "attributes", "perception", "saves", "skills", "defense"],
+      "required": ["level", "attributes", "perception", "saves", "skills", "defense", "offense"],
       "properties": {
         "level": { "type": "integer", "minimum": 1 },
         "attributes": { "$ref": "#/$defs/characterAttributes" },
         "perception": { "$ref": "#/$defs/proficiencyRank" },
         "saves": { "$ref": "#/$defs/characterSaves" },
         "skills": { "$ref": "#/$defs/characterSkills" },
-        "defense": { "$ref": "#/$defs/characterDefenseProfile" }
+        "defense": { "$ref": "#/$defs/characterDefenseProfile" },
+        "offense": { "$ref": "#/$defs/characterOffenseProfile" }
       }
     },
     "fixedCreatureSaves": {
@@ -540,10 +615,11 @@
             "stats": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["ac", "maxHp", "perception", "saves", "skills"],
+              "required": ["ac", "maxHp", "strike", "perception", "saves", "skills"],
               "properties": {
                 "ac": { "type": "integer", "minimum": 0 },
                 "maxHp": { "type": "integer", "minimum": 1 },
+                "strike": { "$ref": "#/$defs/fixedStrikeProfile" },
                 "perception": { "type": "integer" },
                 "saves": { "$ref": "#/$defs/fixedCreatureSaves" },
                 "skills": { "$ref": "#/$defs/fixedCreatureSkills" }
@@ -556,13 +632,12 @@
     "actorDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "statProfile", "speedFeet", "fallbackWeapon", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
+      "required": ["id", "name", "statProfile", "speedFeet", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
         "statProfile": { "$ref": "#/$defs/actorStatProfile" },
         "speedFeet": { "type": "integer", "minimum": 0 },
-        "fallbackWeapon": { "$ref": "#/$defs/weaponProfile" },
         "initialConditions": { "type": "array", "items": { "$ref": "#/$defs/conditionInstance" } },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
         "loadoutProfile": { "$ref": "#/$defs/loadoutProfile" },
@@ -715,7 +790,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": { "const": 6 },
+        "schemaVersion": { "const": 7 },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

@@ -22,11 +22,10 @@ import type {
   TileState,
   TraitDefinition,
   TraitInstance,
-  WeaponProfile,
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 6;
+  readonly schemaVersion: 7;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -37,7 +36,6 @@ export interface ActorDefinition {
   readonly name: string;
   readonly statProfile: ActorStatProfile;
   readonly speedFeet: number;
-  readonly fallbackWeapon: WeaponProfile;
   readonly traits: readonly TraitInstance[];
   readonly loadoutProfile: LoadoutProfile;
   readonly starterLoadout: StarterLoadout;

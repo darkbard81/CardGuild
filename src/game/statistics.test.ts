@@ -5,8 +5,10 @@ import type {
   ArmorProfile,
   ArmoredCategory,
   CharacterDefenseProfile,
+  CharacterOffenseProfile,
   CombatContent,
   EquipmentDefinition,
+  FixedStrikeProfile,
   InitiativeStatisticSelector,
   ProficiencyRank,
   SkillId,
@@ -44,6 +46,33 @@ const SKILLS: Readonly<Record<SkillId, ProficiencyRank>> = {
   survival: "untrained",
   thievery: "untrained",
 };
+
+const OFFENSE = {
+  keyAttribute: "cha",
+  weaponProficiencies: {
+    unarmed: "trained",
+    simple: "trained",
+    martial: "trained",
+    advanced: "untrained",
+  },
+  classDcProficiency: "trained",
+  unarmedStrike: {
+    name: "Fist",
+    category: "unarmed",
+    attackMode: "melee",
+    rangeFeet: 5,
+    damage: { count: 1, sides: 4, damageType: "bludgeoning" },
+    traits: [],
+  },
+} as const satisfies CharacterOffenseProfile;
+
+const CREATURE_STRIKE = {
+  name: "Claw",
+  attackModifier: 8,
+  rangeFeet: 5,
+  damage: { count: 1, sides: 6, modifier: 3, damageType: "slashing" },
+  traits: [],
+} as const satisfies FixedStrikeProfile;
 
 const DEFENSE = {
   ancestryHp: 8,
@@ -83,15 +112,10 @@ function character(overrides: Partial<ActorState> = {}): ActorState {
         saves: { fortitude: "trained", reflex: "trained", will: "trained" },
         skills: { ...SKILLS },
         defense: DEFENSE,
+        offense: OFFENSE,
       },
     },
     speedFeet: 25,
-    fallbackWeapon: {
-      name: "Unarmed",
-      attackModifier: 0,
-      rangeFeet: 5,
-      damage: { count: 1, sides: 4, modifier: 0, damageType: "bludgeoning" },
-    },
     conditions: [],
     traits: [],
     equipmentIds: [],
@@ -165,6 +189,7 @@ describe("PF2e character statistic foundation", () => {
           saves: { fortitude: "trained", reflex: "trained", will: "trained" },
           skills: Object.fromEntries(SKILL_IDS.map((id) => [id, "trained"])) as Record<SkillId, ProficiencyRank>,
           defense: DEFENSE,
+          offense: OFFENSE,
         },
       },
     });
@@ -203,6 +228,7 @@ describe("PF2e character statistic foundation", () => {
           saves: { fortitude: "trained", reflex: "trained", will: "trained" },
           skills: { ...SKILLS, stealth: "trained" },
           defense: DEFENSE,
+          offense: OFFENSE,
         },
       },
     });
@@ -322,6 +348,7 @@ describe("PF2e character statistic foundation", () => {
         stats: {
           ac: 16,
           maxHp: 20,
+          strike: CREATURE_STRIKE,
           perception: 7,
           saves: { fortitude: 8, reflex: 6, will: 5 },
           skills: { athletics: 9 },
@@ -342,6 +369,7 @@ describe("PF2e character statistic foundation", () => {
         stats: {
           ac: 16,
           maxHp: 20,
+          strike: CREATURE_STRIKE,
           perception: 7,
           saves: { fortitude: 8, reflex: 6, will: 5 },
           skills: { athletics: 0 },
@@ -560,6 +588,7 @@ describe("PF2e Armor Class and Hit Point derivation", () => {
         stats: {
           ac: 16,
           maxHp: 20,
+          strike: CREATURE_STRIKE,
           perception: 7,
           saves: { fortitude: 8, reflex: 6, will: 5 },
           skills: { athletics: 9 },
@@ -595,6 +624,7 @@ describe("PF2e Armor Class and Hit Point derivation", () => {
         stats: {
           ac: 16,
           maxHp: 20,
+          strike: CREATURE_STRIKE,
           perception: 7,
           saves: { fortitude: 8, reflex: 6, will: 5 },
           skills: { athletics: 9 },
@@ -649,6 +679,7 @@ describe("PF2e Armor Class and Hit Point derivation", () => {
       saves: { fortitude: "trained" as const, reflex: "trained" as const, will: "trained" as const },
       skills: { ...SKILLS },
       defense: { ...DEFENSE, ancestryHp: 8, classHpPerLevel: 10 },
+      offense: OFFENSE,
     };
 
     expect(deriveMaxHp(profile)).toBe(21);

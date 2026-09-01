@@ -1,6 +1,6 @@
 import type { AdventureState } from "../adventure";
 import type { CompiledContentPack } from "../content";
-import type { DeckContribution, DeckContributionSource, EquipmentSlotId } from "../game";
+import type { DeckContribution, DeckContributionSource, EquipmentSlotId, ResolvedStrikeProfile } from "../game";
 import {
   EQUIPMENT_SLOT_ORDER,
   deriveLoadoutSnapshot,
@@ -25,6 +25,14 @@ function element<K extends keyof HTMLElementTagNameMap>(
   if (className) node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+function signed(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value}`;
+}
+
+function damageText(strike: ResolvedStrikeProfile): string {
+  return `${strike.damage.count}d${strike.damage.sides}${signed(strike.damage.flatModifier)} ${strike.damage.damageType}`;
 }
 
 function cloneLoadout(loadout: PartyMemberLoadout): PartyMemberLoadout {
@@ -337,11 +345,20 @@ export class LoadoutUi {
       ["HP", preview?.after
         ? `${preview.before.statistics.maxHp} → ${preview.after.statistics.maxHp}`
         : String(shown.statistics.maxHp)],
+      ["Class DC", preview?.after
+        ? `${preview.before.statistics.classDc} → ${preview.after.statistics.classDc}`
+        : String(shown.statistics.classDc)],
       ["Armor", `${shown.armor.name} · ${shown.armor.category}`],
       ["Armor bonus", `+${shown.armor.acItemBonus} item · DEX cap ${shown.armor.dexCap ?? "none"}`],
-      ["Weapon", shown.weapon.name],
-      ["Damage", `${shown.weapon.damage.count}d${shown.weapon.damage.sides}${shown.weapon.damage.modifier >= 0 ? "+" : ""}${shown.weapon.damage.modifier}`],
-      ["Reach", `${shown.weapon.rangeFeet} ft`],
+      ["Weapon", `${shown.strike.weaponName} · ${shown.strike.weaponCategory ?? "fixed"} ${shown.strike.proficiencyRank ?? ""}`.trim()],
+      ["Attack", preview?.after
+        ? `${signed(preview.before.strike.attackModifier)} → ${signed(preview.after.strike.attackModifier)}`
+        : signed(shown.strike.attackModifier)],
+      ["Damage", preview?.after
+        ? `${damageText(preview.before.strike)} → ${damageText(preview.after.strike)}`
+        : damageText(shown.strike)],
+      ["Reach", `${shown.strike.rangeFeet} ft · ${shown.strike.attackMode ?? "fixed"}`],
+      ["Weapon traits", shown.strike.traits.length > 0 ? shown.strike.traits.join(", ") : "none"],
       ["Deck", `${shown.deck.totalCards} cards`],
     ];
     for (const [label, value] of values) {

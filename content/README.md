@@ -53,7 +53,8 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   Perception/3 Save/16 General Skill proficiency rank를 저장합니다. 최종 Reflex,
   Athletics, Initiative modifier는 authoring하지 않습니다.
 - Creature/Enemy는 `statProfile.kind = "creature"`로 최종 AC, Max HP, Save, Skill,
-  Perception을 간결하게 authoring할 수 있습니다. 두 profile 모두 runtime의 공통 statistic
+  Perception과 `strike`(최종 `attackModifier`, `rangeFeet`, flat `damage.modifier`,
+  `traits`)를 간결하게 authoring할 수 있습니다. 두 profile 모두 runtime의 공통 statistic
   resolver를 사용합니다.
 - Actor는 최종 `hp`, `maxHp`, `baseAc`를 authoring하지 않습니다. Playable Character의
   Max HP는 `defense.ancestryHp + level × (defense.classHpPerLevel + CON)`에서,
@@ -61,8 +62,32 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   Creature는 `statProfile.stats`의 `ac`/`maxHp`를 그대로 사용합니다.
 - Character `defense`는 `ancestryHp`, `classHpPerLevel`, 4개 `armorProficiencies`
   (`unarmored`/`light`/`medium`/`heavy`) rank를 선언합니다.
+- Character `offense`는 `keyAttribute`, 4개 `weaponProficiencies`
+  (`unarmed`/`simple`/`martial`/`advanced`) rank, `classDcProficiency`, 그리고
+  `unarmedStrike`를 선언합니다. Class DC는 별도 숫자로 저장하지 않고
+  `10 + key Attribute + classDcProficiency + typed modifier`에서 파생됩니다.
+  Class DC와 Save/Skill DC는 서로 다른 statistic이며 하나로 합치지 않습니다.
+- Playable weapon은 **무엇을 쓰는지**만 정의합니다. `weaponProfile`은 `name`,
+  `category`, `attackMode`, `rangeFeet`, `damage`(`count`/`sides`/`damageType`),
+  `traits`를 선언하며 최종 `attackModifier`나 Attribute를 복제한 flat
+  `damage.modifier`는 schema에서 거부됩니다. Strike attack은
+  `attack Attribute + weapon category proficiency + typed modifier + MAP`에서,
+  damage는 `weapon dice + 합법적인 Attribute contribution + damage modifier`에서
+  파생됩니다.
+- Attack Attribute는 melee가 STR, ranged와 thrown이 DEX입니다. `finesse` melee는
+  STR/DEX 중 resolved attack modifier가 높은 쪽을 결정적으로 선택하고 breakdown에
+  실제 선택된 Attribute를 남깁니다. Damage는 melee와 `thrown`이 STR 전량,
+  `propulsive`가 양수 STR의 절반(음수면 전량), 그 외 ranged는 0입니다.
+- Weapon trait은 boolean field를 늘리지 않고 기존 Equipment/Trait pipeline을 씁니다.
+  `agile` weapon으로 하는 Strike만 MAP이 `0 / -4 / -8`로 완화되고, 나머지와
+  Athletics Trip 같은 Attack-trait Skill Action은 `0 / -5 / -10`을 씁니다.
+  MAP 단계는 여전히 Attack trait 사용 횟수로 셉니다.
+- 실제 시작 무기는 Equipment + `starterLoadout.weapon`으로 소유합니다. weapon slot이
+  비면 Character의 `offense.unarmedStrike`를 씁니다. Character ID별 fallback
+  special-case는 없습니다.
 - Equipment slot은 `weapon`/`armor`/`shield`/`feet`이고 이 순서가 deterministic한
-  equipment 순서입니다. `armor` slot equipment만 `armorProfile`(`category`,
+  equipment 순서입니다. `weapon` slot equipment만 `weaponProfile`을 선언하며,
+  선언이 없거나 다른 slot이 선언하면 거부됩니다. `armor` slot equipment만 `armorProfile`(`category`,
   `acItemBonus`, `dexCap`)을 선언하며, 다른 slot이 선언하면 거부됩니다. Armor를 입지
   않은 Character는 별도 item 없이 `unarmored` proficiency와 cap 없는 DEX로 resolve됩니다.
 - `shieldBonus`는 `shield` slot equipment만 선언할 수 있습니다. Raise Shield는 착용한
@@ -87,7 +112,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 - Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
   PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
 - `playable` Trait을 가진 Actor만 Party Builder 후보입니다. 현재 authoritative pack은
-  `content/m6`의 `cardguild.m6@0.7.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
+  `content/m6`의 `cardguild.m6@0.8.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
 - `remove-condition`은 지정한 Condition ID를 즉시 제거합니다. 판정이 필요한
@@ -95,7 +120,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `6`입니다.
+- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `7`입니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면
   version을 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key,

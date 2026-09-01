@@ -1,8 +1,8 @@
 import {
-  getWeaponProfile,
   listLegalActions,
   resolveArmorClass,
   resolveStatisticDC,
+  resolveStrike,
 } from "../game";
 import type {
   ActionPreview,
@@ -11,6 +11,7 @@ import type {
   CombatEvent,
   CombatState,
   LegalAction,
+  ResolvedStrikeProfile,
   ScenarioDefinition,
 } from "../game";
 import type { AssetCatalog } from "../presentation";
@@ -53,6 +54,16 @@ function element<K extends keyof HTMLElementTagNameMap>(
 
 export function actionCost(action: LegalAction): string {
   return action.timing.kind === "reaction" ? "↻" : "●".repeat(action.timing.actions);
+}
+
+function signed(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value}`;
+}
+
+/** Reads the resolved Strike rather than raw weapon data, so the panel cannot drift from combat. */
+function strikeLabel(strike: ResolvedStrikeProfile): string {
+  const { count, sides, flatModifier } = strike.damage;
+  return `${strike.weaponName} ${signed(strike.attackModifier)} · ${count}d${sides}${signed(flatModifier)}`;
 }
 
 function percentage(value: number | undefined): string {
@@ -227,7 +238,7 @@ export class BattleUi {
       ["Reflex DC", resolveStatisticDC(hero, { kind: "save", id: "reflex" }, { content: this.content }).value],
       ["Speed", `${hero.speedFeet}ft`],
       ["Facing", hero.facing],
-      ["Weapon", getWeaponProfile(hero, this.content).name],
+      ["Strike", strikeLabel(resolveStrike(hero, { content: this.content }))],
     ]));
   }
 

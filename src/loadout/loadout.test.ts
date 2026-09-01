@@ -7,7 +7,7 @@ import {
   M6_COMBAT_DEFINITION,
   M6_COMPILED_PACK,
 } from "../content";
-import { createCombat, resolveArmorClass } from "../game";
+import { createCombat, resolveArmorClass, resolveStrike } from "../game";
 import {
   createStartingCollection,
   deriveActorSetup,
@@ -116,9 +116,11 @@ describe("loadout ownership and derivation", () => {
             statModifiers: [],
             weaponProfile: {
               name: "Training Spear",
-              attackModifier: 7,
+              category: "simple",
+              attackMode: "melee",
               rangeFeet: 5,
-              damage: { count: 1, sides: 8, modifier: 3, damageType: "piercing" },
+              damage: { count: 1, sides: 8, damageType: "piercing" },
+              traits: [],
             },
           },
         },
@@ -209,8 +211,116 @@ describe("loadout ownership and derivation", () => {
     });
 
     const snapshot = deriveLoadoutSnapshot(actor, candidate, content.combatContent, "party.hero-1");
-    expect(snapshot.weapon.name).toBe("Halberd");
+    expect(snapshot.strike.weaponName).toBe("Halberd");
     expect(snapshot.contextActionIds).toEqual([]);
+  });
+});
+
+describe("resolved Strike and Class DC in the Loadout preview", () => {
+  const pack: LoadoutContent = M6_COMPILED_PACK;
+  const placement = {
+    instanceId: "hero.probe",
+    team: "heroes" as const,
+    position: { x: 0, y: 0 },
+    facing: "north" as const,
+  };
+
+  function hero(id: string) {
+    return M6_COMPILED_PACK.actorDefinitions[id] as NonNullable<
+      (typeof M6_COMPILED_PACK.actorDefinitions)[string]
+    >;
+  }
+
+  /** Puts the member into a real encounter and reads the Strike combat would roll. */
+  function combatStrike(actorId: string, loadout: PartyMemberLoadout) {
+    const actor = hero(actorId);
+    const setup = deriveActorSetup(actor, { ...placement, actorDefinitionId: actor.id }, loadout, pack.combatContent, "party.hero-1");
+    const state = createCombat(
+      { ...M6_COMBAT_DEFINITION, scenario: { ...M6_COMBAT_DEFINITION.scenario, actors: [setup, ...M6_COMBAT_DEFINITION.scenario.actors] } },
+      7,
+    ).state;
+    const combatActor = state.actors["hero.probe"] as NonNullable<(typeof state.actors)["hero.probe"]>;
+    return resolveStrike(combatActor, { content: pack.combatContent });
+  }
+
+  it("gives every starter hero a valid derived Strike and Class DC", () => {
+    const summary = ["hero.aerin", "hero.lyra", "hero.brom"].map((id) => {
+      const actor = hero(id);
+      const snapshot = deriveLoadoutSnapshot(actor, actor.starterLoadout, pack.combatContent, "party.hero-1");
+      return [
+        snapshot.strike.weaponName,
+        snapshot.strike.attackModifier,
+        snapshot.strike.damage.flatModifier,
+        snapshot.statistics.classDc,
+      ];
+    });
+    expect(summary).toEqual([
+      ["Halberd", 8, 3, 16],
+      ["Light Blade", 7, 2, 17],
+      ["Guardian Mace", 6, 3, 16],
+    ]);
+  });
+
+  it("owns each hero's starter weapon through the collection instead of a fallback", () => {
+    const party: LoadoutParty = {
+      members: Object.fromEntries(["hero.aerin", "hero.lyra", "hero.brom"].map((id, index) => [
+        `party.hero-${index + 1}`,
+        { id: `party.hero-${index + 1}`, actorDefinitionId: id, loadout: hero(id).starterLoadout },
+      ])),
+    };
+    const collection = createStartingCollection(party, pack);
+    expect(collection.equipment).toMatchObject({ halberd: 1, "light-blade": 1, "guardian-mace": 1 });
+  });
+
+  it("previews a weapon swap with the Strike the next encounter actually resolves", () => {
+    const lyra = hero("hero.lyra");
+    const party: LoadoutParty = {
+      members: { "party.hero-1": { id: "party.hero-1", actorDefinitionId: lyra.id, loadout: lyra.starterLoadout } },
+    };
+    const collection = { ...createStartingCollection(party, pack), equipment: { ...createStartingCollection(party, pack).equipment, "composite-shortbow": 1 } };
+    const ranged: PartyMemberLoadout = {
+      equipment: { ...lyra.starterLoadout.equipment, weapon: "composite-shortbow" },
+      preparedCards: [...lyra.starterLoadout.preparedCards],
+    };
+    const preview = previewLoadoutChange(party, collection, pack, "party.hero-1", ranged);
+
+    expect(preview.legal).toBe(true);
+    // Finesse melee: DEX 4 + trained 3, STR 2 to damage. Ranged propulsive: DEX 4 + trained 3, half STR.
+    expect([preview.before.strike.attackModifier, preview.before.strike.damage.flatModifier, preview.before.strike.rangeFeet]).toEqual([7, 2, 5]);
+    expect([preview.after?.strike.attackModifier, preview.after?.strike.damage.flatModifier, preview.after?.strike.rangeFeet]).toEqual([7, 1, 60]);
+    expect(preview.after?.strike.attackMode).toBe("ranged");
+
+    // Preview and encounter read one resolver, so the whole resolved Strike matches.
+    expect(combatStrike("hero.lyra", lyra.starterLoadout)).toEqual(preview.before.strike);
+    expect(combatStrike("hero.lyra", ranged)).toEqual(preview.after?.strike);
+  });
+
+  it("carries the weapon choice into the encounter setup fingerprint", () => {
+    const lyra = hero("hero.lyra");
+    const unarmed: PartyMemberLoadout = {
+      equipment: { ...lyra.starterLoadout.equipment, weapon: undefined },
+      preparedCards: [...lyra.starterLoadout.preparedCards],
+    };
+    const fingerprints = [lyra.starterLoadout, unarmed].map((loadout) => {
+      const setup = deriveActorSetup(lyra, { ...placement, actorDefinitionId: lyra.id }, loadout, pack.combatContent, "party.hero-1");
+      return createCombat(
+        { ...M6_COMBAT_DEFINITION, scenario: { ...M6_COMBAT_DEFINITION.scenario, actors: [setup, ...M6_COMBAT_DEFINITION.scenario.actors] } },
+        7,
+      ).state.setupFingerprint;
+    });
+    expect(fingerprints[0]).not.toBe(fingerprints[1]);
+  });
+
+  it("falls back to the authored unarmed Strike when the weapon slot is emptied", () => {
+    const brom = hero("hero.brom");
+    const unarmed: PartyMemberLoadout = {
+      equipment: { ...brom.starterLoadout.equipment, weapon: undefined },
+      preparedCards: [...brom.starterLoadout.preparedCards],
+    };
+    const snapshot = deriveLoadoutSnapshot(brom, unarmed, pack.combatContent, "party.hero-1");
+    expect([snapshot.strike.weaponName, snapshot.strike.weaponCategory, snapshot.strike.attackModifier]).toEqual(["Fist", "unarmed", 6]);
+    expect(snapshot.strike.traits).toContain("agile");
+    expect(combatStrike("hero.brom", unarmed).weaponName).toBe("Fist");
   });
 });
 

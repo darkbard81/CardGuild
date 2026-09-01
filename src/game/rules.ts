@@ -7,7 +7,6 @@ import type {
   EquipmentDefinition,
   GridPosition,
   TraitInstance,
-  WeaponProfile,
 } from "./types";
 
 export function hasTrait(
@@ -68,13 +67,6 @@ export function getConditionActionGrants(
 ) {
   return getConditionDefinitions(actor, content).flatMap((condition) =>
     condition.traits.flatMap((trait) => content.traits[trait.id]?.actionGrants ?? []),
-  );
-}
-
-export function getWeaponProfile(actor: ActorState, content: CombatContent): WeaponProfile {
-  return (
-    getEquipment(actor, content).find((equipment) => equipment.weaponProfile)?.weaponProfile ??
-    actor.fallbackWeapon
   );
 }
 

@@ -432,6 +432,147 @@ describe("content semantic validation and compilation", () => {
     }));
   });
 
+  it("keeps final attack and Attribute-duplicating damage out of player weapon authoring", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const weapon = source.equipment.find((definition) => definition.slot === "weapon");
+    if (!weapon?.weaponProfile) throw new Error("M6 weapon fixtures are missing.");
+    const profile = weapon.weaponProfile;
+    expect(profile).not.toHaveProperty("attackModifier");
+    expect(profile.damage).not.toHaveProperty("modifier");
+
+    const authoredAttack: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === weapon.id
+        ? { ...definition, weaponProfile: { ...profile, attackModifier: 8 } }
+        : definition),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(authoredAttack, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: weapon.id,
+    }));
+
+    const duplicatedStrength: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === weapon.id
+        ? { ...definition, weaponProfile: { ...profile, damage: { ...profile.damage, modifier: 3 } } }
+        : definition),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(duplicatedStrength, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: weapon.id,
+    }));
+  });
+
+  it("requires a weapon profile exactly on weapon slot equipment", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const weapon = source.equipment.find((definition) => definition.slot === "weapon");
+    const boots = source.equipment.find((definition) => definition.slot === "feet");
+    if (!weapon?.weaponProfile || !boots) throw new Error("M6 equipment fixtures are missing.");
+    const weaponProfile = weapon.weaponProfile;
+
+    const withoutProfile: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === weapon.id
+        ? { ...definition, weaponProfile: undefined }
+        : definition),
+    };
+    expect(validateContentPackStructure(withoutProfile, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: weapon.id,
+    }));
+    expect(validateContentPackSemantics(withoutProfile)).toContainEqual(expect.objectContaining({
+      code: "WEAPON_PROFILE_REQUIRED",
+      definitionId: weapon.id,
+    }));
+
+    const misplaced: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === boots.id
+        ? { ...definition, weaponProfile }
+        : definition),
+    };
+    expect(validateContentPackStructure(misplaced, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: boots.id,
+    }));
+    expect(validateContentPackSemantics(misplaced)).toContainEqual(expect.objectContaining({
+      code: "WEAPON_PROFILE_SLOT_MISMATCH",
+      definitionId: boots.id,
+    }));
+  });
+
+  it("requires complete offense authoring on characters and a fixed Strike on creatures", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const character = source.actors.find((actor) => actor.statProfile.kind === "character");
+    const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
+    if (character?.statProfile.kind !== "character" || creature?.statProfile.kind !== "creature") {
+      throw new Error("M6 actor fixtures are missing.");
+    }
+    const characterStats = character.statProfile.stats;
+    const creatureStats = creature.statProfile.stats;
+    expect(Object.keys(characterStats.offense.weaponProficiencies).sort())
+      .toEqual(["advanced", "martial", "simple", "unarmed"]);
+
+    const partialProficiencies: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.id === character.id
+        ? {
+            ...actor,
+            statProfile: {
+              kind: "character" as const,
+              stats: {
+                ...characterStats,
+                offense: {
+                  ...characterStats.offense,
+                  weaponProficiencies: { unarmed: "trained" as const, simple: "trained" as const, martial: "trained" as const },
+                },
+              },
+            },
+          }
+        : actor),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(partialProficiencies, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "actors",
+      definitionId: character.id,
+    }));
+
+    const armedUnarmedStrike: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.id === character.id
+        ? {
+            ...actor,
+            statProfile: {
+              kind: "character" as const,
+              stats: {
+                ...characterStats,
+                offense: {
+                  ...characterStats.offense,
+                  unarmedStrike: { ...characterStats.offense.unarmedStrike, category: "martial" as const },
+                },
+              },
+            },
+          }
+        : actor),
+    };
+    expect(validateContentPackSemantics(armedUnarmedStrike)).toContainEqual(expect.objectContaining({
+      code: "UNARMED_STRIKE_CATEGORY_MISMATCH",
+      definitionId: character.id,
+    }));
+
+    // Creatures keep their authored final numbers.
+    expect(creatureStats.strike.attackModifier).toBeGreaterThan(0);
+    const withoutStrike: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.id === creature.id
+        ? { ...actor, statProfile: { kind: "creature" as const, stats: { ...creatureStats, strike: undefined } } }
+        : actor),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(withoutStrike, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "actors",
+      definitionId: creature.id,
+    }));
+  });
+
   it("rejects positive untyped modifiers because PF2e untyped contributions are penalties", () => {
     const source = structuredClone(M6_CONTENT_SOURCE);
     const equipment = source.equipment.find((definition) => definition.statModifiers.length > 0);
@@ -517,7 +658,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 6,
+        schemaVersion: 7,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),
@@ -585,5 +726,31 @@ describe("content fingerprint", () => {
         : actor),
     };
     expect(fingerprintContentPack(changedCharacter)).not.toBe(fingerprintContentPack(source));
+
+    // Offense authoring is gameplay input: Strike and Class DC move with the pack identity.
+    const changedOffense: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.statProfile.kind === "character"
+        ? {
+            ...actor,
+            statProfile: {
+              kind: "character",
+              stats: {
+                ...actor.statProfile.stats,
+                offense: { ...actor.statProfile.stats.offense, classDcProficiency: "legendary" },
+              },
+            },
+          }
+        : actor),
+    };
+    expect(fingerprintContentPack(changedOffense)).not.toBe(fingerprintContentPack(source));
+
+    const changedWeapon: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((item) => item.weaponProfile
+        ? { ...item, weaponProfile: { ...item.weaponProfile, category: "advanced" as const } }
+        : item),
+    };
+    expect(fingerprintContentPack(changedWeapon)).not.toBe(fingerprintContentPack(source));
   });
 });

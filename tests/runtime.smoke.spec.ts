@@ -195,6 +195,15 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await expect(page.locator('.deck-contribution[data-card-id="card.trip"]')).toContainText("Halberd / Trip");
   expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
 
+  // The weapon rows are resolved Strike output, not raw weapon authoring.
+  await expect(page.locator("#loadout-detail")).toContainText("Halberd · martial expert");
+  await expect(page.locator("#loadout-detail")).toContainText("1d10+3 slashing");
+  await page.locator('.equipment-slot[data-slot="weapon"]').click();
+  await page.locator('.loadout-option[data-option-id="empty-weapon"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("+8 → +6");
+  await expect(page.locator("#loadout-detail")).toContainText("1d10+3 slashing → 1d4+3 bludgeoning");
+  await expect(page.locator("#loadout-detail")).toContainText("Fist · unarmed trained");
+
   await expect(page.locator("#loadout-detail")).toContainText("Scale Mail · medium");
   await expect(page.locator("#loadout-detail")).toContainText("+3 item · DEX cap 2");
   await page.locator('.equipment-slot[data-slot="armor"]').click();

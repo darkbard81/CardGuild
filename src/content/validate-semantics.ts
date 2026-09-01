@@ -3,10 +3,11 @@ import { deriveMaxHp, isUntypedPenalty } from "../game/statistics";
 import type {
   ActionDefinition,
   ActionTargeting,
+  CharacterWeaponProfile,
   ConditionId,
+  FixedStrikeProfile,
   StatisticModifierContribution,
   TraitInstance,
-  WeaponProfile,
 } from "../game/types";
 import type {
   ContentPackSource,
@@ -133,19 +134,21 @@ function validateConditionReference(
   }
 }
 
-function validateWeaponProfile(
+function validateStrikeShape(
   context: ValidationContext,
   category: "equipment" | "actors",
   definitionId: string,
   path: string,
-  weapon: WeaponProfile,
+  strike: CharacterWeaponProfile | FixedStrikeProfile,
+  knownTraits: ReadonlySet<string>,
 ): void {
-  if (!Number.isInteger(weapon.rangeFeet) || weapon.rangeFeet <= 0 || weapon.rangeFeet % 5 !== 0) {
+  if (!Number.isInteger(strike.rangeFeet) || strike.rangeFeet <= 0 || strike.rangeFeet % 5 !== 0) {
     addIssue(context, category, `${path}.rangeFeet`, "INVALID_WEAPON_RANGE", "Weapon range must be a positive multiple of 5 feet.", definitionId);
   }
-  if (!Number.isInteger(weapon.damage.count) || weapon.damage.count < 1 || !Number.isInteger(weapon.damage.sides) || weapon.damage.sides < 2) {
+  if (!Number.isInteger(strike.damage.count) || strike.damage.count < 1 || !Number.isInteger(strike.damage.sides) || strike.damage.sides < 2) {
     addIssue(context, category, `${path}.damage`, "INVALID_DAMAGE_DICE", "Weapon damage dice must have a positive count and at least 2 sides.", definitionId);
   }
+  validateTraits(context, knownTraits, category, definitionId, `${path}.traits`, strike.traits);
 }
 
 export function validateContentPackSemantics(
@@ -245,7 +248,15 @@ export function validateContentPackSemantics(
     if (definition.slot !== "shield" && definition.shieldBonus !== undefined) {
       addIssue(context, "equipment", `[${index}].shieldBonus`, "SHIELD_BONUS_SLOT_MISMATCH", `Equipment "${definition.id}" declares a shield bonus but occupies the ${definition.slot} slot.`, definition.id);
     }
-    if (definition.weaponProfile) validateWeaponProfile(context, "equipment", definition.id, `[${index}].weaponProfile`, definition.weaponProfile);
+    if (definition.slot === "weapon" && !definition.weaponProfile) {
+      addIssue(context, "equipment", `[${index}].weaponProfile`, "WEAPON_PROFILE_REQUIRED", `Weapon slot equipment "${definition.id}" must declare a weapon profile.`, definition.id);
+    }
+    if (definition.slot !== "weapon" && definition.weaponProfile) {
+      addIssue(context, "equipment", `[${index}].weaponProfile`, "WEAPON_PROFILE_SLOT_MISMATCH", `Equipment "${definition.id}" declares a weapon profile but occupies the ${definition.slot} slot.`, definition.id);
+    }
+    if (definition.weaponProfile) {
+      validateStrikeShape(context, "equipment", definition.id, `[${index}].weaponProfile`, definition.weaponProfile, knownTraits);
+    }
   });
 
   source.actors.forEach((actor, index) => {
@@ -260,7 +271,21 @@ export function validateContentPackSemantics(
         actor.id,
       );
     }
-    validateWeaponProfile(context, "actors", actor.id, `[${index}].fallbackWeapon`, actor.fallbackWeapon);
+    if (actor.statProfile.kind === "character") {
+      validateStrikeShape(context, "actors", actor.id, `[${index}].statProfile.stats.offense.unarmedStrike`, actor.statProfile.stats.offense.unarmedStrike, knownTraits);
+      if (actor.statProfile.stats.offense.unarmedStrike.category !== "unarmed") {
+        addIssue(
+          context,
+          "actors",
+          `[${index}].statProfile.stats.offense.unarmedStrike.category`,
+          "UNARMED_STRIKE_CATEGORY_MISMATCH",
+          `Actor "${actor.id}" declares an unarmed Strike in the "${actor.statProfile.stats.offense.unarmedStrike.category}" weapon category.`,
+          actor.id,
+        );
+      }
+    } else {
+      validateStrikeShape(context, "actors", actor.id, `[${index}].statProfile.stats.strike`, actor.statProfile.stats.strike, knownTraits);
+    }
     if (actor.statProfile.kind === "character" && deriveMaxHp(actor.statProfile.stats) < 1) {
       addIssue(
         context,

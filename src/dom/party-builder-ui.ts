@@ -195,6 +195,7 @@ export class PartyBuilderUi {
         "party-stats",
           "HP " + String(statistics.maxHp) +
           " · AC " + String(statistics.ac) +
+          " · Class DC " + String(statistics.classDc) +
           " · REF " + signed(statistics.reflex.modifier) +
           " · INIT " + signed(statistics.initiative) +
           " · " + String(actor.speedFeet) + "ft",

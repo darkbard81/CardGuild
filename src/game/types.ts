@@ -58,6 +58,18 @@ export interface CharacterDefenseProfile {
   readonly armorProficiencies: Readonly<Record<ArmorCategory, ProficiencyRank>>;
 }
 
+/**
+ * How well a Character fights: the ranks that turn an authored weapon into a resolved
+ * Strike, plus the Class DC proficiency. The unarmed Strike is what a Character falls
+ * back to with an empty weapon slot — there is no per-character fallback special case.
+ */
+export interface CharacterOffenseProfile {
+  readonly keyAttribute: AttributeId;
+  readonly weaponProficiencies: Readonly<Record<WeaponCategory, ProficiencyRank>>;
+  readonly classDcProficiency: ProficiencyRank;
+  readonly unarmedStrike: CharacterWeaponProfile;
+}
+
 export interface CharacterStatProfile {
   readonly level: number;
   readonly attributes: Readonly<Record<AttributeId, number>>;
@@ -65,11 +77,13 @@ export interface CharacterStatProfile {
   readonly saves: Readonly<Record<SaveId, ProficiencyRank>>;
   readonly skills: Readonly<Record<SkillId, ProficiencyRank>>;
   readonly defense: CharacterDefenseProfile;
+  readonly offense: CharacterOffenseProfile;
 }
 
 export interface FixedCreatureStats {
   readonly ac: number;
   readonly maxHp: number;
+  readonly strike: FixedStrikeProfile;
   readonly perception: number;
   readonly saves: Readonly<Record<SaveId, number>>;
   readonly skills: Readonly<Partial<Record<SkillId, number>>>;
@@ -97,14 +111,20 @@ export type ModifierTarget =
   | { readonly kind: "save"; readonly id: SaveId }
   | { readonly kind: "skill"; readonly id: SkillId }
   | { readonly kind: "perception" }
-  | { readonly kind: "ac" };
+  | { readonly kind: "ac" }
+  | { readonly kind: "attack" }
+  | { readonly kind: "damage" }
+  | { readonly kind: "class-dc" };
 
 export type StatisticModifierSelector =
   | { readonly kind: "all" }
   | { readonly kind: "save"; readonly id?: SaveId }
   | { readonly kind: "skill"; readonly id?: SkillId }
   | { readonly kind: "perception" }
-  | { readonly kind: "ac" };
+  | { readonly kind: "ac" }
+  | { readonly kind: "attack" }
+  | { readonly kind: "damage" }
+  | { readonly kind: "class-dc" };
 
 export interface StatisticModifierContribution {
   readonly selector: StatisticModifierSelector;
@@ -122,6 +142,7 @@ export type StatisticSourceKind =
   | "proficiency"
   | "fixed"
   | "dc"
+  | "map"
   | "equipment"
   | "condition"
   | "trait"
@@ -163,18 +184,77 @@ export interface ConditionInstance {
   readonly sourceId: string;
 }
 
+export type DamageType = "slashing" | "piercing" | "bludgeoning" | "force";
+
 export interface DamageDie {
   readonly count: number;
   readonly sides: number;
   readonly modifier: number;
-  readonly damageType: "slashing" | "piercing" | "bludgeoning" | "force";
+  readonly damageType: DamageType;
 }
 
-export interface WeaponProfile {
+export type WeaponCategory = "unarmed" | "simple" | "martial" | "advanced";
+export type WeaponAttackMode = "melee" | "ranged";
+
+/** Weapon dice with no flat term: a Character's Attribute contribution is derived, never authored. */
+export interface WeaponDamageDice {
+  readonly count: number;
+  readonly sides: number;
+  readonly damageType: DamageType;
+}
+
+/**
+ * What a Playable Character *uses*. How well they use it comes from
+ * `CharacterOffenseProfile`, so no final attack modifier lives here.
+ */
+export interface CharacterWeaponProfile {
+  readonly name: string;
+  readonly category: WeaponCategory;
+  readonly attackMode: WeaponAttackMode;
+  readonly rangeFeet: number;
+  readonly damage: WeaponDamageDice;
+  readonly traits: readonly TraitInstance[];
+}
+
+/**
+ * A Creature's authored Strike. Monsters keep final top-down numbers instead of
+ * being forced through the Character weapon-proficiency formula.
+ */
+export interface FixedStrikeProfile {
   readonly name: string;
   readonly attackModifier: number;
   readonly rangeFeet: number;
   readonly damage: DamageDie;
+  readonly traits: readonly TraitInstance[];
+}
+
+export interface ResolvedStrikeDamage {
+  readonly count: number;
+  readonly sides: number;
+  readonly flatModifier: number;
+  readonly damageType: DamageType;
+  readonly sources: readonly StatisticSource[];
+}
+
+/**
+ * The one normalized Strike every consumer reads — legality queries, action previews,
+ * Loadout preview, normal Strike execution and Reactive Strike alike. Character-derived
+ * and Creature fixed strikes both arrive here before any roll happens.
+ */
+export interface ResolvedStrikeProfile {
+  readonly weaponName: string;
+  readonly weaponCategory: WeaponCategory | null;
+  readonly proficiencyRank: ProficiencyRank | null;
+  /** `null` for a Creature's authored Strike, which declares only a range. */
+  readonly attackMode: WeaponAttackMode | null;
+  readonly attackAttribute: AttributeId | null;
+  /** Total including the multiple attack penalty, which is also reported separately. */
+  readonly attackModifier: number;
+  readonly mapPenalty: number;
+  readonly rangeFeet: number;
+  readonly traits: readonly TraitId[];
+  readonly damage: ResolvedStrikeDamage;
+  readonly sources: readonly StatisticSource[];
 }
 
 export interface ActorState {
@@ -188,7 +268,6 @@ export interface ActorState {
   readonly maxHp: number;
   readonly statProfile: ActorStatProfile;
   readonly speedFeet: number;
-  readonly fallbackWeapon: WeaponProfile;
   readonly conditions: readonly ConditionInstance[];
   readonly traits: readonly TraitInstance[];
   readonly equipmentIds: readonly EquipmentId[];
@@ -470,7 +549,7 @@ export interface EquipmentDefinition {
   readonly slot: EquipmentSlotId;
   readonly traits: readonly TraitInstance[];
   readonly statModifiers: readonly StatisticModifierContribution[];
-  readonly weaponProfile?: WeaponProfile;
+  readonly weaponProfile?: CharacterWeaponProfile;
   readonly armorProfile?: ArmorProfile;
   readonly shieldBonus?: number;
 }
