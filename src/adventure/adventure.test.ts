@@ -7,7 +7,7 @@ import {
   M3_ROAD_AMBUSH_ID,
   M3_RUINED_GATE_ID,
 } from "../content";
-import { createCombat, getStatistic } from "../game";
+import { createCombat, resolveStatisticDC } from "../game";
 import { deriveLoadoutSnapshot } from "../loadout";
 import { buildAdventureEncounter } from "./combat-bridge";
 import { createAdventureSession, deriveCombatSeed, dispatchAdventureCommand } from "./runtime";
@@ -271,7 +271,11 @@ describe("Adventure runtime", () => {
     const hero = combat.actors["party.hero-1"] as NonNullable<typeof combat.actors[string]>;
     expect(hero.equipmentIds).toEqual(preview.equipmentIds);
     expect(hero.deckContributions).toEqual(preview.deck.contributions);
-    expect(getStatistic(hero, context.combatContent, "reflex").value).toBe(preview.statistics.reflex);
+    expect(resolveStatisticDC(
+      hero,
+      { kind: "save", id: "reflex" },
+      { content: context.combatContent },
+    ).value).toBe(preview.statistics.reflex.dc);
     expect(hero.deckContributions).toContainEqual({
       cardDefinitionId: "card.fly",
       count: 1,

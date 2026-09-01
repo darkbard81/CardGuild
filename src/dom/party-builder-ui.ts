@@ -1,5 +1,6 @@
 import type { CompiledContentPack } from "../content";
 import type { ActorDefinition } from "../content/content-types";
+import { deriveLoadoutSnapshot } from "../loadout";
 import type { AssetCatalog } from "../presentation";
 import type { SessionCoreState } from "../session";
 
@@ -22,18 +23,29 @@ export interface PartyBuilderHandlers {
 function playableActors(pack: CompiledContentPack): readonly ActorDefinition[] {
   return Object.values(pack.actorDefinitions)
     .filter((actor) => actor.traits.some((trait) => trait.id === "playable"))
-    .sort((left, right) => archetypeRank(left) - archetypeRank(right) || left.name.localeCompare(right.name));
+    .sort((left, right) =>
+      archetypeRank(left, actorStatistics(left, pack).initiative) -
+        archetypeRank(right, actorStatistics(right, pack).initiative) ||
+      left.name.localeCompare(right.name));
 }
 
-function archetypeRank(actor: ActorDefinition): number {
-  if (actor.speedFeet >= 30 || actor.initiativeModifier >= 8) return 1;
+function actorStatistics(actor: ActorDefinition, pack: CompiledContentPack) {
+  return deriveLoadoutSnapshot(actor, actor.starterLoadout, pack.combatContent, actor.id).statistics;
+}
+
+function archetypeRank(actor: ActorDefinition, initiative: number): number {
+  if (actor.speedFeet >= 30 || initiative >= 8) return 1;
   if (actor.maxHp >= 40 || actor.baseAc >= 20) return 2;
   return 0;
 }
 
-function roleSummary(actor: ActorDefinition): string {
-  return ["Balanced controller", "Mobile skirmisher", "Durable guardian"][archetypeRank(actor)] ??
+function roleSummary(actor: ActorDefinition, initiative: number): string {
+  return ["Balanced controller", "Mobile skirmisher", "Durable guardian"][archetypeRank(actor, initiative)] ??
     "Balanced controller";
+}
+
+function signed(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value}`;
 }
 
 function starterSummary(actor: ActorDefinition, pack: CompiledContentPack): string {
@@ -172,16 +184,17 @@ export class PartyBuilderUi {
     portrait.setAttribute("aria-label", actor.name + " front standee");
     Object.assign(portrait.style, this.catalog.domAtlasPortraitStyle(visual.front, 132));
     const details = element("div", "party-character-copy");
+    const statistics = actorStatistics(actor, this.pack);
     details.append(
       element("h3", undefined, actor.name),
-      element("p", "party-role", roleSummary(actor)),
+      element("p", "party-role", roleSummary(actor, statistics.initiative)),
       element(
         "p",
         "party-stats",
-        "HP " + String(actor.maxHp) +
+          "HP " + String(actor.maxHp) +
           " · AC " + String(actor.baseAc) +
-          " · REF +" + String(actor.reflexModifier) +
-          " · INIT +" + String(actor.initiativeModifier) +
+          " · REF " + signed(statistics.reflex.modifier) +
+          " · INIT " + signed(statistics.initiative) +
           " · " + String(actor.speedFeet) + "ft",
       ),
       element("p", "party-starter", starterSummary(actor, this.pack)),

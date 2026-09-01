@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v4",
+  "title": "CardGuild Content Pack v5",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures"],
@@ -17,6 +17,10 @@
   },
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
+    "attributeId": { "enum": ["str", "dex", "con", "int", "wis", "cha"] },
+    "proficiencyRank": { "enum": ["untrained", "trained", "expert", "master", "legendary"] },
+    "saveId": { "enum": ["fortitude", "reflex", "will"] },
+    "skillId": { "enum": ["acrobatics", "arcana", "athletics", "crafting", "deception", "diplomacy", "intimidation", "medicine", "nature", "occultism", "performance", "religion", "society", "stealth", "survival", "thievery"] },
     "gridPosition": {
       "type": "object",
       "additionalProperties": false,
@@ -269,7 +273,8 @@
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
         "cardGrants": { "type": "array", "items": { "$ref": "#/$defs/traitCardGrant" } },
-        "actionGrants": { "type": "array", "items": { "$ref": "#/$defs/traitActionGrant" } }
+        "actionGrants": { "type": "array", "items": { "$ref": "#/$defs/traitActionGrant" } },
+        "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } }
       }
     },
     "conditionDefinition": {
@@ -279,15 +284,51 @@
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
+        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
+        "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } }
       }
+    },
+    "statModifierSelector": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "all" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": { "kind": { "const": "perception" } }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "save" },
+            "id": { "$ref": "#/$defs/saveId" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind"],
+          "properties": {
+            "kind": { "const": "skill" },
+            "id": { "$ref": "#/$defs/skillId" }
+          }
+        }
+      ]
     },
     "statModifier": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["selector", "value", "label"],
+      "required": ["selector", "type", "value", "label"],
       "properties": {
-        "selector": { "enum": ["ac", "reflex"] },
+        "selector": { "$ref": "#/$defs/statModifierSelector" },
+        "type": { "enum": ["circumstance", "item", "status", "untyped"] },
         "value": { "type": "integer" },
         "label": { "$ref": "#/$defs/nonEmptyString" }
       }
@@ -332,19 +373,138 @@
         "preparedCards": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } }
       }
     },
+    "characterAttributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["str", "dex", "con", "int", "wis", "cha"],
+      "properties": {
+        "str": { "type": "integer" },
+        "dex": { "type": "integer" },
+        "con": { "type": "integer" },
+        "int": { "type": "integer" },
+        "wis": { "type": "integer" },
+        "cha": { "type": "integer" }
+      }
+    },
+    "characterSaves": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fortitude", "reflex", "will"],
+      "properties": {
+        "fortitude": { "$ref": "#/$defs/proficiencyRank" },
+        "reflex": { "$ref": "#/$defs/proficiencyRank" },
+        "will": { "$ref": "#/$defs/proficiencyRank" }
+      }
+    },
+    "characterSkills": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["acrobatics", "arcana", "athletics", "crafting", "deception", "diplomacy", "intimidation", "medicine", "nature", "occultism", "performance", "religion", "society", "stealth", "survival", "thievery"],
+      "properties": {
+        "acrobatics": { "$ref": "#/$defs/proficiencyRank" },
+        "arcana": { "$ref": "#/$defs/proficiencyRank" },
+        "athletics": { "$ref": "#/$defs/proficiencyRank" },
+        "crafting": { "$ref": "#/$defs/proficiencyRank" },
+        "deception": { "$ref": "#/$defs/proficiencyRank" },
+        "diplomacy": { "$ref": "#/$defs/proficiencyRank" },
+        "intimidation": { "$ref": "#/$defs/proficiencyRank" },
+        "medicine": { "$ref": "#/$defs/proficiencyRank" },
+        "nature": { "$ref": "#/$defs/proficiencyRank" },
+        "occultism": { "$ref": "#/$defs/proficiencyRank" },
+        "performance": { "$ref": "#/$defs/proficiencyRank" },
+        "religion": { "$ref": "#/$defs/proficiencyRank" },
+        "society": { "$ref": "#/$defs/proficiencyRank" },
+        "stealth": { "$ref": "#/$defs/proficiencyRank" },
+        "survival": { "$ref": "#/$defs/proficiencyRank" },
+        "thievery": { "$ref": "#/$defs/proficiencyRank" }
+      }
+    },
+    "characterStatProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level", "attributes", "perception", "saves", "skills"],
+      "properties": {
+        "level": { "type": "integer", "minimum": 0 },
+        "attributes": { "$ref": "#/$defs/characterAttributes" },
+        "perception": { "$ref": "#/$defs/proficiencyRank" },
+        "saves": { "$ref": "#/$defs/characterSaves" },
+        "skills": { "$ref": "#/$defs/characterSkills" }
+      }
+    },
+    "fixedCreatureSaves": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fortitude", "reflex", "will"],
+      "properties": {
+        "fortitude": { "type": "integer" },
+        "reflex": { "type": "integer" },
+        "will": { "type": "integer" }
+      }
+    },
+    "fixedCreatureSkills": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "acrobatics": { "type": "integer" },
+        "arcana": { "type": "integer" },
+        "athletics": { "type": "integer" },
+        "crafting": { "type": "integer" },
+        "deception": { "type": "integer" },
+        "diplomacy": { "type": "integer" },
+        "intimidation": { "type": "integer" },
+        "medicine": { "type": "integer" },
+        "nature": { "type": "integer" },
+        "occultism": { "type": "integer" },
+        "performance": { "type": "integer" },
+        "religion": { "type": "integer" },
+        "society": { "type": "integer" },
+        "stealth": { "type": "integer" },
+        "survival": { "type": "integer" },
+        "thievery": { "type": "integer" }
+      }
+    },
+    "actorStatProfile": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "stats"],
+          "properties": {
+            "kind": { "const": "character" },
+            "stats": { "$ref": "#/$defs/characterStatProfile" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "stats"],
+          "properties": {
+            "kind": { "const": "creature" },
+            "stats": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["perception", "saves", "skills"],
+              "properties": {
+                "perception": { "type": "integer" },
+                "saves": { "$ref": "#/$defs/fixedCreatureSaves" },
+                "skills": { "$ref": "#/$defs/fixedCreatureSkills" }
+              }
+            }
+          }
+        }
+      ]
+    },
     "actorDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "hp", "maxHp", "baseAc", "reflexModifier", "athleticsModifier", "initiativeModifier", "speedFeet", "fallbackWeapon", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
+      "required": ["id", "name", "hp", "maxHp", "baseAc", "statProfile", "speedFeet", "fallbackWeapon", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
         "hp": { "type": "integer", "minimum": 0 },
         "maxHp": { "type": "integer", "minimum": 1 },
         "baseAc": { "type": "integer", "minimum": 0 },
-        "reflexModifier": { "type": "integer" },
-        "athleticsModifier": { "type": "integer" },
-        "initiativeModifier": { "type": "integer" },
+        "statProfile": { "$ref": "#/$defs/actorStatProfile" },
         "speedFeet": { "type": "integer", "minimum": 0 },
         "fallbackWeapon": { "$ref": "#/$defs/weaponProfile" },
         "initialConditions": { "type": "array", "items": { "$ref": "#/$defs/conditionInstance" } },
@@ -499,7 +659,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": { "const": 4 },
+        "schemaVersion": { "const": 5 },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

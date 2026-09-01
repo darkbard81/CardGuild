@@ -1,10 +1,16 @@
 import type { ActorDefinition, EncounterActorPlacement } from "../content/content-types";
 import {
+  getArmorClass,
   getEquipmentActionGrants,
   getEquipmentCardGrants,
-  getStatistic,
   getWeaponProfile,
 } from "../game/rules";
+import {
+  cloneActorStatProfile,
+  resolveInitiative,
+  resolveStatisticDC,
+  resolveStatisticModifier,
+} from "../game/statistics";
 import type {
   ActorSetup,
   ActorState,
@@ -205,9 +211,7 @@ export function deriveActorSetup(
     hp: actor.hp,
     maxHp: actor.maxHp,
     baseAc: actor.baseAc,
-    reflexModifier: actor.reflexModifier,
-    athleticsModifier: actor.athleticsModifier,
-    initiativeModifier: actor.initiativeModifier,
+    statProfile: cloneActorStatProfile(actor.statProfile),
     speedFeet: actor.speedFeet,
     fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
     conditions: (actor.initialConditions ?? []).map((condition) => ({ ...condition })),
@@ -237,12 +241,16 @@ export function deriveLoadoutSnapshot(
 ): DerivedLoadoutSnapshot {
   const ruleActor = actorForRules(actor, loadout, content);
   const contextActionIds = [...new Set(getEquipmentActionGrants(ruleActor, content).map((grant) => grant.actionId))].sort();
+  const resolvedReflex = resolveStatisticModifier(ruleActor, { kind: "save", id: "reflex" }, { content });
+  const reflexDC = resolveStatisticDC(ruleActor, { kind: "save", id: "reflex" }, { content });
   return {
     equipmentIds: [...ruleActor.equipmentIds],
     deck: deriveTacticalDeck(actor, loadout, content, memberId),
     statistics: {
-      ac: getStatistic(ruleActor, content, "ac").value,
-      reflex: getStatistic(ruleActor, content, "reflex").value,
+      ac: getArmorClass(ruleActor, content).value,
+      reflex: { modifier: resolvedReflex.value, dc: reflexDC.value },
+      athletics: resolveStatisticModifier(ruleActor, { kind: "skill", id: "athletics" }, { content }).value,
+      initiative: resolveInitiative(ruleActor, { content }).value,
     },
     weapon: { ...getWeaponProfile(ruleActor, content), damage: { ...getWeaponProfile(ruleActor, content).damage } },
     contextActionIds,

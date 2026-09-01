@@ -331,7 +331,9 @@ export class LoadoutUi {
     const stats = element("div", "loadout-stat-grid");
     const values: Array<[string, string]> = [
       ["AC", preview?.after ? `${preview.before.statistics.ac} → ${preview.after.statistics.ac}` : String(shown.statistics.ac)],
-      ["Reflex DC", preview?.after ? `${preview.before.statistics.reflex} → ${preview.after.statistics.reflex}` : String(shown.statistics.reflex)],
+      ["Reflex DC", preview?.after
+        ? `${preview.before.statistics.reflex.dc} → ${preview.after.statistics.reflex.dc}`
+        : String(shown.statistics.reflex.dc)],
       ["Weapon", shown.weapon.name],
       ["Damage", `${shown.weapon.damage.count}d${shown.weapon.damage.sides}${shown.weapon.damage.modifier >= 0 ? "+" : ""}${shown.weapon.damage.modifier}`],
       ["Reach", `${shown.weapon.rangeFeet} ft`],

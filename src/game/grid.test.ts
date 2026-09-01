@@ -33,9 +33,14 @@ const actor: ActorState = {
   hp: 10,
   maxHp: 10,
   baseAc: 10,
-  reflexModifier: 0,
-  athleticsModifier: 0,
-  initiativeModifier: 0,
+  statProfile: {
+    kind: "creature",
+    stats: {
+      perception: 0,
+      saves: { fortitude: 0, reflex: 0, will: 0 },
+      skills: { athletics: 0 },
+    },
+  },
   speedFeet: 25,
   fallbackWeapon: {
     name: "Test",

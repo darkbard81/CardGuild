@@ -5,13 +5,19 @@ import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
   getEquipment,
-  getStatistic,
+  getArmorClass,
   getWeaponProfile,
   hasTrait,
   isDirectlyBehind,
   isInFrontOrSide,
   isSuccessful,
 } from "./rules";
+import {
+  formatStatisticSources,
+  resolveInitiative,
+  resolveStatisticDC,
+  resolveStatisticModifier,
+} from "./statistics";
 import type {
   ActionDefinition,
   ActionSource,
@@ -59,6 +65,24 @@ interface CombatDraft {
 function cloneActor(actor: ActorState): ActorState {
   return {
     ...actor,
+    statProfile: actor.statProfile.kind === "character"
+      ? {
+          kind: "character",
+          stats: {
+            ...actor.statProfile.stats,
+            attributes: { ...actor.statProfile.stats.attributes },
+            saves: { ...actor.statProfile.stats.saves },
+            skills: { ...actor.statProfile.stats.skills },
+          },
+        }
+      : {
+          kind: "creature",
+          stats: {
+            ...actor.statProfile.stats,
+            saves: { ...actor.statProfile.stats.saves },
+            skills: { ...actor.statProfile.stats.skills },
+          },
+        },
     position: { ...actor.position },
     fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
     conditions: actor.conditions.map((condition) => ({ ...condition })),
@@ -194,14 +218,15 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
 
   const initiatives: { readonly actorId: string; readonly total: number }[] = [];
   for (const actor of Object.values(actors).sort((left, right) => left.id.localeCompare(right.id))) {
-    const check = rollCheck(rng, actor.initiativeModifier, 0);
+    const initiative = resolveInitiative(actor, { content });
+    const check = rollCheck(rng, initiative.value, 0);
     rng = check.rng;
     initiatives.push({ actorId: actor.id, total: check.total });
     events.push({
       type: "INITIATIVE_ROLLED",
       actorId: actor.id,
       roll: check.roll,
-      modifier: actor.initiativeModifier,
+      modifier: initiative.value,
       total: check.total,
     });
   }
@@ -364,7 +389,7 @@ function performWeaponAttack(
   const target = draft.actors[targetActorId];
   if (!actor || !target || definition.effect.kind !== "weapon-attack") return;
   const weapon = getWeaponProfile(actor, content);
-  const targetAc = getStatistic(target, content, "ac");
+  const targetAc = getArmorClass(target, content);
   const rearAdjustment = isDirectlyBehind(actor.position, target) ? -2 : 0;
   const modifier = weapon.attackModifier + mapPenalty;
   const check = rollCheck(draft.rng, modifier, targetAc.value + rearAdjustment);
@@ -413,8 +438,18 @@ function performTrip(
   const actor = draft.actors[actorId];
   const target = draft.actors[targetActorId];
   if (!actor || !target) return;
-  const reflex = getStatistic(target, content, "reflex");
-  const modifier = actor.athleticsModifier + mapPenalty;
+  const reflex = resolveStatisticDC(target, { kind: "save", id: "reflex" }, { content });
+  const athletics = resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, {
+    content,
+    modifiers: mapPenalty ? [{
+      selector: { kind: "skill", id: "athletics" },
+      type: "untyped",
+      value: mapPenalty,
+      label: "Multiple attack penalty",
+      sourceId: "multiple-attack-penalty",
+    }] : [],
+  });
+  const modifier = athletics.value;
   const check = rollCheck(draft.rng, modifier, reflex.value);
   draft.rng = check.rng;
   events.push({
@@ -428,9 +463,8 @@ function performTrip(
     baseDegree: check.baseDegree,
     degree: check.degree,
     modifierSources: [
-      `Athletics +${actor.athleticsModifier}`,
-      ...(mapPenalty ? [`MAP ${mapPenalty}`] : []),
-      ...reflex.sources,
+      ...formatStatisticSources(athletics.sources),
+      ...formatStatisticSources(reflex.sources),
     ],
   });
   if (isSuccessful(check.degree)) addCondition(draft, targetActorId, "prone", definition.id, events);
@@ -474,8 +508,8 @@ function applyWebTerrain(
   if (!actor) return;
   const tile = getTile(draft.map, actor.position);
   if (!tile || !hasTrait(tile, "web")) return;
-  const reflex = getStatistic(actor, content, "reflex");
-  const modifier = reflex.value - 10;
+  const reflex = resolveStatisticModifier(actor, { kind: "save", id: "reflex" }, { content });
+  const modifier = reflex.value;
   const check = rollCheck(draft.rng, modifier, 15);
   draft.rng = check.rng;
   events.push({
@@ -487,7 +521,7 @@ function applyWebTerrain(
     dc: 15,
     baseDegree: check.baseDegree,
     degree: check.degree,
-    modifierSources: reflex.sources,
+    modifierSources: formatStatisticSources(reflex.sources),
   });
   if (!isSuccessful(check.degree)) addCondition(draft, actorId, "grabbed", tile.id, events);
 }
@@ -649,13 +683,24 @@ function executeRecoveryCheck(
   draft: CombatDraft,
   actorId: string,
   definition: ActionDefinition,
+  content: CombatContent,
   events: CombatEvent[],
   mapPenalty: number,
 ): void {
   if (definition.effect.kind !== "recovery-check") return;
   const actor = draft.actors[actorId];
   if (!actor) return;
-  const modifier = actor.athleticsModifier + mapPenalty;
+  const athletics = resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, {
+    content,
+    modifiers: mapPenalty ? [{
+      selector: { kind: "skill", id: "athletics" },
+      type: "untyped",
+      value: mapPenalty,
+      label: "Multiple attack penalty",
+      sourceId: "multiple-attack-penalty",
+    }] : [],
+  });
+  const modifier = athletics.value;
   const check = rollCheck(draft.rng, modifier, definition.effect.dc);
   draft.rng = check.rng;
   events.push({
@@ -668,8 +713,7 @@ function executeRecoveryCheck(
     baseDegree: check.baseDegree,
     degree: check.degree,
     modifierSources: [
-      `Athletics +${actor.athleticsModifier}`,
-      ...(mapPenalty ? [`MAP ${mapPenalty}`] : []),
+      ...formatStatisticSources(athletics.sources),
     ],
   });
 
@@ -772,7 +816,7 @@ function executeAction(
       executeRemoveCondition(draft, actorId, definition, events);
       break;
     case "recovery-check":
-      executeRecoveryCheck(draft, actorId, definition, events, mapPenalty);
+      executeRecoveryCheck(draft, actorId, definition, content, events, mapPenalty);
       break;
     case "raise-shield": {
       const actor = draft.actors[actorId];

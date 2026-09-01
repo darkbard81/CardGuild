@@ -49,6 +49,15 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   metadata이며 효과는 계속 Statistic/Trait provider로 정의합니다.
 - Actor는 `loadoutProfile.preparedCardCapacity`와 `starterLoadout`을 선언합니다.
   `baseCardGrants`는 Collection copy를 소비하는 prepared card와 분리합니다.
+- Playable Actor는 `statProfile.kind = "character"`로 Level, 6 Attribute modifier,
+  Perception/3 Save/16 General Skill proficiency rank를 저장합니다. 최종 Reflex,
+  Athletics, Initiative modifier는 authoring하지 않습니다.
+- Creature/Enemy는 `statProfile.kind = "creature"`로 최종 Save, Skill, Perception을
+  간결하게 authoring할 수 있습니다. 두 profile 모두 runtime의 공통 statistic resolver를
+  사용합니다.
+- Equipment, Condition, Trait의 `statModifiers`는 statistic selector와
+  `circumstance`/`item`/`status`/`untyped` type을 선언합니다. 같은 typed bonus/penalty는
+  각각 가장 큰 값만 적용되고 untyped contribution은 모두 누적됩니다.
 - Scenario의 `placements`에는 enemy/NPC/static actor만 작성하고 party hero는 넣지 않습니다.
   `partySpawnSlots`는 seat 1–3을 각각 한 번씩 선언합니다. 배열 순서가 아니라 `seat`가
   runtime 배치를 결정합니다.
@@ -57,7 +66,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 - Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
   PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
 - `playable` Trait을 가진 Actor만 M5 Party Builder 후보입니다. 현재 authoritative pack은
-  `content/m5`의 `cardguild.m5@0.5.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
+  `content/m5`의 `cardguild.m5@0.6.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
 - `remove-condition`은 지정한 Condition ID를 즉시 제거합니다. 판정이 필요한
@@ -65,7 +74,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `4`입니다.
+- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `5`입니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면
   version을 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key,
@@ -76,5 +85,5 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 Schema shape를 호환되지 않게 바꿀 때는 기존 schema를 덮어써서 조용히 해석하지
 말고 `schemaVersion`을 올리고 명시적인 migration 또는 새 loader를 추가합니다.
-현재 pre-release repository에는 이전 pack runtime compatibility layer가 없으며 v4가
+현재 pre-release repository에는 이전 pack runtime compatibility layer가 없으며 v5가
 authoritative contract입니다.

@@ -10,12 +10,13 @@ import {
 } from "./grid";
 import {
   getConditionActionGrants,
+  getArmorClass,
   getEquipmentActionGrants,
-  getStatistic,
   getWeaponProfile,
   isDirectlyBehind,
   isInFrontOrSide,
 } from "./rules";
+import { formatStatisticSources, resolveStatisticDC, resolveStatisticModifier } from "./statistics";
 import type {
   ActionDefinition,
   ActionPreview,
@@ -363,10 +364,27 @@ export function previewAction(
     if (!targetActor) return { legal: false, reason: "Unknown target.", notes: [] };
     const penalty = mapPenalty(state, resolved.definition);
     const isTrip = resolved.definition.effect.kind === "trip";
-    const modifier = (isTrip ? actor.athleticsModifier : getWeaponProfile(actor, content).attackModifier) + penalty;
-    const statistic = isTrip ? getStatistic(targetActor, content, "reflex") : getStatistic(targetActor, content, "ac");
+    const athletics = isTrip
+      ? resolveStatisticModifier(actor, { kind: "skill", id: "athletics" }, {
+          content,
+          modifiers: penalty ? [{
+            selector: { kind: "skill", id: "athletics" },
+            type: "untyped",
+            value: penalty,
+            label: "Multiple attack penalty",
+            sourceId: "multiple-attack-penalty",
+          }] : [],
+        })
+      : null;
+    const modifier = athletics?.value ?? getWeaponProfile(actor, content).attackModifier + penalty;
     const rearBonus = !isTrip && isDirectlyBehind(actor.position, targetActor) ? -2 : 0;
-    const dc = statistic.value + rearBonus;
+    const defense = isTrip
+      ? (() => {
+          const reflex = resolveStatisticDC(targetActor, { kind: "save", id: "reflex" }, { content });
+          return { value: reflex.value, sources: formatStatisticSources(reflex.sources) };
+        })()
+      : getArmorClass(targetActor, content);
+    const dc = defense.value + rearBonus;
     const probabilities = degreeProbabilities(modifier, dc);
     const damage = getWeaponProfile(actor, content).damage;
     return {
@@ -381,9 +399,9 @@ export function previewAction(
             ]
           : undefined,
       notes: [
-        `MAP ${penalty}`,
+        ...(isTrip && athletics ? formatStatisticSources(athletics.sources) : [`MAP ${penalty}`]),
         ...(rearBonus ? ["Rear attack: target AC -2"] : []),
-        ...statistic.sources,
+        ...defense.sources,
       ],
     };
   }

@@ -5,9 +5,14 @@ import type { PartyState } from "../adventure";
 import { createCombat, dispatchCombatCommand } from "../game/engine";
 import { listLegalActions } from "../game/queries";
 import type { CombatCommand } from "../game/types";
-import { clonePartyLoadout, createStartingCollection, validatePartyLoadout } from "../loadout";
+import {
+  clonePartyLoadout,
+  createStartingCollection,
+  deriveLoadoutSnapshot,
+  validatePartyLoadout,
+} from "../loadout";
 import { compileContentPack, getCombatDefinition } from "./compile-content";
-import type { ContentPackSource } from "./content-types";
+import type { ActorDefinition, ContentPackSource } from "./content-types";
 import { fingerprintContentPack } from "./fingerprint";
 import { M0_CONTENT_SOURCE, M0_SCENARIO_ID } from "./load-m0-content";
 import { M5_COMPILED_PACK, M5_CONTENT_SOURCE } from "./load-m5-content";
@@ -16,6 +21,28 @@ import { formatContentValidationIssue, validateContentPackSemantics } from "./va
 
 function sourceCopy(): ContentPackSource {
   return structuredClone(M0_CONTENT_SOURCE);
+}
+
+function withPerception(actor: ActorDefinition, value: number): ActorDefinition {
+  return actor.statProfile.kind === "character"
+    ? {
+        ...actor,
+        statProfile: {
+          kind: "character",
+          stats: {
+            ...actor.statProfile.stats,
+            attributes: { ...actor.statProfile.stats.attributes, wis: value },
+            perception: "untrained",
+          },
+        },
+      }
+    : {
+        ...actor,
+        statProfile: {
+          kind: "creature",
+          stats: { ...actor.statProfile.stats, perception: value },
+        },
+      };
 }
 
 describe("content structural validation", () => {
@@ -48,11 +75,20 @@ describe("content structural validation", () => {
     };
     expect(validateContentPackStructure(invalidRange, contentPackSchema).some((issue) => issue.path.includes("maxHp"))).toBe(true);
 
-    const legacyV2 = {
+    const legacyV4 = {
       ...source,
-      manifest: { ...source.manifest, schemaVersion: 2 },
+      manifest: { ...source.manifest, schemaVersion: 4 },
     };
-    expect(validateContentPackStructure(legacyV2, contentPackSchema).some((issue) => issue.path.endsWith("/schemaVersion"))).toBe(true);
+    expect(validateContentPackStructure(legacyV4, contentPackSchema).some((issue) => issue.path.endsWith("/schemaVersion"))).toBe(true);
+
+    const actor = source.actors[0] as NonNullable<typeof source.actors[0]>;
+    if (actor.statProfile.kind !== "character") throw new Error("The character fixture is missing.");
+    const missingSkill = structuredClone(source) as unknown as {
+      actors: Array<{ statProfile: { stats: { skills: Record<string, unknown> } } }>;
+    };
+    delete missingSkill.actors[0]?.statProfile.stats.skills.athletics;
+    expect(validateContentPackStructure(missingSkill, contentPackSchema).some((issue) =>
+      issue.path.includes("/statProfile/stats/skills"))).toBe(true);
   });
 
   it("formats structural issues with pack identity and source context", () => {
@@ -139,7 +175,7 @@ describe("content semantic validation and compilation", () => {
     );
   });
 
-  it("validates deterministic v4 party spawn seats, positions, and adventure capacity", () => {
+  it("validates deterministic v5 party spawn seats, positions, and adventure capacity", () => {
     const source = sourceCopy();
     const firstScenario = source.scenarios[0] as NonNullable<typeof source.scenarios[0]>;
     const firstSpawn = firstScenario.partySpawnSlots[0] as NonNullable<typeof firstScenario.partySpawnSlots[0]>;
@@ -237,15 +273,14 @@ describe("content semantic validation and compilation", () => {
       actors: source.actors.map((actor) =>
         actor.id === "hero.aerin"
           ? {
-              ...actor,
-              initiativeModifier: 100,
+              ...withPerception(actor, 100),
               starterLoadout: {
                 ...actor.starterLoadout,
                 equipment: { shield: "trait-only-kit" },
               },
               initialConditions: [{ id: "custom-condition", sourceId: "test" }],
             }
-          : { ...actor, initiativeModifier: -100 },
+          : withPerception(actor, -100),
       ),
     };
     const authoredJson = JSON.parse(JSON.stringify(custom)) as unknown;
@@ -292,6 +327,24 @@ describe("content semantic validation and compilation", () => {
       condition: "custom-condition",
     });
   });
+
+  it("requires playable actors to use bottom-up character statistics", () => {
+    const source = structuredClone(M5_CONTENT_SOURCE);
+    const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
+    const playable = source.actors.find((actor) => actor.traits.some((trait) => trait.id === "playable"));
+    if (!creature || !playable) throw new Error("M5 actor fixtures are missing.");
+    const invalid: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.id === playable.id
+        ? { ...actor, statProfile: structuredClone(creature.statProfile) }
+        : actor),
+    };
+
+    expect(validateContentPackSemantics(invalid)).toContainEqual(expect.objectContaining({
+      code: "PLAYABLE_REQUIRES_CHARACTER_STATS",
+      definitionId: playable.id,
+    }));
+  });
 });
 
 describe("M5 playable character content", () => {
@@ -307,13 +360,17 @@ describe("M5 playable character content", () => {
     const aerin = playable.find((actor) => actor.id === "hero.aerin");
     const lyra = playable.find((actor) => actor.id === "hero.lyra");
     const brom = playable.find((actor) => actor.id === "hero.brom");
-    expect(lyra?.reflexModifier).toBeGreaterThan(aerin?.reflexModifier ?? 0);
-    expect(lyra?.initiativeModifier).toBeGreaterThan(aerin?.initiativeModifier ?? 0);
+    if (!aerin || !lyra || !brom) throw new Error("Playable M5 profiles are missing.");
+    const aerinStats = deriveLoadoutSnapshot(aerin, aerin.starterLoadout, M5_COMPILED_PACK.combatContent, aerin.id).statistics;
+    const lyraStats = deriveLoadoutSnapshot(lyra, lyra.starterLoadout, M5_COMPILED_PACK.combatContent, lyra.id).statistics;
+    const bromStats = deriveLoadoutSnapshot(brom, brom.starterLoadout, M5_COMPILED_PACK.combatContent, brom.id).statistics;
+    expect(lyraStats.reflex.modifier).toBeGreaterThan(aerinStats.reflex.modifier);
+    expect(lyraStats.initiative).toBeGreaterThan(aerinStats.initiative);
     expect(lyra?.speedFeet).toBeGreaterThan(aerin?.speedFeet ?? 0);
     expect(lyra?.maxHp).toBeLessThan(aerin?.maxHp ?? 0);
     expect(brom?.maxHp).toBeGreaterThan(aerin?.maxHp ?? 0);
     expect(brom?.baseAc).toBeGreaterThan(aerin?.baseAc ?? 0);
-    expect(brom?.athleticsModifier).toBeGreaterThan(aerin?.athleticsModifier ?? 0);
+    expect(bromStats.athletics).toBeGreaterThan(aerinStats.athletics);
     expect(brom?.speedFeet).toBeLessThan(aerin?.speedFeet ?? 0);
 
     const party: PartyState = {
@@ -344,7 +401,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 4,
+        schemaVersion: 5,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),
@@ -379,10 +436,38 @@ describe("content fingerprint", () => {
       ...source,
       equipment: source.equipment.map((item) =>
         item.id === "boots-of-fly"
-          ? { ...item, statModifiers: [{ selector: "reflex", value: 2, label: "Boots of Fly" }] }
+          ? {
+              ...item,
+              statModifiers: [{
+                selector: { kind: "save", id: "reflex" },
+                type: "item",
+                value: 2,
+                label: "Boots of Fly",
+              }],
+            }
           : item,
       ),
     };
     expect(fingerprintContentPack(changed)).not.toBe(fingerprintContentPack(source));
+
+    const changedCharacter: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.statProfile.kind === "character"
+        ? {
+            ...actor,
+            statProfile: {
+              kind: "character",
+              stats: {
+                ...actor.statProfile.stats,
+                attributes: {
+                  ...actor.statProfile.stats.attributes,
+                  dex: actor.statProfile.stats.attributes.dex + 1,
+                },
+              },
+            },
+          }
+        : actor),
+    };
+    expect(fingerprintContentPack(changedCharacter)).not.toBe(fingerprintContentPack(source));
   });
 });

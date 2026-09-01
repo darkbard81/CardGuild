@@ -1,7 +1,8 @@
 import {
-  getStatistic,
+  getArmorClass,
   getWeaponProfile,
   listLegalActions,
+  resolveStatisticDC,
 } from "../game";
 import type {
   ActionPreview,
@@ -222,8 +223,8 @@ export class BattleUi {
   private renderStats(hero: ActorState): void {
     this.heroStats.replaceChildren();
     this.heroStats.append(...this.statBlock(hero, [
-      ["AC", getStatistic(hero, this.content, "ac").value],
-      ["Reflex DC", getStatistic(hero, this.content, "reflex").value],
+      ["AC", getArmorClass(hero, this.content).value],
+      ["Reflex DC", resolveStatisticDC(hero, { kind: "save", id: "reflex" }, { content: this.content }).value],
       ["Speed", `${hero.speedFeet}ft`],
       ["Facing", hero.facing],
       ["Weapon", getWeaponProfile(hero, this.content).name],
@@ -363,7 +364,7 @@ export class BattleUi {
       element("span", "cost-badge", actor.team === "heroes" ? "Ally" : "Enemy"),
     );
     this.selectedDetail.append(heading, ...this.statBlock(actor, [
-      ["AC", getStatistic(actor, this.content, "ac").value],
+      ["AC", getArmorClass(actor, this.content).value],
       ["Speed", `${actor.speedFeet}ft`],
       ["Facing", actor.facing],
     ]));

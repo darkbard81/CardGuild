@@ -25,6 +25,8 @@
     "name": "Boots of Fly",
     "slot": "feet",
     "traits": [{ "id": "fly" }],
-    "statModifiers": [{ "selector": "reflex", "value": 1, "label": "Boots of Fly" }]
+    "statModifiers": [
+      { "selector": { "kind": "save", "id": "reflex" }, "type": "item", "value": 1, "label": "Boots of Fly" }
+    ]
   }
 ]

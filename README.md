@@ -105,7 +105,7 @@ PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 
 
 ```text
 src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
-src/content JSON authoring DTO, semantic compiler, canonical fingerprint, v4 loader
+src/content JSON authoring DTO, semantic compiler, canonical fingerprint, v5 loader
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
@@ -135,10 +135,14 @@ Setup Fingerprint를 보존하며 콘텐츠나 loadout setup이 다르면 첫 re
 장비와 Condition은 개별 ID 분기 대신 `TraitDefinition` provider를 통해 카드와
 Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Recovery Action도
 자신을 클릭했을 때 열리는 링 메뉴에 함께 나타나므로 별도 UI 분기가 없습니다.
+Playable Character의 Save/Skill/Perception/Initiative는 Level, Attribute modifier,
+Proficiency Rank와 Equipment/Condition/Trait modifier contribution을 입력으로 받는 하나의
+deterministic resolver에서 파생합니다. Creature/Enemy는 같은 resolver 경계에 authored
+fixed statistic을 제공하므로 PC용 16 Skill profile을 강제하지 않습니다.
 
 M5 콘텐츠의 source of truth는 [`content/m5`](content/m5) JSON이며 pack identity는
-`cardguild.m5@0.5.0`, contract는 schema v4입니다. 기존 [`content/m3`](content/m3)의
-`cardguild.m4@0.4.0` pack은 회귀 fixture로 보존됩니다. Schema와
+`cardguild.m5@0.6.0`, contract는 schema v5입니다. 기존 [`content/m3`](content/m3)의
+`cardguild.m4@0.4.1` pack은 회귀 fixture로 보존됩니다. Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.
@@ -160,7 +164,8 @@ HP 뱃지는 역스케일해 작은 창에서도 화면 크기를 유지합니�
 north는 back, 나머지 cardinal 방향은 front와 projected facing arrow로 표시합니다.
 
 설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M5 구현
-범위와 protocol 정정 사항은 GitHub 이슈 `#6`을 따릅니다.
+범위와 protocol 정정 사항은 GitHub 이슈 `#6`, M6-1 Character Stat Foundation은
+GitHub 이슈 `#7`을 따릅니다.
 
 ## 검증
 
@@ -177,7 +182,8 @@ npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive s
 npm test             # unit + network + Playwright
 ```
 
-Vitest는 Content v4 Schema/reference/fingerprint, playable 3인 profile과 1–3P spawn,
+Vitest는 Content v5 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
+typed modifier stacking, playable 3인 profile과 1–3P spawn,
 Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
 deck/stat/context, Adventure 3전/Reward/실패/seed/Combat bridge,
 projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,

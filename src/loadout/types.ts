@@ -67,7 +67,12 @@ export interface DerivedLoadoutSnapshot {
   readonly deck: DerivedDeck;
   readonly statistics: {
     readonly ac: number;
-    readonly reflex: number;
+    readonly reflex: {
+      readonly modifier: number;
+      readonly dc: number;
+    };
+    readonly athletics: number;
+    readonly initiative: number;
   };
   readonly weapon: WeaponProfile;
   readonly contextActionIds: readonly string[];

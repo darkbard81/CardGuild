@@ -78,25 +78,14 @@ export function getWeaponProfile(actor: ActorState, content: CombatContent): Wea
   );
 }
 
-export function getStatistic(
+export function getArmorClass(
   actor: ActorState,
   content: CombatContent,
-  selector: "ac" | "reflex",
 ): { readonly value: number; readonly sources: readonly string[] } {
-  const base = selector === "ac" ? actor.baseAc : actor.reflexModifier + 10;
-  const sources: string[] = [`Base ${selector.toUpperCase()} ${base}`];
-  let value = base;
+  const sources: string[] = [`Base AC ${actor.baseAc}`];
+  let value = actor.baseAc;
 
-  for (const equipment of getEquipment(actor, content)) {
-    for (const modifier of equipment.statModifiers) {
-      if (modifier.selector === selector) {
-        value += modifier.value;
-        sources.push(`${modifier.label} ${modifier.value >= 0 ? "+" : ""}${modifier.value}`);
-      }
-    }
-  }
-
-  if (selector === "ac" && actor.shieldRaised) {
+  if (actor.shieldRaised) {
     const shield = getEquipment(actor, content).find((equipment) => equipment.shieldBonus);
     if (shield?.shieldBonus) {
       value += shield.shieldBonus;

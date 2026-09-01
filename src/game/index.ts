@@ -11,5 +11,19 @@ export {
   validateActionIntent,
 } from "./queries";
 export { createCombatReplay, hashCombatState, replayCombat } from "./replay";
-export { facingToward, getStatistic, getWeaponProfile, isDirectlyBehind, isInFrontOrSide } from "./rules";
+export { facingToward, getArmorClass, getWeaponProfile, isDirectlyBehind, isInFrontOrSide } from "./rules";
+export {
+  ATTRIBUTE_IDS,
+  SAVE_ATTRIBUTE,
+  SAVE_IDS,
+  SKILL_ATTRIBUTE,
+  SKILL_IDS,
+  cloneActorStatProfile,
+  formatStatisticSources,
+  proficiencyBonus,
+  resolveInitiative,
+  resolveStatisticDC,
+  resolveStatisticModifier,
+} from "./statistics";
+export type { StatisticResolutionContext } from "./statistics";
 export type * from "./types";

@@ -21,6 +21,91 @@ export type DegreeOfSuccess =
   | "failure"
   | "critical-failure";
 export type CombatOutcome = "victory" | "defeat";
+export type AttributeId = "str" | "dex" | "con" | "int" | "wis" | "cha";
+export type ProficiencyRank = "untrained" | "trained" | "expert" | "master" | "legendary";
+export type SaveId = "fortitude" | "reflex" | "will";
+export type SkillId =
+  | "acrobatics"
+  | "arcana"
+  | "athletics"
+  | "crafting"
+  | "deception"
+  | "diplomacy"
+  | "intimidation"
+  | "medicine"
+  | "nature"
+  | "occultism"
+  | "performance"
+  | "religion"
+  | "society"
+  | "stealth"
+  | "survival"
+  | "thievery";
+export type ModifierType = "circumstance" | "item" | "status" | "untyped";
+
+export interface CharacterStatProfile {
+  readonly level: number;
+  readonly attributes: Readonly<Record<AttributeId, number>>;
+  readonly perception: ProficiencyRank;
+  readonly saves: Readonly<Record<SaveId, ProficiencyRank>>;
+  readonly skills: Readonly<Record<SkillId, ProficiencyRank>>;
+}
+
+export interface FixedCreatureStats {
+  readonly perception: number;
+  readonly saves: Readonly<Record<SaveId, number>>;
+  readonly skills: Readonly<Partial<Record<SkillId, number>>>;
+}
+
+export type ActorStatProfile =
+  | { readonly kind: "character"; readonly stats: CharacterStatProfile }
+  | { readonly kind: "creature"; readonly stats: FixedCreatureStats };
+
+export type StatisticSelector =
+  | { readonly kind: "save"; readonly id: SaveId }
+  | { readonly kind: "skill"; readonly id: SkillId; readonly attributeOverride?: AttributeId }
+  | { readonly kind: "perception" };
+
+export type StatisticModifierSelector =
+  | { readonly kind: "all" }
+  | { readonly kind: "save"; readonly id?: SaveId }
+  | { readonly kind: "skill"; readonly id?: SkillId }
+  | { readonly kind: "perception" };
+
+export interface StatisticModifierContribution {
+  readonly selector: StatisticModifierSelector;
+  readonly type: ModifierType;
+  readonly value: number;
+  readonly label: string;
+}
+
+export interface StatisticContextModifier extends StatisticModifierContribution {
+  readonly sourceId: string;
+}
+
+export type StatisticSourceKind =
+  | "attribute"
+  | "proficiency"
+  | "fixed"
+  | "dc"
+  | "equipment"
+  | "condition"
+  | "trait"
+  | "context";
+
+export interface StatisticSource {
+  readonly kind: StatisticSourceKind;
+  readonly sourceId: string;
+  readonly label: string;
+  readonly value: number;
+  readonly modifierType?: ModifierType;
+  readonly applied: boolean;
+}
+
+export interface ResolvedStatistic {
+  readonly value: number;
+  readonly sources: readonly StatisticSource[];
+}
 
 export interface ContentIdentity {
   readonly packId: string;
@@ -68,9 +153,7 @@ export interface ActorState {
   readonly hp: number;
   readonly maxHp: number;
   readonly baseAc: number;
-  readonly reflexModifier: number;
-  readonly athleticsModifier: number;
-  readonly initiativeModifier: number;
+  readonly statProfile: ActorStatProfile;
   readonly speedFeet: number;
   readonly fallbackWeapon: WeaponProfile;
   readonly conditions: readonly ConditionInstance[];
@@ -330,12 +413,14 @@ export interface TraitDefinition {
   readonly name: string;
   readonly cardGrants: readonly TraitCardGrant[];
   readonly actionGrants: readonly TraitActionGrant[];
+  readonly statModifiers?: readonly StatisticModifierContribution[];
 }
 
 export interface ConditionDefinition {
   readonly id: ConditionId;
   readonly name: string;
   readonly traits: readonly TraitInstance[];
+  readonly statModifiers?: readonly StatisticModifierContribution[];
 }
 
 export type DegreeOutcomeEffect =
@@ -346,18 +431,12 @@ export type DegreeOutcomeMap = Readonly<
   Record<DegreeOfSuccess, readonly DegreeOutcomeEffect[]>
 >;
 
-export interface StatModifier {
-  readonly selector: "ac" | "reflex";
-  readonly value: number;
-  readonly label: string;
-}
-
 export interface EquipmentDefinition {
   readonly id: EquipmentId;
   readonly name: string;
   readonly slot: EquipmentSlotId;
   readonly traits: readonly TraitInstance[];
-  readonly statModifiers: readonly StatModifier[];
+  readonly statModifiers: readonly StatisticModifierContribution[];
   readonly weaponProfile?: WeaponProfile;
   readonly shieldBonus?: number;
 }

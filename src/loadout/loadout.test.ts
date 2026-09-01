@@ -187,8 +187,8 @@ describe("loadout ownership and derivation", () => {
     };
     const preview = previewLoadoutChange(currentParty, collection, content, "party.hero-1", candidate);
     expect(preview.legal).toBe(true);
-    expect(preview.before.statistics.reflex).toBe(16);
-    expect(preview.after?.statistics.reflex).toBe(15);
+    expect(preview.before.statistics.reflex.dc).toBe(16);
+    expect(preview.after?.statistics.reflex.dc).toBe(15);
     expect(preview.removedContextActionIds).toEqual(["raise-shield"]);
     expect(preview.after?.deck.totalCards).toBe(7);
     expect(preview.addedCards).toContainEqual({

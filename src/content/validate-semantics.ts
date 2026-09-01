@@ -215,6 +215,16 @@ export function validateContentPackSemantics(
 
   source.actors.forEach((actor, index) => {
     validateTraits(context, knownTraits, "actors", actor.id, `[${index}].traits`, actor.traits);
+    if (actor.traits.some((trait) => trait.id === "playable") && actor.statProfile.kind !== "character") {
+      addIssue(
+        context,
+        "actors",
+        `[${index}].statProfile.kind`,
+        "PLAYABLE_REQUIRES_CHARACTER_STATS",
+        `Playable actor "${actor.id}" must use a character statistic profile.`,
+        actor.id,
+      );
+    }
     validateWeaponProfile(context, "actors", actor.id, `[${index}].fallbackWeapon`, actor.fallbackWeapon);
     if (actor.hp > actor.maxHp) {
       addIssue(context, "actors", `[${index}].hp`, "HP_EXCEEDS_MAXIMUM", `Actor "${actor.id}" has ${actor.hp} HP but maximum HP is ${actor.maxHp}.`, actor.id);

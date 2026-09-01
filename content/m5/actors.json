@@ -5,9 +5,21 @@
     "hp": 32,
     "maxHp": 32,
     "baseAc": 18,
-    "reflexModifier": 5,
-    "athleticsModifier": 8,
-    "initiativeModifier": 6,
+    "statProfile": {
+      "kind": "character",
+      "stats": {
+        "level": 1,
+        "attributes": { "str": 3, "dex": 2, "con": 3, "int": 1, "wis": 3, "cha": 0 },
+        "perception": "trained",
+        "saves": { "fortitude": "trained", "reflex": "trained", "will": "trained" },
+        "skills": {
+          "acrobatics": "trained", "arcana": "trained", "athletics": "expert", "crafting": "trained",
+          "deception": "untrained", "diplomacy": "trained", "intimidation": "trained", "medicine": "trained",
+          "nature": "trained", "occultism": "untrained", "performance": "untrained", "religion": "trained",
+          "society": "trained", "stealth": "trained", "survival": "trained", "thievery": "untrained"
+        }
+      }
+    },
     "speedFeet": 25,
     "fallbackWeapon": {
       "name": "Unarmed",
@@ -38,9 +50,21 @@
     "hp": 24,
     "maxHp": 24,
     "baseAc": 16,
-    "reflexModifier": 7,
-    "athleticsModifier": 5,
-    "initiativeModifier": 8,
+    "statProfile": {
+      "kind": "character",
+      "stats": {
+        "level": 1,
+        "attributes": { "str": 2, "dex": 4, "con": 1, "int": 2, "wis": 3, "cha": 2 },
+        "perception": "expert",
+        "saves": { "fortitude": "trained", "reflex": "trained", "will": "trained" },
+        "skills": {
+          "acrobatics": "expert", "arcana": "trained", "athletics": "trained", "crafting": "trained",
+          "deception": "trained", "diplomacy": "trained", "intimidation": "untrained", "medicine": "trained",
+          "nature": "trained", "occultism": "trained", "performance": "trained", "religion": "untrained",
+          "society": "trained", "stealth": "expert", "survival": "trained", "thievery": "trained"
+        }
+      }
+    },
     "speedFeet": 30,
     "fallbackWeapon": {
       "name": "Light Blade",
@@ -66,9 +90,21 @@
     "hp": 42,
     "maxHp": 42,
     "baseAc": 20,
-    "reflexModifier": 3,
-    "athleticsModifier": 10,
-    "initiativeModifier": 2,
+    "statProfile": {
+      "kind": "character",
+      "stats": {
+        "level": 1,
+        "attributes": { "str": 3, "dex": 0, "con": 4, "int": 0, "wis": -1, "cha": 1 },
+        "perception": "trained",
+        "saves": { "fortitude": "expert", "reflex": "trained", "will": "trained" },
+        "skills": {
+          "acrobatics": "untrained", "arcana": "untrained", "athletics": "master", "crafting": "trained",
+          "deception": "untrained", "diplomacy": "untrained", "intimidation": "trained", "medicine": "trained",
+          "nature": "untrained", "occultism": "untrained", "performance": "untrained", "religion": "trained",
+          "society": "untrained", "stealth": "untrained", "survival": "trained", "thievery": "untrained"
+        }
+      }
+    },
     "speedFeet": 20,
     "fallbackWeapon": {
       "name": "Guardian Mace",
@@ -94,9 +130,14 @@
     "hp": 18,
     "maxHp": 18,
     "baseAc": 16,
-    "reflexModifier": 5,
-    "athleticsModifier": 4,
-    "initiativeModifier": 5,
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "perception": 5,
+        "saves": { "fortitude": 3, "reflex": 5, "will": 2 },
+        "skills": { "athletics": 4, "stealth": 7 }
+      }
+    },
     "speedFeet": 25,
     "fallbackWeapon": {
       "name": "Goblin Blade",
@@ -117,9 +158,14 @@
     "hp": 24,
     "maxHp": 24,
     "baseAc": 17,
-    "reflexModifier": 3,
-    "athleticsModifier": 7,
-    "initiativeModifier": 3,
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "perception": 3,
+        "saves": { "fortitude": 7, "reflex": 3, "will": 4 },
+        "skills": { "athletics": 7 }
+      }
+    },
     "speedFeet": 20,
     "fallbackWeapon": {
       "name": "Heavy Club",
@@ -140,9 +186,14 @@
     "hp": 34,
     "maxHp": 34,
     "baseAc": 18,
-    "reflexModifier": 5,
-    "athleticsModifier": 8,
-    "initiativeModifier": 6,
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "perception": 6,
+        "saves": { "fortitude": 8, "reflex": 5, "will": 6 },
+        "skills": { "athletics": 8, "intimidation": 8 }
+      }
+    },
     "speedFeet": 25,
     "fallbackWeapon": {
       "name": "Chief's Glaive",

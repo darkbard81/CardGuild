@@ -8,6 +8,7 @@ import manifest from "../../content/m3/manifest.json";
 import scenarios from "../../content/m3/scenarios.json";
 import traits from "../../content/m3/traits.json";
 import { positionKey } from "../game/grid";
+import { cloneActorStatProfile } from "../game/statistics";
 import type { ScenarioDefinition } from "../game/types";
 import { compileContentPack, getCombatDefinition, getContentIdentity } from "./compile-content";
 import type { AdventureDefinition, ContentPackSource } from "./content-types";
@@ -63,6 +64,7 @@ export function cloneScenario(scenarioDefinition: ScenarioDefinition): ScenarioD
     objective: { ...scenarioDefinition.objective },
     actors: scenarioDefinition.actors.map((actor) => ({
       ...actor,
+      statProfile: cloneActorStatProfile(actor.statProfile),
       position: { ...actor.position },
       fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
       conditions: actor.conditions.map((condition) => ({ ...condition })),
