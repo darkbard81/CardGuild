@@ -26,7 +26,8 @@ pool**을 만드는 것이며, #17 자체는 reward를 Adventure에 연결하지
 따라서:
 
 - `simple` 무기는 Lyra·Brom에게 공짜지만 Aerin에게는 expert→trained로 **-2 공격**입니다.
-- `advanced` 무기는 세 명 모두 untrained라 **-5 공격**입니다. 의도적으로 build-gated입니다.
+- `advanced` 무기는 세 명 모두 untrained(+0)입니다. 손해는 각자의 martial rank만큼이라
+  Aerin은 **-5**(expert +5), Lyra·Brom은 **-3**(trained +3)입니다. 의도적으로 build-gated입니다.
 - `dexCap`은 DEX 4인 Lyra에게만 실질 손실입니다.
 - heavy armor는 Brom만 이득을 봅니다.
 - `finesse`는 DEX가 STR보다 높은 Lyra에게만 공격 수치를 바꿉니다.
@@ -60,8 +61,8 @@ feet    modifier/provider와 실제 build interaction
 | `throwing-axes` | weapon | short-range skirmish | 사거리 20ft로 짧음 | martial / **ranged 20** / 1d6 S / `thrown`+`agile` | reward | Lyra | Throwing Axe | `thrown`이라 DEX 공격 + **STR damage 전량** |
 | `greatsword` | weapon | raw damage | trait·reach 전무 | martial / melee 5 / **1d12 S** | reward | Aerin, Brom | Greatsword | two-hand 규칙은 D10로 미구현 |
 | `boar-spear` | weapon | budget reach | `simple`이라 Aerin은 -2 공격 | **simple** / melee **reach 10** / 1d8 P | reward | Lyra, Brom | Boar Spear | — |
-| `executioner-axe` | weapon | build-gated power | **advanced**라 세 영웅 모두 untrained(-5) | advanced / melee 5 / **1d12 S** / `trip` provider | reserve | (없음) | Greataxe 계열 | 의도적으로 현재 party가 쓸 수 없음. proficiency 성장 후를 위한 예비 |
-| `flick-mace` | weapon | DEX tripper | die가 1d6으로 작음 | martial / melee 5 / 1d6 B / **`finesse`** + `trip` provider | reward | Lyra | Flail | Trip을 DEX 기반으로 여는 유일한 무기 |
+| `executioner-axe` | weapon | build-gated power | **advanced** untrained — Aerin -5, Lyra·Brom -3 | advanced / melee 5 / **1d12 S** / `trip` provider | reserve | (없음) | Greataxe 계열 | 의도적으로 현재 party가 쓸 수 없음. proficiency 성장 후를 위한 예비 |
+| `flick-mace` | weapon | DEX strike + trip access | die가 1d6으로 작음 | martial / melee 5 / 1d6 B / **`finesse`** + `trip` provider | reward | Lyra | Flail | **`finesse`는 Strike의 공격 능력치만 DEX로 바꿉니다.** Trip은 Action이 Athletics를 명시하고 `attributeOverride`가 없어 그대로 STR 기반입니다 — PF2e 원본도 동일 |
 
 ### Armor (5)
 
@@ -71,7 +72,7 @@ feet    modifier/provider와 실제 build interaction
 | `scale-mail` | armor | medium baseline | dexCap 2 | medium / +3 / dexCap 2 | baseline | Aerin | Scale Mail | 기존 |
 | `half-plate` | armor | heavy baseline | dexCap 1, heavy 숙련 필요 | heavy / +5 / dexCap 1 | baseline | Brom | Half Plate | 기존 |
 | `scout-leather` | armor | stealth light | Athletics에 -1 circumstance | light / +1 / dexCap 4 / **+1 item Stealth, -1 circumstance Athletics** | reward | Lyra | Leather (scout) | Athletics 판정(Trip/Grapple)을 실제로 깎음 |
-| `brigandine` | armor | DEX-poor medium | **dexCap 0** — DEX를 전혀 못 쓴다 | medium / **+4** / **dexCap 0** | reward | Brom | Brigandine | DEX 0에서 scale보다 +1, DEX 1에서 동률, DEX 2 이상에서 열세. 교차점이 실제로 존재 |
+| `brigandine` | armor | DEX-poor medium | **dexCap 0** — DEX를 전혀 못 쓴다 | medium / **+4** / **dexCap 0** | **reserve** | (없음) | Brigandine | scale-mail과의 교차점은 실재하지만(DEX 0 우세 / 1 동률 / 2+ 열세) **현재 세 영웅 모두에게 dominated**입니다 — Aerin -1, Lyra -4, Brom -3. §5 참고 |
 
 ### Shields (4)
 
@@ -97,13 +98,14 @@ feet    modifier/provider와 실제 build interaction
 
 ## 4. Reward build directions
 
-`reward` 17개가 아래 **다섯 방향**을 지원합니다. AC가 요구한 최소 2개를 넘습니다.
+분류는 **baseline 9 + reward 13 + reserve 3 = 25**입니다. `reward` 13개가 아래 **다섯
+방향**을 지원하며, AC가 요구한 최소 2개를 넘습니다.
 
 | Direction | 조합 | 무엇이 달라지는가 |
 |---|---|---|
 | Defensive duelist | `dueling-rapier` + `buckler` + `warding-charm` | AC circumstance 카드 2종(`dueling-parry`, `arcane-ward`)과 Reflex/Will item 보너스. `agile`을 포기해 MAP이 나빠짐 |
-| Heavy breaker | `greatsword` + `brigandine` + `tower-shield` | 1d12 damage와 AC +4/+3. 공격 -1 circumstance와 **DEX를 전혀 못 쓰는 dexCap 0**을 감수. DEX 0인 Brom에게만 이득 |
-| DEX controller | `flick-mace` + `scout-leather` + `striders-boots` | DEX로 Trip을 굴리는 유일한 조합. scout-leather의 Athletics -1이 그 Trip을 직접 깎는 내부 긴장 |
+| Heavy breaker | `greatsword` + `tower-shield` (기존 `half-plate` 위에) | 1d12 damage와 shield +3. 공격 -1 circumstance를 감수. heavy expert인 Brom이 AC 20을 유지한 채 화력을 올리는 방향 |
+| DEX controller | `flick-mace` + `scout-leather` + `striders-boots` | Strike는 DEX로 굴리면서 Trip 접근을 얻는 조합. **Trip 자체는 STR 기반 Athletics**라, scout-leather의 Athletics -1과 striders-boots의 Athletics +1이 그 판정 위에서 직접 상쇄됩니다 |
 | Party support | `medics-kit` + `shield` + `scale-mail` | `battle-medicine`으로 회복 축을 여는 대신 공격 성장 없음 |
 | Spell skirmisher | `hexers-focus` + `throwing-axes` + `leather-armor` | Arcana item 보너스가 `frostbite` DC를 올리고, 20ft thrown이 STR damage를 유지 |
 
@@ -111,9 +113,22 @@ feet    modifier/provider와 실제 build interaction
 
 | Item | 판정 |
 |---|---|
-| `executioner-axe` | `greatsword`와 같은 1d12지만 **advanced**라 -5 공격이고 `trip`을 제공합니다. 현재 party로는 쓸 수 없어 `reserve`이며, proficiency가 성장한 뒤를 위한 예비입니다 |
+| `executioner-axe` | `greatsword`와 같은 1d12지만 **advanced**라 Aerin -5 / Lyra·Brom -3 공격이고 `trip`을 제공합니다. 현재 party로는 쓸 수 없어 `reserve`이며, proficiency가 성장한 뒤를 위한 예비입니다 |
+| `brigandine` | pairwise로는 scale-mail과 실제 교차점이 있지만(dexCap 0 vs 2), **그 교차점의 이득을 볼 영웅이 현재 roster에 없습니다.** DEX가 낮으면서 heavy 숙련이 없는 캐릭터가 필요한데, DEX 0인 Brom은 heavy expert라 half-plate로 AC 20을 냅니다. 아래가 실측값입니다 |
 | `bloodied-talisman` | 저주를 해제하는 lifecycle이 없어 `reserve`. #19에 노출하면 되돌릴 수 없는 선택이 됩니다 |
 | `scout-leather` ↔ `leather-armor` | AC는 같지만 Stealth +1 / Athletics -1이 붙어 Trip·Grapple 빈도가 다른 build를 만듭니다 |
+
+### Brigandine 실측 (level 1, 각 영웅의 starter armor 대비)
+
+| Character | starter armor | AC | brigandine AC | 차이 |
+|---|---|---:|---:|---:|
+| Aerin (DEX 2, medium trained) | scale-mail | 18 | 17 | **-1** |
+| Lyra (DEX 4, **medium untrained**) | leather-armor | 18 | 14 | **-4** |
+| Brom (DEX 0, **heavy expert**) | half-plate | 20 | 17 | **-3** |
+
+세 명 모두에게 열세이므로 `reward`로 노출하면 고를 이유가 없는 선택지가 됩니다. 새 runtime을
+만들어 억지로 살리는 대신 `reserve`로 내리고, medium 숙련만 있고 DEX가 낮은 캐릭터가 roster에
+생기면 그때 `reward`로 올립니다. 이 조건은 회귀 테스트로 고정되어 있습니다.
 
 ---
 

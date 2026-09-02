@@ -1,17 +1,30 @@
 import { describe, expect, it } from "vitest";
 
+import { buildResolvedActionPlan } from "../game/action-plan";
 import { resolveArmorClass, resolveStatisticModifier } from "../game/statistics";
 import { equippedWeapon, resolveStrike } from "../game/offense";
-import type { ActorState, EquipmentId } from "../game/types";
+import type { ActionTarget, ActorState, CombatState, EquipmentId } from "../game/types";
+import { buildActorSetup } from "./compile-content";
 import { M7_COMBAT_DEFINITION, M7_COMPILED_PACK, M7_CONTENT } from "./load-m7-content";
 
 const CONTENT = M7_CONTENT;
 const CONTEXT = { content: CONTENT };
 const EQUIPMENT = M7_COMPILED_PACK.combatContent.equipment;
 
-function hero(id: string): ActorState {
-  const actor = M7_COMBAT_DEFINITION.scenario.actors.find((entry) => entry.definitionId === id);
-  if (!actor) throw new Error(`Scenario hero "${id}" is missing.`);
+function hero(definitionId: string): ActorState {
+  const definition = M7_COMPILED_PACK.actorDefinitions[definitionId];
+  if (!definition) throw new Error(`Actor definition "${definitionId}" is missing.`);
+  const actor = buildActorSetup(
+    definition,
+    {
+      instanceId: definitionId,
+      actorDefinitionId: definitionId,
+      team: "heroes",
+      position: { x: 1, y: 1 },
+      facing: "east",
+    },
+    CONTENT,
+  );
   return { ...actor, reactionAvailable: true, shieldRaised: false, defeated: false };
 }
 
@@ -49,6 +62,11 @@ function asCharacter(base: ActorState, overrides: {
 }
 
 const AERIN = hero("hero.aerin");
+const ENEMY: ActorState = (() => {
+  const actor = M7_COMBAT_DEFINITION.scenario.actors.find((entry) => entry.id === "goblin-skirmisher");
+  if (!actor) throw new Error("Scenario enemy is missing.");
+  return { ...actor, reactionAvailable: true, shieldRaised: false, defeated: false };
+})();
 
 describe("M7 equipment pool", () => {
   it("ships 20 to 30 definitions across all four slots", () => {
@@ -132,6 +150,19 @@ describe("weapon trade-offs the resolver actually sees", () => {
     expect(finesse.attackModifier).toBeGreaterThan(plain.attackModifier);
   });
 
+  it("moves a Strike to Dexterity with finesse but leaves Trip on Athletics", () => {
+    const dexterous = asCharacter(AERIN, { dex: 6, str: 1 });
+    // A weapon's finesse trait is read by the #9 Strike resolver and nowhere else.
+    expect(resolveStrike(wearing(dexterous, "flick-mace"), CONTEXT).attackAttribute).toBe("dex");
+    // Trip names Athletics and authors no attributeOverride, so no weapon can move it to
+    // Dexterity. PF2e agrees: finesse covers the attack roll, the trait keeps the skill.
+    const trip = CONTENT.actions.trip;
+    if (trip?.resolution.kind !== "check") throw new Error("Trip must be a check.");
+    expect(trip.resolution.check.statistic).toEqual({ kind: "skill", skill: "athletics" });
+    expect(resolveStatisticModifier(wearing(dexterous, "flick-mace"), { kind: "skill", id: "athletics" }, CONTEXT).value)
+      .toBe(resolveStatisticModifier(wearing(dexterous), { kind: "skill", id: "athletics" }, CONTEXT).value);
+  });
+
   it("keeps full Strength damage on a thrown weapon and halves it on a propulsive bow", () => {
     const thrown = resolveStrike(wearing(AERIN, "throwing-axes"), CONTEXT);
     const bow = resolveStrike(wearing(AERIN, "composite-shortbow"), CONTEXT);
@@ -155,6 +186,21 @@ describe("armor and shield trade-offs", () => {
     expect(ac(1, "brigandine")).toBe(ac(1, "scale-mail"));
     expect(ac(2, "brigandine")).toBe(ac(2, "scale-mail") - 1);
     expect(ac(4, "brigandine")).toBe(ac(4, "scale-mail") - 1);
+  });
+
+  it("loses to every playable hero's own starter armor, which is why brigandine is reserve", () => {
+    // The scale-mail crossover above is real, but no hero sits on the winning side of it:
+    // the one with DEX 0 is also the one with heavy proficiency. Offering it as a reward
+    // would be offering a choice nobody can rationally take, so the reason is pinned here.
+    for (const definition of Object.values(M7_COMPILED_PACK.actorDefinitions)) {
+      if (!definition.traits.some((trait) => trait.id === "playable")) continue;
+      const starter = definition.starterLoadout.equipment.armor;
+      if (!starter) continue;
+      const base = hero(definition.id);
+      const own = resolveArmorClass(wearing(base, starter), CONTEXT).value;
+      const swapped = resolveArmorClass(wearing(base, "brigandine"), CONTEXT).value;
+      expect(`${definition.id}:${String(swapped < own)}`).toBe(`${definition.id}:true`);
+    }
   });
 
   it("gives no Armor Class for armor the Character is untrained in", () => {
@@ -198,10 +244,22 @@ describe("armor and shield trade-offs", () => {
       .toBe(resolveStatisticModifier(bare, { kind: "save", id: "will" }, CONTEXT).value - 1);
   });
 
-  it("raises a spell DC through a focus item's skill bonus", () => {
-    const focus = wearing(AERIN, "hexers-focus");
-    const bare = wearing(AERIN);
-    expect(resolveStatisticModifier(focus, { kind: "skill", id: "arcana" }, CONTEXT).value)
-      .toBe(resolveStatisticModifier(bare, { kind: "skill", id: "arcana" }, CONTEXT).value + 1);
+  it("raises the resolved Frostbite DC through a focus item's skill bonus", () => {
+    const frostbite = CONTENT.actions.frostbite;
+    if (!frostbite) throw new Error("Frostbite is missing.");
+    const target: ActionTarget = { kind: "actor", actorId: ENEMY.id };
+    const dcOf = (actor: ActorState): number => {
+      const state = { actors: { [actor.id]: actor, [ENEMY.id]: ENEMY } } as unknown as CombatState;
+      const plan = buildResolvedActionPlan(
+        frostbite, actor, target, { kind: "card", id: "unused" }, state, CONTENT,
+        { kind: "turn", attacksThisTurn: 0 },
+      );
+      if (plan?.resolution.kind !== "check") throw new Error("Frostbite must resolve as a check.");
+      return plan.resolution.check.dc;
+    };
+    // Frostbite reads Arcana (INT) for its DC, so the item bonus has to arrive at the plan,
+    // not merely at the raw statistic. This also catches the card being re-authored onto a
+    // different DC source.
+    expect(dcOf(wearing(AERIN, "hexers-focus"))).toBe(dcOf(wearing(AERIN)) + 1);
   });
 });
