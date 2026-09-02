@@ -173,7 +173,7 @@ test("shows the Adventure shell after reusing the lobby actor atlas without load
   await openAdventure(page);
 
   await expect(page.locator("#adventure-content h1")).toHaveText("Road Ambush");
-  await expect(page.locator("#adventure-progress li")).toHaveCount(3);
+  await expect(page.locator("#adventure-progress li")).toHaveCount(4);
   await expect(page.locator("#adventure-collection")).toContainText("Halberd ×1");
   await expect(page.locator("#adventure-collection")).toContainText("Steel Shield ×1");
   await expect(page.locator("#adventure-collection")).toContainText("Boots of Fly ×1");
@@ -252,14 +252,19 @@ test("carries a reward loadout through the shared resolver into the next encount
   await winRoadAmbush(page);
 
   await expect(page.locator("#adventure-content h1")).toHaveText("Choose one reward");
-  await page.getByRole("button", { name: "Fly card" }).click();
+  // The reward card explains itself on the choice screen, not just by name.
+  const braceChoice = page.locator('.reward-choice', { hasText: "Brace Behind Cover" });
+  await expect(braceChoice).toContainText("1 액션");
+  await braceChoice.click();
   await expect(page.locator("#app")).toHaveAttribute("data-adventure-phase", "between-encounters");
-  await expect(page.locator("#adventure-collection")).toContainText("Fly ×1");
+  await expect(page.locator("#adventure-collection")).toContainText("Brace Behind Cover ×1");
+  // The next encounter names its threats before the party commits to it.
+  await expect(page.locator(".encounter-threats")).toContainText("Goblin Spearman");
   await page.getByRole("button", { name: "Manage Loadout" }).click();
 
   await page.getByRole("button", { name: "+ Add Card" }).click();
-  await page.locator('.loadout-option[data-option-id="card.fly"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("Fly ×1 (Prepared Card)");
+  await page.locator('.loadout-option[data-option-id="card.brace-behind-cover"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("Brace Behind Cover ×1 (Prepared Card)");
   await page.getByRole("button", { name: "Apply Change" }).click();
   await expect(page.locator(".deck-panel h2")).toHaveText("11 Tactical Cards");
 
@@ -278,25 +283,22 @@ test("carries a reward loadout through the shared resolver into the next encount
 
   await page.getByRole("button", { name: "Done" }).click();
   await page.getByRole("button", { name: "Enter Encounter" }).click();
-  await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.ruined-gate");
+  await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.spear-line");
   await expect(page.locator("#hero-stats")).toContainText("Reflex DC");
   await expect(page.locator("#hero-stats")).toContainText("15");
-  // The authoritative server pumps the opening enemy turn before publishing the
-  // next human boundary, so Aerin has drawn the following turn's card already.
-  await expect(page.locator("#hand-count")).toHaveText("7");
-  // Nine cards remain after the loadout edits, so two are still undrawn.
-  await expect(page.locator("#deck-count")).toHaveText("2");
-  await expect(page.locator('.tactical-card[data-card-definition-id="card.fly"][data-card-source-kind="prepared"]')).toHaveCount(1);
+  // Aerin acts first in the spear corridor, so she opens on the dealt six rather than
+  // having drawn the following turn's card during an enemy turn.
+  await expect(page.locator("#hand-count")).toHaveText("6");
+  // Nine cards remain after the loadout edits, so three are still undrawn.
+  await expect(page.locator("#deck-count")).toHaveText("3");
+  await expect(page.locator('.tactical-card[data-card-definition-id="card.brace-behind-cover"][data-card-source-kind="prepared"]')).toHaveCount(1);
 
-  const nextMap = { width: 9, height: 7 };
-  const hero = projectCorners(await boardCorners(page), nextMap, 1.5, 3.5);
+  const nextMap = { width: 7, height: 4 };
+  const hero = projectCorners(await boardCorners(page), nextMap, 0.5, 1.5);
   await page.locator("#pixi-canvas").click({ position: hero });
+  // The shield came off in the loadout, so its context action is gone with it.
   await expect(page.locator('#ring-root .ring-option[data-action-id="raise-shield"]')).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#ring-root")).toBeHidden();
-  const destination = projectCorners(await boardCorners(page), nextMap, 2.5, 3.5);
-  await page.locator("#pixi-canvas").click({ position: destination });
-  await expect(page.locator('#ring-root .ring-option[data-action-id="fly"]')).toBeVisible();
+  await expect(page.locator('#ring-root .ring-option[data-action-id="brace-behind-cover"]')).toBeVisible();
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-next-encounter.png"), fullPage: true });
 });

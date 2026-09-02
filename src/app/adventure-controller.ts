@@ -68,7 +68,7 @@ export class AdventureController {
       onChooseReward: (rewardId, choiceIndex) => this.sendIntent({ type: "choose-reward", rewardId, choiceIndex }),
       onOpenLoadout: () => this.openLoadout(),
       onRetry: () => undefined,
-    });
+    }, this.catalog);
     this.loadoutUi = new LoadoutUi(PRODUCTION_CONTENT.pack, this.catalog, {
       onSetLoadout: (memberId, loadout) => this.setMemberLoadout(memberId, loadout),
       onDone: () => this.closeLoadout(),

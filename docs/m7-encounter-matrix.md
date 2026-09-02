@@ -59,12 +59,12 @@ state나 환경 변수로 composition을 바꾸지 않습니다.
 
 | Scenario | Purpose | Map | Terrain / interactable | 1P | 2P | 3P | Creature roles | AoN threat band | Status | Balance risk |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `encounter.road-ambush` | 첫 접촉. 단일 위협으로 기본 조작만 가르침 | 3×3 | **difficult ×2** | skirmisher ×1 | 동일 | 동일 | Skirmisher | Trivial | **Tutorial** | 없음. 의도적으로 확장하지 않음 |
-| `encounter.ruined-gate` | 상호작용 도입. 레버로 문을 열어야 전선이 열림 | 9×7 | **lever + gate**, difficult, web, chasm | skirmisher + brute | 동일 | 동일 | Skirmisher, Brute | Low | **Tutorial** | 레버를 못 찾으면 교착 |
-| `encounter.goblin-chief` | 첫 elite. 단일 강적 + 호위 | 5×3 | 없음 | brute + chief | 동일 | 동일 | Brute, Elite | Moderate | **Main** | 좁은 맵이라 1P가 협공당함 |
+| `encounter.road-ambush` | 첫 접촉. 단일 위협으로 기본 조작만 가르침 | 3×3 | **difficult ×2** | skirmisher ×1 | 동일 | 동일 | Skirmisher | Trivial | **Tutorial (T1)** | 없음. 의도적으로 확장하지 않음 |
+| `encounter.ruined-gate` | 상호작용 도입. 레버로 문을 열어야 전선이 열림 | 9×7 | **lever + gate**, difficult, web, chasm | skirmisher + brute | 동일 | 동일 | Skirmisher, Brute | Low | **Tutorial (T3)** | 레버를 못 찾으면 교착 |
+| `encounter.goblin-chief` | 첫 elite. 앞서 고른 보상을 실제로 쓰는 자리 | 5×3 | 없음 | brute + chief | 동일 | 동일 | Brute, Elite | Moderate | **Tutorial (T4)** | 좁은 맵이라 1P가 협공당함 |
 | `encounter.bone-cellar` | 잡졸 물량. 수가 party size를 따라 늘어남 | 7×5 | 기둥 2개, difficult 2칸 | guard + rabble ×1 | + rabble ×1 | + rabble ×1 | Soldier, Lackey | Low → Moderate | Main | 3P에서 4마리가 동시에 붙음 |
 | `encounter.wolf-run` | 기동 압박. speed 35–40 적이 후열을 노림 | 9×7 | 개활지, difficult 3칸 | dire wolf + yearling | + yearling | + yearling | Skirmisher, Lackey | Moderate | Main | 개활지라 Nera·Lyra가 먼저 물림 |
-| `encounter.spear-line` | 대열 통제. 10ft reach가 통로를 잠금 | 7×4 | **좁은 통로**, 기둥 4개 | spearman ×1 | spearman ×2 | + skeleton guard | Soldier | Low → Moderate | Main | 통로가 좁아 근접 파티가 줄서기를 강요당함 |
+| `encounter.spear-line` | 대열 통제. 10ft reach가 통로를 잠금 | 7×4 | **좁은 통로**, 기둥 4개 | spearman ×1 | spearman ×2 | + skeleton guard | Soldier | Low → Moderate | **Tutorial (T2)** | 통로가 좁아 근접 파티가 줄서기를 강요당함 |
 | `encounter.archer-perch` | 원거리 + 회복 압박. 사제를 먼저 끊어야 함 | 9×7 | 엄폐 기둥 4개, difficult | archer + priest | + archer | + rabble | Ranged, Support | Moderate | Main | 사제 회복이 장기전을 만듦 |
 | `encounter.web-hollow` | 지형 통제. 거미줄이 접근을 늦추고 거미가 붙잡음 | 7×5 | **web ×6**, difficult | giant + cave spider | + cave spider | + cave spider | Brute, Skirmisher | Moderate | Main | Grabbed 연쇄 시 1P가 묶임 |
 | `encounter.collapsed-span` | 분단된 보드. 원거리만 즉시 교전 가능 | 9×7 | **impassable 6칸(협곡)**, difficult | slinger + bone hulk | + slinger | + lackey | Ranged, Brute | Moderate | **Reserve** | 근접 전용 파티가 첫 라운드에 할 일이 없음 |
@@ -108,12 +108,29 @@ reserve로 남습니다.
 
 | Status | Scenario |
 |---|---|
-| Tutorial | road-ambush, ruined-gate |
-| Main | goblin-chief, bone-cellar, wolf-run, spear-line, archer-perch, web-hollow, cult-sanctum |
+| Tutorial | road-ambush (T1), spear-line (T2), ruined-gate (T3), goblin-chief (T4) |
+| Main | bone-cellar, wolf-run, archer-perch, web-hollow, cult-sanctum |
 | Reserve | collapsed-span |
 
-#18이 tutorial 3–4개를 고를 때 이 10개 안에서 선택합니다. tutorial 전용 scenario를 따로
-추가하지 않습니다.
+#18이 tutorial 4개를 이 10개 안에서 골랐습니다. tutorial 전용 scenario는 추가하지 않았습니다.
+
+### #18이 배치한 onboarding 순서
+
+`adventure.goblin-trouble` 하나가 authoritative entry이며, #19가 같은 Adventure ID에 뒤를
+이어 붙입니다. 별도 user-facing Adventure를 만들지 않았습니다.
+
+| 단계 | Encounter | 무엇을 가르치는가 | 이어지는 보상 |
+|---|---|---|---|
+| T1 | `road-ambush` | Stride/Step, 3-action, 기본 Strike. 3×3에 적 1명 | **Steel Shield** ↔ **Brace Behind Cover** — 방어를 장비 슬롯과 준비 카드 두 방식으로 |
+| T2 | `spear-line` | 위치와 방어. 10ft reach 창병이 좁은 통로를 잠금 | **Trip** ↔ **Demoralize** — Athletics 대 Intimidation, 두 통제 축 |
+| T3 | `ruined-gate` | 기술/세이브/통제. 레버 상호작용, web의 Reflex 세이브 | **Boots of Fly** ↔ **Spirit Lance** — 기동 대 세이브 주문 |
+| T4 | `goblin-chief` | 앞서 고른 보상을 실제 전투에서 사용 | — |
+
+보상은 전부 **#13 production card 또는 starter가 이미 쓰는 baseline equipment**입니다.
+따라서 #17 reward pool이 없어도 tutorial prefix 자체는 완결됩니다.
+
+각 단계의 보상은 *다음* 단계가 가르칠 것을 미리 쥐여 줍니다 — T1의 방어 보상이 T2의 위치·방어
+수업에, T2의 통제 보상이 T3의 기술·세이브 수업에 쓰입니다.
 
 ---
 

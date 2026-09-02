@@ -2,10 +2,11 @@
   {
     "id": "adventure.goblin-trouble",
     "name": "Goblin Trouble",
-    "description": "길목의 매복을 뚫고 폐허의 문을 연 뒤 고블린 대장을 쓰러뜨리세요.",
+    "description": "길목의 매복에서 시작해 창병 대열을 뚫고, 폐허의 문을 연 뒤 고블린 대장을 쓰러뜨리세요. 각 전투는 앞선 전투에서 배운 것 위에 하나씩 얹습니다.",
     "partySize": { "min": 1, "max": 3 },
     "encounterIds": [
       "encounter.road-ambush",
+      "encounter.spear-line",
       "encounter.ruined-gate",
       "encounter.goblin-chief"
     ],
@@ -14,15 +15,23 @@
         "id": "reward.road-ambush",
         "afterEncounterId": "encounter.road-ambush",
         "choices": [
-          { "kind": "equipment", "definitionId": "boots-of-fly" },
-          { "kind": "card", "definitionId": "card.fly" }
+          { "kind": "equipment", "definitionId": "shield" },
+          { "kind": "card", "definitionId": "card.brace-behind-cover" }
+        ]
+      },
+      {
+        "id": "reward.spear-line",
+        "afterEncounterId": "encounter.spear-line",
+        "choices": [
+          { "kind": "card", "definitionId": "card.trip" },
+          { "kind": "card", "definitionId": "card.demoralize" }
         ]
       },
       {
         "id": "reward.ruined-gate",
         "afterEncounterId": "encounter.ruined-gate",
         "choices": [
-          { "kind": "equipment", "definitionId": "shield" },
+          { "kind": "equipment", "definitionId": "boots-of-fly" },
           { "kind": "card", "definitionId": "card.spirit-lance" }
         ]
       }

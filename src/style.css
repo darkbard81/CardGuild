@@ -1294,14 +1294,74 @@ button {
 
 .reward-choice {
   display: grid;
-  gap: 0.35rem;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "icon name"
+    "icon kind"
+    "detail detail";
+  gap: 0.2rem 0.7rem;
   justify-items: start;
+  align-items: center;
   min-width: 0;
   min-height: 7rem;
   align-content: center;
+  text-align: left;
+}
+
+/* The button's own label node is its first text child; keep it in the name cell. */
+.reward-choice > :not(.reward-icon):not(.reward-kind):not(.reward-detail) {
+  grid-area: name;
+}
+
+.reward-icon {
+  grid-area: icon;
+  display: block;
+  width: 48px;
+  height: 48px;
+  border: 1px solid rgb(78 59 33 / 48%);
+  border-radius: 0.4rem;
+  background-color: rgb(32 28 21 / 28%);
+  background-repeat: no-repeat;
+}
+
+.reward-icon.missing {
+  display: grid;
+  place-items: center;
+  color: #6d6047;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 900;
 }
 
 .reward-kind {
+  grid-area: kind;
+  color: #ffd89a;
+  font-size: 0.7rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.reward-detail {
+  grid-area: detail;
+  padding-top: 0.35rem;
+  color: #c7c0ae;
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.encounter-threats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  align-items: baseline;
+  max-width: 42rem;
+  margin: 0;
+  color: #c7c0ae;
+  font-size: 0.82rem;
+}
+
+.encounter-threats strong {
   color: #ffd89a;
   font-size: 0.7rem;
   letter-spacing: 0.1em;

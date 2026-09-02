@@ -5,6 +5,7 @@ export {
   getContentIdentity,
 } from "./compile-content";
 export type * from "./content-types";
+export { PARTY_SIZES, placementAppliesToPartySize } from "./content-types";
 export { fingerprintContentPack, normalizeContentPack, stableSerialize } from "./fingerprint";
 export {
   M0_COMBAT_DEFINITION,

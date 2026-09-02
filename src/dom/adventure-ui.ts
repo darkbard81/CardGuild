@@ -1,6 +1,8 @@
 import type { AdventureState } from "../adventure";
 import type { CompiledContentPack } from "../content";
+import { placementAppliesToPartySize } from "../content";
 import type { AdventureDefinition, RewardGrant } from "../content";
+import type { AssetCatalog } from "../presentation";
 
 function required<T extends Element>(selector: string): T {
   const found = document.querySelector<T>(selector);
@@ -37,6 +39,45 @@ function rewardName(grant: RewardGrant, pack: CompiledContentPack): string {
     : pack.combatContent.cards[grant.definitionId]?.name ?? grant.definitionId;
 }
 
+function signed(value: number): string {
+  return value >= 0 ? `+${String(value)}` : String(value);
+}
+
+/**
+ * What a reward actually does, in the player's terms. A name alone ("Fly", "Shield") tells
+ * a first-time player nothing, and this is the only screen where the choice is made.
+ */
+function rewardDetail(grant: RewardGrant, pack: CompiledContentPack): string {
+  const content = pack.combatContent;
+  if (grant.kind === "card") {
+    const card = content.cards[grant.definitionId];
+    const action = card ? content.actions[card.actionId] : undefined;
+    if (!action) return "새 전술 카드입니다.";
+    const cost = action.timing.kind === "reaction"
+      ? "반응"
+      : `${String(action.timing.actions)} 액션`;
+    return `${cost} · ${action.description}`;
+  }
+  const equipment = content.equipment[grant.definitionId];
+  if (!equipment) return "새 장비입니다.";
+  const parts: string[] = [];
+  const weapon = equipment.weaponProfile;
+  if (weapon) {
+    parts.push(`${weapon.category} ${weapon.attackMode} · ${String(weapon.damage.count)}d${String(weapon.damage.sides)} ${weapon.damage.damageType} · ${String(weapon.rangeFeet)}ft`);
+  }
+  const armor = equipment.armorProfile;
+  if (armor) parts.push(`${armor.category} 방어구 · AC ${signed(armor.acItemBonus)} · DEX 상한 ${String(armor.dexCap)}`);
+  if (equipment.shieldBonus) parts.push(`Raise Shield로 AC ${signed(equipment.shieldBonus)}`);
+  for (const modifier of equipment.statModifiers) parts.push(`${modifier.label} ${signed(modifier.value)}`);
+  for (const trait of equipment.traits) {
+    for (const cardGrant of content.traits[trait.id]?.cardGrants ?? []) {
+      const name = content.cards[cardGrant.cardDefinitionId]?.name ?? cardGrant.cardDefinitionId;
+      parts.push(`${name} 카드 ×${String(cardGrant.count)}`);
+    }
+  }
+  return parts.length > 0 ? parts.join(" · ") : `${equipment.slot} 슬롯 장비입니다.`;
+}
+
 export class AdventureUi {
   private readonly screen = required<HTMLElement>("#adventure-screen");
   private readonly progress = required<HTMLOListElement>("#adventure-progress");
@@ -47,7 +88,37 @@ export class AdventureUi {
     private readonly definition: AdventureDefinition,
     private readonly pack: CompiledContentPack,
     private readonly handlers: AdventureUiHandlers,
+    private readonly catalog?: AssetCatalog,
   ) {}
+
+  /** The enemies this party will actually face, which party size decides (#16). */
+  private threatPreview(state: AdventureState, encounterId: string): readonly string[] {
+    const source = this.pack.scenarioSources[encounterId];
+    if (!source) return [];
+    const partySize = Object.keys(state.party.members).length;
+    const counts = new Map<string, number>();
+    for (const placement of source.placements) {
+      if (!placementAppliesToPartySize(placement, partySize)) continue;
+      const name = this.pack.actorDefinitions[placement.actorDefinitionId]?.name ?? placement.actorDefinitionId;
+      counts.set(name, (counts.get(name) ?? 0) + 1);
+    }
+    return [...counts.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([name, count]) => (count > 1 ? `${name} ×${String(count)}` : name));
+  }
+
+  private icon(assetId: string | null, label: string): HTMLElement {
+    const wrapper = element("span", "reward-icon");
+    wrapper.setAttribute("aria-hidden", "true");
+    wrapper.title = label;
+    if (!assetId || !this.catalog) {
+      wrapper.classList.add("missing");
+      wrapper.textContent = label.slice(0, 1);
+      return wrapper;
+    }
+    Object.assign(wrapper.style, this.catalog.domAtlasStyle(assetId, 48));
+    return wrapper;
+  }
 
   public render(state: AdventureState, access: AdventureUiAccess = { isHost: true }): void {
     this.screen.hidden = state.phase === "combat";
@@ -60,6 +131,7 @@ export class AdventureUi {
       const scenario = this.pack.scenarios[encounterId];
       const completed = state.completedEncounterIds.includes(encounterId);
       const item = element("li", completed ? "complete" : encounterId === state.currentEncounterId ? "current" : "upcoming");
+      if (encounterId === state.currentEncounterId) item.setAttribute("aria-current", "step");
       item.append(
         element("span", "progress-index", completed ? "✓" : String(index + 1)),
         element("strong", undefined, scenario?.name ?? encounterId),
@@ -75,8 +147,9 @@ export class AdventureUi {
         this.actionButton(access.isHost ? "Begin Adventure" : "Waiting for Host", this.handlers.onStart, access.isHost),
         this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
       );
+      const partySize = Object.keys(state.party.members).length;
       this.content.append(
-        element("p", "eyebrow", "M3 Loadout Adventure"),
+        element("p", "eyebrow", `${String(this.definition.encounterIds.length)} Encounters · ${String(partySize)}P`),
         element("h1", undefined, this.definition.name),
         element("p", "adventure-description", this.definition.description),
         actions,
@@ -90,12 +163,26 @@ export class AdventureUi {
         this.actionButton(access.isHost ? "Enter Encounter" : "Waiting for Host", this.handlers.onContinue, access.isHost),
         this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
       );
+      const step = state.currentEncounterId
+        ? this.definition.encounterIds.indexOf(state.currentEncounterId) + 1
+        : 0;
       this.content.append(
-        element("p", "eyebrow", "Next Encounter"),
+        element("p", "eyebrow", step > 0
+          ? `Next Encounter · ${String(step)} / ${String(this.definition.encounterIds.length)}`
+          : "Next Encounter"),
         element("h1", undefined, scenario?.name ?? "Continue"),
         element("p", "adventure-description", scenario?.objective.description ?? "Prepare for battle."),
-        actions,
       );
+      const threats = state.currentEncounterId ? this.threatPreview(state, state.currentEncounterId) : [];
+      if (threats.length > 0) {
+        const preview = element("p", "encounter-threats");
+        preview.append(
+          element("strong", undefined, "예상 적"),
+          element("span", undefined, threats.join(" · ")),
+        );
+        this.content.append(preview);
+      }
+      this.content.append(actions);
       return;
     }
     if (state.phase === "reward" && state.pendingReward) {
@@ -106,12 +193,20 @@ export class AdventureUi {
       );
       const choices = element("div", "reward-choices");
       state.pendingReward.choices.forEach((grant, index) => {
-        const button = this.actionButton(rewardName(grant, this.pack), () => {
+        const name = rewardName(grant, this.pack);
+        const button = this.actionButton(name, () => {
           const offer = state.pendingReward;
           if (offer) this.handlers.onChooseReward(offer.rewardId, index);
         }, access.isHost);
         button.classList.add("reward-choice");
-        button.append(element("span", "reward-kind", grant.kind));
+        const assetId = grant.kind === "card"
+          ? this.catalog?.cardVisual(grant.definitionId) ?? null
+          : this.catalog?.equipmentVisual(grant.definitionId) ?? null;
+        button.prepend(this.icon(assetId, name));
+        button.append(
+          element("span", "reward-kind", grant.kind),
+          element("span", "reward-detail", rewardDetail(grant, this.pack)),
+        );
         choices.append(button);
       });
       this.content.append(choices);
@@ -120,8 +215,8 @@ export class AdventureUi {
     if (state.phase === "complete") {
       this.content.append(
         element("p", "eyebrow", "Adventure Complete"),
-        element("h1", undefined, "Goblin Trouble resolved"),
-        element("p", "adventure-description", "세 Encounter와 선택한 보상이 AdventureState에 기록되었습니다."),
+        element("h1", undefined, `${this.definition.name} resolved`),
+        element("p", "adventure-description", `${String(this.definition.encounterIds.length)}개 Encounter를 모두 통과했습니다. 획득한 보상은 Collection에 남습니다.`),
         this.actionButton(access.isHost ? "Session Complete" : "Session Complete", this.handlers.onRetry, false),
       );
       return;
@@ -130,7 +225,7 @@ export class AdventureUi {
       this.content.append(
         element("p", "eyebrow", "Adventure Failed"),
         element("h1", undefined, "The party was defeated"),
-        element("p", "adventure-description", "동일한 Adventure seed로 처음부터 다시 도전할 수 있습니다."),
+        element("p", "adventure-description", "같은 Adventure seed로 처음부터 다시 도전할 수 있습니다. Loadout을 바꾼 뒤 다시 시도해 보세요."),
         this.actionButton("Session Failed", this.handlers.onRetry, false),
       );
     }
