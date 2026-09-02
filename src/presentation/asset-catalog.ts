@@ -98,6 +98,20 @@ export class AssetCatalog {
     };
   }
 
+  public domAtlasPortraitStyle(id: PresentationAssetId, height: number): DomAtlasStyle {
+    const frame = this.atlasMap.frames[id]?.frame;
+    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
+    if (!Number.isFinite(height) || height <= 0) throw new Error("DOM atlas height must be positive.");
+    const scale = height / frame.h;
+    return {
+      backgroundImage: `url("${this.manifest.atlas.imagePath}")`,
+      backgroundPosition: `${-frame.x * scale}px ${-frame.y * scale}px`,
+      backgroundSize: `${this.manifest.atlas.width * scale}px ${this.manifest.atlas.height * scale}px`,
+      width: `${frame.w * scale}px`,
+      height: `${height}px`,
+    };
+  }
+
   public async unload(): Promise<void> {
     if (!this.initialized) return;
     this.textures.clear();

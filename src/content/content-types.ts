@@ -1,6 +1,7 @@
 import type {
   ActionDefinition,
   ActionId,
+  ActorStatProfile,
   ActorDefinitionId,
   BattleMapState,
   CardDefinition,
@@ -21,11 +22,10 @@ import type {
   TileState,
   TraitDefinition,
   TraitInstance,
-  WeaponProfile,
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 3;
+  readonly schemaVersion: 8;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -34,14 +34,8 @@ export interface ContentPackManifest {
 export interface ActorDefinition {
   readonly id: ActorDefinitionId;
   readonly name: string;
-  readonly hp: number;
-  readonly maxHp: number;
-  readonly baseAc: number;
-  readonly reflexModifier: number;
-  readonly athleticsModifier: number;
-  readonly initiativeModifier: number;
+  readonly statProfile: ActorStatProfile;
   readonly speedFeet: number;
-  readonly fallbackWeapon: WeaponProfile;
   readonly traits: readonly TraitInstance[];
   readonly loadoutProfile: LoadoutProfile;
   readonly starterLoadout: StarterLoadout;
@@ -65,7 +59,12 @@ export interface EncounterActorPlacement {
   readonly team: TeamId;
   readonly position: { readonly x: number; readonly y: number };
   readonly facing: Direction;
-  readonly partyMemberId?: string;
+}
+
+export interface PartySpawnSlot {
+  readonly seat: 1 | 2 | 3;
+  readonly position: { readonly x: number; readonly y: number };
+  readonly facing: Direction;
 }
 
 export interface BattleMapSource {
@@ -80,6 +79,7 @@ export interface ScenarioSource {
   readonly name: string;
   readonly objective: ObjectiveDefinition;
   readonly placements: readonly EncounterActorPlacement[];
+  readonly partySpawnSlots: readonly PartySpawnSlot[];
   readonly map: BattleMapSource;
 }
 
@@ -97,6 +97,10 @@ export interface AdventureDefinition {
   readonly id: string;
   readonly name: string;
   readonly description: string;
+  readonly partySize: {
+    readonly min: 1 | 2 | 3;
+    readonly max: 1 | 2 | 3;
+  };
   readonly encounterIds: readonly ScenarioId[];
   readonly rewards: readonly AdventureRewardDefinition[];
 }

@@ -1,18 +1,48 @@
 import { describe, expect, it } from "vitest";
 
 import contentPackSchema from "../../content/schema/content-pack.schema.json";
+import type { PartyState } from "../adventure";
 import { createCombat, dispatchCombatCommand } from "../game/engine";
 import { listLegalActions } from "../game/queries";
 import type { CombatCommand } from "../game/types";
+import {
+  clonePartyLoadout,
+  createStartingCollection,
+  deriveLoadoutSnapshot,
+  validatePartyLoadout,
+} from "../loadout";
 import { compileContentPack, getCombatDefinition } from "./compile-content";
-import type { ContentPackSource } from "./content-types";
+import type { ActorDefinition, ContentPackSource } from "./content-types";
 import { fingerprintContentPack } from "./fingerprint";
 import { M0_CONTENT_SOURCE, M0_SCENARIO_ID } from "./load-m0-content";
+import { M6_COMPILED_PACK, M6_CONTENT_SOURCE } from "./load-m6-content";
 import { validateContentPackStructure } from "./validate-content";
 import { formatContentValidationIssue, validateContentPackSemantics } from "./validate-semantics";
 
 function sourceCopy(): ContentPackSource {
   return structuredClone(M0_CONTENT_SOURCE);
+}
+
+function withPerception(actor: ActorDefinition, value: number): ActorDefinition {
+  return actor.statProfile.kind === "character"
+    ? {
+        ...actor,
+        statProfile: {
+          kind: "character",
+          stats: {
+            ...actor.statProfile.stats,
+            attributes: { ...actor.statProfile.stats.attributes, wis: value },
+            perception: "untrained",
+          },
+        },
+      }
+    : {
+        ...actor,
+        statProfile: {
+          kind: "creature",
+          stats: { ...actor.statProfile.stats, perception: value },
+        },
+      };
 }
 
 describe("content structural validation", () => {
@@ -44,6 +74,21 @@ describe("content structural validation", () => {
       actors: [{ ...source.actors[0], maxHp: 0 }, ...source.actors.slice(1)],
     };
     expect(validateContentPackStructure(invalidRange, contentPackSchema).some((issue) => issue.path.includes("maxHp"))).toBe(true);
+
+    const legacyV4 = {
+      ...source,
+      manifest: { ...source.manifest, schemaVersion: 4 },
+    };
+    expect(validateContentPackStructure(legacyV4, contentPackSchema).some((issue) => issue.path.endsWith("/schemaVersion"))).toBe(true);
+
+    const actor = source.actors[0] as NonNullable<typeof source.actors[0]>;
+    if (actor.statProfile.kind !== "character") throw new Error("The character fixture is missing.");
+    const missingSkill = structuredClone(source) as unknown as {
+      actors: Array<{ statProfile: { stats: { skills: Record<string, unknown> } } }>;
+    };
+    delete missingSkill.actors[0]?.statProfile.stats.skills.athletics;
+    expect(validateContentPackStructure(missingSkill, contentPackSchema).some((issue) =>
+      issue.path.includes("/statProfile/stats/skills"))).toBe(true);
   });
 
   it("formats structural issues with pack identity and source context", () => {
@@ -61,7 +106,7 @@ describe("content structural validation", () => {
     })[0];
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain(
-      "Pack: cardguild.m3\nSource: content/test/manifest.json",
+      "Pack: cardguild.m4\nSource: content/test/manifest.json",
     );
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain("Path: /manifest/version");
   });
@@ -121,13 +166,64 @@ describe("content semantic validation and compilation", () => {
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toBe(
       [
-        "Pack: cardguild.m3",
+        "Pack: cardguild.m4",
         "Source: content/test/equipment.json",
         "Definition: halberd",
         "Path: [0].traits[0].id",
         'UNKNOWN_TRAIT: Trait "tirp" is not defined.',
       ].join("\n"),
     );
+  });
+
+  it("validates deterministic v5 party spawn seats, positions, and adventure capacity", () => {
+    const source = sourceCopy();
+    const firstScenario = source.scenarios[0] as NonNullable<typeof source.scenarios[0]>;
+    const firstSpawn = firstScenario.partySpawnSlots[0] as NonNullable<typeof firstScenario.partySpawnSlots[0]>;
+    const staticPosition = firstScenario.placements[0]?.position as NonNullable<typeof firstScenario.placements[0]>["position"];
+    const invalid: ContentPackSource = {
+      ...source,
+      scenarios: source.scenarios.map((scenario, index) => index === 0
+        ? {
+            ...scenario,
+            partySpawnSlots: [
+              firstSpawn,
+              { ...firstSpawn, position: staticPosition },
+            ],
+          }
+        : scenario),
+    };
+
+    const codes = validateContentPackSemantics(invalid).map((issue) => issue.code);
+    expect(codes).toEqual(expect.arrayContaining([
+      "DUPLICATE_PARTY_SPAWN_SEAT",
+      "PARTY_SPAWN_STATIC_CONFLICT",
+      "INSUFFICIENT_PARTY_SPAWNS",
+    ]));
+  });
+
+  it("requires every party seat through the Adventure maximum instead of accepting a slot count", () => {
+    const source = sourceCopy();
+    const adventure = source.adventures[0] as NonNullable<typeof source.adventures[0]>;
+    const invalid: ContentPackSource = {
+      ...source,
+      adventures: source.adventures.map((candidate) => candidate.id === adventure.id
+        ? { ...candidate, partySize: { min: 1, max: 2 } }
+        : candidate),
+      scenarios: source.scenarios.map((scenario) => adventure.encounterIds.includes(scenario.id)
+        ? { ...scenario, partySpawnSlots: scenario.partySpawnSlots.filter((spawn) => spawn.seat !== 2) }
+        : scenario),
+    };
+
+    const issues = validateContentPackSemantics(invalid);
+    const missingSeatIssues = issues.filter((issue) => issue.code === "MISSING_PARTY_SPAWN_SEAT");
+    expect(missingSeatIssues).toHaveLength(adventure.encounterIds.length);
+    expect(missingSeatIssues).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        definitionId: adventure.id,
+        message: expect.stringContaining("missing required party spawn seat 2"),
+      }),
+    ]));
+    expect(issues.some((issue) => issue.code === "INSUFFICIENT_PARTY_SPAWNS")).toBe(false);
   });
 
   it("adds equipment and condition providers using JSON-shaped data without engine changes", () => {
@@ -143,7 +239,7 @@ describe("content semantic validation and compilation", () => {
           timing: { kind: "turn", actions: 1 },
           traits: [{ id: "move" }],
           targeting: "self",
-          effect: { kind: "remove-condition", condition: "custom-condition" },
+          resolution: { kind: "direct", effects: [{ kind: "remove-condition", owner: "actor", condition: "custom-condition" }] },
         },
       ],
       traits: [
@@ -177,15 +273,14 @@ describe("content semantic validation and compilation", () => {
       actors: source.actors.map((actor) =>
         actor.id === "hero.aerin"
           ? {
-              ...actor,
-              initiativeModifier: 100,
+              ...withPerception(actor, 100),
               starterLoadout: {
                 ...actor.starterLoadout,
                 equipment: { shield: "trait-only-kit" },
               },
               initialConditions: [{ id: "custom-condition", sourceId: "test" }],
             }
-          : { ...actor, initiativeModifier: -100 },
+          : withPerception(actor, -100),
       ),
     };
     const authoredJson = JSON.parse(JSON.stringify(custom)) as unknown;
@@ -232,6 +327,441 @@ describe("content semantic validation and compilation", () => {
       condition: "custom-condition",
     });
   });
+
+  it("requires playable actors to use bottom-up character statistics", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
+    const playable = source.actors.find((actor) => actor.traits.some((trait) => trait.id === "playable"));
+    if (!creature || !playable) throw new Error("M5 actor fixtures are missing.");
+    const invalid: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.id === playable.id
+        ? { ...actor, statProfile: structuredClone(creature.statProfile) }
+        : actor),
+    };
+
+    expect(validateContentPackSemantics(invalid)).toContainEqual(expect.objectContaining({
+      code: "PLAYABLE_REQUIRES_CHARACTER_STATS",
+      definitionId: playable.id,
+    }));
+  });
+
+  it("keeps final AC and HP out of character authoring while creatures keep fixed stats", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const playable = source.actors.find((actor) => actor.traits.some((trait) => trait.id === "playable"));
+    const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
+    if (!playable || !creature || creature.statProfile.kind !== "creature") {
+      throw new Error("M6 actor fixtures are missing.");
+    }
+
+    expect(creature.statProfile.stats.ac).toBeGreaterThan(0);
+    expect(creature.statProfile.stats.maxHp).toBeGreaterThan(0);
+    for (const field of ["baseAc", "maxHp", "hp"] as const) {
+      const authored: ContentPackSource = {
+        ...source,
+        actors: source.actors.map((actor) => actor.id === playable.id
+          ? { ...actor, [field]: 20 } as typeof actor
+          : actor),
+      };
+      expect(validateContentPackStructure(authored, contentPackSchema)).toContainEqual(expect.objectContaining({
+        source: "actors",
+        code: "SCHEMA_ADDITIONAL_PROPERTIES",
+        path: `/actors/0/${field}`,
+        definitionId: playable.id,
+      }));
+    }
+  });
+
+  it("requires an armor profile exactly on armor slot equipment", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const armor = source.equipment.find((definition) => definition.slot === "armor");
+    const boots = source.equipment.find((definition) => definition.slot === "feet");
+    if (!armor || !boots) throw new Error("M6 equipment fixtures are missing.");
+
+    const withoutProfile: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === armor.id
+        ? { ...definition, armorProfile: undefined }
+        : definition),
+    };
+    expect(validateContentPackStructure(withoutProfile, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: armor.id,
+    }));
+    expect(validateContentPackSemantics(withoutProfile)).toContainEqual(expect.objectContaining({
+      code: "ARMOR_PROFILE_REQUIRED",
+      definitionId: armor.id,
+    }));
+
+    const misplaced: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === boots.id
+        ? { ...definition, armorProfile: { category: "light" as const, acItemBonus: 1, dexCap: 4 } }
+        : definition),
+    };
+    expect(validateContentPackStructure(misplaced, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: boots.id,
+    }));
+    expect(validateContentPackSemantics(misplaced)).toContainEqual(expect.objectContaining({
+      code: "ARMOR_PROFILE_SLOT_MISMATCH",
+      definitionId: boots.id,
+    }));
+  });
+
+  it("keeps a shield bonus on the shield slot it belongs to", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const boots = source.equipment.find((definition) => definition.slot === "feet");
+    const shield = source.equipment.find((definition) => definition.shieldBonus !== undefined);
+    if (!boots || !shield) throw new Error("M6 equipment fixtures are missing.");
+    expect(shield.slot).toBe("shield");
+
+    const misplaced: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === boots.id
+        ? { ...definition, shieldBonus: 3 }
+        : definition),
+    };
+    expect(validateContentPackStructure(misplaced, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: boots.id,
+    }));
+    expect(validateContentPackSemantics(misplaced)).toContainEqual(expect.objectContaining({
+      code: "SHIELD_BONUS_SLOT_MISMATCH",
+      definitionId: boots.id,
+    }));
+  });
+
+  it("keeps final attack and Attribute-duplicating damage out of player weapon authoring", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const weapon = source.equipment.find((definition) => definition.slot === "weapon");
+    if (!weapon?.weaponProfile) throw new Error("M6 weapon fixtures are missing.");
+    const profile = weapon.weaponProfile;
+    expect(profile).not.toHaveProperty("attackModifier");
+    expect(profile.damage).not.toHaveProperty("modifier");
+
+    const authoredAttack: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === weapon.id
+        ? { ...definition, weaponProfile: { ...profile, attackModifier: 8 } }
+        : definition),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(authoredAttack, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: weapon.id,
+    }));
+
+    const duplicatedStrength: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === weapon.id
+        ? { ...definition, weaponProfile: { ...profile, damage: { ...profile.damage, modifier: 3 } } }
+        : definition),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(duplicatedStrength, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: weapon.id,
+    }));
+  });
+
+  it("requires a weapon profile exactly on weapon slot equipment", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const weapon = source.equipment.find((definition) => definition.slot === "weapon");
+    const boots = source.equipment.find((definition) => definition.slot === "feet");
+    if (!weapon?.weaponProfile || !boots) throw new Error("M6 equipment fixtures are missing.");
+    const weaponProfile = weapon.weaponProfile;
+
+    const withoutProfile: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === weapon.id
+        ? { ...definition, weaponProfile: undefined }
+        : definition),
+    };
+    expect(validateContentPackStructure(withoutProfile, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: weapon.id,
+    }));
+    expect(validateContentPackSemantics(withoutProfile)).toContainEqual(expect.objectContaining({
+      code: "WEAPON_PROFILE_REQUIRED",
+      definitionId: weapon.id,
+    }));
+
+    const misplaced: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === boots.id
+        ? { ...definition, weaponProfile }
+        : definition),
+    };
+    expect(validateContentPackStructure(misplaced, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: boots.id,
+    }));
+    expect(validateContentPackSemantics(misplaced)).toContainEqual(expect.objectContaining({
+      code: "WEAPON_PROFILE_SLOT_MISMATCH",
+      definitionId: boots.id,
+    }));
+  });
+
+  it("requires complete offense authoring on characters and a fixed Strike on creatures", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const character = source.actors.find((actor) => actor.statProfile.kind === "character");
+    const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
+    if (character?.statProfile.kind !== "character" || creature?.statProfile.kind !== "creature") {
+      throw new Error("M6 actor fixtures are missing.");
+    }
+    const characterStats = character.statProfile.stats;
+    const creatureStats = creature.statProfile.stats;
+    expect(Object.keys(characterStats.offense.weaponProficiencies).sort())
+      .toEqual(["advanced", "martial", "simple", "unarmed"]);
+
+    const partialProficiencies: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.id === character.id
+        ? {
+            ...actor,
+            statProfile: {
+              kind: "character" as const,
+              stats: {
+                ...characterStats,
+                offense: {
+                  ...characterStats.offense,
+                  weaponProficiencies: { unarmed: "trained" as const, simple: "trained" as const, martial: "trained" as const },
+                },
+              },
+            },
+          }
+        : actor),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(partialProficiencies, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "actors",
+      definitionId: character.id,
+    }));
+
+    const armedUnarmedStrike: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.id === character.id
+        ? {
+            ...actor,
+            statProfile: {
+              kind: "character" as const,
+              stats: {
+                ...characterStats,
+                offense: {
+                  ...characterStats.offense,
+                  unarmedStrike: { ...characterStats.offense.unarmedStrike, category: "martial" as const },
+                },
+              },
+            },
+          }
+        : actor),
+    };
+    expect(validateContentPackSemantics(armedUnarmedStrike)).toContainEqual(expect.objectContaining({
+      code: "UNARMED_STRIKE_CATEGORY_MISMATCH",
+      definitionId: character.id,
+    }));
+
+    // Creatures keep their authored final numbers.
+    expect(creatureStats.strike.attackModifier).toBeGreaterThan(0);
+    const withoutStrike: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.id === creature.id
+        ? { ...actor, statProfile: { kind: "creature" as const, stats: { ...creatureStats, strike: undefined } } }
+        : actor),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(withoutStrike, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "actors",
+      definitionId: creature.id,
+    }));
+  });
+
+  it("keeps Cards a reference to an Action instead of an authored modifier or DC", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const card = source.cards[0];
+    if (!card) throw new Error("M6 card fixtures are missing.");
+    expect(Object.keys(card).sort()).toEqual(["actionId", "id", "name", "traits"]);
+
+    const authored = { ...source, cards: source.cards.map((entry, index) => index === 0 ? { ...entry, modifier: 7, dc: 18 } : entry) };
+    expect(validateContentPackStructure(authored as ContentPackSource, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "cards",
+      definitionId: card.id,
+    }));
+  });
+
+  it("rejects unknown statistic, attribute, and DC references in a check resolution", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const trip = source.actions.find((action) => action.id === "trip");
+    if (trip?.resolution.kind !== "check") throw new Error("M6 Trip fixture is missing.");
+    const tripResolution = trip.resolution;
+    const tripCheck = tripResolution.check;
+
+    const withCheck = (check: unknown): ContentPackSource => ({
+      ...source,
+      actions: source.actions.map((action) => action.id === trip.id
+        ? { ...action, resolution: { kind: "check" as const, check, outcomes: tripResolution.outcomes } }
+        : action),
+    } as ContentPackSource);
+
+    for (const broken of [
+      { ...tripCheck, statistic: { kind: "skill" as const, skill: "juggling" } },
+      { ...tripCheck, statistic: { kind: "skill" as const, skill: "athletics", attributeOverride: "luck" } },
+      { ...tripCheck, dc: { kind: "statistic-dc" as const, owner: "target" as const, statistic: { kind: "save" as const, save: "sanity" } } },
+      { ...tripCheck, dc: { kind: "fixed" as const, value: 0 } },
+    ]) {
+      expect(validateContentPackStructure(withCheck(broken), contentPackSchema)).toContainEqual(expect.objectContaining({
+        source: "actions",
+        definitionId: trip.id,
+      }));
+    }
+
+    // A JSON expression is not a statistic reference; the closed union rejects it outright.
+    expect(validateContentPackStructure(withCheck({ ...tripCheck, statistic: "athletics + 2" }), contentPackSchema))
+      .toContainEqual(expect.objectContaining({ source: "actions", definitionId: trip.id }));
+  });
+
+  it("requires all four degree outcomes and compatible targeting for a resolution", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const trip = source.actions.find((action) => action.id === "trip");
+    const stand = source.actions.find((action) => action.id === "stand");
+    if (trip?.resolution.kind !== "check" || !stand) throw new Error("M6 action fixtures are missing.");
+    const tripResolution = trip.resolution;
+
+    const missingDegree = {
+      ...source,
+      actions: source.actions.map((action) => action.id === trip.id
+        ? { ...action, resolution: { ...tripResolution, outcomes: { ...tripResolution.outcomes, failure: undefined } } }
+        : action),
+    } as ContentPackSource;
+    expect(validateContentPackStructure(missingDegree, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "actions",
+      definitionId: trip.id,
+    }));
+
+    // A Direct resolution cannot target a tile, and a self Action cannot affect a target.
+    const badTargeting: ContentPackSource = {
+      ...source,
+      actions: source.actions.map((action) => action.id === stand.id ? { ...action, targeting: "tile" as const } : action),
+    };
+    expect(validateContentPackSemantics(badTargeting)).toContainEqual(expect.objectContaining({
+      code: "INCOMPATIBLE_TARGETING",
+      definitionId: stand.id,
+    }));
+    const targetFromSelf: ContentPackSource = {
+      ...source,
+      actions: source.actions.map((action) => action.id === stand.id
+        ? { ...action, resolution: { kind: "direct" as const, effects: [{ kind: "apply-condition" as const, owner: "target" as const, condition: "prone" }] } }
+        : action),
+    };
+    expect(validateContentPackSemantics(targetFromSelf)).toContainEqual(expect.objectContaining({
+      code: "EFFECT_REQUIRES_TARGET",
+      definitionId: stand.id,
+    }));
+  });
+
+  it("allows weapon reach only where a weapon is actually involved", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const strike = source.actions.find((action) => action.id === "strike");
+    const spell = source.actions.find((action) => action.id === "spirit-lance");
+    if (!strike || !spell) throw new Error("M6 action fixtures are missing.");
+    expect(strike.range).toEqual({ kind: "weapon-reach" });
+    expect(spell.range).toEqual({ kind: "feet", value: 30 });
+
+    const reachingSpell: ContentPackSource = {
+      ...source,
+      actions: source.actions.map((action) => action.id === spell.id
+        ? { ...action, range: { kind: "weapon-reach" as const } }
+        : action),
+    };
+    expect(validateContentPackSemantics(reachingSpell)).toContainEqual(expect.objectContaining({
+      code: "WEAPON_REACH_NOT_APPLICABLE",
+      definitionId: spell.id,
+    }));
+
+    const oddRange: ContentPackSource = {
+      ...source,
+      actions: source.actions.map((action) => action.id === spell.id
+        ? { ...action, range: { kind: "feet" as const, value: 7 } }
+        : action),
+    };
+    expect(validateContentPackSemantics(oddRange)).toContainEqual(expect.objectContaining({
+      code: "INVALID_ACTION_RANGE",
+      definitionId: spell.id,
+    }));
+  });
+
+  it("rejects positive untyped modifiers because PF2e untyped contributions are penalties", () => {
+    const source = structuredClone(M6_CONTENT_SOURCE);
+    const equipment = source.equipment.find((definition) => definition.statModifiers.length > 0);
+    if (!equipment) throw new Error("M5 equipment fixtures are missing stat modifiers.");
+    const invalid: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((definition) => definition.id === equipment.id
+        ? {
+            ...definition,
+            statModifiers: [
+              { selector: { kind: "all" }, type: "untyped", value: 2, label: "Untyped bonus" },
+              { selector: { kind: "all" }, type: "untyped", value: -1, label: "Untyped penalty" },
+            ],
+          }
+        : definition),
+    };
+
+    expect(validateContentPackStructure(invalid, contentPackSchema)).toContainEqual(expect.objectContaining({
+      source: "equipment",
+      definitionId: equipment.id,
+    }));
+    const semantic = validateContentPackSemantics(invalid).filter(
+      (issue) => issue.code === "UNTYPED_MODIFIER_MUST_BE_PENALTY",
+    );
+    expect(semantic).toEqual([expect.objectContaining({
+      definitionId: equipment.id,
+      message: 'Untyped modifier "Untyped bonus" must be a penalty (value < 0) but is 2.',
+    })]);
+  });
+});
+
+describe("M5 playable character content", () => {
+  it("compiles three distinct playable profiles with validator-safe starter loadouts", () => {
+    expect(validateContentPackStructure(M6_CONTENT_SOURCE, contentPackSchema)).toEqual([]);
+    const playable = Object.values(M6_COMPILED_PACK.actorDefinitions)
+      .filter((actor) => actor.traits.some((trait) => trait.id === "playable"));
+    expect(playable.map((actor) => actor.id).sort()).toEqual([
+      "hero.aerin",
+      "hero.brom",
+      "hero.lyra",
+    ]);
+    const aerin = playable.find((actor) => actor.id === "hero.aerin");
+    const lyra = playable.find((actor) => actor.id === "hero.lyra");
+    const brom = playable.find((actor) => actor.id === "hero.brom");
+    if (!aerin || !lyra || !brom) throw new Error("Playable M5 profiles are missing.");
+    const aerinStats = deriveLoadoutSnapshot(aerin, aerin.starterLoadout, M6_COMPILED_PACK.combatContent, aerin.id).statistics;
+    const lyraStats = deriveLoadoutSnapshot(lyra, lyra.starterLoadout, M6_COMPILED_PACK.combatContent, lyra.id).statistics;
+    const bromStats = deriveLoadoutSnapshot(brom, brom.starterLoadout, M6_COMPILED_PACK.combatContent, brom.id).statistics;
+    expect(lyraStats.reflex.modifier).toBeGreaterThan(aerinStats.reflex.modifier);
+    expect(lyraStats.initiative).toBeGreaterThan(aerinStats.initiative);
+    expect(lyra?.speedFeet).toBeGreaterThan(aerin?.speedFeet ?? 0);
+    expect(lyraStats.maxHp).toBeLessThan(aerinStats.maxHp);
+    expect(bromStats.maxHp).toBeGreaterThan(aerinStats.maxHp);
+    expect(bromStats.ac).toBeGreaterThan(aerinStats.ac);
+    expect(bromStats.athletics).toBeGreaterThan(aerinStats.athletics);
+    expect(brom?.speedFeet).toBeLessThan(aerin?.speedFeet ?? 0);
+
+    const party: PartyState = {
+      members: Object.fromEntries(playable.map((actor, index) => [
+        "party.hero-" + String(index + 1),
+        {
+          id: "party.hero-" + String(index + 1),
+          seat: index + 1 as 1 | 2 | 3,
+          actorDefinitionId: actor.id,
+          loadout: clonePartyLoadout(actor.starterLoadout),
+        },
+      ])),
+    };
+    const collection = createStartingCollection(party, M6_COMPILED_PACK);
+    expect(validatePartyLoadout(party, collection, M6_COMPILED_PACK)).toEqual({ valid: true, issues: [] });
+    expect(new Set(playable.map((actor) => JSON.stringify({
+      equipment: actor.starterLoadout.equipment,
+      baseCards: actor.baseCardGrants,
+    }))).size).toBe(3);
+  });
 });
 
 describe("content fingerprint", () => {
@@ -242,7 +772,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 3,
+        schemaVersion: 8,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),
@@ -255,6 +785,7 @@ describe("content fingerprint", () => {
         .map((scenario) => ({
           ...scenario,
           placements: [...scenario.placements].reverse(),
+          partySpawnSlots: [...scenario.partySpawnSlots].reverse(),
           map: {
             ...scenario.map,
             tiles: [...scenario.map.tiles].reverse(),
@@ -276,10 +807,64 @@ describe("content fingerprint", () => {
       ...source,
       equipment: source.equipment.map((item) =>
         item.id === "boots-of-fly"
-          ? { ...item, statModifiers: [{ selector: "reflex", value: 2, label: "Boots of Fly" }] }
+          ? {
+              ...item,
+              statModifiers: [{
+                selector: { kind: "save", id: "reflex" },
+                type: "item",
+                value: 2,
+                label: "Boots of Fly",
+              }],
+            }
           : item,
       ),
     };
     expect(fingerprintContentPack(changed)).not.toBe(fingerprintContentPack(source));
+
+    const changedCharacter: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.statProfile.kind === "character"
+        ? {
+            ...actor,
+            statProfile: {
+              kind: "character",
+              stats: {
+                ...actor.statProfile.stats,
+                attributes: {
+                  ...actor.statProfile.stats.attributes,
+                  dex: actor.statProfile.stats.attributes.dex + 1,
+                },
+              },
+            },
+          }
+        : actor),
+    };
+    expect(fingerprintContentPack(changedCharacter)).not.toBe(fingerprintContentPack(source));
+
+    // Offense authoring is gameplay input: Strike and Class DC move with the pack identity.
+    const changedOffense: ContentPackSource = {
+      ...source,
+      actors: source.actors.map((actor) => actor.statProfile.kind === "character"
+        ? {
+            ...actor,
+            statProfile: {
+              kind: "character",
+              stats: {
+                ...actor.statProfile.stats,
+                offense: { ...actor.statProfile.stats.offense, classDcProficiency: "legendary" },
+              },
+            },
+          }
+        : actor),
+    };
+    expect(fingerprintContentPack(changedOffense)).not.toBe(fingerprintContentPack(source));
+
+    const changedWeapon: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((item) => item.weaponProfile
+        ? { ...item, weaponProfile: { ...item.weaponProfile, category: "advanced" as const } }
+        : item),
+    };
+    expect(fingerprintContentPack(changedWeapon)).not.toBe(fingerprintContentPack(source));
   });
 });

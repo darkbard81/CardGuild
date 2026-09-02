@@ -6,7 +6,7 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "move" }],
     "targeting": "tile",
-    "effect": { "kind": "move", "movementMode": "land", "step": true, "triggersReactions": false }
+    "resolution": { "kind": "move", "movementMode": "land", "step": true, "triggersReactions": false }
   },
   {
     "id": "stride",
@@ -15,7 +15,7 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "move" }],
     "targeting": "tile",
-    "effect": { "kind": "move", "movementMode": "land", "step": false, "triggersReactions": true }
+    "resolution": { "kind": "move", "movementMode": "land", "step": false, "triggersReactions": true }
   },
   {
     "id": "strike",
@@ -24,7 +24,12 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "attack" }],
     "targeting": "enemy",
-    "effect": { "kind": "weapon-attack", "damageMultiplier": 1 }
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": { "critical-success": [], "success": [], "failure": [], "critical-failure": [] }
+    }
   },
   {
     "id": "stand",
@@ -33,7 +38,10 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "move" }],
     "targeting": "self",
-    "effect": { "kind": "remove-condition", "condition": "prone" }
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "remove-condition", "owner": "actor", "condition": "prone" }]
+    }
   },
   {
     "id": "escape-grab",
@@ -42,14 +50,16 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "attack" }],
     "targeting": "self",
-    "effect": {
-      "kind": "recovery-check",
-      "condition": "grabbed",
-      "modifier": "athletics",
-      "dc": 15,
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "athletics" },
+        "dc": { "kind": "fixed", "value": 15 }
+      },
       "outcomes": {
-        "critical-success": [{ "kind": "remove-condition", "condition": "grabbed" }],
-        "success": [{ "kind": "remove-condition", "condition": "grabbed" }],
+        "critical-success": [{ "kind": "remove-condition", "owner": "actor", "condition": "grabbed" }],
+        "success": [{ "kind": "remove-condition", "owner": "actor", "condition": "grabbed" }],
         "failure": [],
         "critical-failure": [{ "kind": "lock-action", "actionId": "escape-grab" }]
       }
@@ -62,7 +72,7 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "manipulate" }],
     "targeting": "object",
-    "effect": { "kind": "interact" }
+    "resolution": { "kind": "direct", "effects": [{ "kind": "interact" }] }
   },
   {
     "id": "raise-shield",
@@ -71,7 +81,7 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "concentrate" }],
     "targeting": "self",
-    "effect": { "kind": "raise-shield" }
+    "resolution": { "kind": "direct", "effects": [{ "kind": "raise-shield" }] }
   },
   {
     "id": "sustain-spell",
@@ -80,7 +90,7 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "concentrate" }],
     "targeting": "effect",
-    "effect": { "kind": "sustain-effect" }
+    "resolution": { "kind": "direct", "effects": [{ "kind": "sustain-effect" }] }
   },
   {
     "id": "trip",
@@ -89,7 +99,21 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "attack" }, { "id": "skill" }, { "id": "trip" }],
     "targeting": "enemy",
-    "effect": { "kind": "trip" }
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "athletics" },
+        "dc": { "kind": "statistic-dc", "owner": "target", "statistic": { "kind": "save", "save": "reflex" } }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
   },
   {
     "id": "fly",
@@ -98,7 +122,7 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "move" }, { "id": "fly" }],
     "targeting": "tile",
-    "effect": { "kind": "move", "movementMode": "fly", "step": false, "triggersReactions": true }
+    "resolution": { "kind": "move", "movementMode": "fly", "step": false, "triggersReactions": true }
   },
   {
     "id": "spirit-beacon",
@@ -107,7 +131,10 @@
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "concentrate" }, { "id": "focus" }],
     "targeting": "self",
-    "effect": { "kind": "create-sustained-effect", "effectName": "Spirit Beacon" }
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "create-sustained-effect", "effectName": "Spirit Beacon" }]
+    }
   },
   {
     "id": "reactive-strike",
@@ -116,7 +143,12 @@
     "timing": { "kind": "reaction" },
     "traits": [{ "id": "attack" }, { "id": "reaction" }],
     "targeting": "enemy",
-    "effect": { "kind": "weapon-attack", "damageMultiplier": 1 }
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": { "critical-success": [], "success": [], "failure": [], "critical-failure": [] }
+    }
   },
   {
     "id": "knockdown",
@@ -125,6 +157,16 @@
     "timing": { "kind": "turn", "actions": 2 },
     "traits": [{ "id": "attack" }],
     "targeting": "enemy",
-    "effect": { "kind": "weapon-attack", "damageMultiplier": 1, "applyCondition": "prone" }
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
   }
 ]

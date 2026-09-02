@@ -7,9 +7,11 @@
     "statModifiers": [],
     "weaponProfile": {
       "name": "Halberd",
-      "attackModifier": 8,
+      "category": "martial",
+      "attackMode": "melee",
       "rangeFeet": 10,
-      "damage": { "count": 1, "sides": 12, "modifier": 4, "damageType": "slashing" }
+      "damage": { "count": 1, "sides": 10, "damageType": "slashing" },
+      "traits": []
     }
   },
   {
@@ -25,6 +27,8 @@
     "name": "Boots of Fly",
     "slot": "feet",
     "traits": [{ "id": "fly" }],
-    "statModifiers": [{ "selector": "reflex", "value": 1, "label": "Boots of Fly" }]
+    "statModifiers": [
+      { "selector": { "kind": "save", "id": "reflex" }, "type": "item", "value": 1, "label": "Boots of Fly" }
+    ]
   }
 ]

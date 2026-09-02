@@ -1,3 +1,4 @@
+import { actionRangeFeet, buildResolvedActionPlan, turnMapContext } from "./action-plan";
 import { degreeProbabilities } from "./checks";
 import {
   canStepOnto,
@@ -8,12 +9,10 @@ import {
   hasLineOfSight,
   positionKey,
 } from "./grid";
+import { strikeDamageTotal } from "./offense";
 import {
   getConditionActionGrants,
   getEquipmentActionGrants,
-  getStatistic,
-  getWeaponProfile,
-  isDirectlyBehind,
   isInFrontOrSide,
 } from "./rules";
 import type {
@@ -124,8 +123,8 @@ function movementTargets(
   actor: ActorState,
   definition: ActionDefinition,
 ): readonly LegalTarget[] {
-  if (definition.effect.kind !== "move") return [];
-  const moveEffect = definition.effect;
+  if (definition.resolution.kind !== "move") return [];
+  const moveEffect = definition.resolution;
   if (hasCondition(actor, "prone")) return [];
   if (hasCondition(actor, "grabbed")) return [];
 
@@ -155,8 +154,7 @@ function enemyTargets(
   definition: ActionDefinition,
   content: CombatContent,
 ): readonly LegalTarget[] {
-  const weapon = getWeaponProfile(actor, content);
-  const range = definition.effect.kind === "trip" || definition.effect.kind === "weapon-attack" ? weapon.rangeFeet : 5;
+  const range = actionRangeFeet(definition, actor, { content });
 
   return Object.values(state.actors)
     .filter(
@@ -178,7 +176,7 @@ function listCandidateTargets(
   definition: ActionDefinition,
   content: CombatContent,
 ): readonly LegalTarget[] {
-  if (definition.effect.kind === "move") return movementTargets(state, actor, definition);
+  if (definition.resolution.kind === "move") return movementTargets(state, actor, definition);
   if (definition.targeting === "enemy") return enemyTargets(state, actor, definition, content);
   if (definition.targeting === "object") {
     return Object.values(state.map.objects)
@@ -210,6 +208,27 @@ export function targetIsLegal(targets: readonly LegalTarget[], target: ActionTar
 interface BaseActionValidation extends ActionValidationResult {
   readonly actor?: ActorState;
   readonly resolved?: ResolvedAction;
+}
+
+const ACTION_CANNOT_RESOLVE = "Action cannot be resolved.";
+
+function buildIntentPlan(
+  state: CombatState,
+  actor: ActorState,
+  resolved: ResolvedAction,
+  source: ActionSource,
+  target: ActionTarget,
+  content: CombatContent,
+) {
+  return buildResolvedActionPlan(
+    resolved.definition,
+    actor,
+    target,
+    source,
+    state,
+    content,
+    turnMapContext(state),
+  );
 }
 
 function validateActionBase(
@@ -254,6 +273,9 @@ export function validateActionIntent(
   const targets = listCandidateTargets(state, base.actor, base.resolved.definition, content);
   if (targets.length === 0) return { legal: false, reason: "No legal target." };
   if (!targetIsLegal(targets, target)) return { legal: false, reason: "Target is not legal." };
+  if (!buildIntentPlan(state, base.actor, base.resolved, source, target, content)) {
+    return { legal: false, reason: ACTION_CANNOT_RESOLVE };
+  }
   return { legal: true };
 }
 
@@ -279,8 +301,11 @@ export function listLegalTargets(
   content: CombatContent,
 ): readonly LegalTarget[] {
   const base = validateActionBase(state, actorId, source, content);
-  if (!base.legal || !base.actor || !base.resolved) return [];
-  return listCandidateTargets(state, base.actor, base.resolved.definition, content);
+  const { actor, resolved } = base;
+  if (!base.legal || !actor || !resolved) return [];
+  return listCandidateTargets(state, actor, resolved.definition, content).filter((candidate) =>
+    buildIntentPlan(state, actor, resolved, source, targetIntent(candidate, actor), content),
+  );
 }
 
 export function listLegalActions(
@@ -301,14 +326,22 @@ export function listLegalActions(
   return sources.flatMap((source) => {
     const resolved = resolveActionSource(state, actor, source, content);
     if (!resolved) return [];
-    const candidate = listCandidateTargets(state, actor, resolved.definition, content)[0];
-    const validation = validateActionIntent(
-      state,
-      actor.id,
-      source,
-      candidate ? targetIntent(candidate, actor) : { kind: "none" },
-      content,
-    );
+    const base = validateActionBase(state, actor.id, source, content);
+    let validation: ActionValidationResult;
+    if (!base.legal) {
+      validation = { legal: false, reason: base.reason };
+    } else {
+      const candidates = listCandidateTargets(state, actor, resolved.definition, content);
+      if (candidates.length === 0) {
+        validation = { legal: false, reason: "No legal target." };
+      } else {
+        validation = candidates.some((candidate) =>
+          buildIntentPlan(state, actor, resolved, source, targetIntent(candidate, actor), content),
+        )
+          ? { legal: true }
+          : { legal: false, reason: ACTION_CANNOT_RESOLVE };
+      }
+    }
     return [
       {
         source,
@@ -326,12 +359,6 @@ export function listLegalActions(
   });
 }
 
-function mapPenalty(state: CombatState, definition: ActionDefinition): number {
-  if (!definition.traits.some((trait) => trait.id === "attack")) return 0;
-  const stage = Math.min(2, state.turn.attacksThisTurn);
-  return [0, -5, -10][stage] as number;
-}
-
 export function previewAction(
   state: CombatState,
   actorId: string,
@@ -345,48 +372,50 @@ export function previewAction(
   if (!validation.legal) return { legal: false, reason: validation.reason, notes: [] };
   const resolved = resolveActionSource(state, actor, source, content);
   if (!resolved) return { legal: false, reason: "Unknown action source.", notes: [] };
-  const legalTargets = listCandidateTargets(state, actor, resolved.definition, content);
 
-  if (target.kind === "tile") {
-    const legal = legalTargets.find(
-      (candidate) => candidate.kind === "tile" && positionKey(candidate.position) === positionKey(target.position),
-    );
+  // Every resolution, movement included, goes through the plan; only path legality stays
+  // in the movement resolver, which owns reachability and cost.
+  const plan = buildIntentPlan(state, actor, resolved, source, target, content);
+  if (!plan) return { legal: false, reason: ACTION_CANNOT_RESOLVE, notes: [] };
+  const resolution = plan.resolution;
+
+  if (resolution.kind === "move") {
+    const reached = target.kind === "tile"
+      ? listCandidateTargets(state, actor, resolved.definition, content).find(
+          (candidate) => candidate.kind === "tile" && positionKey(candidate.position) === positionKey(target.position),
+        )
+      : undefined;
     return {
       legal: true,
-      pathCostFeet: legal?.kind === "tile" ? legal.costFeet : undefined,
-      notes: [`Face ${target.facing} after moving.`],
+      pathCostFeet: reached?.kind === "tile" ? reached.costFeet : undefined,
+      notes: plan.notes,
     };
   }
-
-  if (target.kind === "actor") {
-    const targetActor = state.actors[target.actorId];
-    if (!targetActor) return { legal: false, reason: "Unknown target.", notes: [] };
-    const penalty = mapPenalty(state, resolved.definition);
-    const isTrip = resolved.definition.effect.kind === "trip";
-    const modifier = (isTrip ? actor.athleticsModifier : getWeaponProfile(actor, content).attackModifier) + penalty;
-    const statistic = isTrip ? getStatistic(targetActor, content, "reflex") : getStatistic(targetActor, content, "ac");
-    const rearBonus = !isTrip && isDirectlyBehind(actor.position, targetActor) ? -2 : 0;
-    const dc = statistic.value + rearBonus;
-    const probabilities = degreeProbabilities(modifier, dc);
-    const damage = getWeaponProfile(actor, content).damage;
-    return {
-      legal: true,
-      hitChance: probabilities.success + probabilities["critical-success"],
-      criticalChance: probabilities["critical-success"],
-      damageRange:
-        resolved.definition.effect.kind === "weapon-attack"
-          ? [
-              (damage.count + damage.modifier) * resolved.definition.effect.damageMultiplier,
-              (damage.count * damage.sides + damage.modifier) * resolved.definition.effect.damageMultiplier,
-            ]
-          : undefined,
-      notes: [
-        `MAP ${penalty}`,
-        ...(rearBonus ? ["Rear attack: target AC -2"] : []),
-        ...statistic.sources,
-      ],
-    };
+  if (resolution.kind === "direct") {
+    return { legal: true, notes: plan.notes };
   }
 
-  return { legal: true, notes: [] };
+  const check = resolution.check;
+  // Probabilities are always the roller's. Only a Strike has actor-side hit semantics, so
+  // a target's save is never reported as the acting Character's hit or critical chance.
+  const probabilities = degreeProbabilities(check.modifier, check.dc);
+  const checkPreview = {
+    legal: true,
+    check: { roller: check.roller, rollerActorId: check.rollerActorId, modifier: check.modifier, dc: check.dc },
+    degreeProbabilities: probabilities,
+    notes: plan.notes,
+  };
+  if (resolution.kind === "check") return checkPreview;
+
+  const strike = resolution.strike;
+  return {
+    ...checkPreview,
+    hitChance: probabilities.success + probabilities["critical-success"],
+    criticalChance: probabilities["critical-success"],
+    damageRange: [
+      // Both ends run the execution helper, so the minimum-1 rule cannot drift.
+      strikeDamageTotal(strike.damage.count, strike.damage.flatModifier, resolution.damageMultiplier),
+      strikeDamageTotal(strike.damage.count * strike.damage.sides, strike.damage.flatModifier, resolution.damageMultiplier),
+    ],
+  };
 }

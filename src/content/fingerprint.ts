@@ -17,6 +17,7 @@ export function normalizeContentPack(source: ContentPackSource): ContentPackSour
     scenarios: byId(source.scenarios).map((scenario) => ({
       ...scenario,
       placements: [...scenario.placements].sort((left, right) => left.instanceId.localeCompare(right.instanceId)),
+      partySpawnSlots: [...scenario.partySpawnSlots].sort((left, right) => left.seat - right.seat),
       map: {
         ...scenario.map,
         tiles: [...scenario.map.tiles].sort(

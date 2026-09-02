@@ -1,19 +1,32 @@
 import { rollCheck } from "./checks";
 import { computeCombatSetupFingerprint } from "./determinism";
+import {
+  actionRangeFeet,
+  buildResolvedActionPlan,
+  turnMapContext,
+  type ResolvedActionCheck,
+  type ResolvedActionPlan,
+} from "./action-plan";
 import { findPath, getTile, gridDistance, hasLineOfSight, positionKey } from "./grid";
+import { strikeDamageTotal } from "./offense";
 import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
   getEquipment,
-  getStatistic,
-  getWeaponProfile,
   hasTrait,
-  isDirectlyBehind,
   isInFrontOrSide,
   isSuccessful,
 } from "./rules";
+import {
+  cloneActorStatProfile,
+  formatStatisticSources,
+  resolveInitiative,
+  resolveStatisticModifier,
+} from "./statistics";
 import type {
   ActionDefinition,
+  ActionOutcomeEffect,
+  ActionParticipant,
   ActionSource,
   ActorState,
   BattleMapState,
@@ -26,9 +39,11 @@ import type {
   CombatSetupResult,
   CombatState,
   CommandResult,
+  DegreeOfSuccess,
   ConditionInstance,
   EffectInstance,
   MapObjectState,
+  MoveContinuation,
   PendingReaction,
   RngState,
   TileState,
@@ -58,8 +73,8 @@ interface CombatDraft {
 function cloneActor(actor: ActorState): ActorState {
   return {
     ...actor,
+    statProfile: cloneActorStatProfile(actor.statProfile),
     position: { ...actor.position },
-    fallbackWeapon: { ...actor.fallbackWeapon, damage: { ...actor.fallbackWeapon.damage } },
     conditions: actor.conditions.map((condition) => ({ ...condition })),
     traits: actor.traits.map((trait) => ({ ...trait, params: trait.params ? { ...trait.params } : undefined })),
     equipmentIds: [...actor.equipmentIds],
@@ -193,14 +208,15 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
 
   const initiatives: { readonly actorId: string; readonly total: number }[] = [];
   for (const actor of Object.values(actors).sort((left, right) => left.id.localeCompare(right.id))) {
-    const check = rollCheck(rng, actor.initiativeModifier, 0);
+    const initiative = resolveInitiative(actor, { content });
+    const check = rollCheck(rng, initiative.value, 0);
     rng = check.rng;
     initiatives.push({ actorId: actor.id, total: check.total });
     events.push({
       type: "INITIATIVE_ROLLED",
       actorId: actor.id,
       roll: check.roll,
-      modifier: actor.initiativeModifier,
+      modifier: initiative.value,
       total: check.total,
     });
   }
@@ -346,93 +362,127 @@ function applyDamage(
   checkCombatOutcome(draft, events);
 }
 
-function currentMapPenalty(draft: CombatDraft): number {
-  return [0, -5, -10][Math.min(2, draft.turn.attacksThisTurn)] as number;
-}
-
-function performWeaponAttack(
+/**
+ * Applies one authored effect primitive. Every resolution — Strike outcomes, check degree
+ * outcomes and no-check Direct actions — runs through this in authored order, so a new
+ * behaviour is a new primitive rather than a new executor branch.
+ */
+function applyOutcomeEffect(
   draft: CombatDraft,
-  actorId: string,
-  targetActorId: string,
-  definition: ActionDefinition,
+  plan: ResolvedActionPlan,
+  effect: ActionOutcomeEffect,
   content: CombatContent,
   events: CombatEvent[],
-  mapPenalty: number,
 ): void {
-  const actor = draft.actors[actorId];
-  const target = draft.actors[targetActorId];
-  if (!actor || !target || definition.effect.kind !== "weapon-attack") return;
-  const weapon = getWeaponProfile(actor, content);
-  const targetAc = getStatistic(target, content, "ac");
-  const rearAdjustment = isDirectlyBehind(actor.position, target) ? -2 : 0;
-  const modifier = weapon.attackModifier + mapPenalty;
-  const check = rollCheck(draft.rng, modifier, targetAc.value + rearAdjustment);
-  draft.rng = check.rng;
-  events.push({
-    type: "CHECK_ROLLED",
-    actorId,
-    targetActorId,
-    label: definition.name,
-    roll: check.roll,
-    modifier,
-    dc: targetAc.value + rearAdjustment,
-    baseDegree: check.baseDegree,
-    degree: check.degree,
-    modifierSources: [
-      `${weapon.name} ${weapon.attackModifier >= 0 ? "+" : ""}${weapon.attackModifier}`,
-      ...(mapPenalty ? [`MAP ${mapPenalty}`] : []),
-      ...(rearAdjustment ? ["Rear attack: target AC -2"] : []),
-      ...targetAc.sources,
-    ],
-  });
-  if (!isSuccessful(check.degree)) return;
-
-  const damageRoll = rollDice(draft.rng, weapon.damage.count, weapon.damage.sides);
-  draft.rng = damageRoll.rng;
-  const criticalMultiplier = check.degree === "critical-success" ? 2 : 1;
-  const damage = Math.max(
-    0,
-    (damageRoll.total + weapon.damage.modifier) * definition.effect.damageMultiplier * criticalMultiplier,
-  );
-  applyDamage(draft, actorId, targetActorId, damage, weapon.damage.damageType, events);
-  if (definition.effect.applyCondition && !draft.actors[targetActorId]?.defeated) {
-    addCondition(draft, targetActorId, definition.effect.applyCondition, definition.id, events);
+  const ownerId = (owner: ActionParticipant): string | undefined =>
+    owner === "actor" ? plan.actionActorId : plan.targetActorId;
+  switch (effect.kind) {
+    case "apply-condition": {
+      const actorId = ownerId(effect.owner);
+      if (actorId && !draft.actors[actorId]?.defeated) {
+        addCondition(draft, actorId, effect.condition, plan.actionId, events);
+      }
+      break;
+    }
+    case "remove-condition": {
+      const actorId = ownerId(effect.owner);
+      if (actorId) removeCondition(draft, actorId, effect.condition, events);
+      break;
+    }
+    case "lock-action":
+      if (!draft.turn.lockedActionIds.includes(effect.actionId)) {
+        draft.turn = { ...draft.turn, lockedActionIds: [...draft.turn.lockedActionIds, effect.actionId] };
+        events.push({ type: "ACTION_LOCKED", actorId: plan.actionActorId, actionId: effect.actionId });
+      }
+      break;
+    case "damage": {
+      const actorId = ownerId(effect.owner);
+      if (!actorId) break;
+      const roll = rollDice(draft.rng, effect.dice.count, effect.dice.sides);
+      draft.rng = roll.rng;
+      applyDamage(
+        draft,
+        plan.actionActorId,
+        actorId,
+        strikeDamageTotal(roll.total, effect.flatModifier, effect.multiplier ?? 1),
+        effect.damageType,
+        events,
+      );
+      break;
+    }
+    case "create-sustained-effect": {
+      const id = `effect-${String(draft.nextEffectSequence).padStart(3, "0")}`;
+      draft.nextEffectSequence += 1;
+      draft.effects[id] = {
+        id,
+        name: effect.effectName,
+        sourceId: plan.actionId,
+        targetActorId: plan.actionActorId,
+        traits: [{ id: "sustained", sourceId: plan.actionId }],
+        createdOnTurn: draft.turn.turnNumber,
+        sustainedOnTurn: null,
+      };
+      events.push({ type: "EFFECT_CREATED", effectId: id, actorId: plan.actionActorId, name: effect.effectName });
+      break;
+    }
+    case "sustain-effect": {
+      if (plan.target.kind !== "effect") break;
+      const sustained = draft.effects[plan.target.effectId];
+      if (!sustained) break;
+      draft.effects[plan.target.effectId] = { ...sustained, sustainedOnTurn: draft.turn.turnNumber };
+      events.push({ type: "EFFECT_SUSTAINED", effectId: sustained.id, actorId: plan.actionActorId });
+      break;
+    }
+    case "raise-shield": {
+      const actor = draft.actors[plan.actionActorId];
+      const shield = actor
+        ? getEquipment(actor, content).find((equipment) => equipment.slot === "shield" && equipment.shieldBonus)
+        : undefined;
+      if (actor && shield?.shieldBonus) {
+        replaceActor(draft, { ...actor, shieldRaised: true });
+        events.push({ type: "SHIELD_RAISED", actorId: actor.id, bonus: shield.shieldBonus });
+      }
+      break;
+    }
+    case "interact":
+      executeInteract(draft, plan.actionActorId, plan.target, events);
+      break;
   }
 }
 
-function performTrip(
+function applyOutcomeEffects(
   draft: CombatDraft,
-  actorId: string,
-  targetActorId: string,
-  definition: ActionDefinition,
+  plan: ResolvedActionPlan,
+  effects: readonly ActionOutcomeEffect[],
   content: CombatContent,
   events: CombatEvent[],
-  mapPenalty: number,
 ): void {
-  const actor = draft.actors[actorId];
-  const target = draft.actors[targetActorId];
-  if (!actor || !target) return;
-  const reflex = getStatistic(target, content, "reflex");
-  const modifier = actor.athleticsModifier + mapPenalty;
-  const check = rollCheck(draft.rng, modifier, reflex.value);
-  draft.rng = check.rng;
+  for (const effect of effects) applyOutcomeEffect(draft, plan, effect, content, events);
+}
+
+/** Rolls a plan's check and reports who acted and who actually rolled. */
+function rollPlannedCheck(
+  draft: CombatDraft,
+  plan: ResolvedActionPlan,
+  check: ResolvedActionCheck,
+  events: CombatEvent[],
+): DegreeOfSuccess {
+  const result = rollCheck(draft.rng, check.modifier, check.dc);
+  draft.rng = result.rng;
   events.push({
     type: "CHECK_ROLLED",
-    actorId,
-    targetActorId,
-    label: definition.name,
-    roll: check.roll,
-    modifier,
-    dc: reflex.value,
-    baseDegree: check.baseDegree,
-    degree: check.degree,
-    modifierSources: [
-      `Athletics +${actor.athleticsModifier}`,
-      ...(mapPenalty ? [`MAP ${mapPenalty}`] : []),
-      ...reflex.sources,
-    ],
+    actionActorId: plan.actionActorId,
+    rollerActorId: check.rollerActorId,
+    targetActorId: plan.targetActorId,
+    label: plan.label,
+    roll: result.roll,
+    modifier: check.modifier,
+    dc: check.dc,
+    baseDegree: result.baseDegree,
+    degree: result.degree,
+    modifierSources: plan.notes,
   });
-  if (isSuccessful(check.degree)) addCondition(draft, targetActorId, "prone", definition.id, events);
+  return result.degree;
 }
 
 function eligibleMoveReactions(
@@ -443,9 +493,10 @@ function eligibleMoveReactions(
   return Object.values(draft.actors)
     .filter((actor) => {
       if (actor.team === mover.team || actor.defeated || !actor.reactionAvailable) return false;
-      const weapon = getWeaponProfile(actor, content);
+      const reaction = content.actions["reactive-strike"];
+      if (!reaction) return false;
       return (
-        gridDistance(actor.position, mover.position) <= weapon.rangeFeet &&
+        gridDistance(actor.position, mover.position) <= actionRangeFeet(reaction, actor, { content }) &&
         isInFrontOrSide(actor, mover.position) &&
         hasLineOfSight(draft.map, actor.position, mover.position)
       );
@@ -473,20 +524,21 @@ function applyWebTerrain(
   if (!actor) return;
   const tile = getTile(draft.map, actor.position);
   if (!tile || !hasTrait(tile, "web")) return;
-  const reflex = getStatistic(actor, content, "reflex");
-  const modifier = reflex.value - 10;
+  const reflex = resolveStatisticModifier(actor, { kind: "save", id: "reflex" }, { content });
+  const modifier = reflex.value;
   const check = rollCheck(draft.rng, modifier, 15);
   draft.rng = check.rng;
   events.push({
     type: "CHECK_ROLLED",
-    actorId,
+    actionActorId: actorId,
+    rollerActorId: actorId,
     label: "Web Terrain",
     roll: check.roll,
     modifier,
     dc: 15,
     baseDegree: check.baseDegree,
     degree: check.degree,
-    modifierSources: reflex.sources,
+    modifierSources: formatStatisticSources(reflex.sources),
   });
   if (!isSuccessful(check.degree)) addCondition(draft, actorId, "grabbed", tile.id, events);
 }
@@ -514,6 +566,70 @@ function completeMove(
   applyWebTerrain(draft, actor.id, continuation.movementMode, events, content);
 }
 
+function continuationAction(
+  state: CombatState,
+  actor: ActorState,
+  continuation: MoveContinuation,
+  content: CombatContent,
+): ActionDefinition | null {
+  if (continuation.source.kind === "card") {
+    const committedCard = state.cardZones[actor.id]?.discardPile.find(
+      (card) => card.id === continuation.source.id,
+    );
+    const cardDefinition = committedCard ? content.cards[committedCard.definitionId] : undefined;
+    if (!cardDefinition || cardDefinition.actionId !== continuation.actionId) return null;
+    return content.actions[cardDefinition.actionId] ?? null;
+  }
+  if (continuation.source.id !== continuation.actionId) return null;
+  const resolved = resolveActionSource(state, actor, continuation.source, content);
+  return resolved?.definition.id === continuation.actionId ? resolved.definition : null;
+}
+
+export function validateMoveContinuation(
+  state: CombatState,
+  continuation: MoveContinuation,
+  content: CombatContent,
+): { readonly legal: boolean; readonly reason?: string } {
+  const actor = state.actors[continuation.actorId];
+  if (!actor || actor.defeated) return { legal: false, reason: "Mover cannot continue." };
+  if (state.outcome) return { legal: false, reason: "Combat has ended." };
+  if (state.turn.activeActorId !== actor.id) return { legal: false, reason: "Mover is no longer active." };
+  if (actor.conditions.some((condition) => condition.id === "prone" || condition.id === "grabbed")) {
+    return { legal: false, reason: "Mover can no longer move." };
+  }
+
+  const definition = continuationAction(state, actor, continuation, content);
+  if (
+    !definition ||
+    definition.timing.kind !== "turn" ||
+    definition.resolution.kind !== "move" ||
+    definition.resolution.movementMode !== continuation.movementMode ||
+    state.turn.lockedActionIds.includes(definition.id)
+  ) return { legal: false, reason: "Movement action source is no longer legal." };
+
+  const finalStep = continuation.path[continuation.path.length - 1];
+  if (!finalStep || positionKey(finalStep) !== positionKey(continuation.destination)) {
+    return { legal: false, reason: "Movement continuation path is malformed." };
+  }
+  const maximumCost = definition.resolution.step ? 5 : actor.speedFeet;
+  const currentPath = findPath(
+    state.map,
+    state.actors,
+    actor.id,
+    actor.position,
+    continuation.destination,
+    maximumCost,
+    continuation.movementMode,
+  );
+  if (
+    !currentPath ||
+    currentPath.path.length !== continuation.path.length ||
+    currentPath.path.some((position, index) =>
+      positionKey(position) !== positionKey(continuation.path[index] as NonNullable<typeof continuation.path[number]>))
+  ) return { legal: false, reason: "Movement path is no longer legal." };
+  return { legal: true };
+}
+
 function executeMove(
   draft: CombatDraft,
   actorId: string,
@@ -523,10 +639,10 @@ function executeMove(
   content: CombatContent,
   events: CombatEvent[],
 ): void {
-  if (definition.effect.kind !== "move" || target.kind !== "tile") return;
+  if (definition.resolution.kind !== "move" || target.kind !== "tile") return;
   const actor = draft.actors[actorId];
   if (!actor) return;
-  const maximumCost = definition.effect.step ? 5 : actor.speedFeet;
+  const maximumCost = definition.resolution.step ? 5 : actor.speedFeet;
   const path = findPath(
     draft.map,
     draft.actors,
@@ -534,7 +650,7 @@ function executeMove(
     actor.position,
     target.position,
     maximumCost,
-    definition.effect.movementMode,
+    definition.resolution.movementMode,
   );
   if (!path) return;
   const continuation: PendingReaction["continuation"] = {
@@ -545,9 +661,9 @@ function executeMove(
     path: path.path,
     destination: target.position,
     facing: target.facing,
-    movementMode: definition.effect.movementMode,
+    movementMode: definition.resolution.movementMode,
   };
-  const candidates = definition.effect.triggersReactions
+  const candidates = definition.resolution.triggersReactions
     ? eligibleMoveReactions(draft, actor, content)
     : [];
   if (candidates.length > 0) {
@@ -568,57 +684,6 @@ function executeMove(
     return;
   }
   completeMove(draft, continuation, content, events);
-}
-
-function executeRemoveCondition(
-  draft: CombatDraft,
-  actorId: string,
-  definition: ActionDefinition,
-  events: CombatEvent[],
-): void {
-  if (definition.effect.kind !== "remove-condition") return;
-  removeCondition(draft, actorId, definition.effect.condition, events);
-}
-
-function executeRecoveryCheck(
-  draft: CombatDraft,
-  actorId: string,
-  definition: ActionDefinition,
-  events: CombatEvent[],
-  mapPenalty: number,
-): void {
-  if (definition.effect.kind !== "recovery-check") return;
-  const actor = draft.actors[actorId];
-  if (!actor) return;
-  const modifier = actor.athleticsModifier + mapPenalty;
-  const check = rollCheck(draft.rng, modifier, definition.effect.dc);
-  draft.rng = check.rng;
-  events.push({
-    type: "CHECK_ROLLED",
-    actorId,
-    label: definition.name,
-    roll: check.roll,
-    modifier,
-    dc: definition.effect.dc,
-    baseDegree: check.baseDegree,
-    degree: check.degree,
-    modifierSources: [
-      `Athletics +${actor.athleticsModifier}`,
-      ...(mapPenalty ? [`MAP ${mapPenalty}`] : []),
-    ],
-  });
-
-  for (const outcome of definition.effect.outcomes[check.degree]) {
-    if (outcome.kind === "remove-condition") {
-      removeCondition(draft, actorId, outcome.condition, events);
-    } else if (!draft.turn.lockedActionIds.includes(outcome.actionId)) {
-      draft.turn = {
-        ...draft.turn,
-        lockedActionIds: [...draft.turn.lockedActionIds, outcome.actionId],
-      };
-      events.push({ type: "ACTION_LOCKED", actorId, actionId: outcome.actionId });
-    }
-  }
 }
 
 function executeInteract(
@@ -651,81 +716,41 @@ function executeInteract(
   events.push({ type: "TERRAIN_CHANGED", tileId: tile.id, traits: traits.map((trait) => trait.id) });
 }
 
-function executeSustainedEffect(
+/**
+ * The single execution path. Whatever provided the Action — a basic whitelist, a Context
+ * grant, an innate Action or a Card in hand — it arrives here as a plan and resolves the
+ * same way. There is no Card, Spell or Reaction executor of its own.
+ */
+function executeResolvedAction(
   draft: CombatDraft,
-  actorId: string,
+  plan: ResolvedActionPlan,
   definition: ActionDefinition,
-  target: Extract<CombatCommand, { type: "use-action" }>["target"],
-  events: CombatEvent[],
-): void {
-  if (definition.effect.kind === "create-sustained-effect") {
-    const id = `effect-${String(draft.nextEffectSequence).padStart(3, "0")}`;
-    draft.nextEffectSequence += 1;
-    draft.effects[id] = {
-      id,
-      name: definition.effect.effectName,
-      sourceId: definition.id,
-      targetActorId: actorId,
-      traits: [{ id: "sustained", sourceId: definition.id }],
-      createdOnTurn: draft.turn.turnNumber,
-      sustainedOnTurn: null,
-    };
-    events.push({ type: "EFFECT_CREATED", effectId: id, actorId, name: definition.effect.effectName });
-    return;
-  }
-  if (definition.effect.kind === "sustain-effect" && target.kind === "effect") {
-    const effect = draft.effects[target.effectId];
-    if (!effect) return;
-    draft.effects[target.effectId] = { ...effect, sustainedOnTurn: draft.turn.turnNumber };
-    events.push({ type: "EFFECT_SUSTAINED", effectId: effect.id, actorId });
-  }
-}
-
-function executeAction(
-  draft: CombatDraft,
-  actorId: string,
-  source: ActionSource,
-  definition: ActionDefinition,
-  target: Extract<CombatCommand, { type: "use-action" }>["target"],
   content: CombatContent,
   events: CombatEvent[],
-  mapPenalty: number,
 ): void {
-  switch (definition.effect.kind) {
-    case "move":
-      executeMove(draft, actorId, source, definition, target, content, events);
-      break;
-    case "weapon-attack":
-      if (target.kind === "actor") {
-        performWeaponAttack(draft, actorId, target.actorId, definition, content, events, mapPenalty);
-      }
-      break;
-    case "trip":
-      if (target.kind === "actor") performTrip(draft, actorId, target.actorId, definition, content, events, mapPenalty);
-      break;
-    case "remove-condition":
-      executeRemoveCondition(draft, actorId, definition, events);
-      break;
-    case "recovery-check":
-      executeRecoveryCheck(draft, actorId, definition, events, mapPenalty);
-      break;
-    case "raise-shield": {
-      const actor = draft.actors[actorId];
-      const shield = actor ? getEquipment(actor, content).find((equipment) => equipment.shieldBonus) : undefined;
-      if (actor && shield?.shieldBonus) {
-        replaceActor(draft, { ...actor, shieldRaised: true });
-        events.push({ type: "SHIELD_RAISED", actorId, bonus: shield.shieldBonus });
-      }
-      break;
-    }
-    case "interact":
-      executeInteract(draft, actorId, target, events);
-      break;
-    case "create-sustained-effect":
-    case "sustain-effect":
-      executeSustainedEffect(draft, actorId, definition, target, events);
-      break;
+  const resolution = plan.resolution;
+  if (resolution.kind === "move") {
+    executeMove(draft, plan.actionActorId, plan.source, definition, plan.target, content, events);
+    return;
   }
+  if (resolution.kind === "direct") {
+    applyOutcomeEffects(draft, plan, resolution.effects, content, events);
+    return;
+  }
+  const degree = rollPlannedCheck(draft, plan, resolution.check, events);
+  if (resolution.kind === "strike" && isSuccessful(degree)) {
+    const damageRoll = rollDice(draft.rng, resolution.strike.damage.count, resolution.strike.damage.sides);
+    draft.rng = damageRoll.rng;
+    const damage = strikeDamageTotal(
+      damageRoll.total,
+      resolution.strike.damage.flatModifier,
+      resolution.damageMultiplier * (degree === "critical-success" ? 2 : 1),
+    );
+    if (plan.targetActorId) {
+      applyDamage(draft, plan.actionActorId, plan.targetActorId, damage, resolution.strike.damage.damageType, events);
+    }
+  }
+  applyOutcomeEffects(draft, plan, resolution.outcomes[degree], content, events);
 }
 
 function expireUnsustainedEffects(draft: CombatDraft, actorId: string, events: CombatEvent[]): void {
@@ -811,7 +836,17 @@ function useAction(
   const events: CombatEvent[] = [];
   beginAcceptedCommand(draft, command);
   const cost = resolved.definition.timing.actions;
-  const mapPenalty = currentMapPenalty(draft);
+  // The plan is built from the pre-increment turn state, so preview and execution agree.
+  const plan = buildResolvedActionPlan(
+    resolved.definition,
+    actor,
+    command.target,
+    command.action,
+    state,
+    content,
+    turnMapContext(state),
+  );
+  if (!plan) return fail(state, "Action cannot be resolved.");
   draft.turn = {
     ...draft.turn,
     actionsRemaining: draft.turn.actionsRemaining - cost,
@@ -826,7 +861,7 @@ function useAction(
     remaining: draft.turn.actionsRemaining,
   });
   if (resolved.card) discardCard(draft, actor.id, resolved.card.id, events);
-  executeAction(draft, actor.id, command.action, resolved.definition, command.target, content, events, mapPenalty);
+  executeResolvedAction(draft, plan, resolved.definition, content, events);
   checkCombatOutcome(draft, events);
   return { accepted: true, state: asState(draft), events };
 }
@@ -858,8 +893,65 @@ function resumeAfterReaction(
     if (!draft.outcome) advanceTurn(draft, events);
     return;
   }
+  if (!validateMoveContinuation(asState(draft), pending.continuation, content).legal) return;
   completeMove(draft, pending.continuation, content, events);
   checkCombatOutcome(draft, events);
+}
+
+function isReactionCandidateValid(
+  draft: CombatDraft,
+  pending: PendingReaction,
+  candidate: PendingReaction["candidates"][number],
+  content: CombatContent,
+): boolean {
+  const reactor = draft.actors[candidate.actorId];
+  const mover = draft.actors[pending.sourceActorId];
+  const card = draft.cardZones[candidate.actorId]?.hand.find((entry) => entry.id === candidate.cardInstanceId);
+  if (
+    draft.outcome ||
+    !reactor ||
+    !mover ||
+    reactor.team === mover.team ||
+    reactor.defeated ||
+    mover.defeated ||
+    !reactor.reactionAvailable ||
+    !card ||
+    content.cards[card.definitionId]?.actionId !== candidate.actionId
+  ) return false;
+  const reaction = content.actions[candidate.actionId];
+  if (!reaction) return false;
+  return gridDistance(reactor.position, mover.position) <= actionRangeFeet(reaction, reactor, { content }) &&
+    isInFrontOrSide(reactor, mover.position) &&
+    hasLineOfSight(draft.map, reactor.position, mover.position);
+}
+
+function continueReactionQueue(
+  draft: CombatDraft,
+  pending: PendingReaction,
+  remaining: PendingReaction["candidates"],
+  content: CombatContent,
+  events: CombatEvent[],
+): void {
+  const mover = draft.actors[pending.sourceActorId];
+  if (!mover || mover.defeated || draft.outcome) {
+    resumeAfterReaction(draft, pending, content, events);
+    return;
+  }
+  if (
+    draft.turn.activeActorId !== mover.id ||
+    pending.continuation.actorId !== mover.id ||
+    !validateMoveContinuation(asState(draft), pending.continuation, content).legal
+  ) {
+    draft.pendingReaction = null;
+    return;
+  }
+  const candidates = remaining.filter((candidate) =>
+    isReactionCandidateValid(draft, pending, candidate, content));
+  if (candidates.length > 0) {
+    draft.pendingReaction = { ...pending, candidates };
+    return;
+  }
+  resumeAfterReaction(draft, pending, content, events);
 }
 
 function useReaction(
@@ -869,10 +961,10 @@ function useReaction(
 ): CommandResult {
   const pending = state.pendingReaction;
   if (!pending || pending.triggerId !== command.triggerId) return fail(state, "Reaction trigger is unavailable.");
-  const candidate = pending.candidates.find(
-    (entry) => entry.actorId === command.actorId && entry.cardInstanceId === command.cardInstanceId,
-  );
-  if (!candidate) return fail(state, "Reaction candidate is unavailable.");
+  const candidate = pending.candidates[0];
+  if (candidate?.actorId !== command.actorId || candidate.cardInstanceId !== command.cardInstanceId) {
+    return fail(state, "Only the head reaction candidate can act.");
+  }
   const reactor = state.actors[command.actorId];
   const mover = state.actors[pending.sourceActorId];
   const definition = content.actions[candidate.actionId];
@@ -885,8 +977,19 @@ function useReaction(
   replaceActor(draft, { ...reactor, reactionAvailable: false });
   discardCard(draft, reactor.id, candidate.cardInstanceId, events);
   events.push({ type: "REACTION_USED", triggerId: pending.triggerId, actorId: reactor.id, actionId: definition.id });
-  performWeaponAttack(draft, reactor.id, mover.id, definition, content, events, 0);
-  resumeAfterReaction(draft, pending, content, events);
+  // A Reaction resolves through the same plan and executor a turn Action does; the
+  // off-turn MAP context — not a literal at this call site — decides the penalty.
+  const plan = buildResolvedActionPlan(
+    definition,
+    reactor,
+    { kind: "actor", actorId: mover.id },
+    { kind: "card", id: candidate.cardInstanceId },
+    state,
+    content,
+    { kind: "off-turn" },
+  );
+  if (plan) executeResolvedAction(draft, plan, definition, content, events);
+  continueReactionQueue(draft, pending, pending.candidates.slice(1), content, events);
   return { accepted: true, state: asState(draft), events };
 }
 
@@ -897,19 +1000,14 @@ function passReaction(
 ): CommandResult {
   const pending = state.pendingReaction;
   if (!pending || pending.triggerId !== command.triggerId) return fail(state, "Reaction trigger is unavailable.");
-  if (!pending.candidates.some((candidate) => candidate.actorId === command.actorId)) {
-    return fail(state, "Actor cannot pass this reaction.");
+  if (pending.candidates[0]?.actorId !== command.actorId) {
+    return fail(state, "Only the head reaction candidate can pass.");
   }
   const draft = cloneState(state);
   const events: CombatEvent[] = [];
   beginAcceptedCommand(draft, command);
   events.push({ type: "REACTION_PASSED", triggerId: pending.triggerId, actorId: command.actorId });
-  const remaining = pending.candidates.filter((candidate) => candidate.actorId !== command.actorId);
-  if (remaining.length > 0) {
-    draft.pendingReaction = { ...pending, candidates: remaining };
-  } else {
-    resumeAfterReaction(draft, pending, content, events);
-  }
+  continueReactionQueue(draft, pending, pending.candidates.slice(1), content, events);
   return { accepted: true, state: asState(draft), events };
 }
 

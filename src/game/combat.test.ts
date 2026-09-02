@@ -7,15 +7,17 @@ import {
   M0_DEFAULT_SEED,
 } from "../content/load-m0-content";
 import { chooseAiCommand } from "./ai";
-import { createCombat, dispatchCombatCommand } from "./engine";
+import { createCombat, dispatchCombatCommand, validateMoveContinuation } from "./engine";
 import {
   listLegalActions,
   listLegalTargets,
   previewAction,
   validateActionIntent,
 } from "./queries";
+import { resolveStrike } from "./offense";
 import { createCombatReplay, hashCombatState, replayCombat } from "./replay";
-import { getStatistic } from "./rules";
+import { resolveArmorClass } from "./statistics";
+import { resolveStatisticDC } from "./statistics";
 import type {
   ActionSource,
   ActionDefinition,
@@ -36,21 +38,58 @@ function createM0Combat(
   return createCombat({ scenario, content, contentIdentity: M0_CONTENT_IDENTITY }, seed);
 }
 
+type ActorOverride = Partial<ActorSetup> & {
+  readonly initiative?: number;
+  readonly authoredAc?: number;
+};
+
+function withInitiative(actor: ActorSetup, initiative: number): ActorSetup {
+  return actor.statProfile.kind === "character"
+    ? {
+        ...actor,
+        statProfile: {
+          kind: "character",
+          stats: {
+            ...actor.statProfile.stats,
+            attributes: { ...actor.statProfile.stats.attributes, wis: initiative },
+            perception: "untrained",
+          },
+        },
+      }
+    : {
+        ...actor,
+        statProfile: {
+          kind: "creature",
+          stats: { ...actor.statProfile.stats, perception: initiative },
+        },
+      };
+}
+
+function withAuthoredAc(actor: ActorSetup, ac: number): ActorSetup {
+  if (actor.statProfile.kind !== "creature") throw new Error("Only creatures author a fixed AC.");
+  return { ...actor, statProfile: { kind: "creature", stats: { ...actor.statProfile.stats, ac } } };
+}
+
 function scenarioWith(
-  actorOverrides: Readonly<Record<string, Partial<ActorSetup>>> = {},
+  actorOverrides: Readonly<Record<string, ActorOverride>> = {},
 ): ScenarioDefinition {
   const scenario = cloneM0Scenario();
   return {
     ...scenario,
-    actors: scenario.actors.map((actor) => ({ ...actor, ...actorOverrides[actor.id] })),
+    actors: scenario.actors.map((actor) => {
+      const { initiative, authoredAc, ...override } = actorOverrides[actor.id] ?? {};
+      const withAc = { ...actor, ...override };
+      const merged = authoredAc === undefined ? withAc : withAuthoredAc(withAc, authoredAc);
+      return initiative === undefined ? merged : withInitiative(merged, initiative);
+    }),
   };
 }
 
-function heroFirstScenario(overrides: Readonly<Record<string, Partial<ActorSetup>>> = {}): ScenarioDefinition {
+function heroFirstScenario(overrides: Readonly<Record<string, ActorOverride>> = {}): ScenarioDefinition {
   return scenarioWith({
-    hero: { initiativeModifier: 100, ...overrides.hero },
-    "goblin-skirmisher": { initiativeModifier: -100, ...overrides["goblin-skirmisher"] },
-    "goblin-brute": { initiativeModifier: -100, ...overrides["goblin-brute"] },
+    hero: { initiative: 100, ...overrides.hero },
+    "goblin-skirmisher": { initiative: -100, ...overrides["goblin-skirmisher"] },
+    "goblin-brute": { initiative: -100, ...overrides["goblin-brute"] },
   });
 }
 
@@ -84,12 +123,70 @@ function allCards(state: CombatState, actorId: string): readonly CardInstance[] 
   return zones ? [...zones.hand, ...zones.drawPile, ...zones.discardPile] : [];
 }
 
+function makeReactionAvailable(state: CombatState, actorId: string): CombatState {
+  const actor = state.actors[actorId] as NonNullable<typeof state.actors[string]>;
+  const zones = state.cardZones[actorId] as NonNullable<typeof state.cardZones[string]>;
+  const card = allCards(state, actorId).find((entry) => entry.definitionId === "card.reactive-strike") as CardInstance;
+  return {
+    ...state,
+    actors: { ...state.actors, [actorId]: { ...actor, reactionAvailable: true } },
+    cardZones: {
+      ...state.cardZones,
+      [actorId]: {
+        hand: [card, ...zones.hand.filter((entry) => entry.id !== card.id)],
+        drawPile: zones.drawPile.filter((entry) => entry.id !== card.id),
+        discardPile: zones.discardPile.filter((entry) => entry.id !== card.id),
+      },
+    },
+  };
+}
+
+function twoReactionState(moverHp = 100): CombatState {
+  const scenario = cloneM0Scenario();
+  const hero = scenario.actors.find((actor) => actor.id === "hero") as ActorSetup;
+  const configured: ScenarioDefinition = {
+    ...scenario,
+    actors: [
+      ...scenario.actors.map((actor) => {
+        if (actor.id === "hero") return withInitiative({ ...actor, position: { x: 1, y: 1 }, facing: "east" as const }, -100);
+        if (actor.id === "goblin-skirmisher") {
+          return withInitiative(
+            withAuthoredAc({ ...actor, position: { x: 2, y: 1 }, facing: "east" as const, hp: moverHp, maxHp: moverHp }, -100),
+            100,
+          );
+        }
+        return withInitiative({ ...actor, position: { x: 8, y: 6 } }, -102);
+      }),
+      withInitiative({ ...hero, id: "hero-2", position: { x: 2, y: 0 }, facing: "south" }, -101),
+    ],
+  };
+  let state = createM0Combat(configured, 44).state;
+  state = makeReactionAvailable(state, "hero");
+  return makeReactionAvailable(state, "hero-2");
+}
+
+function openTwoReactions(
+  state = twoReactionState(),
+  destination: { readonly x: number; readonly y: number } = { x: 3, y: 1 },
+): CombatState {
+  return dispatchCombatCommand(
+    state,
+    command(
+      state,
+      "goblin-skirmisher",
+      { kind: "basic", id: "stride" },
+      { kind: "tile", position: destination, facing: "east" },
+    ),
+    M0_CONTENT,
+  ).state;
+}
+
 describe("M0 combat core", () => {
   it("builds an equipment-provenance deck and repeats the same initial hash", () => {
     const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     const second = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("ff6dd09946fa2432");
+    expect(hashCombatState(first)).toBe("db862b47690638c2");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -101,7 +198,11 @@ describe("M0 combat core", () => {
     expect(cards.filter((card) => card.definitionId === "card.trip")).toHaveLength(3);
     expect(cards.filter((card) => card.source.kind === "equipment-trait" && card.source.equipmentId === "halberd")).toHaveLength(3);
     expect(cards.filter((card) => card.definitionId === "card.fly")).toHaveLength(2);
-    expect(getStatistic(first.actors.hero as NonNullable<typeof first.actors.hero>, M0_CONTENT, "reflex").value).toBe(16);
+    expect(resolveStatisticDC(
+      first.actors.hero as NonNullable<typeof first.actors.hero>,
+      { kind: "save", id: "reflex" },
+      { content: M0_CONTENT },
+    ).value).toBe(16);
   });
 
   it("uses one pipeline for Interact, Raise Shield, and sustained effects", () => {
@@ -124,7 +225,10 @@ describe("M0 combat core", () => {
       M0_CONTENT,
     );
     expect(raised.state.actors.hero?.shieldRaised).toBe(true);
-    expect(getStatistic(raised.state.actors.hero as NonNullable<typeof raised.state.actors.hero>, M0_CONTENT, "ac").value).toBe(20);
+    expect(resolveArmorClass(
+      raised.state.actors.hero as NonNullable<typeof raised.state.actors.hero>,
+      { content: M0_CONTENT },
+    ).value).toBe(17);
 
     const beaconCard = raised.state.cardZones.hero?.hand.find(
       (card) => card.definitionId === "card.spirit-beacon",
@@ -137,6 +241,36 @@ describe("M0 combat core", () => {
     );
     expect(beacon.accepted).toBe(true);
     expect(Object.values(beacon.state.effects)).toHaveLength(1);
+  });
+
+  it("does not raise a non-shield item that carries malformed shield data", () => {
+    const malformedId = "malformed-shield-boots";
+    const malformedContent: CombatContent = {
+      ...M0_CONTENT,
+      equipment: {
+        ...M0_CONTENT.equipment,
+        [malformedId]: {
+          id: malformedId,
+          name: "Malformed Shield Boots",
+          slot: "feet",
+          traits: [{ id: "shield" }],
+          statModifiers: [],
+          shieldBonus: 3,
+        },
+      },
+    };
+    const state = createM0Combat(heroFirstScenario({ hero: { equipmentIds: [malformedId] } }), 10, malformedContent).state;
+    const raise = listLegalActions(state, "hero", malformedContent).find((action) => action.actionId === "raise-shield");
+    expect(raise?.enabled).toBe(true);
+
+    const result = dispatchCombatCommand(
+      state,
+      command(state, "hero", raise?.source as ActionSource, { kind: "none" }),
+      malformedContent,
+    );
+    expect(result.accepted).toBe(true);
+    expect(result.state.actors.hero?.shieldRaised).toBe(false);
+    expect(result.events.some((event) => event.type === "SHIELD_RAISED")).toBe(false);
   });
 
   it("requires explicit facing and applies front/rear combat rules", () => {
@@ -199,14 +333,96 @@ describe("M0 combat core", () => {
     expect(fourth.error).toMatch(/actions/i);
   });
 
+  it("gives the action preview the same Strike numbers the execution rolls", () => {
+    const scenario = heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, facing: "east" },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 100, maxHp: 100 },
+      "goblin-brute": { position: { x: 8, y: 6 } },
+    });
+    let state = createM0Combat(scenario, 33).state;
+    const previews: string[][] = [];
+    for (let index = 0; index < 3; index += 1) {
+      const source: ActionSource = { kind: "basic", id: "strike" };
+      const target = { kind: "actor" as const, actorId: "goblin-skirmisher" };
+      const preview = previewAction(state, "hero", source, target, M0_CONTENT);
+      const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+      const check = result.events.find((event) => event.type === "CHECK_ROLLED");
+      expect(check?.type === "CHECK_ROLLED" ? check.modifierSources : []).toEqual(preview.notes);
+      previews.push([...preview.notes]);
+      state = result.state;
+    }
+    // Each view walks the same MAP ladder because both read the one resolver.
+    expect(previews[0]).not.toContain("Multiple attack penalty -5");
+    expect(previews[1]).toContain("Multiple attack penalty -5");
+    expect(previews[2]).toContain("Multiple attack penalty -10");
+  });
+
+  it("deals at least 1 damage when penalties sink the Strike, and doubles that on a critical", () => {
+    // A large authored damage penalty is legal now that damage has its own modifier stack.
+    const drainedContent: CombatContent = {
+      ...M0_CONTENT,
+      conditions: {
+        ...M0_CONTENT.conditions,
+        "damage-drained": {
+          id: "damage-drained",
+          name: "Damage Drained",
+          traits: [],
+          statModifiers: [{ selector: { kind: "damage" }, type: "untyped", value: -30, label: "Damage drained" }],
+        },
+      },
+    };
+    const scenario = heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, facing: "east", conditions: [{ id: "damage-drained", sourceId: "test" }] },
+      // A trivially low AC makes the outcome a critical success on every die face.
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 100, maxHp: 100, authoredAc: -100 },
+      "goblin-brute": { position: { x: 8, y: 6 } },
+    });
+    const state = createM0Combat(scenario, 33, drainedContent).state;
+
+    const preview = previewAction(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }, drainedContent);
+    expect(preview.damageRange).toEqual([1, 1]);
+
+    const result = dispatchCombatCommand(
+      state,
+      command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
+      drainedContent,
+    );
+    const check = result.events.find((event) => event.type === "CHECK_ROLLED");
+    const dealt = result.events.find((event) => event.type === "DAMAGE_DEALT");
+    expect(check?.type === "CHECK_ROLLED" ? check.degree : null).toBe("critical-success");
+    // Minimum first, doubling second: 2, never 0.
+    expect(dealt?.type === "DAMAGE_DEALT" ? dealt.amount : null).toBe(2);
+  });
+
+  it("keeps a Creature's authored Strike out of the Character weapon formula", () => {
+    const scenario = scenarioWith({
+      hero: { position: { x: 1, y: 1 }, hp: 100, maxHp: 100, initiative: -100 },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, facing: "west", initiative: 100 },
+      "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
+    });
+    const state = createM0Combat(scenario, 21).state;
+    const result = dispatchCombatCommand(
+      state,
+      command(state, "goblin-skirmisher", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "hero" }),
+      M0_CONTENT,
+    );
+    expect(result.accepted).toBe(true);
+    const check = result.events.find((event) => event.type === "CHECK_ROLLED");
+    expect(check?.type === "CHECK_ROLLED" ? check.modifier : null).toBe(6);
+    expect(check?.type === "CHECK_ROLLED" ? check.modifierSources.slice(0, 2) : []).toEqual([
+      "Goblin Blade",
+      "Authored Goblin Blade +6",
+    ]);
+  });
+
   it("charges a two-action activity before rejecting another unaffordable use", () => {
     const scenario = scenarioWith({
-      hero: { position: { x: 1, y: 1 }, hp: 100, maxHp: 100, initiativeModifier: -100 },
-      "goblin-skirmisher": { position: { x: 8, y: 6 }, initiativeModifier: -101 },
+      hero: { position: { x: 1, y: 1 }, hp: 100, maxHp: 100, initiative: -100 },
+      "goblin-skirmisher": { position: { x: 8, y: 6 }, initiative: -101 },
       "goblin-brute": {
         position: { x: 2, y: 1 },
         facing: "west",
-        initiativeModifier: 100,
+        initiative: 100,
       },
     });
     const initial = createM0Combat(scenario, 34).state;
@@ -307,15 +523,15 @@ describe("M0 combat core", () => {
 
   it("opens, uses, and resumes a movement reaction exactly once", () => {
     const scenario = scenarioWith({
-      hero: { position: { x: 1, y: 1 }, facing: "east", initiativeModifier: -100 },
+      hero: { position: { x: 1, y: 1 }, facing: "east", initiative: -100 },
       "goblin-skirmisher": {
         position: { x: 2, y: 1 },
         facing: "east",
-        initiativeModifier: 100,
+        initiative: 100,
         hp: 100,
         maxHp: 100,
       },
-      "goblin-brute": { position: { x: 8, y: 6 }, initiativeModifier: -101 },
+      "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
     let state = createM0Combat(scenario, 44).state;
     const zones = state.cardZones.hero as NonNullable<typeof state.cardZones.hero>;
@@ -369,6 +585,11 @@ describe("M0 combat core", () => {
     expect(reaction.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
     expect(reaction.state.actors.hero?.reactionAvailable).toBe(false);
     expect(reaction.events.filter((event) => event.type === "ACTOR_MOVED")).toHaveLength(1);
+    // The Reactive Strike reads the same offense resolver a normal Strike does.
+    const reactor = movement.state.actors.hero as NonNullable<CombatState["actors"][string]>;
+    const reactiveCheck = reaction.events.find((event) => event.type === "CHECK_ROLLED");
+    expect(reactiveCheck?.type === "CHECK_ROLLED" ? reactiveCheck.modifier : null)
+      .toBe(resolveStrike(reactor, { content: M0_CONTENT }).attackModifier);
 
     const secondUse = dispatchCombatCommand(
       reaction.state,
@@ -386,17 +607,204 @@ describe("M0 combat core", () => {
     expect(secondUse.error).toMatch(/unavailable/i);
   });
 
+  it("resolves multiple reactions strictly from the deterministic head of the queue", () => {
+    const opened = openTwoReactions();
+    const pending = opened.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    expect(pending.candidates.map((candidate) => candidate.actorId)).toEqual(["hero", "hero-2"]);
+
+    const nonHeadPass = dispatchCombatCommand(opened, {
+      type: "pass-reaction",
+      id: "non-head-pass",
+      sequence: opened.sequence + 1,
+      actorId: "hero-2",
+      triggerId: pending.triggerId,
+    }, M0_CONTENT);
+    expect(nonHeadPass.accepted).toBe(false);
+    expect(nonHeadPass.state).toBe(opened);
+
+    const nonHead = pending.candidates[1] as NonNullable<typeof pending.candidates[number]>;
+    const nonHeadUse = dispatchCombatCommand(opened, {
+      type: "use-reaction",
+      id: "non-head-use",
+      sequence: opened.sequence + 1,
+      actorId: nonHead.actorId,
+      triggerId: pending.triggerId,
+      cardInstanceId: nonHead.cardInstanceId,
+    }, M0_CONTENT);
+    expect(nonHeadUse.accepted).toBe(false);
+    expect(nonHeadUse.state).toBe(opened);
+
+    const head = pending.candidates[0] as NonNullable<typeof pending.candidates[number]>;
+    const used = dispatchCombatCommand(opened, {
+      type: "use-reaction",
+      id: "head-use",
+      sequence: opened.sequence + 1,
+      actorId: head.actorId,
+      triggerId: pending.triggerId,
+      cardInstanceId: head.cardInstanceId,
+    }, M0_CONTENT);
+    expect(used.accepted).toBe(true);
+    expect(used.state.pendingReaction?.candidates.map((candidate) => candidate.actorId)).toEqual(["hero-2"]);
+    expect(used.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
+
+    const passed = dispatchCombatCommand(used.state, {
+      type: "pass-reaction",
+      id: "next-pass",
+      sequence: used.state.sequence + 1,
+      actorId: "hero-2",
+      triggerId: pending.triggerId,
+    }, M0_CONTENT);
+    expect(passed.accepted).toBe(true);
+    expect(passed.state.pendingReaction).toBeNull();
+    expect(passed.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
+  });
+
+  it("keeps reaction events and final hashes independent of reversed arrival attempts", () => {
+    const resolve = (sendNonHeadFirst: boolean) => {
+      let state = openTwoReactions();
+      const triggerId = state.pendingReaction?.triggerId as string;
+      if (sendNonHeadFirst) {
+        const rejected = dispatchCombatCommand(state, {
+          type: "pass-reaction",
+          id: "arrival-out-of-order",
+          sequence: state.sequence + 1,
+          actorId: "hero-2",
+          triggerId,
+        }, M0_CONTENT);
+        expect(rejected.accepted).toBe(false);
+        expect(rejected.state).toBe(state);
+      }
+      const events: unknown[] = [];
+      for (const [id, actorId] of [["ordered-head", "hero"], ["ordered-next", "hero-2"]] as const) {
+        const result = dispatchCombatCommand(state, {
+          type: "pass-reaction",
+          id,
+          sequence: state.sequence + 1,
+          actorId,
+          triggerId,
+        }, M0_CONTENT);
+        expect(result.accepted).toBe(true);
+        events.push(...result.events);
+        state = result.state;
+      }
+      return { state, events };
+    };
+
+    const ordered = resolve(false);
+    const reversed = resolve(true);
+    expect(reversed.events).toEqual(ordered.events);
+    expect(hashCombatState(reversed.state)).toBe(hashCombatState(ordered.state));
+  });
+
+  it("revalidates remaining candidates and cancels continuation when the first reaction defeats the mover", () => {
+    const opened = openTwoReactions(twoReactionState(1));
+    const pending = opened.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    const head = pending.candidates[0] as NonNullable<typeof pending.candidates[number]>;
+    const killed = dispatchCombatCommand(opened, {
+      type: "use-reaction",
+      id: "lethal-head-use",
+      sequence: opened.sequence + 1,
+      actorId: head.actorId,
+      triggerId: pending.triggerId,
+      cardInstanceId: head.cardInstanceId,
+    }, M0_CONTENT);
+
+    expect(killed.accepted).toBe(true);
+    expect(killed.state.actors["goblin-skirmisher"]?.defeated).toBe(true);
+    expect(killed.state.pendingReaction).toBeNull();
+    expect(killed.events.some((event) => event.type === "ACTOR_MOVED")).toBe(false);
+
+    const invalidatedBase = openTwoReactions();
+    const invalidated: CombatState = {
+      ...invalidatedBase,
+      actors: {
+        ...invalidatedBase.actors,
+        "hero-2": {
+          ...(invalidatedBase.actors["hero-2"] as NonNullable<typeof opened.actors[string]>),
+          reactionAvailable: false,
+        },
+      },
+    };
+    const invalidatedPending = invalidated.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    const invalidatedHead = invalidatedPending.candidates[0] as NonNullable<typeof invalidatedPending.candidates[number]>;
+    const skipped = dispatchCombatCommand(invalidated, {
+      type: "use-reaction",
+      id: "skip-invalid-next",
+      sequence: invalidated.sequence + 1,
+      actorId: invalidatedHead.actorId,
+      triggerId: invalidatedPending.triggerId,
+      cardInstanceId: invalidatedHead.cardInstanceId,
+    }, M0_CONTENT);
+    expect(skipped.state.pendingReaction).toBeNull();
+    expect(skipped.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
+  });
+
+  it("cancels a reaction continuation when its destination becomes occupied or its original path changes", () => {
+    const occupiedBase = openTwoReactions();
+    const brute = occupiedBase.actors["goblin-brute"] as NonNullable<typeof occupiedBase.actors[string]>;
+    const occupied: CombatState = {
+      ...occupiedBase,
+      actors: {
+        ...occupiedBase.actors,
+        [brute.id]: { ...brute, position: { x: 3, y: 1 } },
+      },
+    };
+    const occupiedPending = occupied.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    expect(validateMoveContinuation(occupied, occupiedPending.continuation, M0_CONTENT).legal).toBe(false);
+    const occupiedPass = dispatchCombatCommand(occupied, {
+      type: "pass-reaction",
+      id: "occupied-continuation-pass",
+      sequence: occupied.sequence + 1,
+      actorId: occupiedPending.candidates[0]?.actorId as string,
+      triggerId: occupiedPending.triggerId,
+    }, M0_CONTENT);
+    expect(occupiedPass.accepted).toBe(true);
+    expect(occupiedPass.state.pendingReaction).toBeNull();
+    expect(occupiedPass.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
+    expect(occupiedPass.events.some((event) => event.type === "ACTOR_MOVED")).toBe(false);
+
+    const originalPath = openTwoReactions(twoReactionState(), { x: 3, y: 2 });
+    const pathPending = originalPath.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    expect(pathPending.continuation.path).toEqual([{ x: 3, y: 1 }, { x: 3, y: 2 }]);
+    const pathTile = originalPath.map.tiles["3,1"] as NonNullable<typeof originalPath.map.tiles[string]>;
+    const changedPath: CombatState = {
+      ...originalPath,
+      map: {
+        ...originalPath.map,
+        tiles: {
+          ...originalPath.map.tiles,
+          "3,1": { ...pathTile, traits: [...pathTile.traits, { id: "blocked" }] },
+        },
+      },
+    };
+    const withoutBoundary: CombatState = { ...changedPath, pendingReaction: null };
+    expect(listLegalTargets(withoutBoundary, "goblin-skirmisher", { kind: "basic", id: "stride" }, M0_CONTENT))
+      .toContainEqual(expect.objectContaining({ kind: "tile", position: { x: 3, y: 2 } }));
+    expect(validateMoveContinuation(changedPath, pathPending.continuation, M0_CONTENT).legal).toBe(false);
+    const changedPathPass = dispatchCombatCommand(changedPath, {
+      type: "pass-reaction",
+      id: "changed-path-pass",
+      sequence: changedPath.sequence + 1,
+      actorId: pathPending.candidates[0]?.actorId as string,
+      triggerId: pathPending.triggerId,
+    }, M0_CONTENT);
+    expect(changedPathPass.accepted).toBe(true);
+    expect(changedPathPass.state.pendingReaction).toBeNull();
+    expect(changedPathPass.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
+    expect(changedPathPass.events.some((event) => event.type === "ACTOR_MOVED")).toBe(false);
+  });
+
   it("opens a movement reaction for Stride but never for Step", () => {
     const scenario = scenarioWith({
-      hero: { position: { x: 1, y: 1 }, facing: "east", initiativeModifier: -100 },
+      hero: { position: { x: 1, y: 1 }, facing: "east", initiative: -100 },
       "goblin-skirmisher": {
         position: { x: 2, y: 1 },
         facing: "east",
-        initiativeModifier: 100,
+        initiative: 100,
         hp: 100,
         maxHp: 100,
       },
-      "goblin-brute": { position: { x: 8, y: 6 }, initiativeModifier: -101 },
+      "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
     let initial = createM0Combat(scenario, 1).state;
     const zones = initial.cardZones.hero as NonNullable<typeof initial.cardZones.hero>;
@@ -450,15 +858,15 @@ describe("M0 combat core", () => {
 
   it("passes a reaction without consuming its card or resource", () => {
     const scenario = scenarioWith({
-      hero: { position: { x: 1, y: 1 }, facing: "east", initiativeModifier: -100 },
+      hero: { position: { x: 1, y: 1 }, facing: "east", initiative: -100 },
       "goblin-skirmisher": {
         position: { x: 2, y: 1 },
         facing: "east",
-        initiativeModifier: 100,
+        initiative: 100,
         hp: 100,
         maxHp: 100,
       },
-      "goblin-brute": { position: { x: 8, y: 6 }, initiativeModifier: -101 },
+      "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
     let state = createM0Combat(scenario, 1).state;
     state = {
@@ -538,7 +946,7 @@ describe("M0 combat core", () => {
       timing: { kind: "turn", actions: 1 },
       traits: [{ id: "move" }],
       targeting: "self",
-      effect: { kind: "remove-condition", condition: "test-condition" },
+      resolution: { kind: "direct", effects: [{ kind: "remove-condition", owner: "actor", condition: "test-condition" }] },
     };
     const providerContent: CombatContent = {
       ...M0_CONTENT,
@@ -641,13 +1049,13 @@ describe("M0 combat core", () => {
     }
 
     const reactionScenario = scenarioWith({
-      hero: { position: { x: 1, y: 1 }, facing: "east", initiativeModifier: -100 },
+      hero: { position: { x: 1, y: 1 }, facing: "east", initiative: -100 },
       "goblin-skirmisher": {
         position: { x: 2, y: 1 },
         facing: "east",
-        initiativeModifier: 100,
+        initiative: 100,
       },
-      "goblin-brute": { position: { x: 8, y: 6 }, initiativeModifier: -101 },
+      "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
     const reactionSetup = createM0Combat(reactionScenario, 1).state;
     const beforeReaction: CombatState = {
@@ -810,8 +1218,42 @@ describe("M0 combat core", () => {
         : actor),
     };
     const changed = createM0Combat(changedScenario, 57);
+    const statChangedScenario: ScenarioDefinition = {
+      ...scenario,
+      actors: scenario.actors.map((actor) => actor.id === hero.id
+        ? actor.statProfile.kind === "character"
+          ? {
+              ...actor,
+              statProfile: {
+                kind: "character",
+                stats: {
+                  ...actor.statProfile.stats,
+                  attributes: {
+                    ...actor.statProfile.stats.attributes,
+                    dex: actor.statProfile.stats.attributes.dex + 1,
+                  },
+                },
+              },
+            }
+          : {
+              ...actor,
+              statProfile: {
+                kind: "creature",
+                stats: {
+                  ...actor.statProfile.stats,
+                  saves: {
+                    ...actor.statProfile.stats.saves,
+                    reflex: actor.statProfile.stats.saves.reflex + 1,
+                  },
+                },
+              },
+            }
+        : actor),
+    };
+    const statChanged = createM0Combat(statChangedScenario, 57);
 
     expect(changed.state.setupFingerprint).not.toBe(setup.state.setupFingerprint);
+    expect(statChanged.state.setupFingerprint).not.toBe(setup.state.setupFingerprint);
     expect(() => replayCombat(
       { scenario: changedScenario, content: M0_CONTENT, contentIdentity: M0_CONTENT_IDENTITY },
       replay,
@@ -819,11 +1261,52 @@ describe("M0 combat core", () => {
     expect(replay.commands).toEqual([]);
   });
 
+  it("clones nested character profiles instead of sharing them across states", () => {
+    const state = createM0Combat(heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, facing: "east" },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, authoredAc: -100 },
+    }), 12).state;
+    const struck = dispatchCombatCommand(
+      state,
+      command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
+      M0_CONTENT,
+    );
+    const before = state.actors.hero?.statProfile;
+    const after = struck.state.actors.hero?.statProfile;
+    if (before?.kind !== "character" || after?.kind !== "character") throw new Error("The M0 hero must be a character.");
+
+    expect(after).toEqual(before);
+    expect(after.stats.defense).not.toBe(before.stats.defense);
+    expect(after.stats.defense.armorProficiencies).not.toBe(before.stats.defense.armorProficiencies);
+    expect(after.stats.attributes).not.toBe(before.stats.attributes);
+  });
+
+  it("mutates only current HP on damage and keeps derived maximum HP intact", () => {
+    const scenario = heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, facing: "east" },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, authoredAc: -100 },
+    });
+    const state = createM0Combat(scenario, 91).state;
+    const before = state.actors["goblin-skirmisher"] as NonNullable<typeof state.actors["goblin-skirmisher"]>;
+    expect(before.hp).toBe(before.maxHp);
+
+    const struck = dispatchCombatCommand(
+      state,
+      command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
+      M0_CONTENT,
+    );
+    const after = struck.state.actors["goblin-skirmisher"] as NonNullable<typeof state.actors["goblin-skirmisher"]>;
+
+    expect(struck.accepted).toBe(true);
+    expect(after.hp).toBeLessThan(before.hp);
+    expect(after.maxHp).toBe(before.maxHp);
+  });
+
   it("ends in victory when all enemies are defeated", () => {
     const scenario = heroFirstScenario({
       hero: { position: { x: 1, y: 1 }, facing: "east" },
-      "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 1, maxHp: 1, baseAc: -100 },
-      "goblin-brute": { position: { x: 1, y: 2 }, hp: 1, maxHp: 1, baseAc: -100 },
+      "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 1, maxHp: 1, authoredAc: -100 },
+      "goblin-brute": { position: { x: 1, y: 2 }, hp: 1, maxHp: 1, authoredAc: -100 },
     });
     let state = createM0Combat(scenario, 77).state;
     for (const targetActorId of ["goblin-skirmisher", "goblin-brute"]) {
@@ -840,9 +1323,9 @@ describe("M0 combat core", () => {
 
   it("provides deterministic enemy commands and can reach a terminal battle state", () => {
     const scenario = scenarioWith({
-      hero: { hp: 1, maxHp: 1, position: { x: 5, y: 2 }, initiativeModifier: -100 },
-      "goblin-skirmisher": { position: { x: 6, y: 2 }, facing: "west", initiativeModifier: 100 },
-      "goblin-brute": { position: { x: 8, y: 6 }, initiativeModifier: -101 },
+      hero: { hp: 1, maxHp: 1, position: { x: 5, y: 2 }, initiative: -100 },
+      "goblin-skirmisher": { position: { x: 6, y: 2 }, facing: "west", initiative: 100 },
+      "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
     let state = createM0Combat(scenario, 66).state;
     for (let index = 0; index < 30 && !state.outcome; index += 1) {
