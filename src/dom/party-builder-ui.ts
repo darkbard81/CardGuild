@@ -24,9 +24,32 @@ function playableActors(pack: CompiledContentPack): readonly ActorDefinition[] {
   return Object.values(pack.actorDefinitions)
     .filter((actor) => actor.traits.some((trait) => trait.id === "playable"))
     .sort((left, right) =>
-      archetypeRank(left, actorStatistics(left, pack)) -
-        archetypeRank(right, actorStatistics(right, pack)) ||
+      archetypeRank(left, actorStatistics(left, pack), pack) -
+        archetypeRank(right, actorStatistics(right, pack), pack) ||
       left.name.localeCompare(right.name));
+}
+
+/**
+ * Whether a Character starts able to put HP back on someone. This reads the same
+ * `restore-hp` effect the AI looks for rather than tagging an archetype in content, so a
+ * Character becomes support by what its starting cards do.
+ */
+function startsWithHealing(actor: ActorDefinition, pack: CompiledContentPack): boolean {
+  const cardIds = [
+    ...actor.baseCardGrants.map((grant) => grant.cardDefinitionId),
+    ...actor.starterLoadout.preparedCards,
+  ];
+  return cardIds.some((cardId) => {
+    const action = pack.combatContent.actions[pack.combatContent.cards[cardId]?.actionId ?? ""];
+    if (!action) return false;
+    const resolution = action.resolution;
+    const effects = resolution.kind === "direct"
+      ? resolution.effects
+      : resolution.kind === "move"
+        ? []
+        : Object.values(resolution.outcomes).flat();
+    return effects.some((effect) => effect.kind === "restore-hp");
+  });
 }
 
 function actorStatistics(actor: ActorDefinition, pack: CompiledContentPack) {
@@ -35,15 +58,28 @@ function actorStatistics(actor: ActorDefinition, pack: CompiledContentPack) {
 
 type ActorStatistics = ReturnType<typeof actorStatistics>;
 
-function archetypeRank(actor: ActorDefinition, statistics: ActorStatistics): number {
+function archetypeRank(
+  actor: ActorDefinition,
+  statistics: ActorStatistics,
+  pack: CompiledContentPack,
+): number {
+  // Healing is checked first: a medic is fast and lightly armoured, so the speed and
+  // durability tests below would otherwise label them as something they are not.
+  if (startsWithHealing(actor, pack)) return 3;
   if (actor.speedFeet >= 30 || statistics.initiative >= 8) return 1;
   if (statistics.maxHp >= 24 || statistics.ac >= 20) return 2;
   return 0;
 }
 
-function roleSummary(actor: ActorDefinition, statistics: ActorStatistics): string {
-  return ["Balanced controller", "Mobile skirmisher", "Durable guardian"][archetypeRank(actor, statistics)] ??
-    "Balanced controller";
+const ROLE_SUMMARIES = [
+  "Balanced controller",
+  "Mobile skirmisher",
+  "Durable guardian",
+  "Field support",
+] as const;
+
+function roleSummary(actor: ActorDefinition, statistics: ActorStatistics, pack: CompiledContentPack): string {
+  return ROLE_SUMMARIES[archetypeRank(actor, statistics, pack)] ?? ROLE_SUMMARIES[0];
 }
 
 function signed(value: number): string {
@@ -189,7 +225,7 @@ export class PartyBuilderUi {
     const statistics = actorStatistics(actor, this.pack);
     details.append(
       element("h3", undefined, actor.name),
-      element("p", "party-role", roleSummary(actor, statistics)),
+      element("p", "party-role", roleSummary(actor, statistics, this.pack)),
       element(
         "p",
         "party-stats",

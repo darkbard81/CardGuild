@@ -266,6 +266,40 @@
         "y": 1
       }
     },
+    "actor.hero.nera.front": {
+      "source": "art/source/actors/nera-front-back.png",
+      "output": "art/processed/actors/nera/front.png",
+      "sourceBox": {
+        "left": 10,
+        "top": 30,
+        "width": 499,
+        "height": 1461
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.247064,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.hero.nera.back": {
+      "source": "art/source/actors/nera-front-back.png",
+      "output": "art/processed/actors/nera/back.png",
+      "sourceBox": {
+        "left": 17,
+        "top": 31,
+        "width": 486,
+        "height": 1460
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.247064,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
     "actor.goblin-skirmisher.front": {
       "source": "art/source/actors/goblin-skirmisher-front-back.png",
       "output": "art/processed/actors/goblin-skirmisher/front.png",

@@ -163,6 +163,24 @@
       },
       "displayHeight": 158
     },
+    "actor.hero.nera.front": {
+      "frame": "actor.hero.nera.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.hero.nera.back": {
+      "frame": "actor.hero.nera.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
     "actor.goblin-skirmisher.front": {
       "frame": "actor.goblin-skirmisher.front",
       "kind": "actor",
@@ -1070,6 +1088,10 @@
     "hero.brom": {
       "front": "actor.hero.brom.front",
       "back": "actor.hero.brom.back"
+    },
+    "hero.nera": {
+      "front": "actor.hero.nera.front",
+      "back": "actor.hero.nera.back"
     },
     "enemy.goblin-skirmisher": {
       "front": "actor.goblin-skirmisher.front",

@@ -385,6 +385,46 @@
       "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female durable guardian Brom with heavy armor and shield Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
+      "input": "art/source/actors/nera-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "hero.nera",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.hero.nera.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.hero.nera.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style field tactician and battlefield medic Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
       "input": "art/source/actors/goblin-skirmisher-front-back.png",
       "mode": "two-sided-actor",
       "definitionId": "enemy.goblin-skirmisher",

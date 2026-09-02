@@ -93,7 +93,7 @@
       }
     ],
     "loadoutProfile": {
-      "preparedCardCapacity": 2
+      "preparedCardCapacity": 3
     },
     "starterLoadout": {
       "equipment": {
@@ -102,7 +102,10 @@
         "shield": "shield",
         "feet": "boots-of-fly"
       },
-      "preparedCards": []
+      "preparedCards": [
+        "card.knockdown",
+        "card.intimidating-strike"
+      ]
     },
     "innateActionIds": [],
     "baseCardGrants": [
@@ -212,7 +215,7 @@
       }
     ],
     "loadoutProfile": {
-      "preparedCardCapacity": 2
+      "preparedCardCapacity": 3
     },
     "starterLoadout": {
       "equipment": {
@@ -220,7 +223,10 @@
         "armor": "leather-armor",
         "feet": "boots-of-fly"
       },
-      "preparedCards": []
+      "preparedCards": [
+        "card.slip-free",
+        "card.combat-grab"
+      ]
     },
     "innateActionIds": [],
     "baseCardGrants": [
@@ -228,6 +234,16 @@
         "cardDefinitionId": "card.spirit-beacon",
         "count": 1,
         "sourceId": "focus.wind-beacon"
+      },
+      {
+        "cardDefinitionId": "card.hover-step",
+        "count": 2,
+        "sourceId": "feat.windstep"
+      },
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 1,
+        "sourceId": "feat.windstep"
       }
     ]
   },
@@ -333,7 +349,9 @@
         "armor": "half-plate",
         "shield": "shield"
       },
-      "preparedCards": []
+      "preparedCards": [
+        "card.grapple"
+      ]
     },
     "innateActionIds": [],
     "baseCardGrants": [
@@ -341,6 +359,16 @@
         "cardDefinitionId": "card.reactive-strike",
         "count": 2,
         "sourceId": "feat.guardian-sentinel"
+      },
+      {
+        "cardDefinitionId": "card.brace-behind-cover",
+        "count": 2,
+        "sourceId": "feat.bulwark-stance"
+      },
+      {
+        "cardDefinitionId": "card.demoralize",
+        "count": 2,
+        "sourceId": "feat.dread-bellow"
       }
     ]
   },
@@ -920,5 +948,77 @@
     "starterLoadout": { "equipment": {}, "preparedCards": [] },
     "innateActionIds": ["soothing-litany", "terrifying-howl", "hex-bolt"],
     "baseCardGrants": []
+  },
+  {
+    "id": "hero.nera",
+    "name": "Nera",
+    "statProfile": {
+      "kind": "character",
+      "stats": {
+        "level": 1,
+        "attributes": { "str": 0, "dex": 2, "con": 2, "int": 1, "wis": 4, "cha": 3 },
+        "perception": "expert",
+        "saves": { "fortitude": "trained", "reflex": "trained", "will": "expert" },
+        "skills": {
+          "acrobatics": "untrained",
+          "arcana": "trained",
+          "athletics": "untrained",
+          "crafting": "trained",
+          "deception": "trained",
+          "diplomacy": "expert",
+          "intimidation": "trained",
+          "medicine": "expert",
+          "nature": "trained",
+          "occultism": "trained",
+          "performance": "trained",
+          "religion": "trained",
+          "society": "trained",
+          "stealth": "untrained",
+          "survival": "trained",
+          "thievery": "untrained"
+        },
+        "defense": {
+          "ancestryHp": 8,
+          "classHpPerLevel": 8,
+          "armorProficiencies": {
+            "unarmored": "trained",
+            "light": "trained",
+            "medium": "untrained",
+            "heavy": "untrained"
+          }
+        },
+        "offense": {
+          "keyAttribute": "wis",
+          "weaponProficiencies": {
+            "unarmed": "trained",
+            "simple": "trained",
+            "martial": "trained",
+            "advanced": "untrained"
+          },
+          "classDcProficiency": "expert",
+          "unarmedStrike": {
+            "name": "Fist",
+            "category": "unarmed",
+            "attackMode": "melee",
+            "rangeFeet": 5,
+            "damage": { "count": 1, "sides": 4, "damageType": "bludgeoning" },
+            "traits": [{ "id": "agile" }, { "id": "finesse" }]
+          }
+        }
+      }
+    },
+    "speedFeet": 25,
+    "initialConditions": [],
+    "traits": [{ "id": "actor" }, { "id": "hero" }, { "id": "playable" }],
+    "loadoutProfile": { "preparedCardCapacity": 4 },
+    "starterLoadout": {
+      "equipment": { "weapon": "composite-shortbow", "armor": "leather-armor" },
+      "preparedCards": ["card.battle-medicine", "card.lay-on-hands", "card.iron-presence"]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      { "cardDefinitionId": "card.heal", "count": 2, "sourceId": "feat.field-triage" },
+      { "cardDefinitionId": "card.soothe", "count": 2, "sourceId": "feat.steady-voice" }
+    ]
   }
 ]

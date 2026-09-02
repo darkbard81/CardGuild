@@ -127,11 +127,15 @@ async function strikeRoadEnemy(page: Page): Promise<boolean> {
 }
 
 async function waitForRoadTurn(page: Page): Promise<void> {
-  for (let step = 0; step < 12; step += 1) {
+  for (let step = 0; step < 20; step += 1) {
     if (await page.locator("#app").getAttribute("data-screen") !== "combat") return;
     if (await page.locator("#result-modal").isVisible()) return;
     if (await page.locator("#reaction-modal").isVisible()) {
-      await page.getByRole("button", { name: "Use Reaction" }).click();
+      // The authoritative server can resolve the window between the visibility check and
+      // the click, so a vanished button means the reaction is already settled, not a
+      // failure. Take it when it is still there and keep waiting either way.
+      await page.getByRole("button", { name: "Use Reaction" }).click({ timeout: 2_000 })
+        .catch(() => undefined);
       continue;
     }
     if ((await page.locator("#initiative-list .active").textContent())?.includes("Aerin")) return;
@@ -188,9 +192,10 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await openAdventure(page);
   await page.getByRole("button", { name: "Manage Loadout" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "loadout");
-  await expect(page.locator(".collection-item")).toHaveCount(4);
-  await expect(page.locator(".deck-contribution")).toHaveCount(4);
-  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
+  // Aerin owns four equipment pieces and starts with two prepared cards.
+  await expect(page.locator(".collection-item")).toHaveCount(6);
+  await expect(page.locator(".deck-contribution")).toHaveCount(6);
+  await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
   await expect(page.locator('.deck-contribution[data-card-id="card.fly"]')).toContainText("Boots of Fly / Fly");
   await expect(page.locator('.deck-contribution[data-card-id="card.trip"]')).toContainText("Halberd / Trip");
   expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
@@ -216,7 +221,7 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
   await expect(page.locator("#loadout-detail")).toContainText("Fly ×2");
   await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("6 Tactical Cards");
+  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
   await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
   await expect(page.locator(".collection-panel")).toContainText("×1");
@@ -225,7 +230,7 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await page.locator('.loadout-option[data-option-id="boots-of-fly"]').click();
   await expect(page.locator("#loadout-detail")).toContainText("15 → 16");
   await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
+  await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
@@ -256,7 +261,7 @@ test("carries a reward loadout through the shared resolver into the next encount
   await page.locator('.loadout-option[data-option-id="card.fly"]').click();
   await expect(page.locator("#loadout-detail")).toContainText("Fly ×1 (Prepared Card)");
   await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
+  await expect(page.locator(".deck-panel h2")).toHaveText("11 Tactical Cards");
 
   await page.locator('.equipment-slot[data-slot="feet"]').click();
   await page.locator('.loadout-option[data-option-id="empty-feet"]').click();
@@ -266,7 +271,7 @@ test("carries a reward loadout through the shared resolver into the next encount
   await page.locator('.loadout-option[data-option-id="empty-shield"]').click();
   await expect(page.locator("#loadout-detail")).toContainText("− Context: Raise Shield");
   await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("7 Tactical Cards");
+  await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
   await expect(page.locator(".collection-panel")).toContainText("Steel Shield");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-reward-loadout.png"), fullPage: true });
@@ -279,7 +284,8 @@ test("carries a reward loadout through the shared resolver into the next encount
   // The authoritative server pumps the opening enemy turn before publishing the
   // next human boundary, so Aerin has drawn the following turn's card already.
   await expect(page.locator("#hand-count")).toHaveText("7");
-  await expect(page.locator("#deck-count")).toHaveText("0");
+  // Nine cards remain after the loadout edits, so two are still undrawn.
+  await expect(page.locator("#deck-count")).toHaveText("2");
   await expect(page.locator('.tactical-card[data-card-definition-id="card.fly"][data-card-source-kind="prepared"]')).toHaveCount(1);
 
   const nextMap = { width: 9, height: 7 };
