@@ -180,9 +180,12 @@ Preview와 실행이 같은 plan을 소비하므로 Preview modifier/DC와 실�
 off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `rollerActorId`를
 따로 보고하므로 대상이 굴리는 Save도 모호하지 않습니다.
 
-콘텐츠의 source of truth는 [`content/m6`](content/m6) JSON이며 pack identity는
-`cardguild.m6@0.9.0`, contract는 schema v8입니다. 기존 [`content/m3`](content/m3)의
-`cardguild.m4@0.6.0` pack은 회귀 fixture로 보존됩니다. Schema와
+Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며 pack identity는
+`cardguild.m7@0.1.0`, contract는 schema v8입니다. Client UI, battle rendering, WebSocket
+hello와 authoritative server는 모두 `src/content/production-content.ts`의
+`PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다. [`content/m6`](content/m6)의
+`cardguild.m6@0.9.0`과 [`content/m3`](content/m3)의 `cardguild.m4@0.6.0` pack은 규칙 회귀
+fixture로 보존되며 production authoring 대상이 아닙니다. Schema와
 작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
 Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.

@@ -1,0 +1,4 @@
+[
+  { "id": "prone", "name": "Prone", "traits": [{ "id": "condition" }, { "id": "prone" }] },
+  { "id": "grabbed", "name": "Grabbed", "traits": [{ "id": "condition" }, { "id": "grabbed" }] }
+]

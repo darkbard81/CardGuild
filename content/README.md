@@ -3,6 +3,37 @@
 `content/`는 전투 콘텐츠의 authoring source입니다. `src/game`은 JSON 파일이나
 검증 도구를 직접 읽지 않고, `src/content`가 검증·컴파일한 plain object만 받습니다.
 
+## Pack 역할
+
+`content/` 아래 각 pack directory는 독립적으로 compile되는 self-contained pack입니다.
+Compiler에는 pack inheritance/dependency 개념이 없으므로 어떤 pack도 다른 pack의
+정의를 참조하지 않습니다.
+
+```text
+content/m7   authoritative production pack (cardguild.m7@0.1.0)
+content/m6   M6 규칙 회귀 fixture (cardguild.m6@0.9.0)
+content/m3   M4 회귀 fixture (cardguild.m4@0.6.0)
+```
+
+**새 Card/Creature/Equipment/Scenario/Adventure는 `content/m7`에만 추가합니다.**
+`content/m6`와 `content/m3`은 이미 검증된 규칙 회귀 fixture이므로 content volume을
+늘리기 위해 함께 수정하지 않습니다.
+
+Production client와 authoritative server는 pack을 직접 import하지 않고
+`src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점만 봅니다.
+
+```text
+client UI / battle rendering / WebSocket hello / authoritative server
+        ↓
+PRODUCTION_CONTENT   (src/content/production-content.ts)
+        ↓
+load-m7-content.ts   →   content/m7
+```
+
+Selector에는 environment switch나 dynamic loading이 없습니다. 이후 milestone에서
+production pack을 바꿀 때 이 파일이 import하는 loader만 교체합니다. Milestone loader
+(`load-m6-content.ts` 등)는 regression fixture용으로 그대로 남습니다.
+
 ## Pack 구조
 
 각 pack directory는 다음 파일을 모두 가집니다.
@@ -32,8 +63,8 @@ npm run content:check
 원본 파일, definition, JSON path와 원인을 출력합니다.
 
 ```text
-Pack: cardguild.m6
-Source: content/m6/equipment.json
+Pack: cardguild.m7
+Source: content/m7/equipment.json
 Definition: halberd
 Path: [0].traits[1].id
 UNKNOWN_TRAIT: Trait "tirp" is not defined.
@@ -119,8 +150,9 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   겹칠 수 없습니다. 모든 Adventure Encounter는 `partySize.max`만큼 slot을 제공합니다.
 - Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
   PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
-- `playable` Trait을 가진 Actor만 Party Builder 후보입니다. 현재 authoritative pack은
-  `content/m6`의 `cardguild.m6@0.9.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
+- `playable` Trait을 가진 Actor만 Party Builder 후보입니다. 현재 authoritative production
+  pack은 `content/m7`의 `cardguild.m7@0.1.0`이고, `content/m6`의 M6 pack과 `content/m3`의
+  M4 pack은 규칙 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
 
