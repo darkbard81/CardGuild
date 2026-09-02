@@ -39,7 +39,7 @@ M7-3(#14)의 Starter 설계 기록입니다. **4명은 동시에 쓰는 4인 파
 | Deck size | 10 | 8 | 7 | 7 |
 | Primary loop | 10ft reach에서 Trip/Knockdown으로 전선을 눕히고 Reactive Strike로 이탈을 처벌 | Hover Step·Fly로 각을 잡고 agile/finesse로 연타 | Brace 후 버티며 Athletics master로 Grapple 고정 | 후열에서 Heal/Soothe로 파티를 유지하고 Iron Presence로 통제 |
 | Secondary loop | Spirit Beacon 유지 | Slip Free로 구속 탈출, Combat Grab으로 고정 | Demoralize로 광역 압박 | 60ft Strike로 최소한의 압박 |
-| Known limitations | 무거워 이동 선택지가 적음 | HP가 낮아 반격 한 번에 무너짐 | 거의 항상 마지막에 행동 | Trip/Grapple/Slip Free를 **영구히 못 씀** |
+| Known limitations | 무거워 이동 선택지가 적음 | HP가 낮아 반격 한 번에 무너짐 | 거의 항상 마지막에 행동 | Athletics 통제 카드의 성공률이 매우 낮고, melee 무기가 없어 Combat Grab 계열이 막혀 있음 |
 
 ## 2. 각 Starter의 명시적 약점
 
@@ -50,11 +50,28 @@ M7-3(#14)의 Starter 설계 기록입니다. **4명은 동시에 쓰는 4인 파
 | Aerin | heavy armor untrained → Half Plate로 갈아입어도 AC가 오르지 않음. CHA 0이라 Demoralize 계열이 약함 |
 | Lyra | medium/heavy untrained → AC 성장 경로가 light 하나뿐. HP 15로 최저 |
 | Brom | initiative 2 → 거의 항상 적 다음에 행동. WIS -1, skill 6종만 trained이라 skill 카드 폭이 좁음 |
-| Nera | **Athletics untrained(+0)** → Trip·Grapple·Combat Grab이 사실상 실패. STR 0이라 Strike damage 보정이 0. 방패 슬롯이 비어 AC 16 |
+| Nera | **Athletics +0** → Trip·Grapple을 굴려도 거의 실패. STR 0이라 Strike damage 보정이 0. 방패 슬롯이 비어 AC 16 |
 
-Nera의 Athletics 0은 실수가 아니라 설계입니다. #13 라이브러리에서 Athletics 기반 통제
-카드군 전체가 그녀에게 닫히고, 그 대가로 **Class DC 19**(다른 셋은 16–17)와 유일한 회복
-카드군을 갖습니다.
+Nera의 Athletics +0은 실수가 아니라 설계입니다. Athletics 기반 통제 카드군의 기대값이
+사실상 사라지고, 그 대가로 **Class DC 19**(다른 셋은 16–17)와 유일한 회복 카드군을 갖습니다.
+
+### untrained는 legality gate가 아닙니다
+
+현재 Action contract에서 proficiency rank를 검사하는 것은 **`skill-rank` requirement가
+authored된 Action뿐**입니다. Nera에게 닫혀 있는 것과 단지 약한 것을 구분해 적으면 다음과
+같습니다.
+
+| Card | 지금 Nera에게 | 왜 |
+|---|---|---|
+| `card.trip` | **legal, 매우 약함** — Athletics +0 vs 목표 Reflex DC | rank requirement 없음 |
+| `card.grapple` | **legal, 매우 약함** — Athletics +0 vs 목표 Fortitude DC | rank requirement 없음 |
+| `card.slip-free` | **legal** — Acrobatics **+2** vs DC 15 | untrained rank 0 + DEX 2. rank requirement 없음 |
+| `card.combat-grab` | **막힘** | Athletics가 아니라 `weapon-mode: melee` requirement 때문. **melee 무기를 얻으면 열립니다** |
+| `card.battle-medicine` | **legal** | `skill-rank medicine trained`을 expert로 충족 |
+
+즉 Nera의 약점은 "구조적 금지"가 아니라 **기대값과 장비**입니다. #17 reward pool의 melee
+무기를 얻으면 Combat Grab이 실제로 열리므로, 이 구분은 #19 progression에서 눈에 보이게
+됩니다. runtime에 새 rank gate를 추가하지 않고 문서를 규칙에 맞췄습니다.
 
 ## 3. 왜 Tactician이 신규 장비 없이 성립하는가
 
