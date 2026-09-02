@@ -8,6 +8,7 @@ import {
   Rectangle,
   RenderLayer,
   type Ticker,
+  Texture,
 } from "pixi.js";
 
 import type { CombatEvent, CombatState, Direction, GridPosition } from "../../game";
@@ -15,8 +16,8 @@ import type { AssetCatalog } from "../../presentation";
 import { ActorRenderer } from "./ActorRenderer";
 import { BattleCamera } from "./BattleCamera";
 import { BoardProjection } from "./BoardProjection";
-import type { BoardViewConfig } from "./BoardViewConfig";
-import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
+import type { BoardFrame, BoardSafeArea, BoardViewConfig } from "./BoardViewConfig";
+import { DEFAULT_BOARD_VIEW_CONFIG, ZERO_BOARD_SAFE_AREA } from "./BoardViewConfig";
 import { ObjectRenderer } from "./ObjectRenderer";
 import { facingPolygon, pointInPolygon, TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
 import { TerrainRenderer, type SortableVisual } from "./TerrainRenderer";
@@ -28,11 +29,23 @@ export interface BoardHighlights {
   readonly facingPosition: GridPosition | null;
 }
 
+export type BoardPick =
+  | { readonly kind: "tile"; readonly position: GridPosition }
+  | { readonly kind: "actor"; readonly actorId: string; readonly position: GridPosition }
+  | { readonly kind: "object"; readonly objectId: string; readonly position: GridPosition };
+
+export interface ScreenPoint {
+  readonly x: number;
+  readonly y: number;
+}
+
 export interface BattleViewHandlers {
-  readonly onTile: (position: GridPosition) => void;
-  readonly onActor: (actorId: string) => void;
-  readonly onObject: (objectId: string) => void;
+  /** A board target was picked; the screen point anchors the radial action menu. */
+  readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
   readonly onFacing: (facing: Direction) => void;
+  readonly onHoverCell: (position: GridPosition | null) => void;
+  /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
+  readonly safeArea: () => BoardSafeArea;
 }
 
 interface AnimationRecord {
@@ -50,6 +63,9 @@ function clearLayer(layer: Container): void {
 function samePosition(left: GridPosition | null, right: GridPosition | null): boolean {
   return left?.x === right?.x && left?.y === right?.y;
 }
+
+/** Keeps a focused actor clear of the HUD edge rather than flush against it. */
+const FOCUS_MARGIN = 48;
 
 function lerp(left: number, right: number, progress: number): number {
   return left + (right - left) * progress;
@@ -84,8 +100,7 @@ export class BattleView {
       event.deltaY < 0 ? 1.1 : 0.9,
       event.clientX - bounds.left,
       event.clientY - bounds.top,
-      this.app.screen.width,
-      this.app.screen.height,
+      this.boardFrame(),
     );
     this.layoutScene();
   };
@@ -98,7 +113,7 @@ export class BattleView {
   };
   private readonly pointerMoveHandler = (event: PointerEvent): void => {
     if (!this.panPointer || this.panPointer.id !== event.pointerId) return;
-    this.camera.panBy(event.clientX - this.panPointer.x, event.clientY - this.panPointer.y);
+    this.camera.panBy(event.clientX - this.panPointer.x, event.clientY - this.panPointer.y, this.boardFrame());
     this.panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
     this.layoutScene();
   };
@@ -111,6 +126,7 @@ export class BattleView {
   private boardKey = "";
   private currentHighlights: BoardHighlights = { tiles: [], actorIds: [], objectIds: [], facingPosition: null };
   private hoverPosition: GridPosition | null = null;
+  private safeArea: BoardSafeArea = ZERO_BOARD_SAFE_AREA;
   private boardMesh: PerspectiveMesh | null = null;
   private visuals: PositionedVisual[] = [];
   private actorVisuals = new Map<string, PositionedVisual>();
@@ -149,6 +165,8 @@ export class BattleView {
       this.resizeFrame = window.requestAnimationFrame(() => {
         this.resizeFrame = null;
         this.app.resize();
+        this.safeArea = this.handlers.safeArea();
+        this.camera.clamp(this.boardFrame());
         this.layoutScene();
       });
     });
@@ -163,6 +181,7 @@ export class BattleView {
     this.cancelAnimations();
     this.state = state;
     this.currentHighlights = highlights;
+    this.safeArea = this.handlers.safeArea();
     const nextBoardKey = `${state.scenarioId}:${state.map.width}x${state.map.height}`;
     if (this.boardKey !== nextBoardKey) {
       this.boardKey = nextBoardKey;
@@ -171,9 +190,10 @@ export class BattleView {
     }
 
     this.depthRenderLayer.detachAll();
+    if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
     for (const layer of [this.boardFloorLayer, this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
-    const corners = this.camera.corners(this.app.screen.width, this.app.screen.height);
+    const corners = this.camera.corners(this.boardFrame());
     this.projection.update(state.map.width, state.map.height, corners);
     this.boardMesh = new PerspectiveMesh({
       texture: boardTexture,
@@ -201,17 +221,40 @@ export class BattleView {
       this.actorVisuals.set(visual.stableId, positioned);
     }
     this.layoutScene();
+    const turnStarted = [...events].reverse().find((event) => event.type === "TURN_STARTED");
+    if (turnStarted) this.ensureActorVisible(turnStarted.actorId);
     this.renderFeedback(events);
     this.animateMovement(events, previousPositions);
     this.app.canvas.dataset.boardSize = `${state.map.width}x${state.map.height}`;
   }
 
-  public focusActor(actorId: string): void {
+  /**
+   * Pans the minimum distance that brings an actor back inside the safe area. At fit
+   * zoom the whole board is already visible, so this is a no-op and the board does not
+   * jump around at the start of every turn.
+   */
+  public ensureActorVisible(actorId: string): void {
     const actor = this.state?.actors[actorId];
     if (!actor) return;
     const point = this.projection.gridToScreen(actor.position.x + 0.5, actor.position.y + this.config.actorFootRowOffset);
-    this.camera.centerScreenPoint(point, this.app.screen.width, this.app.screen.height);
+    const left = this.safeArea.left + FOCUS_MARGIN;
+    const right = this.app.screen.width - this.safeArea.right - FOCUS_MARGIN;
+    const top = this.safeArea.top + FOCUS_MARGIN;
+    const bottom = this.app.screen.height - this.safeArea.bottom - FOCUS_MARGIN;
+    const dx = point.x < left ? left - point.x : point.x > right ? right - point.x : 0;
+    const dy = point.y < top ? top - point.y : point.y > bottom ? bottom - point.y : 0;
+    if (dx === 0 && dy === 0) return;
+    this.camera.panBy(dx, dy, this.boardFrame());
     this.layoutScene();
+  }
+
+  private boardFrame(): BoardFrame {
+    return {
+      viewportWidth: this.app.screen.width,
+      viewportHeight: this.app.screen.height,
+      columns: this.state?.map.width ?? 1,
+      safeArea: this.safeArea,
+    };
   }
 
   private registerVisual(visual: SortableVisual, parent: Container): PositionedVisual {
@@ -227,14 +270,17 @@ export class BattleView {
     const row = visual.currentPosition.y + visual.footRowOffset;
     const foot = this.projection.gridToScreen(visual.currentPosition.x + 0.5, row);
     visual.display.position.copyFrom(foot);
-    const scale = this.projection.getDepthScale(row) * this.camera.scale;
+    // Content is sized against the projected cell, so its share of a square is fixed
+    // at every window size; the camera zoom already lives in the projected width.
+    const scale = this.projection.getCellScale(row);
     visual.display.scale.set(scale);
+    if (visual.screenSpace) visual.screenSpace.scale.set(scale > 0 ? 1 / scale : 1);
     visual.display.zIndex = Math.round(foot.y * 100) + visual.layerPriority;
   }
 
   private layoutScene(): void {
     if (!this.state || this.app.screen.width <= 0 || this.app.screen.height <= 0) return;
-    const corners = this.camera.corners(this.app.screen.width, this.app.screen.height);
+    const corners = this.camera.corners(this.boardFrame());
     this.projection.update(this.state.map.width, this.state.map.height, corners);
     this.boardMesh?.setCorners(
       corners[0].x, corners[0].y,
@@ -333,6 +379,7 @@ export class BattleView {
     this.hoverPosition = position;
     this.app.canvas.dataset.hoverCell = position ? `${position.x},${position.y}` : "";
     this.renderOverlay();
+    this.handlers.onHoverCell(position);
   }
 
   private gridAt(screenX: number, screenY: number): GridPosition | null {
@@ -357,21 +404,28 @@ export class BattleView {
     }
     const position = this.gridAt(point.x, point.y);
     if (!position) return;
+    const screen = { x: point.x, y: point.y };
     const actor = Object.values(this.state.actors).find(
       (candidate) => !candidate.defeated && candidate.position.x === position.x && candidate.position.y === position.y,
     );
     if (actor) {
-      this.handlers.onActor(actor.id);
+      this.handlers.onPick({ kind: "actor", actorId: actor.id, position }, screen);
       return;
     }
     const object = Object.values(this.state.map.objects).find(
       (candidate) => !candidate.used && candidate.position.x === position.x && candidate.position.y === position.y,
     );
     if (object) {
-      this.handlers.onObject(object.id);
+      this.handlers.onPick({ kind: "object", objectId: object.id, position }, screen);
       return;
     }
-    this.handlers.onTile(position);
+    this.handlers.onPick({ kind: "tile", position }, screen);
+  }
+
+  /** Screen position of a cell centre, used to anchor DOM overlays such as the ring menu. */
+  public cellAnchor(position: GridPosition): ScreenPoint {
+    const point = this.projection.gridToScreen(position.x + 0.5, position.y + 0.5);
+    return { x: point.x, y: point.y };
   }
 
   private cancelAnimations(): void {
@@ -410,6 +464,9 @@ export class BattleView {
     this.app.canvas.removeEventListener("pointerdown", this.pointerDownHandler);
     this.app.canvas.removeEventListener("pointermove", this.pointerMoveHandler);
     this.app.canvas.removeEventListener("pointerup", this.pointerUpHandler);
+    if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
+    this.scene.removeFromParent();
+    this.app.renderer.render({ container: this.app.stage, clear: true });
     this.scene.destroy({ children: true });
     this.terrainRenderer.destroy();
   }

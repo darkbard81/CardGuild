@@ -1,20 +1,24 @@
 import {
-  getStatistic,
-  getWeaponProfile,
   listLegalActions,
+  resolveArmorClass,
+  resolveStatisticDC,
+  resolveStrike,
 } from "../game";
 import type {
   ActionPreview,
+  ActorState,
   CombatContent,
   CombatEvent,
   CombatState,
   LegalAction,
+  ResolvedStrikeProfile,
   ScenarioDefinition,
 } from "../game";
+import type { AssetCatalog } from "../presentation";
 
 export interface BattleUiHandlers {
-  readonly onAction: (action: LegalAction) => void;
-  readonly onActionHover: (action: LegalAction | null) => void;
+  readonly onCard: (action: LegalAction) => void;
+  readonly onCardHover: (action: LegalAction | null) => void;
   readonly onEndTurn: () => void;
   readonly onUseReaction: () => void;
   readonly onPassReaction: () => void;
@@ -23,11 +27,13 @@ export interface BattleUiHandlers {
 
 export interface BattleUiPresentation {
   readonly selectedAction: LegalAction | null;
-  readonly detailAction: LegalAction | null;
-  readonly preview: ActionPreview | null;
   readonly prompt: string;
   readonly stateHash: string;
+  readonly controlledActorId: string;
+  readonly canControl: boolean;
 }
+
+const DETAIL_HINT = "보드에서 대상을 클릭하면 사용할 수 있는 행동이 링 메뉴로 열립니다.";
 
 function required<T extends Element>(selector: string): T {
   const element = document.querySelector<T>(selector);
@@ -46,8 +52,18 @@ function element<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
-function actionCost(action: LegalAction): string {
+export function actionCost(action: LegalAction): string {
   return action.timing.kind === "reaction" ? "↻" : "●".repeat(action.timing.actions);
+}
+
+function signed(value: number): string {
+  return `${value >= 0 ? "+" : ""}${value}`;
+}
+
+/** Reads the resolved Strike rather than raw weapon data, so the panel cannot drift from combat. */
+function strikeLabel(strike: ResolvedStrikeProfile): string {
+  const { count, sides, flatModifier } = strike.damage;
+  return `${strike.weaponName} ${signed(strike.attackModifier)} · ${count}d${sides}${signed(flatModifier)}`;
 }
 
 function percentage(value: number | undefined): string {
@@ -117,7 +133,6 @@ function formatEvent(state: CombatState, event: CombatEvent): string | null {
 
 export class BattleUi {
   private readonly abortController = new AbortController();
-  private escapeMenuOpen = false;
   private readonly app = required<HTMLElement>("#app");
   private readonly objective = required<HTMLElement>("#objective-text");
   private readonly round = required<HTMLElement>("#round-value");
@@ -125,10 +140,7 @@ export class BattleUi {
   private readonly heroHeading = required<HTMLElement>("#hero-heading");
   private readonly heroStats = required<HTMLElement>("#hero-stats");
   private readonly actionPips = required<HTMLElement>("#action-pips");
-  private readonly basicActions = required<HTMLElement>("#basic-actions");
-  private readonly contextActions = required<HTMLElement>("#context-actions");
   private readonly endTurn = required<HTMLButtonElement>("#end-turn");
-  private readonly enemyList = required<HTMLElement>("#enemy-list");
   private readonly selectedDetail = required<HTMLElement>("#selected-detail");
   private readonly combatLog = required<HTMLOListElement>("#combat-log");
   private readonly handCount = required<HTMLElement>("#hand-count");
@@ -136,28 +148,26 @@ export class BattleUi {
   private readonly discardCount = required<HTMLElement>("#discard-count");
   private readonly handCards = required<HTMLElement>("#hand-cards");
   private readonly boardPrompt = required<HTMLElement>("#board-prompt");
-  private readonly hashShort = required<HTMLElement>("#state-hash-short");
   private readonly reactionModal = required<HTMLElement>("#reaction-modal");
   private readonly reactionDescription = required<HTMLElement>("#reaction-description");
+  private readonly reactionUse = required<HTMLButtonElement>("#reaction-use");
+  private readonly reactionPass = required<HTMLButtonElement>("#reaction-pass");
   private readonly resultModal = required<HTMLElement>("#result-modal");
   private readonly resultTitle = required<HTMLElement>("#result-title");
   private readonly resultDescription = required<HTMLElement>("#result-description");
-  private readonly battlefieldTitle = required<HTMLElement>("#battlefield-title");
-  private readonly encounterLabel = required<HTMLElement>("#encounter-label");
   private readonly resultAction = required<HTMLButtonElement>("#restart-battle");
 
   public constructor(
     private readonly content: CombatContent,
     private readonly scenario: ScenarioDefinition,
+    private readonly catalog: AssetCatalog,
     private readonly handlers: BattleUiHandlers,
   ) {
-    this.battlefieldTitle.textContent = scenario.name;
-    this.encounterLabel.textContent = "M2 Encounter";
     this.resultAction.textContent = "Return to Adventure";
     const listenerOptions = { signal: this.abortController.signal };
     this.endTurn.addEventListener("click", handlers.onEndTurn, listenerOptions);
-    required<HTMLButtonElement>("#reaction-use").addEventListener("click", handlers.onUseReaction, listenerOptions);
-    required<HTMLButtonElement>("#reaction-pass").addEventListener("click", handlers.onPassReaction, listenerOptions);
+    this.reactionUse.addEventListener("click", handlers.onUseReaction, listenerOptions);
+    this.reactionPass.addEventListener("click", handlers.onPassReaction, listenerOptions);
     required<HTMLButtonElement>("#restart-battle").addEventListener("click", handlers.onRestart, listenerOptions);
   }
 
@@ -172,52 +182,39 @@ export class BattleUi {
     history: readonly CombatEvent[],
     presentation: BattleUiPresentation,
   ): void {
-    const hero = Object.values(state.actors).find((actor) => actor.team === "heroes");
+    const hero = state.actors[presentation.controlledActorId];
     if (!hero) return;
     const actions = listLegalActions(state, hero.id, this.content);
     const zones = state.cardZones[hero.id];
     const activeActor = state.actors[state.turn.activeActorId];
-    const ac = getStatistic(hero, this.content, "ac").value;
-    const reflex = getStatistic(hero, this.content, "reflex").value;
-    const weapon = getWeaponProfile(hero, this.content);
 
     this.app.dataset.ready = "true";
     this.app.dataset.outcome = state.outcome ?? "ongoing";
     this.app.dataset.stateHash = presentation.stateHash;
+    this.app.dataset.controlledActorId = presentation.controlledActorId;
     this.objective.textContent = this.scenario.objective.description;
     this.round.textContent = String(state.round);
     this.heroHeading.textContent = hero.name;
     this.boardPrompt.textContent = presentation.prompt;
-    this.hashShort.textContent = presentation.stateHash.slice(0, 8);
-    this.hashShort.title = presentation.stateHash;
 
     this.renderInitiative(state);
-    this.renderStats(hero.name, hero.hp, hero.maxHp, ac, reflex, hero.speedFeet, weapon.name, hero.facing, hero.conditions.map((condition) => condition.id));
-    this.renderPips(state.turn.activeActorId === hero.id ? state.turn.actionsRemaining : 0);
-    this.renderActionGroup(
-      this.basicActions,
-      actions.filter((action) => action.source.kind === "basic"),
-      presentation.selectedAction,
-    );
-    this.renderContextActions(
-      actions.filter((action) => action.source.kind === "context"),
-      presentation.selectedAction,
-    );
+    this.renderStats(hero);
+    this.renderPips(presentation.canControl ? state.turn.actionsRemaining : 0);
     this.renderCards(
       actions.filter((action) => action.source.kind === "card"),
       presentation.selectedAction,
+      state,
+      hero.id,
     );
-    this.renderEnemies(state);
-    this.renderActionDetail(presentation.detailAction, presentation.preview);
     this.renderLog(state, history);
 
     this.handCount.textContent = String(zones?.hand.length ?? 0);
     this.deckCount.textContent = String(zones?.drawPile.length ?? 0);
     this.discardCount.textContent = String(zones?.discardPile.length ?? 0);
-    this.endTurn.disabled =
+    this.endTurn.disabled = !presentation.canControl ||
       activeActor?.id !== hero.id || Boolean(state.pendingReaction) || Boolean(state.outcome);
 
-    this.renderReaction(state);
+    this.renderReaction(state, presentation.controlledActorId);
     this.renderResult(state);
   }
 
@@ -234,40 +231,38 @@ export class BattleUi {
     }
   }
 
-  private renderStats(
-    name: string,
-    hp: number,
-    maxHp: number,
-    ac: number,
-    reflex: number,
-    speed: number,
-    weapon: string,
-    facing: string,
-    conditions: readonly string[],
-  ): void {
+  private renderStats(hero: ActorState): void {
     this.heroStats.replaceChildren();
+    this.heroStats.append(...this.statBlock(hero, [
+      ["AC", resolveArmorClass(hero, { content: this.content }).value],
+      ["Reflex DC", resolveStatisticDC(hero, { kind: "save", id: "reflex" }, { content: this.content }).value],
+      ["Speed", `${hero.speedFeet}ft`],
+      ["Facing", hero.facing],
+      ["Strike", strikeLabel(resolveStrike(hero, { content: this.content }))],
+    ]));
+  }
+
+  private statBlock(
+    actor: ActorState,
+    rows: readonly (readonly [string, string | number])[],
+  ): readonly HTMLElement[] {
     const hpRow = element("div", "hp-row");
-    hpRow.append(element("span", undefined, "HP"), element("strong", undefined, `${hp}/${maxHp}`));
+    hpRow.append(element("span", undefined, "HP"), element("strong", undefined, `${actor.hp}/${actor.maxHp}`));
     const bar = element("div", "hp-bar");
     const fill = element("span", "hp-fill");
-    fill.style.width = `${Math.max(0, Math.min(100, (hp / maxHp) * 100))}%`;
+    fill.style.width = `${Math.max(0, Math.min(100, (actor.hp / actor.maxHp) * 100))}%`;
     bar.append(fill);
     const stats = element("dl", "stats-grid");
-    for (const [label, value] of [
-      ["AC", ac],
-      ["Reflex DC", reflex],
-      ["Speed", `${speed}ft`],
-      ["Facing", facing],
-    ] as const) {
+    for (const [label, value] of rows) {
       stats.append(element("dt", undefined, label), element("dd", undefined, String(value)));
     }
-    const equipment = element("p", "equipment-line", `${weapon} · Shield · Boots of Fly`);
+    const conditions = actor.conditions.map((condition) => condition.id);
     const status = element(
       "p",
       conditions.length ? "condition-line" : "condition-line empty",
-      conditions.length ? conditions.join(" · ") : `${name} has no conditions`,
+      conditions.length ? conditions.join(" · ") : "No conditions",
     );
-    this.heroStats.append(hpRow, bar, stats, equipment, status);
+    return [hpRow, bar, stats, status];
   }
 
   private renderPips(remaining: number): void {
@@ -279,151 +274,112 @@ export class BattleUi {
     }
   }
 
-  private renderActionGroup(
-    root: HTMLElement,
+  private renderCards(
     actions: readonly LegalAction[],
     selected: LegalAction | null,
+    state: CombatState,
+    actorId: string,
   ): void {
-    root.replaceChildren();
+    this.handCards.replaceChildren();
     if (actions.length === 0) {
-      root.append(element("p", "empty-message", "No action available"));
+      this.handCards.append(element("p", "empty-message", "손패가 비었습니다."));
       return;
     }
-    for (const action of actions) root.append(this.actionButton(action, selected, false));
+    for (const action of actions) {
+      const card = action.source.kind === "card"
+        ? state.cardZones[actorId]?.hand.find((candidate) => candidate.id === action.source.id)
+        : undefined;
+      this.handCards.append(this.cardButton(action, selected, card));
+    }
   }
 
-  private renderContextActions(
-    actions: readonly LegalAction[],
+  private cardButton(
+    action: LegalAction,
     selected: LegalAction | null,
-  ): void {
-    this.contextActions.replaceChildren();
-    const recoveryActions = actions.filter((action) => action.contextGroup === "escape");
-    const directActions = actions.filter((action) => action.contextGroup !== "escape");
-    if (recoveryActions.length === 0) this.escapeMenuOpen = false;
-
-    if (recoveryActions.length > 0) {
-      const wrapper = element("div", "escape-context");
-      const toggle = element("button", "action-button escape-toggle") as HTMLButtonElement;
-      toggle.type = "button";
-      toggle.dataset.contextGroup = "escape";
-      toggle.setAttribute("aria-expanded", String(this.escapeMenuOpen));
-      toggle.append(
-        element("strong", undefined, "Escape"),
-        element("span", "action-cost", `${recoveryActions.length} option${recoveryActions.length === 1 ? "" : "s"}`),
-      );
-      const menu = element("div", "escape-options");
-      menu.hidden = !this.escapeMenuOpen;
-      for (const action of recoveryActions) menu.append(this.actionButton(action, selected, false));
-      toggle.addEventListener("click", () => {
-        this.escapeMenuOpen = !this.escapeMenuOpen;
-        toggle.setAttribute("aria-expanded", String(this.escapeMenuOpen));
-        menu.hidden = !this.escapeMenuOpen;
-      });
-      wrapper.append(toggle, menu);
-      this.contextActions.append(wrapper);
-    }
-
-    for (const action of directActions) {
-      this.contextActions.append(this.actionButton(action, selected, false));
-    }
-    if (actions.length === 0) {
-      this.contextActions.append(element("p", "empty-message", "No action available"));
-    }
-  }
-
-  private actionButton(action: LegalAction, selected: LegalAction | null, card: boolean): HTMLButtonElement {
-    const button = element("button", card ? "tactical-card" : "action-button") as HTMLButtonElement;
+    card: CombatState["cardZones"][string]["hand"][number] | undefined,
+  ): HTMLButtonElement {
+    const button = element("button", "tactical-card");
     button.type = "button";
     button.disabled = !action.enabled;
     button.dataset.actionId = action.actionId;
     button.dataset.sourceId = action.source.id;
     button.dataset.sourceKind = action.source.kind;
+    if (card) {
+      button.dataset.cardDefinitionId = card.definitionId;
+      button.dataset.cardSourceKind = card.source.kind;
+    }
     button.setAttribute("aria-pressed", String(selected?.source.id === action.source.id));
     if (selected?.source.id === action.source.id) button.classList.add("selected");
     button.title = action.reason ?? action.description;
 
-    if (card) {
-      const top = element("span", "card-top");
-      top.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
-      button.append(
-        top,
-        element("span", "card-description", action.description),
-        element("span", "card-traits", action.traits.join(" · ")),
-        element("span", "card-source", `Source: ${action.sourceLabel ?? "Character"}`),
-      );
-    } else {
-      button.append(
-        element("strong", undefined, action.name),
-        element("span", "action-cost", actionCost(action)),
-      );
-    }
-    button.addEventListener("click", () => this.handlers.onAction(action));
-    button.addEventListener("mouseenter", () => this.handlers.onActionHover(action));
-    button.addEventListener("mouseleave", () => this.handlers.onActionHover(null));
+    const top = element("span", "card-top");
+    top.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
+    const visual = card ? this.catalog.cardVisual(card.definitionId) : null;
+    const icon = element("span", visual ? "tactical-card-icon" : "tactical-card-icon missing");
+    icon.setAttribute("aria-hidden", "true");
+    if (visual) Object.assign(icon.style, this.catalog.domAtlasStyle(visual, 32));
+    button.append(
+      top,
+      icon,
+      element("span", "card-description", action.description),
+      element("span", "card-source", action.sourceLabel ?? "Character"),
+    );
+    button.addEventListener("click", () => this.handlers.onCard(action));
+    button.addEventListener("mouseenter", () => this.handlers.onCardHover(action));
+    button.addEventListener("mouseleave", () => this.handlers.onCardHover(null));
     return button;
-  }
-
-  private renderCards(actions: readonly LegalAction[], selected: LegalAction | null): void {
-    this.handCards.replaceChildren();
-    for (const action of actions) this.handCards.append(this.actionButton(action, selected, true));
-  }
-
-  private renderEnemies(state: CombatState): void {
-    this.enemyList.replaceChildren();
-    for (const enemy of Object.values(state.actors)
-      .filter((actor) => actor.team === "enemies")
-      .sort((left, right) => left.id.localeCompare(right.id))) {
-      const ac = getStatistic(enemy, this.content, "ac").value;
-      const card = element("article", `enemy-card${enemy.defeated ? " defeated" : ""}`);
-      card.dataset.actorId = enemy.id;
-      const heading = element("div", "enemy-heading");
-      heading.append(element("strong", undefined, enemy.name), element("span", undefined, `${enemy.hp}/${enemy.maxHp} HP`));
-      card.append(
-        heading,
-        element("p", undefined, `AC ${ac} · Facing ${enemy.facing}`),
-        element(
-          "p",
-          enemy.conditions.length ? "condition-line" : "condition-line empty",
-          enemy.conditions.length ? enemy.conditions.map((condition) => condition.id).join(" · ") : "No conditions",
-        ),
-      );
-      this.enemyList.append(card);
-    }
   }
 
   public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null): void {
     this.selectedDetail.replaceChildren();
     if (!action) {
-      this.selectedDetail.textContent = "카드나 행동을 선택하면 규칙 근거가 표시됩니다.";
+      this.selectedDetail.append(element("p", "detail-hint", DETAIL_HINT));
       return;
     }
     const heading = element("div", "detail-heading");
     heading.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
-    const traits = element("p", "detail-traits", action.traits.join(" · "));
-    const description = element("p", undefined, action.description);
-    this.selectedDetail.append(heading, description, traits);
+    this.selectedDetail.append(
+      heading,
+      element("p", undefined, action.description),
+      element("p", "detail-traits", action.traits.join(" · ")),
+    );
     if (action.sourceLabel) this.selectedDetail.append(element("p", "detail-source", `Source: ${action.sourceLabel}`));
     if (action.reason) this.selectedDetail.append(element("p", "detail-warning", action.reason));
-    if (preview) {
-      const previewGrid = element("dl", "preview-grid");
-      if (preview.hitChance !== undefined) {
-        previewGrid.append(element("dt", undefined, "Hit"), element("dd", undefined, percentage(preview.hitChance)));
-      }
-      if (preview.criticalChance !== undefined) {
-        previewGrid.append(element("dt", undefined, "Critical"), element("dd", undefined, percentage(preview.criticalChance)));
-      }
-      if (preview.damageRange) {
-        previewGrid.append(
-          element("dt", undefined, "Damage"),
-          element("dd", undefined, `${preview.damageRange[0]}–${preview.damageRange[1]}`),
-        );
-      }
-      if (preview.pathCostFeet !== undefined) {
-        previewGrid.append(element("dt", undefined, "Move cost"), element("dd", undefined, `${preview.pathCostFeet}ft`));
-      }
-      this.selectedDetail.append(previewGrid);
-      for (const note of preview.notes) this.selectedDetail.append(element("p", "preview-note", note));
+    if (!preview) return;
+    const previewGrid = element("dl", "preview-grid");
+    if (preview.hitChance !== undefined) {
+      previewGrid.append(element("dt", undefined, "Hit"), element("dd", undefined, percentage(preview.hitChance)));
     }
+    if (preview.criticalChance !== undefined) {
+      previewGrid.append(element("dt", undefined, "Critical"), element("dd", undefined, percentage(preview.criticalChance)));
+    }
+    if (preview.damageRange) {
+      previewGrid.append(
+        element("dt", undefined, "Damage"),
+        element("dd", undefined, `${preview.damageRange[0]}–${preview.damageRange[1]}`),
+      );
+    }
+    if (preview.pathCostFeet !== undefined) {
+      previewGrid.append(element("dt", undefined, "Move cost"), element("dd", undefined, `${preview.pathCostFeet}ft`));
+    }
+    this.selectedDetail.append(previewGrid);
+    for (const note of preview.notes) this.selectedDetail.append(element("p", "preview-note", note));
+  }
+
+  /** Inspector view for an actor the pointer is hovering on the board. */
+  public renderActorDetail(actor: ActorState): void {
+    this.selectedDetail.replaceChildren();
+    const heading = element("div", "detail-heading");
+    heading.append(
+      element("strong", undefined, actor.name),
+      element("span", "cost-badge", actor.team === "heroes" ? "Ally" : "Enemy"),
+    );
+    this.selectedDetail.append(heading, ...this.statBlock(actor, [
+      ["AC", resolveArmorClass(actor, { content: this.content }).value],
+      ["Speed", `${actor.speedFeet}ft`],
+      ["Facing", actor.facing],
+    ]));
+    if (actor.defeated) this.selectedDetail.append(element("p", "detail-warning", "Defeated"));
   }
 
   private renderLog(state: CombatState, history: readonly CombatEvent[]): void {
@@ -435,12 +391,18 @@ export class BattleUi {
     for (const message of messages.slice(-40).reverse()) this.combatLog.append(element("li", undefined, message));
   }
 
-  private renderReaction(state: CombatState): void {
+  private renderReaction(state: CombatState, controlledActorId: string): void {
     const pending = state.pendingReaction;
     this.reactionModal.hidden = !pending;
     if (!pending) return;
     const mover = state.actors[pending.sourceActorId];
-    this.reactionDescription.textContent = `${mover?.name ?? "Enemy"} is starting a Move action inside your front/side reach. Resolve Reactive Strike before movement continues.`;
+    const owner = pending.candidates[0]?.actorId;
+    const actionable = owner === controlledActorId;
+    this.reactionUse.disabled = !actionable;
+    this.reactionPass.disabled = !actionable;
+    this.reactionDescription.textContent = actionable
+      ? `${mover?.name ?? "Enemy"} is starting a Move action inside your front/side reach. Resolve Reactive Strike before movement continues.`
+      : `Waiting for ${actorName(state, owner ?? "another player")} to resolve the head Reaction candidate.`;
   }
 
   private renderResult(state: CombatState): void {

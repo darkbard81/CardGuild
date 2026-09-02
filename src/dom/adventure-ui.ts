@@ -23,7 +23,12 @@ export interface AdventureUiHandlers {
   readonly onStart: () => void;
   readonly onContinue: () => void;
   readonly onChooseReward: (rewardId: string, choiceIndex: number) => void;
+  readonly onOpenLoadout: () => void;
   readonly onRetry: () => void;
+}
+
+export interface AdventureUiAccess {
+  readonly isHost: boolean;
 }
 
 function rewardName(grant: RewardGrant, pack: CompiledContentPack): string {
@@ -44,7 +49,7 @@ export class AdventureUi {
     private readonly handlers: AdventureUiHandlers,
   ) {}
 
-  public render(state: AdventureState): void {
+  public render(state: AdventureState, access: AdventureUiAccess = { isHost: true }): void {
     this.screen.hidden = state.phase === "combat";
     if (state.phase !== "combat") {
       required<HTMLElement>("#reaction-modal").hidden = true;
@@ -65,21 +70,31 @@ export class AdventureUi {
     this.content.replaceChildren();
 
     if (state.phase === "ready") {
+      const actions = element("div", "adventure-actions");
+      actions.append(
+        this.actionButton(access.isHost ? "Begin Adventure" : "Waiting for Host", this.handlers.onStart, access.isHost),
+        this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
+      );
       this.content.append(
-        element("p", "eyebrow", "M2 Linear Adventure"),
+        element("p", "eyebrow", "M3 Loadout Adventure"),
         element("h1", undefined, this.definition.name),
         element("p", "adventure-description", this.definition.description),
-        this.actionButton("Begin Adventure", this.handlers.onStart),
+        actions,
       );
       return;
     }
     if (state.phase === "between-encounters") {
       const scenario = state.currentEncounterId ? this.pack.scenarios[state.currentEncounterId] : undefined;
+      const actions = element("div", "adventure-actions");
+      actions.append(
+        this.actionButton(access.isHost ? "Enter Encounter" : "Waiting for Host", this.handlers.onContinue, access.isHost),
+        this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
+      );
       this.content.append(
         element("p", "eyebrow", "Next Encounter"),
         element("h1", undefined, scenario?.name ?? "Continue"),
         element("p", "adventure-description", scenario?.objective.description ?? "Prepare for battle."),
-        this.actionButton("Enter Encounter", this.handlers.onContinue),
+        actions,
       );
       return;
     }
@@ -94,7 +109,7 @@ export class AdventureUi {
         const button = this.actionButton(rewardName(grant, this.pack), () => {
           const offer = state.pendingReward;
           if (offer) this.handlers.onChooseReward(offer.rewardId, index);
-        });
+        }, access.isHost);
         button.classList.add("reward-choice");
         button.append(element("span", "reward-kind", grant.kind));
         choices.append(button);
@@ -107,7 +122,7 @@ export class AdventureUi {
         element("p", "eyebrow", "Adventure Complete"),
         element("h1", undefined, "Goblin Trouble resolved"),
         element("p", "adventure-description", "세 Encounter와 선택한 보상이 AdventureState에 기록되었습니다."),
-        this.actionButton("Play Again", this.handlers.onRetry),
+        this.actionButton(access.isHost ? "Session Complete" : "Session Complete", this.handlers.onRetry, false),
       );
       return;
     }
@@ -116,7 +131,7 @@ export class AdventureUi {
         element("p", "eyebrow", "Adventure Failed"),
         element("h1", undefined, "The party was defeated"),
         element("p", "adventure-description", "동일한 Adventure seed로 처음부터 다시 도전할 수 있습니다."),
-        this.actionButton("Try Again", this.handlers.onRetry),
+        this.actionButton("Session Failed", this.handlers.onRetry, false),
       );
     }
   }
@@ -131,10 +146,21 @@ export class AdventureUi {
     this.collection.append(element("span", undefined, entries.length ? entries.join(" · ") : "No rewards yet"));
   }
 
-  private actionButton(label: string, onClick: () => void): HTMLButtonElement {
+  private actionButton(label: string, onClick: () => void, enabled = true): HTMLButtonElement {
     const button = element("button", "adventure-action", label);
     button.type = "button";
+    button.disabled = !enabled;
     button.addEventListener("click", onClick);
     return button;
+  }
+
+  private secondaryActionButton(label: string, onClick: () => void): HTMLButtonElement {
+    const button = this.actionButton(label, onClick);
+    button.classList.add("adventure-action-secondary");
+    return button;
+  }
+
+  public setVisible(visible: boolean): void {
+    this.screen.hidden = !visible;
   }
 }

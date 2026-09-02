@@ -1,26 +1,9 @@
 import { createCombat, dispatchCombatCommand } from "./engine";
+import { computeCombatSetupFingerprint, fnv1a64, stableSerialize } from "./determinism";
 import type { CombatDefinition, CombatEvent, CombatReplay, CombatState, ContentIdentity } from "./types";
 
-function canonicalize(value: unknown): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalize).join(",")}]`;
-  const record = value as Readonly<Record<string, unknown>>;
-  return `{${Object.keys(record)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${canonicalize(record[key])}`)
-    .join(",")}}`;
-}
-
 export function hashCombatState(state: CombatState): string {
-  const serialized = canonicalize(state);
-  let hash = 0xcbf2_9ce4_8422_2325n;
-  const prime = 0x0000_0100_0000_01b3n;
-  const mask = 0xffff_ffff_ffff_ffffn;
-  for (let index = 0; index < serialized.length; index += 1) {
-    hash ^= BigInt(serialized.charCodeAt(index));
-    hash = (hash * prime) & mask;
-  }
-  return hash.toString(16).padStart(16, "0");
+  return fnv1a64(stableSerialize(state));
 }
 
 function sameContentIdentity(left: ContentIdentity, right: ContentIdentity): boolean {
@@ -34,6 +17,7 @@ export function createCombatReplay(state: CombatState): CombatReplay {
     scenarioId: state.scenarioId,
     seed: state.seed,
     contentIdentity: { ...state.contentIdentity },
+    setupFingerprint: state.setupFingerprint,
     commands: [...state.commandLog],
   };
 }
@@ -51,6 +35,11 @@ export function replayCombat(
       `(${replay.contentIdentity.fingerprint}), loaded ${definition.contentIdentity.packId}@${definition.contentIdentity.packVersion} ` +
       `(${definition.contentIdentity.fingerprint}).`,
     );
+  }
+
+  const setupFingerprint = computeCombatSetupFingerprint(definition, replay.seed);
+  if (replay.setupFingerprint !== setupFingerprint) {
+    throw new Error(`Replay setup mismatch: expected ${replay.setupFingerprint}, loaded ${setupFingerprint}.`);
   }
 
   const setup = createCombat(definition, replay.seed);

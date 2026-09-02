@@ -1,12 +1,15 @@
 import { Assets, type Spritesheet, type Texture } from "pixi.js";
 
-import manifestJson from "../../presentation/m2/asset-manifest.json";
-import tilemapsJson from "../../presentation/m2/tilemaps.json";
+import atlasMapJson from "../../presentation/m3/atlas-map.json";
+import manifestJson from "../../presentation/m3/asset-manifest.json";
+import tilemapsJson from "../../presentation/m3/tilemaps.json";
 import type {
   ActorVisualDefinition,
+  DomAtlasStyle,
   PresentationAssetDefinition,
   PresentationAssetId,
   PresentationAssetManifest,
+  PresentationAtlasMap,
   PresentationTilemap,
   PresentationTilemapPack,
 } from "./presentation-types";
@@ -19,6 +22,7 @@ export class AssetCatalog {
   public constructor(
     public readonly manifest: PresentationAssetManifest,
     public readonly tilemaps: PresentationTilemapPack,
+    private readonly atlasMap: PresentationAtlasMap,
   ) {
     validatePresentationTilemaps(tilemaps, manifest);
   }
@@ -71,6 +75,43 @@ export class AssetCatalog {
     return tilemap;
   }
 
+  public equipmentVisual(equipmentId: string): PresentationAssetId | null {
+    return this.manifest.equipmentVisuals[equipmentId] ?? null;
+  }
+
+  public cardVisual(cardDefinitionId: string): PresentationAssetId | null {
+    return this.manifest.cardVisuals[cardDefinitionId] ?? null;
+  }
+
+  public domAtlasStyle(id: PresentationAssetId, size: number): DomAtlasStyle {
+    const frame = this.atlasMap.frames[id]?.frame;
+    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
+    if (!Number.isFinite(size) || size <= 0) throw new Error("DOM atlas size must be positive.");
+    const scaleX = size / frame.w;
+    const scaleY = size / frame.h;
+    return {
+      backgroundImage: `url("${this.manifest.atlas.imagePath}")`,
+      backgroundPosition: `${-frame.x * scaleX}px ${-frame.y * scaleY}px`,
+      backgroundSize: `${this.manifest.atlas.width * scaleX}px ${this.manifest.atlas.height * scaleY}px`,
+      width: `${size}px`,
+      height: `${size}px`,
+    };
+  }
+
+  public domAtlasPortraitStyle(id: PresentationAssetId, height: number): DomAtlasStyle {
+    const frame = this.atlasMap.frames[id]?.frame;
+    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
+    if (!Number.isFinite(height) || height <= 0) throw new Error("DOM atlas height must be positive.");
+    const scale = height / frame.h;
+    return {
+      backgroundImage: `url("${this.manifest.atlas.imagePath}")`,
+      backgroundPosition: `${-frame.x * scale}px ${-frame.y * scale}px`,
+      backgroundSize: `${this.manifest.atlas.width * scale}px ${this.manifest.atlas.height * scale}px`,
+      width: `${frame.w * scale}px`,
+      height: `${height}px`,
+    };
+  }
+
   public async unload(): Promise<void> {
     if (!this.initialized) return;
     this.textures.clear();
@@ -89,5 +130,6 @@ export function createPresentationCatalog(): AssetCatalog {
   return new AssetCatalog(
     manifestJson as unknown as PresentationAssetManifest,
     tilemapsJson as unknown as PresentationTilemapPack,
+    atlasMapJson as unknown as PresentationAtlasMap,
   );
 }

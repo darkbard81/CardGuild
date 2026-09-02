@@ -1,25 +1,25 @@
-import type { AdventureDefinition, RewardGrant } from "../content/content-types";
+import type { RewardGrant } from "../content/content-types";
+import { clonePartyLoadout, createStartingCollection, validatePartyLoadout } from "../loadout";
 import type {
   AdventureCommand,
   AdventureDispatchResult,
   AdventureEvent,
+  AdventureRuntimeContext,
   AdventureState,
   CollectionState,
   PartyState,
   RewardOffer,
 } from "./types";
 
-const EMPTY_COLLECTION: CollectionState = { equipment: {}, cards: {} };
-
 function reject(state: AdventureState, error: string): AdventureDispatchResult {
   return { accepted: false, state, events: [], error };
 }
 
-function nextEncounterId(definition: AdventureDefinition, state: AdventureState): string | null {
+function nextEncounterId(definition: AdventureRuntimeContext["definition"], state: AdventureState): string | null {
   return definition.encounterIds.find((id) => !state.completedEncounterIds.includes(id)) ?? null;
 }
 
-function rewardAfter(definition: AdventureDefinition, encounterId: string): RewardOffer | null {
+function rewardAfter(definition: AdventureRuntimeContext["definition"], encounterId: string): RewardOffer | null {
   const reward = definition.rewards.find((candidate) => candidate.afterEncounterId === encounterId);
   return reward
     ? { rewardId: reward.id, encounterId: reward.afterEncounterId, choices: reward.choices.map((choice) => ({ ...choice })) }
@@ -50,25 +50,40 @@ export function deriveCombatSeed(adventureSeed: number, encounterId: string): nu
 }
 
 export function createAdventureSession(
-  definition: AdventureDefinition,
+  context: AdventureRuntimeContext,
   party: PartyState,
   adventureSeed: number,
 ): AdventureState {
   if (!Number.isInteger(adventureSeed)) throw new Error("Adventure seed must be an integer.");
+  const roster = Object.values(party.members);
+  const { min, max } = context.definition.partySize;
+  if (roster.length < min || roster.length > max) {
+    throw new Error(`Adventure requires ${min}-${max} party members, received ${roster.length}.`);
+  }
+  const seats = new Set(roster.map((member) => member.seat));
+  if (seats.size !== roster.length) throw new Error("Party member seats must be unique.");
+  const clonedParty: PartyState = {
+    members: Object.fromEntries(
+      roster
+        .sort((left, right) => left.seat - right.seat || left.id.localeCompare(right.id))
+        .map((member) => {
+          const definition = context.actorDefinitions[member.actorDefinitionId];
+          if (!definition) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
+          return [member.id, { ...member, loadout: clonePartyLoadout(definition.starterLoadout) }];
+        }),
+    ),
+  };
+  const collection = createStartingCollection(clonedParty, context);
+  const validation = validatePartyLoadout(clonedParty, collection, context);
+  if (!validation.valid) throw new Error(`Invalid starting loadout: ${validation.issues[0]?.message ?? "unknown error"}`);
   return {
-    version: 1,
-    adventureId: definition.id,
+    version: 2,
+    adventureId: context.definition.id,
     phase: "ready",
     currentEncounterId: null,
     completedEncounterIds: [],
-    party: {
-      members: Object.fromEntries(
-        Object.values(party.members)
-          .sort((left, right) => left.id.localeCompare(right.id))
-          .map((member) => [member.id, { ...member, equipmentIds: [...member.equipmentIds] }]),
-      ),
-    },
-    collection: EMPTY_COLLECTION,
+    party: clonedParty,
+    collection,
     pendingReward: null,
     adventureSeed,
   };
@@ -89,8 +104,9 @@ function startEncounter(state: AdventureState): AdventureDispatchResult {
 export function dispatchAdventureCommand(
   state: AdventureState,
   command: AdventureCommand,
-  definition: AdventureDefinition,
+  context: AdventureRuntimeContext,
 ): AdventureDispatchResult {
+  const definition = context.definition;
   if (state.adventureId !== definition.id) return reject(state, "Adventure definition does not match state.");
 
   switch (command.type) {
@@ -167,6 +183,28 @@ export function dispatchAdventureCommand(
         accepted: true,
         state: { ...state, phase: "between-encounters", currentEncounterId, pendingReward: null, collection },
         events: [event],
+      };
+    }
+    case "set-member-loadout": {
+      if (state.phase !== "ready" && state.phase !== "between-encounters") {
+        return reject(state, "Loadout can only change while ready or between encounters.");
+      }
+      const member = state.party.members[command.memberId];
+      if (!member) return reject(state, `Party member "${command.memberId}" is missing.`);
+      const candidate: PartyState = {
+        members: {
+          ...state.party.members,
+          [member.id]: { ...member, loadout: clonePartyLoadout(command.loadout) },
+        },
+      };
+      const validation = validatePartyLoadout(candidate, state.collection, context);
+      if (!validation.valid) return reject(state, validation.issues[0]?.message ?? "Loadout is invalid.");
+      const previous = clonePartyLoadout(member.loadout);
+      const next = clonePartyLoadout(command.loadout);
+      return {
+        accepted: true,
+        state: { ...state, party: candidate },
+        events: [{ type: "LOADOUT_CHANGED", memberId: member.id, previous, next }],
       };
     }
   }

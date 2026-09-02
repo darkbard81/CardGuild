@@ -1,0 +1,342 @@
+{
+  "version": 4,
+  "bundle": "m3-encounter",
+  "atlas": {
+    "path": "/assets/m3-atlas.json",
+    "imagePath": "/assets/m3-atlas.webp",
+    "width": 2048,
+    "height": 2048
+  },
+  "assets": {
+    "terrain.stone-floor": {
+      "frame": "terrain.stone-floor",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.rubble": {
+      "frame": "terrain.rubble",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.chasm": {
+      "frame": "terrain.chasm",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "transition.web": {
+      "frame": "transition.web",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "object.wall": {
+      "frame": "object.wall",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 108
+    },
+    "object.crate": {
+      "frame": "object.crate",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 92
+    },
+    "object.lever": {
+      "frame": "object.lever",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 88
+    },
+    "object.gate.closed": {
+      "frame": "object.gate.closed",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 156
+    },
+    "object.gate.open": {
+      "frame": "object.gate.open",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 156
+    },
+    "actor.hero.aerin.front": {
+      "frame": "actor.hero.aerin.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152
+    },
+    "actor.hero.aerin.back": {
+      "frame": "actor.hero.aerin.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152
+    },
+    "actor.hero.lyra.front": {
+      "frame": "actor.hero.lyra.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 148
+    },
+    "actor.hero.lyra.back": {
+      "frame": "actor.hero.lyra.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 148
+    },
+    "actor.hero.brom.front": {
+      "frame": "actor.hero.brom.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 158
+    },
+    "actor.hero.brom.back": {
+      "frame": "actor.hero.brom.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 158
+    },
+    "actor.goblin-skirmisher.front": {
+      "frame": "actor.goblin-skirmisher.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.goblin-skirmisher.back": {
+      "frame": "actor.goblin-skirmisher.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.goblin-brute.front": {
+      "frame": "actor.goblin-brute.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152
+    },
+    "actor.goblin-brute.back": {
+      "frame": "actor.goblin-brute.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152
+    },
+    "actor.goblin-chief.front": {
+      "frame": "actor.goblin-chief.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 164
+    },
+    "actor.goblin-chief.back": {
+      "frame": "actor.goblin-chief.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 164
+    },
+    "ui.equipment.halberd": {
+      "frame": "ui.equipment.halberd",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.shield": {
+      "frame": "ui.equipment.shield",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.boots-of-fly": {
+      "frame": "ui.equipment.boots-of-fly",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.trip": {
+      "frame": "ui.card.trip",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.fly": {
+      "frame": "ui.card.fly",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.spirit-beacon": {
+      "frame": "ui.card.spirit-beacon",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.reactive-strike": {
+      "frame": "ui.card.reactive-strike",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    }
+  },
+  "actorVisuals": {
+    "hero.aerin": {
+      "front": "actor.hero.aerin.front",
+      "back": "actor.hero.aerin.back"
+    },
+    "hero.lyra": {
+      "front": "actor.hero.lyra.front",
+      "back": "actor.hero.lyra.back"
+    },
+    "hero.brom": {
+      "front": "actor.hero.brom.front",
+      "back": "actor.hero.brom.back"
+    },
+    "enemy.goblin-skirmisher": {
+      "front": "actor.goblin-skirmisher.front",
+      "back": "actor.goblin-skirmisher.back"
+    },
+    "enemy.goblin-brute": {
+      "front": "actor.goblin-brute.front",
+      "back": "actor.goblin-brute.back"
+    },
+    "enemy.goblin-chief": {
+      "front": "actor.goblin-chief.front",
+      "back": "actor.goblin-chief.back"
+    }
+  },
+  "terrainVisuals": {
+    "open": "terrain.stone-floor",
+    "difficult": "terrain.rubble",
+    "impassable": "terrain.chasm",
+    "web": "transition.web",
+    "blocked": "object.wall"
+  },
+  "objectVisuals": {
+    "wall": "object.wall",
+    "crate": "object.crate",
+    "lever": "object.lever",
+    "gateClosed": "object.gate.closed",
+    "gateOpen": "object.gate.open"
+  },
+  "equipmentVisuals": {
+    "halberd": "ui.equipment.halberd",
+    "shield": "ui.equipment.shield",
+    "boots-of-fly": "ui.equipment.boots-of-fly"
+  },
+  "cardVisuals": {
+    "card.trip": "ui.card.trip",
+    "card.fly": "ui.card.fly",
+    "card.spirit-beacon": "ui.card.spirit-beacon",
+    "card.reactive-strike": "ui.card.reactive-strike"
+  }
+}

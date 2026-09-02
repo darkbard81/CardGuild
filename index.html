@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
       content="CardGuild deterministic PF2e tactical combat vertical slice"
@@ -14,9 +14,12 @@
       id="app"
       class="app-shell"
       data-ready="false"
+      data-screen="session"
       data-outcome="ongoing"
       data-state-hash=""
     >
+      <section id="session-screen" class="session-screen" aria-labelledby="session-title"></section>
+
       <section id="adventure-screen" class="adventure-screen" aria-labelledby="adventure-title">
         <div class="adventure-map-card">
           <p class="eyebrow">PF2e Tactical Adventure</p>
@@ -27,6 +30,8 @@
         <article id="adventure-content" class="adventure-content"></article>
       </section>
 
+      <section id="loadout-screen" class="loadout-screen" aria-label="Character Loadout Builder" hidden></section>
+
       <section class="combat-stage combat-only" aria-label="Tactical combat">
         <div
           id="pixi-root"
@@ -34,96 +39,56 @@
           data-ready="false"
           aria-label="CardGuild top-down perspective tactical battlefield"
         ></div>
+        <div id="ring-root" class="ring-root" hidden></div>
+        <span id="pixi-status" class="sr-only" role="status" aria-live="polite">Starting…</span>
+
         <div class="combat-hud">
-      <header class="topbar">
-        <div class="brand-block">
-          <p class="eyebrow">PF2e Tactical Adventure</p>
-          <h1>CardGuild</h1>
-        </div>
-        <div class="objective-block">
-          <span>Objective</span>
-          <strong id="objective-text">Loading encounter…</strong>
-        </div>
-        <div class="round-block">
-          <span>Round</span>
-          <strong id="round-value">1</strong>
-        </div>
-        <ol id="initiative-list" class="initiative-list" aria-label="Initiative order"></ol>
-      </header>
-
-      <section class="battle-layout">
-        <aside class="side-panel hero-panel" aria-labelledby="hero-heading">
-          <div class="panel-heading">
-            <p class="eyebrow">Active hero</p>
-            <h2 id="hero-heading">Aerin</h2>
-          </div>
-          <div id="hero-stats" class="actor-stats"></div>
-          <section class="action-economy" aria-label="Actions remaining">
-            <span>Actions</span>
-            <div id="action-pips" class="action-pips"></div>
-          </section>
-          <section>
-            <h3>Basic</h3>
-            <div id="basic-actions" class="action-grid"></div>
-          </section>
-          <section>
-            <h3>Context</h3>
-            <div id="context-actions" class="action-grid context-grid"></div>
-          </section>
-          <button id="end-turn" class="end-turn-button" type="button">End Turn</button>
-        </aside>
-
-        <section class="board-panel" aria-labelledby="battlefield-title">
-          <div class="board-header">
-            <div>
-              <p id="encounter-label" class="eyebrow">M2 Encounter</p>
-              <h2 id="battlefield-title">The Webbed Gatehouse</h2>
+          <section class="hud-card hero-card" data-hud-gutter="left" aria-labelledby="hero-heading">
+            <div class="hero-id">
+              <h2 id="hero-heading">Aerin</h2>
+              <div id="action-pips" class="action-pips" aria-label="Actions remaining"></div>
             </div>
-            <div class="runtime-chip">
-              <span class="status-dot" aria-hidden="true"></span>
-              <span id="pixi-status" role="status" aria-live="polite">Starting…</span>
+            <div id="hero-stats" class="actor-stats"></div>
+          </section>
+
+          <div class="hud-status" data-hud-gutter="top">
+            <p class="hud-card objective-card">
+              <span class="hud-label">Objective</span>
+              <strong id="objective-text">Loading encounter…</strong>
+            </p>
+            <div class="hud-card initiative-card">
+              <p class="round-chip">
+                <span class="hud-label">Round</span>
+                <strong id="round-value">1</strong>
+              </p>
+              <ol id="initiative-list" class="initiative-list" aria-label="Initiative order"></ol>
             </div>
           </div>
-          <div class="board-interaction-window" aria-hidden="true"></div>
-          <p id="board-prompt" class="board-prompt" aria-live="polite">
-            행동을 선택하세요.
-          </p>
-        </section>
 
-        <aside class="side-panel detail-panel" aria-label="Combat details">
-          <section>
-            <h2>Opponents</h2>
-            <div id="enemy-list" class="enemy-list"></div>
-          </section>
-          <section class="selection-panel">
-            <h2>Action Detail</h2>
-            <div id="selected-detail" class="selected-detail">
-              카드나 행동을 선택하면 규칙 근거가 표시됩니다.
-            </div>
-          </section>
-          <section class="log-panel">
-            <div class="log-heading">
-              <h2>Combat Log</h2>
-              <span id="state-hash-short" title="Deterministic state hash"></span>
-            </div>
-            <ol id="combat-log" class="combat-log" aria-live="polite"></ol>
-          </section>
-        </aside>
-      </section>
+          <aside class="hud-side" data-hud-gutter="right" aria-label="Combat details">
+            <section class="hud-card inspector">
+              <h2 class="hud-label">Detail</h2>
+              <div id="selected-detail" class="selected-detail"></div>
+            </section>
+            <section class="hud-card log-panel">
+              <h2 class="hud-label">Combat Log</h2>
+              <ol id="combat-log" class="combat-log" aria-live="polite"></ol>
+            </section>
+          </aside>
 
-      <footer class="hand-dock">
-        <div class="hand-heading">
-          <div>
-            <p class="eyebrow">Tactical deck</p>
-            <h2>Your Hand <span id="hand-count">0</span></h2>
-          </div>
-          <div class="pile-counts">
-            <span>Deck <strong id="deck-count">0</strong></span>
-            <span>Discard <strong id="discard-count">0</strong></span>
-          </div>
-        </div>
-        <div id="hand-cards" class="hand-cards"></div>
-      </footer>
+          <p id="board-prompt" class="board-prompt" data-hud-gutter="bottom" aria-live="polite">행동을 선택하세요.</p>
+
+          <footer class="hand-dock" data-hud-gutter="bottom">
+            <div id="hand-cards" class="hand-cards"></div>
+            <div class="hand-side">
+              <p class="pile-counts">
+                <span>Hand <strong id="hand-count">0</strong></span>
+                <span>Deck <strong id="deck-count">0</strong></span>
+                <span>Discard <strong id="discard-count">0</strong></span>
+              </p>
+              <button id="end-turn" class="end-turn-button" type="button">End Turn</button>
+            </div>
+          </footer>
         </div>
       </section>
 

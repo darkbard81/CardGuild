@@ -104,13 +104,13 @@ export class BoardProjection {
     ];
   }
 
-  public getDepth(row: number): number {
-    return Math.max(0, Math.min(1, row / this.rows));
-  }
-
-  public getDepthScale(row: number): number {
-    const depth = this.getDepth(row);
-    return this.config.farDepthScale + (this.config.nearDepthScale - this.config.farDepthScale) * depth;
+  /**
+   * Scale for content standing on `row`: the projected cell width over the width the
+   * art was authored for. Perspective foreshortening and camera zoom are already in
+   * the projected width, so board content never needs a separate depth factor.
+   */
+  public getCellScale(row: number): number {
+    return this.getProjectedCellWidth(row) / this.config.referenceCellWidth;
   }
 
   public getProjectedCellWidth(row: number): number {

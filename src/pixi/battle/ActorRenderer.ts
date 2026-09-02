@@ -7,7 +7,7 @@ import type { BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 import type { SortableVisual } from "./TerrainRenderer";
 
-function actorVisual(catalog: AssetCatalog, actor: ActorState): Container {
+function actorVisual(catalog: AssetCatalog, actor: ActorState): { display: Container; badge: Container } {
   const display = new Container({ label: actor.id });
   const assetId = facingAsset(catalog.actorVisual(actor.definitionId), actor.facing);
   const asset = catalog.asset(assetId);
@@ -32,7 +32,7 @@ function actorVisual(catalog: AssetCatalog, actor: ActorState): Container {
   hp.eventMode = "none";
   display.alpha = actor.defeated ? 0.5 : 1;
   display.addChild(sprite, hp);
-  return display;
+  return { display, badge: hp };
 }
 
 export class ActorRenderer {
@@ -42,12 +42,16 @@ export class ActorRenderer {
   ) {}
 
   public render(state: CombatState): readonly SortableVisual[] {
-    return Object.values(state.actors).map((actor) => ({
-      display: actorVisual(this.catalog, actor),
-      position: actor.position,
-      footRowOffset: this.config.actorFootRowOffset,
-      layerPriority: 30,
-      stableId: actor.id,
-    }));
+    return Object.values(state.actors).map((actor) => {
+      const visual = actorVisual(this.catalog, actor);
+      return {
+        display: visual.display,
+        screenSpace: visual.badge,
+        position: actor.position,
+        footRowOffset: this.config.actorFootRowOffset,
+        layerPriority: 30,
+        stableId: actor.id,
+      };
+    });
   }
 }

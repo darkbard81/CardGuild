@@ -1,4 +1,5 @@
 import type { ContentPackSource } from "./content-types";
+import { fingerprintValue, stableSerialize } from "../game/determinism";
 
 function byId<T extends { readonly id: string }>(values: readonly T[]): readonly T[] {
   return [...values].sort((left, right) => left.id.localeCompare(right.id));
@@ -16,6 +17,7 @@ export function normalizeContentPack(source: ContentPackSource): ContentPackSour
     scenarios: byId(source.scenarios).map((scenario) => ({
       ...scenario,
       placements: [...scenario.placements].sort((left, right) => left.instanceId.localeCompare(right.instanceId)),
+      partySpawnSlots: [...scenario.partySpawnSlots].sort((left, right) => left.seat - right.seat),
       map: {
         ...scenario.map,
         tiles: [...scenario.map.tiles].sort(
@@ -35,25 +37,8 @@ export function normalizeContentPack(source: ContentPackSource): ContentPackSour
   };
 }
 
-export function stableSerialize(value: unknown): string {
-  if (value === null || typeof value !== "object") return JSON.stringify(value) ?? "null";
-  if (Array.isArray(value)) return `[${value.map(stableSerialize).join(",")}]`;
-  const record = value as Readonly<Record<string, unknown>>;
-  return `{${Object.keys(record)
-    .filter((key) => record[key] !== undefined)
-    .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableSerialize(record[key])}`)
-    .join(",")}}`;
+export function fingerprintContentPack(source: ContentPackSource): string {
+  return fingerprintValue(normalizeContentPack(source));
 }
 
-export function fingerprintContentPack(source: ContentPackSource): string {
-  const serialized = stableSerialize(normalizeContentPack(source));
-  let hash = 0xcbf2_9ce4_8422_2325n;
-  const prime = 0x0000_0100_0000_01b3n;
-  const mask = 0xffff_ffff_ffff_ffffn;
-  for (let index = 0; index < serialized.length; index += 1) {
-    hash ^= BigInt(serialized.charCodeAt(index));
-    hash = (hash * prime) & mask;
-  }
-  return `fnv1a64:${hash.toString(16).padStart(16, "0")}`;
-}
+export { stableSerialize };

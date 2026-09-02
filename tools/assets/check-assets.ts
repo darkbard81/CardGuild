@@ -19,9 +19,20 @@ interface AssetEntry {
 
 interface AssetManifest {
   readonly version: number;
-  readonly atlas: { readonly path: string };
+  readonly atlas: {
+    readonly path: string;
+    readonly imagePath: string;
+    readonly width: number;
+    readonly height: number;
+  };
   readonly assets: Readonly<Record<string, AssetEntry>>;
   readonly actorVisuals: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  readonly equipmentVisuals: Readonly<Record<string, string>>;
+  readonly cardVisuals: Readonly<Record<string, string>>;
+}
+
+interface ContentDefinition {
+  readonly id: string;
 }
 
 interface AtlasFrame {
@@ -89,7 +100,7 @@ async function assertCleanAlpha(id: string, filePath: string, kind: AssetEntry["
     (info.height - 1) * info.width * 4 + 3,
     (info.height * info.width - 1) * 4 + 3,
   ];
-  if ((kind === "actor" || kind === "object") && cornerOffsets.some((offset) => (data[offset] ?? 255) !== 0)) {
+  if ((kind === "actor" || kind === "object" || kind === "ui") && cornerOffsets.some((offset) => (data[offset] ?? 255) !== 0)) {
     throw new Error(`Processed asset "${id}" has background pixels in a canvas corner.`);
   }
   let visible = 0;
@@ -110,6 +121,27 @@ async function assertCleanAlpha(id: string, filePath: string, kind: AssetEntry["
   }
   if (kind === "object" && ![256, 384].includes(metadata.width)) {
     throw new Error(`Processed object "${id}" has the wrong normalized canvas.`);
+  }
+  if (kind === "ui" && (metadata.width !== 256 || metadata.height !== 256)) {
+    throw new Error(`Processed UI icon "${id}" must use a 256x256 canvas.`);
+  }
+}
+
+function assertVisualMap(
+  label: string,
+  definitions: readonly ContentDefinition[],
+  visuals: Readonly<Record<string, string>>,
+  manifest: AssetManifest,
+): void {
+  const expected = definitions.map((definition) => definition.id).sort();
+  const actual = Object.keys(visuals).sort();
+  if (JSON.stringify(actual) !== JSON.stringify(expected)) {
+    throw new Error(`${label} visual IDs must match M3 content definitions exactly.`);
+  }
+  for (const [definitionId, assetId] of Object.entries(visuals)) {
+    if (manifest.assets[assetId]?.kind !== "ui") {
+      throw new Error(`${label} visual "${definitionId}" references missing UI asset "${assetId}".`);
+    }
   }
 }
 
@@ -142,12 +174,16 @@ function assertTilemapPack(pack: TilemapPack, manifest: AssetManifest): void {
 
 async function main(): Promise<void> {
   const root = process.cwd();
-  const presentationRoot = path.join(root, "presentation", "m2");
+  const presentationRoot = path.join(root, "presentation", "m3");
   const manifest = await readJson<AssetManifest>(path.join(presentationRoot, "asset-manifest.json"));
   const sources = await readJson<Readonly<Record<string, string>>>(path.join(presentationRoot, "asset-sources.json"));
   const tilemaps = await readJson<TilemapPack>(path.join(presentationRoot, "tilemaps.json"));
-  if (manifest.version !== 3) throw new Error("Presentation asset manifest version must be 3.");
-  if (manifest.atlas.path !== "/assets/m2-atlas.json") throw new Error("Presentation atlas path is not canonical.");
+  const equipment = await readJson<readonly ContentDefinition[]>(path.join(root, "content", "m3", "equipment.json"));
+  const cards = await readJson<readonly ContentDefinition[]>(path.join(root, "content", "m3", "cards.json"));
+  if (manifest.version !== 4) throw new Error("Presentation asset manifest version must be 4.");
+  if (manifest.atlas.path !== "/assets/m3-atlas.json" || manifest.atlas.imagePath !== "/assets/m3-atlas.webp") {
+    throw new Error("Presentation atlas paths are not canonical.");
+  }
 
   const atlasDataPath = path.join(root, "public", manifest.atlas.path.slice(1));
   const atlas = await readJson<AtlasData>(atlasDataPath);
@@ -162,6 +198,9 @@ async function main(): Promise<void> {
   }
   if (atlas.meta.size.w !== atlasMetadata.width || atlas.meta.size.h !== atlasMetadata.height || atlas.meta.scale !== "1") {
     throw new Error("Runtime atlas metadata does not match its image.");
+  }
+  if (manifest.atlas.width !== atlasMetadata.width || manifest.atlas.height !== atlasMetadata.height) {
+    throw new Error("Presentation manifest atlas dimensions do not match its image.");
   }
 
   const ids = Object.keys(manifest.assets).sort();
@@ -198,6 +237,8 @@ async function main(): Promise<void> {
       }
     }
   }
+  assertVisualMap("Equipment", equipment, manifest.equipmentVisuals, manifest);
+  assertVisualMap("Card", cards, manifest.cardVisuals, manifest);
   assertTilemapPack(tilemaps, manifest);
   process.stdout.write(`Assets OK: ${ids.length} atlas frames, ${Object.keys(manifest.actorVisuals).length} two-sided actors, ${Object.keys(tilemaps.maps).length} layered tilemaps\n`);
 }

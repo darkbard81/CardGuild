@@ -1,6 +1,7 @@
 import type {
   ActionDefinition,
   ActionId,
+  ActorStatProfile,
   ActorDefinitionId,
   BattleMapState,
   CardDefinition,
@@ -12,6 +13,7 @@ import type {
   Direction,
   EquipmentDefinition,
   EquipmentId,
+  EquipmentSlotId,
   MapObjectState,
   ObjectiveDefinition,
   ScenarioDefinition,
@@ -20,11 +22,10 @@ import type {
   TileState,
   TraitDefinition,
   TraitInstance,
-  WeaponProfile,
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: 8;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -33,19 +34,23 @@ export interface ContentPackManifest {
 export interface ActorDefinition {
   readonly id: ActorDefinitionId;
   readonly name: string;
-  readonly hp: number;
-  readonly maxHp: number;
-  readonly baseAc: number;
-  readonly reflexModifier: number;
-  readonly athleticsModifier: number;
-  readonly initiativeModifier: number;
+  readonly statProfile: ActorStatProfile;
   readonly speedFeet: number;
-  readonly fallbackWeapon: WeaponProfile;
   readonly traits: readonly TraitInstance[];
-  readonly equipmentIds: readonly EquipmentId[];
+  readonly loadoutProfile: LoadoutProfile;
+  readonly starterLoadout: StarterLoadout;
   readonly innateActionIds: readonly ActionId[];
   readonly baseCardGrants: readonly CardGrant[];
   readonly initialConditions?: readonly ConditionInstance[];
+}
+
+export interface LoadoutProfile {
+  readonly preparedCardCapacity: number;
+}
+
+export interface StarterLoadout {
+  readonly equipment: Readonly<Partial<Record<EquipmentSlotId, EquipmentId>>>;
+  readonly preparedCards: readonly CardDefinitionId[];
 }
 
 export interface EncounterActorPlacement {
@@ -54,7 +59,12 @@ export interface EncounterActorPlacement {
   readonly team: TeamId;
   readonly position: { readonly x: number; readonly y: number };
   readonly facing: Direction;
-  readonly partyMemberId?: string;
+}
+
+export interface PartySpawnSlot {
+  readonly seat: 1 | 2 | 3;
+  readonly position: { readonly x: number; readonly y: number };
+  readonly facing: Direction;
 }
 
 export interface BattleMapSource {
@@ -69,6 +79,7 @@ export interface ScenarioSource {
   readonly name: string;
   readonly objective: ObjectiveDefinition;
   readonly placements: readonly EncounterActorPlacement[];
+  readonly partySpawnSlots: readonly PartySpawnSlot[];
   readonly map: BattleMapSource;
 }
 
@@ -86,6 +97,10 @@ export interface AdventureDefinition {
   readonly id: string;
   readonly name: string;
   readonly description: string;
+  readonly partySize: {
+    readonly min: 1 | 2 | 3;
+    readonly max: 1 | 2 | 3;
+  };
   readonly encounterIds: readonly ScenarioId[];
   readonly rewards: readonly AdventureRewardDefinition[];
 }

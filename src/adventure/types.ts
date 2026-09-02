@@ -1,5 +1,6 @@
-import type { RewardGrant } from "../content/content-types";
-import type { ActorDefinitionId, EquipmentId, ScenarioId } from "../game/types";
+import type { ActorDefinition, AdventureDefinition, RewardGrant } from "../content/content-types";
+import type { ActorDefinitionId, CombatContent, ScenarioId } from "../game/types";
+import type { LoadoutCollection, LoadoutParty, LoadoutPartyMember, PartyMemberLoadout } from "../loadout";
 
 export type AdventurePhase =
   | "ready"
@@ -9,19 +10,26 @@ export type AdventurePhase =
   | "complete"
   | "failed";
 
-export interface PartyMemberState {
+export interface PartyMemberState extends LoadoutPartyMember {
   readonly id: string;
+  readonly seat: 1 | 2 | 3;
   readonly actorDefinitionId: ActorDefinitionId;
-  readonly equipmentIds: readonly EquipmentId[];
+  readonly loadout: PartyMemberLoadout;
 }
 
-export interface PartyState {
+export interface PartyState extends LoadoutParty {
   readonly members: Readonly<Record<string, PartyMemberState>>;
 }
 
-export interface CollectionState {
+export interface CollectionState extends LoadoutCollection {
   readonly equipment: Readonly<Record<string, number>>;
   readonly cards: Readonly<Record<string, number>>;
+}
+
+export interface AdventureRuntimeContext {
+  readonly definition: AdventureDefinition;
+  readonly actorDefinitions: Readonly<Record<ActorDefinitionId, ActorDefinition>>;
+  readonly combatContent: CombatContent;
 }
 
 export interface RewardOffer {
@@ -31,7 +39,7 @@ export interface RewardOffer {
 }
 
 export interface AdventureState {
-  readonly version: 1;
+  readonly version: 2;
   readonly adventureId: string;
   readonly phase: AdventurePhase;
   readonly currentEncounterId: ScenarioId | null;
@@ -54,7 +62,12 @@ export type AdventureCommand =
   | { readonly type: "start-encounter" }
   | { readonly type: "continue-adventure" }
   | { readonly type: "accept-combat-result"; readonly result: EncounterResult }
-  | { readonly type: "choose-reward"; readonly rewardId: string; readonly choiceIndex: number };
+  | { readonly type: "choose-reward"; readonly rewardId: string; readonly choiceIndex: number }
+  | {
+      readonly type: "set-member-loadout";
+      readonly memberId: string;
+      readonly loadout: PartyMemberLoadout;
+    };
 
 export type AdventureEvent =
   | { readonly type: "ADVENTURE_STARTED"; readonly adventureId: string }
@@ -62,6 +75,12 @@ export type AdventureEvent =
   | { readonly type: "ENCOUNTER_COMPLETED"; readonly encounterId: ScenarioId }
   | { readonly type: "REWARD_OFFERED"; readonly offer: RewardOffer }
   | { readonly type: "REWARD_GRANTED"; readonly rewardId: string; readonly grant: RewardGrant }
+  | {
+      readonly type: "LOADOUT_CHANGED";
+      readonly memberId: string;
+      readonly previous: PartyMemberLoadout;
+      readonly next: PartyMemberLoadout;
+    }
   | { readonly type: "ADVENTURE_COMPLETED"; readonly adventureId: string }
   | { readonly type: "ADVENTURE_FAILED"; readonly encounterId: ScenarioId };
 

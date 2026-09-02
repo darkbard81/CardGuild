@@ -1,0 +1,34 @@
+[
+  {
+    "id": "halberd",
+    "name": "Halberd",
+    "slot": "weapon",
+    "traits": [{ "id": "weapon" }, { "id": "trip" }, { "id": "reach" }],
+    "statModifiers": [],
+    "weaponProfile": {
+      "name": "Halberd",
+      "category": "martial",
+      "attackMode": "melee",
+      "rangeFeet": 10,
+      "damage": { "count": 1, "sides": 10, "damageType": "slashing" },
+      "traits": []
+    }
+  },
+  {
+    "id": "shield",
+    "name": "Steel Shield",
+    "slot": "shield",
+    "traits": [{ "id": "shield" }],
+    "statModifiers": [],
+    "shieldBonus": 2
+  },
+  {
+    "id": "boots-of-fly",
+    "name": "Boots of Fly",
+    "slot": "feet",
+    "traits": [{ "id": "fly" }],
+    "statModifiers": [
+      { "selector": { "kind": "save", "id": "reflex" }, "type": "item", "value": 1, "label": "Boots of Fly" }
+    ]
+  }
+]

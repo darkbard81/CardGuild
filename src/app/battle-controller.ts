@@ -1,19 +1,12 @@
 import {
-  chooseAiCommand,
-  createCombat,
-  dispatchCombatCommand,
   hashCombatState,
+  listLegalActions,
   listLegalTargets,
   previewAction,
 } from "../game";
-import {
-  M0_COMBAT_DEFINITION,
-  M0_DEFAULT_SEED,
-} from "../content/load-m0-content";
 import type {
   ActionPreview,
   ActionTarget,
-  CombatCommand,
   CombatDefinition,
   CombatEvent,
   CombatState,
@@ -22,21 +15,49 @@ import type {
   LegalAction,
   LegalTarget,
 } from "../game";
-import { BattleUi } from "../dom/battle-ui";
+import type { SessionIntent } from "../session";
+import {
+  hoveredRingEntry,
+  IDLE_INTERACTION,
+  interactionAction,
+  type Interaction,
+  type RingEntry,
+} from "./battle-interaction";
+import { actionCost, BattleUi } from "../dom/battle-ui";
+import { measureHudSafeArea } from "../dom/hud-safe-area";
+import { RingMenu, type RingMenuOption } from "../dom/ring-menu";
 import type { AssetCatalog } from "../presentation";
-import { BattleView, type BoardHighlights } from "../pixi/BattleView";
+import { BattleView, type BoardHighlights, type BoardPick, type ScreenPoint } from "../pixi/BattleView";
 import type { Application } from "pixi.js";
 
-const AI_DELAY_MS = 260;
+const PROMPT_IDLE = "보드에서 적·칸·오브젝트를 클릭해 행동을 고르세요.";
+const PROMPT_FACING = "이동 후 바라볼 방향을 선택하세요.";
 
 export interface BattleControllerOptions {
-  readonly definition?: CombatDefinition;
-  readonly seed?: number;
-  readonly onComplete?: (state: CombatState, stateHash: string) => void;
+  readonly definition: CombatDefinition;
+  readonly state: CombatState;
+  readonly history: readonly CombatEvent[];
+  readonly controlledActorIds: ReadonlySet<string>;
+  readonly onIntent: (intent: SessionIntent) => boolean;
 }
 
 function samePosition(left: GridPosition, right: GridPosition): boolean {
   return left.x === right.x && left.y === right.y;
+}
+
+function targetKey(target: LegalTarget): string {
+  switch (target.kind) {
+    case "none":
+      return "none";
+    case "actor":
+      return `actor:${target.actorId}`;
+    case "tile":
+      return `tile:${target.position.x},${target.position.y}`;
+    case "object":
+      return `object:${target.objectId}`;
+    case "effect":
+      return `effect:${target.effectId}`;
+  }
 }
 
 function legalTargetToActionTarget(target: LegalTarget, fallbackFacing: Direction): ActionTarget {
@@ -56,54 +77,80 @@ function legalTargetToActionTarget(target: LegalTarget, fallbackFacing: Directio
 
 export class BattleController {
   private readonly definition: CombatDefinition;
-  private readonly seed: number;
-  private readonly onComplete: ((state: CombatState, stateHash: string) => void) | undefined;
+  private controlledActorIds: ReadonlySet<string>;
+  private presentedActorId: string;
+  private readonly onIntent: (intent: SessionIntent) => boolean;
   private state: CombatState;
   private history: CombatEvent[];
-  private selectedAction: LegalAction | null = null;
-  private hoveredAction: LegalAction | null = null;
-  private facingPosition: GridPosition | null = null;
-  private prompt = "행동을 선택하세요.";
-  private aiTimer: number | null = null;
+  private interaction: Interaction = IDLE_INTERACTION;
+  /** Pure preview state: it changes what the inspector shows, never what a click does. */
+  private hoveredCardAction: LegalAction | null = null;
+  private hoverCell: GridPosition | null = null;
+  private prompt = PROMPT_IDLE;
   private readonly view: BattleView;
   private readonly ui: BattleUi;
+  private readonly ring: RingMenu;
 
-  public constructor(app: Application, catalog: AssetCatalog, options: BattleControllerOptions = {}) {
-    this.definition = options.definition ?? M0_COMBAT_DEFINITION;
-    this.seed = options.seed ?? M0_DEFAULT_SEED;
-    this.onComplete = options.onComplete;
-    const setup = createCombat(this.definition, this.seed);
-    this.state = setup.state;
-    this.history = [...setup.events];
+  public constructor(app: Application, catalog: AssetCatalog, options: BattleControllerOptions) {
+    this.definition = options.definition;
+    this.controlledActorIds = new Set(options.controlledActorIds);
+    this.presentedActorId = [...this.controlledActorIds][0] ?? options.state.turn.activeActorId;
+    this.onIntent = options.onIntent;
+    this.state = options.state;
+    this.history = [...options.history];
+    this.syncPresentedActor();
+    const stage = this.requireElement<HTMLElement>(".combat-stage");
     this.view = new BattleView(app, catalog, {
-      onTile: (position) => this.handleTile(position),
-      onActor: (actorId) => this.handleActor(actorId),
-      onObject: (objectId) => this.handleObject(objectId),
+      onPick: (pick, screen) => this.handlePick(pick, screen),
       onFacing: (facing) => this.handleFacing(facing),
+      onHoverCell: (position) => this.handleHoverCell(position),
+      safeArea: () => measureHudSafeArea(stage),
     });
-    this.ui = new BattleUi(this.definition.content, this.definition.scenario, {
-      onAction: (action) => this.handleAction(action),
-      onActionHover: (action) => this.handleActionHover(action),
+    this.ui = new BattleUi(this.definition.content, this.definition.scenario, catalog, {
+      onCard: (action) => this.handleCard(action),
+      onCardHover: (action) => this.handleActionHover(action),
       onEndTurn: () => this.endTurn(),
       onUseReaction: () => this.resolveReaction(true),
       onPassReaction: () => this.resolveReaction(false),
       onRestart: () => this.restart(),
     });
-    this.render(setup.events);
-    this.scheduleAi();
+    this.ring = new RingMenu(this.requireElement<HTMLElement>("#ring-root"), {
+      onSelect: (optionId) => this.handleRingSelect(optionId),
+      onHover: (optionId) => this.handleRingHover(optionId),
+      onDismiss: () => this.dismissRing(),
+    });
+    this.render(options.history);
   }
 
-  private nextCommandId(label: string): string {
-    return `command-${String(this.state.sequence + 1).padStart(4, "0")}-${label}`;
+  private requireElement<T extends Element>(selector: string): T {
+    const element = document.querySelector<T>(selector);
+    if (!element) throw new Error(`Required element was not found: ${selector}`);
+    return element;
   }
 
   private activeHeroId(): string | null {
     const actor = this.state.actors[this.state.turn.activeActorId];
-    return actor?.team === "heroes" ? actor.id : null;
+    return actor?.team === "heroes" && this.controlledActorIds.has(actor.id) ? actor.id : null;
   }
 
   private heroId(): string {
-    return Object.values(this.state.actors).find((actor) => actor.team === "heroes")?.id ?? "hero";
+    return this.presentedActorId;
+  }
+
+  private syncPresentedActor(): void {
+    const reactionActorId = this.state.pendingReaction?.candidates[0]?.actorId;
+    if (reactionActorId && this.controlledActorIds.has(reactionActorId)) {
+      this.presentedActorId = reactionActorId;
+      return;
+    }
+    const activeActorId = this.state.turn.activeActorId;
+    if (this.controlledActorIds.has(activeActorId)) {
+      this.presentedActorId = activeActorId;
+      return;
+    }
+    if (!this.controlledActorIds.has(this.presentedActorId)) {
+      this.presentedActorId = [...this.controlledActorIds][0] ?? activeActorId;
+    }
   }
 
   private targetsFor(action: LegalAction | null): readonly LegalTarget[] {
@@ -112,204 +159,337 @@ export class BattleController {
   }
 
   private highlights(): BoardHighlights {
-    const action = this.selectedAction ?? this.hoveredAction;
-    const targets = this.targetsFor(action);
+    const interaction = this.interaction;
+    // The facing step has committed to a destination: only that square stays lit.
+    if (interaction.kind === "facing") {
+      return { tiles: [interaction.position], actorIds: [], objectIds: [], facingPosition: interaction.position };
+    }
+    const hovered = hoveredRingEntry(interaction);
+    const targets = hovered
+      ? [hovered.target]
+      : this.targetsFor(interaction.kind === "card" ? interaction.action : null);
+    const ringCell = interaction.kind === "ring" ? [interaction.position] : [];
     return {
-      tiles: targets.flatMap((target) => (target.kind === "tile" ? [target.position] : [])),
+      tiles: [
+        ...targets.flatMap((target) => (target.kind === "tile" ? [target.position] : [])),
+        ...ringCell,
+      ],
       actorIds: targets.flatMap((target) => (target.kind === "actor" ? [target.actorId] : [])),
       objectIds: targets.flatMap((target) => (target.kind === "object" ? [target.objectId] : [])),
-      facingPosition: this.facingPosition,
+      facingPosition: null,
     };
   }
 
-  private detailPreview(action: LegalAction | null): ActionPreview | null {
-    if (!action) return null;
-    const targets = this.targetsFor(action);
+  private previewFor(action: LegalAction | null, target: LegalTarget | null): ActionPreview | null {
     const actor = this.state.actors[this.heroId()];
-    const target = targets.length === 1 && actor ? legalTargetToActionTarget(targets[0] as LegalTarget, actor.facing) : null;
-    if (!target) return null;
-    return previewAction(this.state, this.heroId(), action.source, target, this.definition.content);
+    if (!action || !actor) return null;
+    const resolved = target ?? (this.targetsFor(action).length === 1 ? this.targetsFor(action)[0] ?? null : null);
+    if (!resolved) return null;
+    return previewAction(
+      this.state,
+      actor.id,
+      action.source,
+      legalTargetToActionTarget(resolved, actor.facing),
+      this.definition.content,
+    );
   }
 
   private render(events: readonly CombatEvent[] = []): void {
-    const detailAction = this.hoveredAction ?? this.selectedAction;
     const stateHash = hashCombatState(this.state);
+    const canControl = Boolean(this.activeHeroId()) && !this.state.pendingReaction && !this.state.outcome;
+    const app = this.requireElement<HTMLElement>("#app");
+    app.dataset.viewerMemberId = this.presentedActorId;
+    app.dataset.controlledActorIds = [...this.controlledActorIds].sort().join(",");
     this.view.render(this.state, this.highlights(), events);
     this.ui.render(this.state, this.history, {
-      selectedAction: this.selectedAction,
-      detailAction,
-      preview: this.detailPreview(detailAction),
+      selectedAction: interactionAction(this.interaction),
       prompt: this.prompt,
       stateHash,
+      controlledActorId: this.presentedActorId,
+      canControl,
     });
+    this.renderDetail();
   }
 
-  private clearSelection(): void {
-    this.selectedAction = null;
-    this.hoveredAction = null;
-    this.facingPosition = null;
+  private renderDetail(): void {
+    const hovered = hoveredRingEntry(this.interaction);
+    if (hovered) {
+      this.ui.renderActionDetail(hovered.action, this.previewFor(hovered.action, hovered.target));
+      return;
+    }
+    const action = this.hoveredCardAction ?? interactionAction(this.interaction);
+    if (action) {
+      this.ui.renderActionDetail(action, this.previewFor(action, null));
+      return;
+    }
+    const hoveredActor = this.hoverCell
+      ? Object.values(this.state.actors).find(
+          (actor) => this.hoverCell && samePosition(actor.position, this.hoverCell),
+        )
+      : undefined;
+    if (hoveredActor) {
+      this.ui.renderActorDetail(hoveredActor);
+      return;
+    }
+    this.ui.renderActionDetail(null, null);
   }
 
-  private handleAction(action: LegalAction): void {
-    if (!action.enabled || !this.activeHeroId() || this.state.pendingReaction) return;
-    if (this.selectedAction?.source.id === action.source.id) {
-      this.clearSelection();
-      this.prompt = "행동을 선택하세요.";
+  /** Every phase change goes through here so the ring can never outlive its state. */
+  private enter(interaction: Interaction): void {
+    this.interaction = interaction;
+    if (interaction.kind !== "ring") this.ring.hide();
+  }
+
+  private goIdle(): void {
+    this.enter(IDLE_INTERACTION);
+    this.hoveredCardAction = null;
+  }
+
+  private dismissRing(): void {
+    if (this.interaction.kind !== "ring") return;
+    this.goIdle();
+    this.prompt = PROMPT_IDLE;
+    this.render();
+  }
+
+  /** A board target was picked: resolve it against the selected card, or open the ring menu. */
+  private handlePick(pick: BoardPick, screen: ScreenPoint): void {
+    if (!this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
+    const interaction = this.interaction;
+    if (interaction.kind === "facing") {
+      this.goIdle();
+      this.prompt = PROMPT_IDLE;
       this.render();
       return;
     }
-    this.selectedAction = action;
-    this.hoveredAction = null;
-    this.facingPosition = null;
+    if (interaction.kind === "card") {
+      this.resolveCardTarget(interaction.action, pick);
+      return;
+    }
+    const entries = this.entriesFor(pick);
+    if (entries.length === 0) {
+      this.goIdle();
+      this.prompt = "이 대상에 사용할 수 있는 행동이 없습니다.";
+      this.render();
+      return;
+    }
+    this.enter({ kind: "ring", position: pick.position, entries, hoveredOptionId: null });
+    this.prompt = "링 메뉴에서 행동을 선택하세요. (Esc 취소)";
+    this.render();
+    this.ring.show(screen, this.pickLabel(pick), entries.map((entry) => this.ringOption(entry, entries)));
+  }
+
+  private ringOption(entry: RingEntry, entries: readonly RingEntry[]): RingMenuOption {
+    const duplicated = entries.filter((other) => other.action.source.id === entry.action.source.id).length > 1;
+    const suffix = duplicated && "label" in entry.target ? ` · ${entry.target.label}` : "";
+    const copies = entry.copies > 1 ? ` ×${entry.copies}` : "";
+    return {
+      id: entry.id,
+      actionId: entry.action.actionId,
+      label: `${entry.action.name}${suffix}${copies}`,
+      cost: actionCost(entry.action),
+      hint: entry.action.description,
+    };
+  }
+
+  private pickLabel(pick: BoardPick): string {
+    if (pick.kind === "actor") return this.state.actors[pick.actorId]?.name ?? pick.actorId;
+    if (pick.kind === "object") return this.state.map.objects[pick.objectId]?.name ?? pick.objectId;
+    return `Tile ${pick.position.x},${pick.position.y}`;
+  }
+
+  /** Every legal action whose target list already contains the picked board entity. */
+  private entriesFor(pick: BoardPick): readonly RingEntry[] {
+    const heroId = this.heroId();
+    const grouped = new Map<string, { readonly entry: RingEntry; copies: number }>();
+    for (const action of listLegalActions(this.state, heroId, this.definition.content)) {
+      if (!action.enabled || action.timing.kind === "reaction") continue;
+      for (const target of this.targetsFor(action)) {
+        if (!this.targetMatchesPick(target, pick, heroId)) continue;
+        const key = `${action.actionId}|${action.sourceLabel ?? ""}|${targetKey(target)}`;
+        const existing = grouped.get(key);
+        if (existing) {
+          existing.copies += 1;
+          continue;
+        }
+        grouped.set(key, {
+          entry: { id: `option-${grouped.size}`, action, target, copies: 1 },
+          copies: 1,
+        });
+      }
+    }
+    return [...grouped.values()].map((group) => ({ ...group.entry, copies: group.copies }));
+  }
+
+  private targetMatchesPick(target: LegalTarget, pick: BoardPick, heroId: string): boolean {
+    switch (pick.kind) {
+      case "tile":
+        return target.kind === "tile" && samePosition(target.position, pick.position);
+      case "object":
+        return target.kind === "object" && target.objectId === pick.objectId;
+      case "actor":
+        return target.kind === "actor"
+          ? target.actorId === pick.actorId
+          : pick.actorId === heroId && (target.kind === "none" || target.kind === "effect");
+    }
+  }
+
+  private handleRingSelect(optionId: string): void {
+    const interaction = this.interaction;
+    if (interaction.kind !== "ring") return;
+    const entry = interaction.entries.find((candidate) => candidate.id === optionId);
+    if (!entry) return;
+    this.goIdle();
+    this.commit(entry.action, entry.target);
+  }
+
+  private handleRingHover(optionId: string | null): void {
+    const interaction = this.interaction;
+    if (interaction.kind !== "ring") return;
+    this.interaction = { ...interaction, hoveredOptionId: optionId };
+    this.view.render(this.state, this.highlights());
+    this.renderDetail();
+  }
+
+  /** Card-first path: select a card, then pick one of its highlighted board targets. */
+  private handleCard(action: LegalAction): void {
+    if (!action.enabled || !this.activeHeroId() || this.state.pendingReaction) return;
+    const current = this.interaction;
+    if (current.kind === "card" && current.action.source.id === action.source.id) {
+      this.goIdle();
+      this.prompt = PROMPT_IDLE;
+      this.render();
+      return;
+    }
+    this.enter({ kind: "card", action });
+    this.hoveredCardAction = null;
     const targets = this.targetsFor(action);
-    if (targets.length === 1 && (targets[0]?.kind === "none" || targets[0]?.kind === "effect")) {
-      const hero = this.state.actors[this.heroId()];
-      if (hero && targets[0]) this.useAction(action, legalTargetToActionTarget(targets[0], hero.facing));
+    const single = targets[0];
+    if (targets.length === 1 && single && (single.kind === "none" || single.kind === "effect")) {
+      this.commit(action, single);
       return;
     }
     this.prompt =
-      targets[0]?.kind === "tile"
-        ? "파란 타일을 선택한 뒤 바라볼 방향을 정하세요."
-        : targets[0]?.kind === "actor"
+      single?.kind === "tile"
+        ? "강조된 칸을 선택한 뒤 바라볼 방향을 정하세요."
+        : single?.kind === "actor"
           ? "강조된 적을 선택하세요."
-          : targets[0]?.kind === "object"
+          : single?.kind === "object"
             ? "강조된 오브젝트를 선택하세요."
             : "합법적인 대상을 선택하세요.";
     this.render();
   }
 
-  private handleActionHover(action: LegalAction | null): void {
-    this.hoveredAction = action;
-    const detailAction = action ?? this.selectedAction;
-    this.view.render(this.state, this.highlights());
-    this.ui.renderActionDetail(detailAction, this.detailPreview(detailAction));
+  private resolveCardTarget(action: LegalAction, pick: BoardPick): void {
+    const target = this.targetsFor(action).find((candidate) => this.targetMatchesPick(candidate, pick, this.heroId()));
+    if (!target) {
+      this.goIdle();
+      this.prompt = PROMPT_IDLE;
+      this.render();
+      return;
+    }
+    this.commit(action, target);
   }
 
-  private handleTile(position: GridPosition): void {
-    if (!this.selectedAction) return;
-    const target = this.targetsFor(this.selectedAction).find(
-      (candidate) => candidate.kind === "tile" && samePosition(candidate.position, position),
-    );
-    if (target?.kind !== "tile") return;
-    this.facingPosition = { ...position };
-    this.prompt = "이동 후 바라볼 방향을 선택하세요.";
-    this.render();
+  /** Tile targets need a facing pick on the board before the command is sent. */
+  private commit(action: LegalAction, target: LegalTarget): void {
+    if (target.kind === "tile") {
+      this.enter({ kind: "facing", action, position: { ...target.position } });
+      this.prompt = PROMPT_FACING;
+      this.render();
+      return;
+    }
+    const hero = this.state.actors[this.heroId()];
+    if (!hero) return;
+    this.useAction(action, legalTargetToActionTarget(target, hero.facing));
+  }
+
+  private handleActionHover(action: LegalAction | null): void {
+    this.hoveredCardAction = action;
+    this.view.render(this.state, this.highlights());
+    this.renderDetail();
+  }
+
+  private handleHoverCell(position: GridPosition | null): void {
+    this.hoverCell = position;
+    this.renderDetail();
   }
 
   private handleFacing(facing: Direction): void {
-    if (!this.selectedAction || !this.facingPosition) return;
-    this.useAction(this.selectedAction, {
+    const interaction = this.interaction;
+    if (interaction.kind !== "facing") return;
+    this.useAction(interaction.action, {
       kind: "tile",
-      position: this.facingPosition,
+      position: interaction.position,
       facing,
     });
   }
 
-  private handleActor(actorId: string): void {
-    if (!this.selectedAction) return;
-    const target = this.targetsFor(this.selectedAction).find(
-      (candidate) => candidate.kind === "actor" && candidate.actorId === actorId,
-    );
-    if (target?.kind === "actor") this.useAction(this.selectedAction, { kind: "actor", actorId });
-  }
-
-  private handleObject(objectId: string): void {
-    if (!this.selectedAction) return;
-    const target = this.targetsFor(this.selectedAction).find(
-      (candidate) => candidate.kind === "object" && candidate.objectId === objectId,
-    );
-    if (target?.kind === "object") this.useAction(this.selectedAction, { kind: "object", objectId });
-  }
-
   private useAction(action: LegalAction, target: ActionTarget): void {
-    const actorId = this.activeHeroId();
-    if (!actorId) return;
-    this.dispatch({
+    if (!this.activeHeroId()) return;
+    this.sendIntent({
       type: "use-action",
-      id: this.nextCommandId(action.actionId),
-      sequence: this.state.sequence + 1,
-      actorId,
       action: action.source,
       target,
     });
   }
 
   private endTurn(): void {
-    const actorId = this.activeHeroId();
-    if (!actorId) return;
-    this.dispatch({
-      type: "end-turn",
-      id: this.nextCommandId("end-turn"),
-      sequence: this.state.sequence + 1,
-      actorId,
-    });
+    if (!this.activeHeroId()) return;
+    this.sendIntent({ type: "end-turn" });
   }
 
   private resolveReaction(use: boolean): void {
     const pending = this.state.pendingReaction;
     const candidate = pending?.candidates[0];
-    if (!pending || !candidate) return;
-    const base = {
-      id: this.nextCommandId(use ? "use-reaction" : "pass-reaction"),
-      sequence: this.state.sequence + 1,
-      actorId: candidate.actorId,
-      triggerId: pending.triggerId,
-    };
-    const command: CombatCommand = use
-      ? { type: "use-reaction", ...base, cardInstanceId: candidate.cardInstanceId }
-      : { type: "pass-reaction", ...base };
-    this.dispatch(command);
+    if (!pending || !candidate || !this.controlledActorIds.has(candidate.actorId)) return;
+    this.sendIntent(use
+      ? { type: "use-reaction", triggerId: pending.triggerId, cardInstanceId: candidate.cardInstanceId }
+      : { type: "pass-reaction", triggerId: pending.triggerId });
   }
 
-  private dispatch(command: CombatCommand): void {
-    const result = dispatchCombatCommand(this.state, command, this.definition.content);
-    if (!result.accepted) {
-      this.prompt = result.error ?? "행동을 실행할 수 없습니다.";
+  private sendIntent(intent: SessionIntent): void {
+    if (!this.onIntent(intent)) {
+      this.prompt = "서버 응답을 기다리는 중입니다.";
       this.render();
       return;
     }
-    this.state = result.state;
-    this.history.push(...result.events);
-    this.clearSelection();
-    this.prompt = this.state.pendingReaction
-      ? "Reaction을 사용하거나 Pass하세요."
-      : this.state.outcome
-        ? "전투가 종료되었습니다."
-        : this.activeHeroId()
-          ? "행동을 선택하세요."
-          : `${this.state.actors[this.state.turn.activeActorId]?.name ?? "Enemy"}의 턴입니다.`;
-    this.render(result.events);
-    this.scheduleAi();
-  }
-
-  private scheduleAi(): void {
-    if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
-    this.aiTimer = null;
-    if (this.state.outcome || this.state.pendingReaction || this.activeHeroId()) return;
-    this.aiTimer = window.setTimeout(() => {
-      this.aiTimer = null;
-      const command = chooseAiCommand(this.state, this.definition.content);
-      if (command) this.dispatch(command);
-    }, AI_DELAY_MS);
+    this.goIdle();
+    this.prompt = "서버가 행동을 판정하는 중입니다.";
+    this.render();
   }
 
   private restart(): void {
-    if (this.state.outcome && this.onComplete) {
-      this.onComplete(this.state, hashCombatState(this.state));
-      return;
-    }
-    if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
-    const setup = createCombat(this.definition, this.seed);
-    this.state = setup.state;
-    this.history = [...setup.events];
-    this.clearSelection();
-    this.prompt = "행동을 선택하세요.";
-    this.render(setup.events);
-    this.scheduleAi();
+    this.prompt = "전투 결과는 서버가 Adventure로 반영합니다.";
+    this.render();
+  }
+
+  public update(
+    state: CombatState,
+    events: readonly CombatEvent[],
+    replaceHistory = false,
+    controlledActorIds: ReadonlySet<string> = this.controlledActorIds,
+  ): void {
+    this.state = state;
+    this.controlledActorIds = new Set(controlledActorIds);
+    this.syncPresentedActor();
+    this.history = replaceHistory ? [...events] : [...this.history, ...events];
+    this.goIdle();
+    const pendingOwner = state.pendingReaction?.candidates[0]?.actorId;
+    this.prompt = state.pendingReaction
+      ? pendingOwner !== undefined && this.controlledActorIds.has(pendingOwner)
+        ? "Reaction을 사용하거나 Pass하세요."
+        : `${state.actors[pendingOwner ?? ""]?.name ?? "다른 플레이어"}의 Reaction을 기다리는 중입니다.`
+      : state.outcome
+        ? "전투가 종료되었습니다."
+        : this.activeHeroId()
+          ? PROMPT_IDLE
+          : `${state.actors[state.turn.activeActorId]?.name ?? "다른 플레이어"}의 턴입니다.`;
+    this.render(events);
   }
 
   public destroy(): void {
-    if (this.aiTimer !== null) window.clearTimeout(this.aiTimer);
+    this.ring.destroy();
     this.ui.destroy();
     this.view.destroy();
   }

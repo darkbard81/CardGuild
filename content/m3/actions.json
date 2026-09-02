@@ -1,0 +1,172 @@
+[
+  {
+    "id": "step",
+    "name": "Step",
+    "description": "인접한 Open 칸으로 5ft 이동하고 바라볼 방향을 정합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }],
+    "targeting": "tile",
+    "resolution": { "kind": "move", "movementMode": "land", "step": true, "triggersReactions": false }
+  },
+  {
+    "id": "stride",
+    "name": "Stride",
+    "description": "Speed 범위에서 직교 경로로 이동하고 바라볼 방향을 정합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }],
+    "targeting": "tile",
+    "resolution": { "kind": "move", "movementMode": "land", "step": false, "triggersReactions": true }
+  },
+  {
+    "id": "strike",
+    "name": "Strike",
+    "description": "장착 무기의 공격 수치와 피해를 사용하는 기본 공격입니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": { "critical-success": [], "success": [], "failure": [], "critical-failure": [] }
+    }
+  },
+  {
+    "id": "stand",
+    "name": "Stand",
+    "description": "Prone 상태를 제거합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }],
+    "targeting": "self",
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "remove-condition", "owner": "actor", "condition": "prone" }]
+    }
+  },
+  {
+    "id": "escape-grab",
+    "name": "Escape Grab",
+    "description": "Athletics 판정으로 Grabbed 상태를 제거합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "self",
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "athletics" },
+        "dc": { "kind": "fixed", "value": 15 }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "remove-condition", "owner": "actor", "condition": "grabbed" }],
+        "success": [{ "kind": "remove-condition", "owner": "actor", "condition": "grabbed" }],
+        "failure": [],
+        "critical-failure": [{ "kind": "lock-action", "actionId": "escape-grab" }]
+      }
+    }
+  },
+  {
+    "id": "interact-lever",
+    "name": "Interact",
+    "description": "인접한 레버를 작동해 차단된 문을 엽니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "manipulate" }],
+    "targeting": "object",
+    "resolution": { "kind": "direct", "effects": [{ "kind": "interact" }] }
+  },
+  {
+    "id": "raise-shield",
+    "name": "Raise Shield",
+    "description": "다음 자기 턴 시작까지 Shield의 AC 보너스를 얻습니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }],
+    "targeting": "self",
+    "resolution": { "kind": "direct", "effects": [{ "kind": "raise-shield" }] }
+  },
+  {
+    "id": "sustain-spell",
+    "name": "Sustain Spell",
+    "description": "선택한 지속 주문 효과를 다음 턴까지 연장합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }],
+    "targeting": "effect",
+    "resolution": { "kind": "direct", "effects": [{ "kind": "sustain-effect" }] }
+  },
+  {
+    "id": "trip",
+    "name": "Trip",
+    "description": "Halberd의 Athletics 판정으로 대상을 Prone으로 만듭니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }, { "id": "skill" }, { "id": "trip" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "athletics" },
+        "dc": { "kind": "statistic-dc", "owner": "target", "statistic": { "kind": "save", "save": "reflex" } }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "fly",
+    "name": "Fly",
+    "description": "Difficult와 Impassable을 무시하고 Speed만큼 이동합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }, { "id": "fly" }],
+    "targeting": "tile",
+    "resolution": { "kind": "move", "movementMode": "fly", "step": false, "triggersReactions": true }
+  },
+  {
+    "id": "spirit-beacon",
+    "name": "Spirit Beacon",
+    "description": "Sustain할 수 있는 빛의 표식을 자신에게 부착합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "focus" }],
+    "targeting": "self",
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "create-sustained-effect", "effectName": "Spirit Beacon" }]
+    }
+  },
+  {
+    "id": "reactive-strike",
+    "name": "Reactive Strike",
+    "description": "전방 또는 측면 Reach에서 적이 Move를 시작하면 Strike합니다.",
+    "timing": { "kind": "reaction" },
+    "traits": [{ "id": "attack" }, { "id": "reaction" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": { "critical-success": [], "success": [], "failure": [], "critical-failure": [] }
+    }
+  },
+  {
+    "id": "knockdown",
+    "name": "Knockdown",
+    "description": "강한 공격으로 피해를 주고 성공 시 대상을 Prone으로 만듭니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  }
+]

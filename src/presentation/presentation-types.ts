@@ -23,9 +23,14 @@ export interface ActorVisualDefinition {
 }
 
 export interface PresentationAssetManifest {
-  readonly version: 3;
+  readonly version: 4;
   readonly bundle: string;
-  readonly atlas: { readonly path: string };
+  readonly atlas: {
+    readonly path: string;
+    readonly imagePath: string;
+    readonly width: number;
+    readonly height: number;
+  };
   readonly assets: Readonly<Record<PresentationAssetId, PresentationAssetDefinition>>;
   readonly actorVisuals: Readonly<Record<ActorDefinitionId, ActorVisualDefinition>>;
   readonly terrainVisuals: {
@@ -42,6 +47,25 @@ export interface PresentationAssetManifest {
     readonly gateClosed: PresentationAssetId;
     readonly gateOpen: PresentationAssetId;
   };
+  readonly equipmentVisuals: Readonly<Record<string, PresentationAssetId>>;
+  readonly cardVisuals: Readonly<Record<string, PresentationAssetId>>;
+}
+
+export interface PresentationAtlasFrame {
+  readonly frame: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+}
+
+export interface PresentationAtlasMap {
+  readonly frames: Readonly<Record<string, PresentationAtlasFrame>>;
+  readonly meta: { readonly size: { readonly w: number; readonly h: number } };
+}
+
+export interface DomAtlasStyle {
+  readonly backgroundImage: string;
+  readonly backgroundPosition: string;
+  readonly backgroundSize: string;
+  readonly width: string;
+  readonly height: string;
 }
 
 export function groundSemantic(traits: readonly TraitInstance[]): "open" | "difficult" | "impassable" {

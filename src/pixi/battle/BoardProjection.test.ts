@@ -32,13 +32,19 @@ describe("BoardProjection", () => {
     expect(projection.getCellCorners(9, 7)[2]).toEqual(corners[2]);
   });
 
-  it("uses subtle row depth scaling", () => {
+  it("scales board content with its projected cell instead of absolute pixels", () => {
     const projection = new BoardProjection();
     projection.update(10, 8, corners);
-    expect(projection.getDepthScale(0)).toBeCloseTo(0.78);
-    expect(projection.getDepthScale(8)).toBeCloseTo(1);
-    expect(projection.getDepthScale(4)).toBeCloseTo(0.89);
     expect(projection.getProjectedCellWidth(8)).toBeGreaterThan(projection.getProjectedCellWidth(0));
+    expect(projection.getCellScale(0)).toBeLessThan(projection.getCellScale(8));
+    expect(projection.getCellScale(8)).toBeCloseTo(projection.getProjectedCellWidth(8) / 128, 6);
+
+    // A standee keeps the same share of its square when the viewport shrinks: halving
+    // the board halves the content scale rather than leaving sprites oversized.
+    const near = projection.getCellScale(8);
+    const halved = corners.map((point) => new Point(point.x / 2, point.y / 2)) as [Point, Point, Point, Point];
+    projection.update(10, 8, halved);
+    expect(projection.getCellScale(8)).toBeCloseTo(near / 2, 6);
   });
 
   it("rebuilds its inverse after resize or camera corner changes", () => {

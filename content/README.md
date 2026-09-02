@@ -16,7 +16,8 @@ cards.json       Action을 참조하는 전술 카드
 equipment.json   능력치, 무기 profile, Trait
 actors.json      재사용 가능한 ActorDefinition
 scenarios.json   Encounter placement, objective, map tiles와 objects
-adventures.json  linear Encounter 순서와 fixed reward offer
+                 static placement와 seat별 partySpawnSlots
+adventures.json  linear Encounter 순서, 1–3P partySize와 fixed reward offer
 ```
 
 Schema는 `schema/content-pack.schema.json`의 JSON Schema Draft 2020-12가
@@ -31,8 +32,8 @@ npm run content:check
 원본 파일, definition, JSON path와 원인을 출력합니다.
 
 ```text
-Pack: cardguild.m2
-Source: content/m2/equipment.json
+Pack: cardguild.m6
+Source: content/m6/equipment.json
 Definition: halberd
 Path: [0].traits[1].id
 UNKNOWN_TRAIT: Trait "tirp" is not defined.
@@ -44,16 +45,117 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
   같은 ID를 사용할 수 있습니다.
 - Content에서 사용하는 모든 Trait ID를 `traits.json`에 먼저 등록합니다.
 - Card, provider, Actor와 effect가 참조하는 ID는 같은 pack 안에 존재해야 합니다.
-- 한 Actor에 같은 Equipment definition ID를 두 번 넣지 않습니다. 장비 instance가
-  필요해지는 M3 전까지 duplicate equipment reference는 오류입니다.
+- Equipment는 `weapon`, `armor`, `shield`, `feet` 중 정확한 `slot`을 선언합니다. slot은
+  편성 metadata이며 효과는 계속 Statistic/Trait provider로 정의합니다.
+- Actor는 `loadoutProfile.preparedCardCapacity`와 `starterLoadout`을 선언합니다.
+  `baseCardGrants`는 Collection copy를 소비하는 prepared card와 분리합니다.
+- Playable Actor는 `statProfile.kind = "character"`로 Level, 6 Attribute modifier,
+  Perception/3 Save/16 General Skill proficiency rank를 저장합니다. 최종 Reflex,
+  Athletics, Initiative modifier는 authoring하지 않습니다.
+- Creature/Enemy는 `statProfile.kind = "creature"`로 최종 AC, Max HP, Save, Skill,
+  Perception과 `strike`(최종 `attackModifier`, `rangeFeet`, flat `damage.modifier`,
+  `traits`)를 간결하게 authoring할 수 있습니다. 두 profile 모두 runtime의 공통 statistic
+  resolver를 사용합니다.
+- Actor는 최종 `hp`, `maxHp`, `baseAc`를 authoring하지 않습니다. Playable Character의
+  Max HP는 `defense.ancestryHp + level × (defense.classHpPerLevel + CON)`에서,
+  AC는 `10 + capped DEX + armor proficiency + typed modifier`에서 파생됩니다.
+  Creature는 `statProfile.stats`의 `ac`/`maxHp`를 그대로 사용합니다.
+- Character `defense`는 `ancestryHp`, `classHpPerLevel`, 4개 `armorProficiencies`
+  (`unarmored`/`light`/`medium`/`heavy`) rank를 선언합니다.
+- Character `offense`는 `keyAttribute`, 4개 `weaponProficiencies`
+  (`unarmed`/`simple`/`martial`/`advanced`) rank, `classDcProficiency`, 그리고
+  `unarmedStrike`를 선언합니다. Class DC는 별도 숫자로 저장하지 않고
+  `10 + key Attribute + classDcProficiency + typed modifier`에서 파생됩니다.
+  Class DC와 Save/Skill DC는 서로 다른 statistic이며 하나로 합치지 않습니다.
+- Playable weapon은 **무엇을 쓰는지**만 정의합니다. `weaponProfile`은 `name`,
+  `category`, `attackMode`, `rangeFeet`, `damage`(`count`/`sides`/`damageType`),
+  `traits`를 선언하며 최종 `attackModifier`나 Attribute를 복제한 flat
+  `damage.modifier`는 schema에서 거부됩니다. Strike attack은
+  `attack Attribute + weapon category proficiency + typed modifier + MAP`에서,
+  damage는 `weapon dice + 합법적인 Attribute contribution + damage modifier`에서
+  파생됩니다.
+- Attack Attribute는 melee가 STR, ranged와 thrown이 DEX입니다. `finesse` melee는
+  STR/DEX 중 resolved attack modifier가 높은 쪽을 결정적으로 선택하고 breakdown에
+  실제 선택된 Attribute를 남깁니다. Damage는 melee와 `thrown`이 STR 전량,
+  `propulsive`가 양수 STR의 절반(음수면 전량), 그 외 ranged는 0입니다.
+- Weapon trait은 boolean field를 늘리지 않고 기존 Equipment/Trait pipeline을 씁니다.
+  Equipment의 effective trait set은 `equipment.traits`와 `weaponProfile.traits`의
+  합집합(ID 중복 제거)이고, Strike resolver·Card provider·Context Action provider·
+  Statistic modifier stack이 **모두 같은 set**을 봅니다. 따라서 같은 trait ID를 어느 쪽에
+  적더라도 Resolved Strike와 Trait provider의 결과가 갈라지지 않습니다.
+- `agile` weapon으로 하는 Strike만 MAP이 `0 / -4 / -8`로 완화되고, 나머지와
+  Athletics Trip 같은 Attack-trait Skill Action은 `0 / -5 / -10`을 씁니다.
+  MAP 단계는 여전히 Attack trait 사용 횟수로 셉니다. Reactive Strike는 자기 turn 밖에서
+  일어나므로 MAP이 적용되지 않습니다.
+- Weapon damage roll은 penalty가 아무리 커도 최소 1입니다. Critical과 action
+  multiplier는 그 최소값을 만든 뒤에 곱합니다. Resistance는 damage roll 이후 단계라
+  이 최소값과 별개입니다.
+- 실제 시작 무기는 Equipment + `starterLoadout.weapon`으로 소유합니다. weapon slot이
+  비면 Character의 `offense.unarmedStrike`를 씁니다. Character ID별 fallback
+  special-case는 없습니다.
+- Equipment slot은 `weapon`/`armor`/`shield`/`feet`이고 이 순서가 deterministic한
+  equipment 순서입니다. `weapon` slot equipment만 `weaponProfile`을 선언하며,
+  선언이 없거나 다른 slot이 선언하면 거부됩니다. `armor` slot equipment만 `armorProfile`(`category`,
+  `acItemBonus`, `dexCap`)을 선언하며, 다른 slot이 선언하면 거부됩니다. Armor를 입지
+  않은 Character는 별도 item 없이 `unarmored` proficiency와 cap 없는 DEX로 resolve됩니다.
+- `shieldBonus`는 `shield` slot equipment만 선언할 수 있습니다. Raise Shield는 착용한
+  shield slot equipment의 값만 AC circumstance contribution으로 제공합니다.
+- Armor의 `acItemBonus`는 Character AC 공식의 한 항이므로 Character에게만 적용됩니다.
+  Creature의 authored AC는 완결된 top-down 값이라 장비 armor로 다시 올라가지 않습니다.
+- Armor의 `acItemBonus`와 raised Shield의 `shieldBonus`는 authoring에서 중복 선언하지
+  않습니다. Runtime이 각각 AC item / circumstance contribution으로 같은 modifier
+  stack에 넣습니다.
+- Equipment, Condition, Trait의 `statModifiers`는 statistic selector와
+  `circumstance`/`item`/`status`/`untyped` type을 선언합니다. 같은 typed bonus/penalty는
+  각각 가장 큰 값만 적용되고 모든 untyped penalty는 누적됩니다.
+- PF2e Remaster에는 untyped bonus가 없습니다. `type = "untyped"`인 modifier는 penalty
+  (`value < 0`)만 authoring할 수 있고, 양수 untyped는 schema와 semantic validation
+  (`UNTYPED_MODIFIER_MUST_BE_PENALTY`) 양쪽에서 거부됩니다. Runtime context modifier도
+  같은 invariant를 fail-fast로 강제합니다.
+- Scenario의 `placements`에는 enemy/NPC/static actor만 작성하고 party hero는 넣지 않습니다.
+  `partySpawnSlots`는 seat 1–3을 각각 한 번씩 선언합니다. 배열 순서가 아니라 `seat`가
+  runtime 배치를 결정합니다.
+- Spawn slot은 map bounds 안의 통행 가능한 서로 다른 위치여야 하며 static placement와
+  겹칠 수 없습니다. 모든 Adventure Encounter는 `partySize.max`만큼 slot을 제공합니다.
+- Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
+  PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
+- `playable` Trait을 가진 Actor만 Party Builder 후보입니다. 현재 authoritative pack은
+  `content/m6`의 `cardguild.m6@0.9.0`이고, `content/m3`의 M4 pack은 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.
-- `remove-condition`은 지정한 Condition ID를 즉시 제거합니다. 판정이 필요한
-  회복은 `recovery-check`와 degree outcome을 사용합니다.
+
+## Action resolution
+
+- `ActionDefinition`이 gameplay 규칙을 소유하고 `CardDefinition`은 `actionId` 참조와
+  deck/provenance만 담당합니다. `SpellCardDefinition` 같은 카드 종류별 타입은 없습니다.
+  `spell`/`focus`/`feat` 분류는 Trait metadata로만 남고 실행 분기 key가 되지 않습니다.
+- Action은 `resolution`으로 판정 방식과 효과를 함께 선언합니다. 네 가지뿐입니다.
+  - `move` — 판정 없음. 기존 path/reaction continuation을 씁니다.
+  - `strike` — #9 `ResolvedStrikeProfile` vs 대상 AC(#8). `damageMultiplier`와
+    4개 degree outcome을 가집니다.
+  - `check` — `check.roller`(`actor`/`target`), `check.statistic`, `check.dc`와
+    4개 degree outcome을 가집니다.
+  - `direct` — 판정 없이 effect primitive를 authored 순서대로 실행합니다.
+- `check.statistic`은 `skill`/`save`/`perception` 중 하나를 **이름으로** 가리킵니다.
+  최종 `+N`을 카드나 액션에 적지 않습니다. `attributeOverride`는 Character에 이미 저장된
+  Attribute modifier 중 어느 것을 이 판정에 쓸지 고르는 것뿐이며 proficiency rank를
+  바꾸거나 Attribute를 새로 만들지 않습니다.
+- `check.dc`는 `fixed` / `armor-class`(#8) / `statistic-dc`(#7) / `class-dc`(#9) 중
+  하나이고 `owner`로 actor·target을 지정합니다. `spellAttackModifier`나 `spellDc` 같은
+  별도 Character statistic은 추가하지 않습니다.
+- degree outcome과 `direct.effects`는 같은 effect primitive 목록을 씁니다.
+  `apply-condition` / `remove-condition` / `lock-action` / `damage` /
+  `create-sustained-effect` / `sustain-effect` / `raise-shield` / `interact`.
+  `owner`가 `target`인 primitive는 `targeting: "enemy"` Action에서만 쓸 수 있습니다.
+- `range`는 Action이 무엇을 하는지와 분리됩니다. `weapon-reach`는 `strike`
+  resolution이나 `attack` trait을 가진 Action에서만 허용되고, `feet`은 5의 양의 배수여야
+  합니다. 선언이 없으면 5ft입니다.
+- MAP은 카드 수치가 아니라 resolver context입니다. `attack` trait이 있으면 #9 MAP
+  resolver가 적용하고, 자기 turn 밖의 Reaction에는 적용되지 않습니다.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `2`입니다.
+- `schemaVersion`은 JSON shape migration에 사용하며 현재 값은 `8`입니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면
   version을 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key,
@@ -64,5 +166,5 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 Schema shape를 호환되지 않게 바꿀 때는 기존 schema를 덮어써서 조용히 해석하지
 말고 `schemaVersion`을 올리고 명시적인 migration 또는 새 loader를 추가합니다.
-현재 pre-release repository에는 v1 runtime compatibility layer가 없으며 v2가
+현재 pre-release repository에는 이전 pack runtime compatibility layer가 없으며 v6가
 authoritative contract입니다.

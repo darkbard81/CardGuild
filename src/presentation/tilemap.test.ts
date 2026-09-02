@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { createPresentationCatalog } from "./asset-catalog";
 import { tilemapAssetAt } from "./tilemap";
 
-describe("M2 presentation tilemaps", () => {
+describe("M3 presentation tilemaps", () => {
   it("separates ground, transition, and object placement layers", () => {
     const map = createPresentationCatalog().tilemap("encounter.ruined-gate");
     const at = (x: number, y: number): number => y * map.width + x;

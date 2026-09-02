@@ -3,6 +3,7 @@ export type ActionId = string;
 export type CardDefinitionId = string;
 export type CardInstanceId = string;
 export type EquipmentId = string;
+export type EquipmentSlotId = "weapon" | "armor" | "shield" | "feet";
 export type EffectId = string;
 export type ObjectId = string;
 export type TraitId = string;
@@ -20,6 +21,147 @@ export type DegreeOfSuccess =
   | "failure"
   | "critical-failure";
 export type CombatOutcome = "victory" | "defeat";
+export type AttributeId = "str" | "dex" | "con" | "int" | "wis" | "cha";
+export type ProficiencyRank = "untrained" | "trained" | "expert" | "master" | "legendary";
+export type SaveId = "fortitude" | "reflex" | "will";
+export type SkillId =
+  | "acrobatics"
+  | "arcana"
+  | "athletics"
+  | "crafting"
+  | "deception"
+  | "diplomacy"
+  | "intimidation"
+  | "medicine"
+  | "nature"
+  | "occultism"
+  | "performance"
+  | "religion"
+  | "society"
+  | "stealth"
+  | "survival"
+  | "thievery";
+export type ModifierType = "circumstance" | "item" | "status" | "untyped";
+
+export type ArmorCategory = "unarmored" | "light" | "medium" | "heavy";
+export type ArmoredCategory = Exclude<ArmorCategory, "unarmored">;
+
+export interface ArmorProfile {
+  readonly category: ArmoredCategory;
+  readonly acItemBonus: number;
+  readonly dexCap: number;
+}
+
+export interface CharacterDefenseProfile {
+  readonly ancestryHp: number;
+  readonly classHpPerLevel: number;
+  readonly armorProficiencies: Readonly<Record<ArmorCategory, ProficiencyRank>>;
+}
+
+/**
+ * How well a Character fights: the ranks that turn an authored weapon into a resolved
+ * Strike, plus the Class DC proficiency. The unarmed Strike is what a Character falls
+ * back to with an empty weapon slot — there is no per-character fallback special case.
+ */
+export interface CharacterOffenseProfile {
+  readonly keyAttribute: AttributeId;
+  readonly weaponProficiencies: Readonly<Record<WeaponCategory, ProficiencyRank>>;
+  readonly classDcProficiency: ProficiencyRank;
+  readonly unarmedStrike: CharacterWeaponProfile;
+}
+
+export interface CharacterStatProfile {
+  readonly level: number;
+  readonly attributes: Readonly<Record<AttributeId, number>>;
+  readonly perception: ProficiencyRank;
+  readonly saves: Readonly<Record<SaveId, ProficiencyRank>>;
+  readonly skills: Readonly<Record<SkillId, ProficiencyRank>>;
+  readonly defense: CharacterDefenseProfile;
+  readonly offense: CharacterOffenseProfile;
+}
+
+export interface FixedCreatureStats {
+  readonly ac: number;
+  readonly maxHp: number;
+  readonly strike: FixedStrikeProfile;
+  readonly perception: number;
+  readonly saves: Readonly<Record<SaveId, number>>;
+  readonly skills: Readonly<Partial<Record<SkillId, number>>>;
+}
+
+export type ActorStatProfile =
+  | { readonly kind: "character"; readonly stats: CharacterStatProfile }
+  | { readonly kind: "creature"; readonly stats: FixedCreatureStats };
+
+export type StatisticSelector =
+  | { readonly kind: "save"; readonly id: SaveId }
+  | { readonly kind: "skill"; readonly id: SkillId; readonly attributeOverride?: AttributeId }
+  | { readonly kind: "perception" };
+
+export type InitiativeStatisticSelector =
+  | { readonly kind: "perception" }
+  | { readonly kind: "skill"; readonly id: SkillId; readonly attributeOverride?: AttributeId };
+
+/**
+ * Key a modifier contribution is matched against. It carries no base-derivation
+ * detail (no `attributeOverride`) so every statistic — checks, DCs, and AC alike —
+ * shares one collection and stacking core.
+ */
+export type ModifierTarget =
+  | { readonly kind: "save"; readonly id: SaveId }
+  | { readonly kind: "skill"; readonly id: SkillId }
+  | { readonly kind: "perception" }
+  | { readonly kind: "ac" }
+  | { readonly kind: "attack" }
+  | { readonly kind: "damage" }
+  | { readonly kind: "class-dc" };
+
+export type StatisticModifierSelector =
+  | { readonly kind: "all" }
+  | { readonly kind: "save"; readonly id?: SaveId }
+  | { readonly kind: "skill"; readonly id?: SkillId }
+  | { readonly kind: "perception" }
+  | { readonly kind: "ac" }
+  | { readonly kind: "attack" }
+  | { readonly kind: "damage" }
+  | { readonly kind: "class-dc" };
+
+export interface StatisticModifierContribution {
+  readonly selector: StatisticModifierSelector;
+  readonly type: ModifierType;
+  readonly value: number;
+  readonly label: string;
+}
+
+export interface StatisticContextModifier extends StatisticModifierContribution {
+  readonly sourceId: string;
+}
+
+export type StatisticSourceKind =
+  | "attribute"
+  | "proficiency"
+  | "fixed"
+  | "dc"
+  | "map"
+  | "position"
+  | "equipment"
+  | "condition"
+  | "trait"
+  | "context";
+
+export interface StatisticSource {
+  readonly kind: StatisticSourceKind;
+  readonly sourceId: string;
+  readonly label: string;
+  readonly value: number;
+  readonly modifierType?: ModifierType;
+  readonly applied: boolean;
+}
+
+export interface ResolvedStatistic {
+  readonly value: number;
+  readonly sources: readonly StatisticSource[];
+}
 
 export interface ContentIdentity {
   readonly packId: string;
@@ -43,18 +185,77 @@ export interface ConditionInstance {
   readonly sourceId: string;
 }
 
+export type DamageType = "slashing" | "piercing" | "bludgeoning" | "force";
+
 export interface DamageDie {
   readonly count: number;
   readonly sides: number;
   readonly modifier: number;
-  readonly damageType: "slashing" | "piercing" | "bludgeoning" | "force";
+  readonly damageType: DamageType;
 }
 
-export interface WeaponProfile {
+export type WeaponCategory = "unarmed" | "simple" | "martial" | "advanced";
+export type WeaponAttackMode = "melee" | "ranged";
+
+/** Weapon dice with no flat term: a Character's Attribute contribution is derived, never authored. */
+export interface WeaponDamageDice {
+  readonly count: number;
+  readonly sides: number;
+  readonly damageType: DamageType;
+}
+
+/**
+ * What a Playable Character *uses*. How well they use it comes from
+ * `CharacterOffenseProfile`, so no final attack modifier lives here.
+ */
+export interface CharacterWeaponProfile {
+  readonly name: string;
+  readonly category: WeaponCategory;
+  readonly attackMode: WeaponAttackMode;
+  readonly rangeFeet: number;
+  readonly damage: WeaponDamageDice;
+  readonly traits: readonly TraitInstance[];
+}
+
+/**
+ * A Creature's authored Strike. Monsters keep final top-down numbers instead of
+ * being forced through the Character weapon-proficiency formula.
+ */
+export interface FixedStrikeProfile {
   readonly name: string;
   readonly attackModifier: number;
   readonly rangeFeet: number;
   readonly damage: DamageDie;
+  readonly traits: readonly TraitInstance[];
+}
+
+export interface ResolvedStrikeDamage {
+  readonly count: number;
+  readonly sides: number;
+  readonly flatModifier: number;
+  readonly damageType: DamageType;
+  readonly sources: readonly StatisticSource[];
+}
+
+/**
+ * The one normalized Strike every consumer reads — legality queries, action previews,
+ * Loadout preview, normal Strike execution and Reactive Strike alike. Character-derived
+ * and Creature fixed strikes both arrive here before any roll happens.
+ */
+export interface ResolvedStrikeProfile {
+  readonly weaponName: string;
+  readonly weaponCategory: WeaponCategory | null;
+  readonly proficiencyRank: ProficiencyRank | null;
+  /** `null` for a Creature's authored Strike, which declares only a range. */
+  readonly attackMode: WeaponAttackMode | null;
+  readonly attackAttribute: AttributeId | null;
+  /** Total including the multiple attack penalty, which is also reported separately. */
+  readonly attackModifier: number;
+  readonly mapPenalty: number;
+  readonly rangeFeet: number;
+  readonly traits: readonly TraitId[];
+  readonly damage: ResolvedStrikeDamage;
+  readonly sources: readonly StatisticSource[];
 }
 
 export interface ActorState {
@@ -66,17 +267,13 @@ export interface ActorState {
   readonly facing: Direction;
   readonly hp: number;
   readonly maxHp: number;
-  readonly baseAc: number;
-  readonly reflexModifier: number;
-  readonly athleticsModifier: number;
-  readonly initiativeModifier: number;
+  readonly statProfile: ActorStatProfile;
   readonly speedFeet: number;
-  readonly fallbackWeapon: WeaponProfile;
   readonly conditions: readonly ConditionInstance[];
   readonly traits: readonly TraitInstance[];
   readonly equipmentIds: readonly EquipmentId[];
   readonly innateActionIds: readonly ActionId[];
-  readonly baseCardGrants: readonly CardGrant[];
+  readonly deckContributions: readonly DeckContribution[];
   readonly reactionAvailable: boolean;
   readonly shieldRaised: boolean;
   readonly defeated: boolean;
@@ -119,15 +316,25 @@ export interface EffectInstance {
   readonly sustainedOnTurn: number | null;
 }
 
-export interface CardSource {
-  readonly objectId: string;
-  readonly traitId?: TraitId;
+export type DeckContributionSource =
+  | { readonly kind: "base"; readonly sourceId: string }
+  | { readonly kind: "prepared"; readonly memberId: string }
+  | {
+      readonly kind: "equipment-trait";
+      readonly equipmentId: EquipmentId;
+      readonly traitId: TraitId;
+    };
+
+export interface DeckContribution {
+  readonly cardDefinitionId: CardDefinitionId;
+  readonly count: number;
+  readonly source: DeckContributionSource;
 }
 
 export interface CardInstance {
   readonly id: CardInstanceId;
   readonly definitionId: CardDefinitionId;
-  readonly source: CardSource;
+  readonly source: DeckContributionSource;
 }
 
 export interface CardZones {
@@ -222,10 +429,11 @@ export interface PendingReaction {
 }
 
 export interface CombatState {
-  readonly version: 3;
+  readonly version: 4;
   readonly scenarioId: string;
   readonly seed: number;
   readonly contentIdentity: ContentIdentity;
+  readonly setupFingerprint: string;
   readonly round: number;
   readonly turn: TurnState;
   readonly actors: Readonly<Record<EntityId, ActorState>>;
@@ -246,7 +454,68 @@ export type ActionTiming =
 
 export type ActionTargeting = "none" | "self" | "enemy" | "tile" | "object" | "effect";
 
-export type ActionEffect =
+/** Who an Action's check or effect refers to. Cards never name a concrete actor. */
+export type ActionParticipant = "actor" | "target";
+
+/**
+ * Which Character statistic a check reads. It names the statistic, never a number:
+ * the value comes from the shared #7 resolvers and the Character's own profile.
+ * `attributeOverride` only picks a different already-stored Attribute modifier for
+ * this check — it never changes the proficiency rank or the Character's Attributes.
+ */
+export type ActionStatisticRef =
+  | { readonly kind: "skill"; readonly skill: SkillId; readonly attributeOverride?: AttributeId }
+  | { readonly kind: "save"; readonly save: SaveId }
+  | { readonly kind: "perception" };
+
+/** Where a check's DC comes from: fixed, Armor Class (#8), a statistic DC (#7) or Class DC (#9). */
+export type ActionDcRef =
+  | { readonly kind: "fixed"; readonly value: number }
+  | { readonly kind: "armor-class"; readonly owner: ActionParticipant }
+  | {
+      readonly kind: "statistic-dc";
+      readonly owner: ActionParticipant;
+      readonly statistic: ActionStatisticRef;
+    }
+  | { readonly kind: "class-dc"; readonly owner: ActionParticipant };
+
+/** Reach of an Action, separated from what the Action does. */
+export type ActionRange =
+  | { readonly kind: "weapon-reach" }
+  | { readonly kind: "feet"; readonly value: number };
+
+/**
+ * The small, explicit primitives a resolution may apply, in authored order. New behaviour
+ * adds a primitive here — never a formula string or script in content.
+ */
+export type ActionOutcomeEffect =
+  | { readonly kind: "apply-condition"; readonly owner: ActionParticipant; readonly condition: ConditionId }
+  | { readonly kind: "remove-condition"; readonly owner: ActionParticipant; readonly condition: ConditionId }
+  | { readonly kind: "lock-action"; readonly actionId: ActionId }
+  | {
+      readonly kind: "damage";
+      readonly owner: ActionParticipant;
+      readonly dice: { readonly count: number; readonly sides: number };
+      readonly flatModifier: number;
+      readonly damageType: DamageType;
+      readonly multiplier?: number;
+    }
+  | { readonly kind: "create-sustained-effect"; readonly effectName: string }
+  | { readonly kind: "sustain-effect" }
+  | { readonly kind: "raise-shield" }
+  | { readonly kind: "interact" };
+
+export interface ActionCheckDefinition {
+  readonly roller: ActionParticipant;
+  readonly statistic: ActionStatisticRef;
+  readonly dc: ActionDcRef;
+}
+
+/**
+ * How an Action resolves. Deliberately four shapes rather than one union member per
+ * action: a Card selects a resolution, never its own executor.
+ */
+export type ActionResolution =
   | {
       readonly kind: "move";
       readonly movementMode: MovementMode;
@@ -254,23 +523,16 @@ export type ActionEffect =
       readonly triggersReactions: boolean;
     }
   | {
-      readonly kind: "weapon-attack";
+      readonly kind: "strike";
       readonly damageMultiplier: number;
-      readonly applyCondition?: ConditionId;
-    }
-  | { readonly kind: "trip" }
-  | { readonly kind: "remove-condition"; readonly condition: ConditionId }
-  | {
-      readonly kind: "recovery-check";
-      readonly condition: ConditionId;
-      readonly modifier: "athletics";
-      readonly dc: number;
       readonly outcomes: DegreeOutcomeMap;
     }
-  | { readonly kind: "raise-shield" }
-  | { readonly kind: "interact" }
-  | { readonly kind: "create-sustained-effect"; readonly effectName: string }
-  | { readonly kind: "sustain-effect" };
+  | {
+      readonly kind: "check";
+      readonly check: ActionCheckDefinition;
+      readonly outcomes: DegreeOutcomeMap;
+    }
+  | { readonly kind: "direct"; readonly effects: readonly ActionOutcomeEffect[] };
 
 export interface ActionDefinition {
   readonly id: ActionId;
@@ -279,8 +541,18 @@ export interface ActionDefinition {
   readonly timing: ActionTiming;
   readonly traits: readonly TraitInstance[];
   readonly targeting: ActionTargeting;
-  readonly effect: ActionEffect;
+  readonly range?: ActionRange;
+  readonly resolution: ActionResolution;
 }
+
+/**
+ * Whether the multiple attack penalty applies at all. PF2e counts MAP only within the
+ * actor's own turn sequence, so an off-turn Reaction carries no penalty — that policy
+ * lives here and in the offense resolver, never as a literal at an executor call site.
+ */
+export type ActionMapContext =
+  | { readonly kind: "turn"; readonly attacksThisTurn: number }
+  | { readonly kind: "off-turn" };
 
 export interface CardDefinition {
   readonly id: CardDefinitionId;
@@ -318,34 +590,28 @@ export interface TraitDefinition {
   readonly name: string;
   readonly cardGrants: readonly TraitCardGrant[];
   readonly actionGrants: readonly TraitActionGrant[];
+  readonly statModifiers?: readonly StatisticModifierContribution[];
 }
 
 export interface ConditionDefinition {
   readonly id: ConditionId;
   readonly name: string;
   readonly traits: readonly TraitInstance[];
+  readonly statModifiers?: readonly StatisticModifierContribution[];
 }
-
-export type DegreeOutcomeEffect =
-  | { readonly kind: "remove-condition"; readonly condition: ConditionId }
-  | { readonly kind: "lock-action"; readonly actionId: ActionId };
 
 export type DegreeOutcomeMap = Readonly<
-  Record<DegreeOfSuccess, readonly DegreeOutcomeEffect[]>
+  Record<DegreeOfSuccess, readonly ActionOutcomeEffect[]>
 >;
-
-export interface StatModifier {
-  readonly selector: "ac" | "reflex";
-  readonly value: number;
-  readonly label: string;
-}
 
 export interface EquipmentDefinition {
   readonly id: EquipmentId;
   readonly name: string;
+  readonly slot: EquipmentSlotId;
   readonly traits: readonly TraitInstance[];
-  readonly statModifiers: readonly StatModifier[];
-  readonly weaponProfile?: WeaponProfile;
+  readonly statModifiers: readonly StatisticModifierContribution[];
+  readonly weaponProfile?: CharacterWeaponProfile;
+  readonly armorProfile?: ArmorProfile;
   readonly shieldBonus?: number;
 }
 
@@ -382,6 +648,7 @@ export interface CombatReplay {
   readonly scenarioId: string;
   readonly seed: number;
   readonly contentIdentity: ContentIdentity;
+  readonly setupFingerprint: string;
   readonly commands: readonly CombatCommand[];
 }
 
@@ -413,7 +680,10 @@ export type CombatEvent =
   | { readonly type: "FACING_CHANGED"; readonly actorId: EntityId; readonly facing: Direction }
   | {
       readonly type: "CHECK_ROLLED";
-      readonly actorId: EntityId;
+      /** Whose Action this is. */
+      readonly actionActorId: EntityId;
+      /** Who actually rolled — the same actor for a Strike, the target for a save. */
+      readonly rollerActorId: EntityId;
       readonly targetActorId?: EntityId;
       readonly label: string;
       readonly roll: number;
@@ -499,9 +769,21 @@ export type LegalTarget =
   | { readonly kind: "effect"; readonly effectId: EffectId; readonly label: string }
   | { readonly kind: "none" };
 
+/** Who rolls a previewed check, so a target-side save is never read as the actor's hit. */
+export interface ActionPreviewCheck {
+  readonly roller: ActionParticipant;
+  readonly rollerActorId: EntityId;
+  readonly modifier: number;
+  readonly dc: number;
+}
+
 export interface ActionPreview {
   readonly legal: boolean;
   readonly reason?: string;
+  readonly check?: ActionPreviewCheck;
+  /** The generic source of truth for any check, always from the roller's perspective. */
+  readonly degreeProbabilities?: Readonly<Record<DegreeOfSuccess, number>>;
+  /** Only a Strike has actor-side hit semantics; a target's save must never fill these. */
   readonly hitChance?: number;
   readonly criticalChance?: number;
   readonly damageRange?: readonly [number, number];

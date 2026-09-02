@@ -1,4 +1,4 @@
-import { type Application, Container, Graphics, RenderTexture, Sprite } from "pixi.js";
+import { type Application, Container, Graphics, Sprite, type Texture, TexturePool } from "pixi.js";
 
 import type { CombatState, GridPosition, TileState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
@@ -12,6 +12,8 @@ export interface SortableVisual {
   readonly footRowOffset: number;
   readonly layerPriority: number;
   readonly stableId: string;
+  /** Held at a constant screen size while the board scales, e.g. an HP badge. */
+  readonly screenSpace?: Container;
 }
 
 function traits(tile: TileState): ReadonlySet<string> {
@@ -19,7 +21,7 @@ function traits(tile: TileState): ReadonlySet<string> {
 }
 
 export class TerrainRenderer {
-  private boardTexture: RenderTexture | null = null;
+  private boardTexture: Texture | null = null;
 
   public constructor(
     private readonly app: Application,
@@ -27,7 +29,7 @@ export class TerrainRenderer {
     private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
   ) {}
 
-  public renderBoard(state: CombatState): RenderTexture {
+  public renderBoard(state: CombatState): Texture {
     const tilemap = this.catalog.tilemap(state.scenarioId);
     if (tilemap.width !== state.map.width || tilemap.height !== state.map.height) {
       throw new Error(`Presentation tilemap "${state.scenarioId}" dimensions do not match combat state.`);
@@ -36,8 +38,8 @@ export class TerrainRenderer {
     const width = tilemap.width * cell;
     const height = tilemap.height * cell;
     if (!this.boardTexture || this.boardTexture.width !== width || this.boardTexture.height !== height) {
-      this.boardTexture?.destroy(true);
-      this.boardTexture = RenderTexture.create({ width, height, resolution: 1 });
+      if (this.boardTexture) TexturePool.returnTexture(this.boardTexture);
+      this.boardTexture = TexturePool.getOptimalTexture(width, height, 1, false);
     }
     const composition = new Container({ label: "board-texture-composition" });
     for (let row = 0; row < tilemap.height; row += 1) {
@@ -46,12 +48,15 @@ export class TerrainRenderer {
         const groundId = tilemapAssetAt(tilemap, "ground", index);
         if (!groundId) throw new Error(`Presentation tilemap is missing ground at ${col},${row}.`);
         const ground = new Sprite(this.catalog.texture(groundId));
+        // Atlas frames carry a centred default anchor; board tiles are laid out top-left.
+        ground.anchor.set(0, 0);
         ground.position.set(col * cell, row * cell);
         ground.setSize(cell, cell);
         composition.addChild(ground);
         const transitionId = tilemapAssetAt(tilemap, "transitions", index);
         if (transitionId) {
           const overlay = new Sprite(this.catalog.texture(transitionId));
+          overlay.anchor.set(0, 0);
           overlay.position.copyFrom(ground.position);
           overlay.setSize(cell, cell);
           composition.addChild(overlay);
@@ -108,7 +113,7 @@ export class TerrainRenderer {
   }
 
   public destroy(): void {
-    this.boardTexture?.destroy(true);
+    if (this.boardTexture) TexturePool.returnTexture(this.boardTexture);
     this.boardTexture = null;
   }
 }
