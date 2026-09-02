@@ -47,7 +47,7 @@ CardGuild 고유 이름으로 만들고 reference pattern만 여기에 기록합
 | Trip (Athletics) | Skill | — | 1 | enemy | Athletics vs Reflex DC | Prone | 기존 `check` resolution | SUPPORTED | `card.trip` | exemplar. crit fail 시 자신 Prone은 미구현 |
 | Grapple (Athletics) | Skill | — | 1 | enemy | Athletics vs Fortitude DC | Grabbed | 기존 `check` + `equipped-slot` requirement | ADAPTED | `card.grapple` | free-hand 규칙 없음. Restrained 승급/자동 만료 생략 |
 | Demoralize (Intimidation) | Skill | — | 1 | enemy | Intimidation vs Will DC | Frightened 1 (crit 2) | valued condition | EXTEND | `card.demoralize` | 언어 이해/10분 면역 생략 |
-| Battle Medicine | Feat/Skill | 1 | 1 | ally | Medicine vs fixed DC | HP 회복 | `restore-hp` + ally target | EXTEND | `card.battle-medicine` | 1일 면역 생략(ADAPTED). crit fail 자해 생략 |
+| Battle Medicine | Feat/Skill | 1 | 1 | ally | Medicine vs DC 15 | 2d8 / crit 4d8 회복 | `restore-hp` + ally target | EXTEND | `card.battle-medicine` | 회복량은 Treat Wounds DC 15 원본 그대로. healer's toolkit requirement · 1일 면역 · crit fail 1d8 자해는 생략 |
 | Escape (Acrobatics) | Skill | — | 1 | self | Acrobatics vs DC | Grabbed 제거 | 기존 `check` resolution | SUPPORTED | `card.slip-free` | Athletics 변형과 동일 계약 |
 | Shove (Athletics) | Skill | — | 1 | enemy | Athletics vs Fortitude DC | 강제 이동 | forced movement | DEFER | — | §6 Forced Movement |
 | Reposition (Athletics) | Skill | — | 1 | enemy | Athletics vs Fortitude DC | 대상 재배치 | actor+destination selection | DEFER | — | §6 Forced Movement |
@@ -65,7 +65,8 @@ CardGuild 고유 이름으로 만들고 reference pattern만 여기에 기록합
 |---|---|---|---|---|---|---|---|---|---|---|
 | Vicious Swing | Feat | 1 | 2 | enemy | attack vs AC | 추가 weapon die, MAP 2단계 | `extraWeaponDice` + `mapAttackCount` | EXTEND | `card.vicious-swing` | ADAPTED: `flourish` 1/turn 제한은 usage-limit system 부재로 미적용 |
 | Intimidating Strike | Feat | 2 | 2 | enemy | attack vs AC | 명중 시 Frightened 1, crit 2 | valued condition + ordered outcome | EXTEND | `card.intimidating-strike` | 원본 semantics 보존 |
-| Combat Grab | Feat | 1 | 1 | enemy | attack vs AC | 명중 시 Grabbed | 기존 `strike` + `weapon-mode` requirement | ADAPTED | `card.combat-grab` | free-hand 규칙 없음. 지속 조건(잡은 손 유지) 생략 |
+| Knockdown | Feat | 2 | 2 | enemy | attack vs AC | 명중 시 Prone | 기존 `strike` + 조건 outcome | ADAPTED | `card.knockdown` | 원본은 Strike **후 Athletics Trip 판정**을 한다. 여기서는 명중 자체가 Prone을 준다 — free hand 규칙(D10)과 subordinate action(D2)이 모두 없기 때문 |
+| Combat Grab | Feat | 1 | 1 | enemy | attack vs AC | 명중 시 Grabbed | 기존 `strike` + `weapon-mode` requirement | ADAPTED | `card.combat-grab` | free-hand 규칙 없음. 원본의 "다음 턴 종료까지" 지속 대신 pack 공통 Grabbed(Escape로만 해제) 사용 |
 | Dueling Parry | Feat | 1 | 1 | self | — | +2 circumstance AC | `equipped-slot` requirement + **E7** | ADAPTED | `card.dueling-parry` | handedness 모델 없음 |
 | Sudden Charge | Feat | 1 | 2 | tile→enemy | attack vs AC | Stride×2 후 Strike | sequence continuation | DEFER | — | §6 Compound Activity |
 | Snagging Strike | Feat | 1 | 1 | enemy | attack vs AC | 공격자 한정 Off-Guard | relative condition + free hand | DEFER | — | §6 Relative Condition |
@@ -81,18 +82,18 @@ CardGuild 고유 이름으로 만들고 reference pattern만 여기에 기록합
 
 | Reference | Kind | Rank | Cost | Target | Check / DC | Primary Effect | Required capability | Status | Card ID | Fidelity Note |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Telekinetic Projectile | Cantrip | C | 2 | enemy | spell attack vs AC | 물리 피해 | `check` + `armor-class` DC | SUPPORTED | `card.telekinetic-projectile` | 별도 Spell Attack statistic 없이 skill vs AC로 표현 |
-| Frostbite | Cantrip | C | 2 | enemy | Fortitude vs actor DC | cold 피해 | `cold` damage type | EXTEND | `card.frostbite` | crit fail weakness rider 생략(DEFER) |
+| Telekinetic Projectile | Cantrip | C | 2 | enemy | spell attack vs AC | 1d6 물리 피해 | `check` + `armor-class` DC | SUPPORTED | `card.telekinetic-projectile` | 별도 Spell Attack statistic 없이 skill vs AC로 표현. 원본의 spellcasting modifier damage 가산은 생략 |
+| Frostbite | Cantrip | C | 2 | enemy 60ft | **basic** Fortitude | 2d4 cold | `cold` damage type + **E8 basic save** | EXTEND | `card.frostbite` | 원본 range·dice·basic save 보존. crit fail bludgeoning weakness rider 생략(D8) |
 | Ignition / Produce Flame | Cantrip | C | 2 | enemy | spell attack vs AC | fire 피해 | `fire` damage type | EXTEND | `card.ember-lash` | persistent damage 생략. CardGuild 고유 이름 |
-| Daze | Cantrip | C | 2 | enemy | Will vs actor DC | mental 피해 (+Stunned) | `mental` damage type | ADAPTED | `card.daze` | Stunned(행동 소모) 미구현으로 피해분만 |
+| Daze | Cantrip | C | 2 | enemy 60ft | **basic** Will | 1d6 mental | `mental` damage type + **E8 basic save** | EXTEND | `card.daze` | 원본 range·dice·basic save 보존. crit fail Stunned 1 rider 생략(행동 소모 subsystem 부재) |
 | Electric Arc | Cantrip | C | 2 | enemy×2 | Reflex vs actor DC | electricity 피해 | multi-target | DEFER | — | §6 Multi-target |
 | Shield | Cantrip | C | 1 | self | — | +1 circumstance AC | 자기 condition + **E7** | ADAPTED | `card.arcane-ward` | Shield Block 반응 생략. CardGuild 고유 이름 |
-| Magic Missile / Force Barrage | Spell | 1 | 1–3 | enemy | 판정 없음 | force 피해 자동 명중 | 기존 `direct` + damage | SUPPORTED | `card.force-barrage` | 가변 action/미사일 수는 1-action 고정으로 ADAPTED |
+| Magic Missile / Force Barrage | Spell | 1 | 1–3 | enemy | 판정 없음 | 1d4+1 force 자동 명중 | 기존 `direct` + damage | ADAPTED | `card.force-barrage` | 미사일 1발(1 action) 고정. 원본 120ft를 **30ft로 축소** — CardGuild 보드가 그 사거리를 구분하지 못함 |
 | Heal | Spell | 1 | 1 | creature | 판정 없음 | HP 회복 | `restore-hp` + creature target | EXTEND | `card.heal` | 1-action touch(5ft)만. 3-action burst와 undead 피해 분기 생략. 원본대로 적도 대상이 될 수 있음 |
-| Harm | Spell | 1 | 1–3 | enemy | Fortitude vs actor DC | void 피해 | `void` damage type | EXTEND | `card.harm` | single-target variant만. 가변 action/area DEFER |
+| Harm | Spell | 1 | 1 | enemy touch | **basic** Fortitude | 1d8 void | `void` damage type + **E8 basic save** | EXTEND | `card.harm` | 1-action touch variant 그대로. 2·3-action variant와 undead 회복 분기 생략 |
 | Fear | Spell | 1 | 2 | enemy | Will vs actor DC | Frightened 2 / 1 | valued condition | EXTEND | `card.fear` | crit success 시 fleeing 생략 |
-| Soothe | Spell | 1 | 2 | ally | 판정 없음 | HP 회복 + 정신 저항 | `restore-hp` + ally target | EXTEND | `card.soothe` | status bonus 지속시간 축약 |
-| Runic Weapon | Spell | 1 | 2 | ally | 판정 없음 | 무기 status 보너스 | ally target + attack status modifier + **E4 decay** | EXTEND | `card.runic-weapon` | 1분 지속을 대상의 다음 턴 종료까지로 축약 |
+| Soothe | Spell | 1 | 2 | ally | 판정 없음 | 1d10+4 회복 | `restore-hp` + ally target | EXTEND | `card.soothe` | 회복량은 원본 그대로. mental save +1 status rider는 **생략**(축약이 아님) |
+| Runic Weapon | Spell | 1 | 2 | ally | 판정 없음 | +1 item attack **및 weapon damage dice 2배** | temporary weapon enhancement | DEFER | — | **D11**. 핵심 효과인 weapon dice 증가를 표현할 수 없음. `card.spirit-edge`는 이 reference에서 착안한 CardGuild 고유 카드일 뿐 Runic Weapon의 구현이 아님 |
 | Bless | Spell | 1 | 2 | aura | 판정 없음 | 아군 공격 status 보너스 | aura / multi-target lifecycle | DEFER | — | §6 Aura |
 | Sure Strike | Spell | 1 | 1 | self | 판정 없음 | 다음 공격 fortune | fortune reroll framework | DEFER | — | §6 Fortune |
 | Grim Tendrils / Burning Hands | Spell | 1 | 2 | area | save vs actor DC | 광역 피해 | burst/cone area model | DEFER | — | §6 Area |
@@ -168,6 +169,19 @@ production card로 승격합니다.
   다중 single-target command로 위장하는 것은 §12.4 금지
 - **Rules Expansion 경계** — area/target-set selection model
 
+### D11. Temporary Weapon Enhancement
+
+- **Backflow Reason** — 무기의 damage dice를 일시적으로 늘리거나 무기 자체에 item bonus를
+  붙이는 모델이 없음
+- **Required capability** — Actor가 아니라 **장착 무기**에 붙는 임시 상태, #9 resolved Strike의
+  base die를 조건부로 바꾸는 경로
+- **Affected references** — Runic Weapon, magic weapon rune 계열
+- **왜 부족한가** — `ConditionInstance`는 Actor에 붙고 `statModifiers`는 attack/damage 수치만
+  더한다. `extraWeaponDice`(E5)는 Action이 선언하는 값이라 지속 상태로 살 수 없다
+- **Rules Expansion 경계** — equipment-scoped temporary state + Strike resolver 연동
+- **현재 production 후보 1개**뿐이라 별도 issue 후보 조건(2개 이상)을 아직 만족하지 않음.
+  `card.spirit-edge`는 이 reference에서 착안했을 뿐 구현이 아니며 CardGuild 고유 이름을 씁니다
+
 ### D6. Detection State (Hidden / Undetected)
 
 - **Backflow Reason** — 관측자별 인지 상태가 없음
@@ -214,11 +228,43 @@ production card로 승격합니다.
 | # | Primitive | 여는 reference | 재사용 근거 |
 |---|---|---|---|
 | E1 | `ActionRequirement` (`weapon-mode` / `equipped-slot` / `skill-rank`) | Vicious Swing, Combat Grab, Dueling Parry, Grapple, Battle Medicine | 5개 이상. #9 `ResolvedStrikeProfile`과 #7 Character source를 그대로 읽음 |
-| E2 | `ally` / `creature` targeting | Heal, Soothe, Lay on Hands, Runic Weapon, Battle Medicine | 5개. `ActionTarget` wire shape 불변, selector 의미만 확장 |
+| E2 | `ally` / `creature` targeting | Heal, Soothe, Lay on Hands, Battle Medicine, Spirit Edge | 5개. `ActionTarget` wire shape 불변, selector 의미만 확장 |
 | E3 | `restore-hp` outcome primitive | Battle Medicine, Heal, Soothe, Lay on Hands | 4개, 3개 content family(feat/spell/focus). #8 current/max HP 경계 재사용 |
 | E4 | valued `ConditionInstance` + `frightened` | Demoralize, Intimidating Strike, Fear | 3개 reference, 2개 family(skill action/feat/spell). #7/#8/#9 typed modifier stack 그대로 |
 | E5 | `extraWeaponDice` + `mapAttackCount` | Vicious Swing, Intimidating Strike, Knockdown | 별도 feat executor 없이 `StrikeResolution` family 유지 |
+| E8 | Basic save damage scaling (`damageTotal()` + degree multiplier) | Frostbite, Daze, Harm | 3개 reference가 같은 capability를 요구. 새 executor 없이 기존 `damage` primitive의 multiplier만 사용 |
 | E6 | DamageType 확장 (`cold`/`fire`/`electricity`/`mental`/`void`/`acid`/`poison`/`sonic`/`spirit`/`vitality`) | Frostbite, Ignition, Daze, Harm, Electric Arc | metadata만. Resistance/Weakness subsystem은 D8로 backflow |
+
+### E8 (리뷰 지적으로 추가) — Basic save damage scaling
+
+PF2e의 basic save는 **하나의 authored base dice**를 degree별로 스케일합니다
+(https://2e.aonprd.com/Rules.aspx?ID=2296).
+
+```text
+Critical Success  피해 없음
+Success           절반 (내림)
+Failure           전체
+Critical Failure  2배
+```
+
+초안은 이것을 degree마다 다른 dice profile로 근사했습니다 (Frostbite success `1d4` /
+failure `2d4`). `1d4`는 `2d4를 굴린 뒤 절반`과 **분포가 다르며**, Daze는 success가 0 피해라
+basic save 본체가 어긋났습니다.
+
+Frostbite · Daze · Harm 3개 production reference가 같은 capability를 요구하므로 §12.2 기준상
+EXTEND입니다.
+
+| | 내용 |
+|---|---|
+| 구현 | 새 executor 없이 기존 `ActionOutcomeEffect.damage`의 `multiplier`를 `0.5` / `1` / `2`로 authoring |
+| 경계 | `strikeDamageTotal()` → **`damageTotal()`** 로 일반화하고 반올림 규칙을 그 안에 둠 |
+| 반올림 | `Math.floor(weaponDamageRoll(dice, flat) * multiplier)` — 분수 HP가 생기지 않음 |
+
+Strike의 crit 배수는 정수라 `floor`가 no-op이고 기존 동작은 그대로입니다. Strike 전용 이름의
+helper를 spell damage에 재사용하지 않기 위해 이름도 중립적으로 바꿨습니다.
+
+`card.spirit-lance`는 CardGuild 고유 주문이고 basic save가 아니라 degree별 고유 profile을
+쓰는 카드이므로 이 정규화 대상이 아닙니다.
 
 ### E7 (추가 판정 필요) — Condition expiry policy
 
@@ -233,7 +279,7 @@ Take Cover / Dueling Parry / Arcane Ward 같은 **1턴 자기 버프**는 PF2e�
 |---|---|
 | 제안 | `ConditionDefinition`에 optional `expiry: "actor-turn-start"` 추가 |
 | 동작 | `advanceTurn()`이 actor를 active로 만들 때 해당 policy를 가진 condition 제거 |
-| 여는 카드 | `card.brace-behind-cover`, `card.dueling-parry`, `card.arcane-ward`, `card.runic-weapon` (4장, 3개 family) |
+| 여는 카드 | `card.brace-behind-cover`, `card.dueling-parry`, `card.arcane-ward` (3장 · Basic Action / Feat / Cantrip 3개 family) |
 | §12.2 적합성 | existing Condition + Turn state domain 안에 머무름. 새 executor/command flow 없음. `shieldRaised` 하드코딩의 일반화 |
 | §12.1 step 4 위험 | "기존 actor/condition/effect/turn 경계를 넘어서는 새로운 persistent lifecycle"에 해당하는지 여부가 판단 지점 |
 
@@ -245,9 +291,9 @@ active로 만드는 지점에서 제거합니다.
 | 지속 | 메커니즘 | 이유 | 카드 |
 |---|---|---|---|
 | 시전자의 다음 턴 시작까지 (방어 버프) | E7 `expiry: actor-turn-start` | 자기 턴에 걸고 **적 턴 동안** 효과가 있어야 함 | `brace-behind-cover`, `dueling-parry`, `arcane-ward` |
-| 대상의 다음 턴 종료까지 (아군 공격 버프) | E4 `endTurnDelta: -1` | 아군이 **자기 턴에 쓴 뒤** 사라져야 함 | `runic-weapon` |
+| 대상의 다음 턴 종료까지 (아군 공격 버프) | E4 `endTurnDelta: -1` | 아군이 **자기 턴에 쓴 뒤** 사라져야 함 | `spirit-edge` |
 
-`runic-weapon`에 E7을 쓰면 대상의 턴이 시작될 때 사라져 버프가 무의미해집니다. 반대로 방어
+`spirit-edge`에 E7을 쓰면 대상의 턴이 시작될 때 사라져 버프가 무의미해집니다. 반대로 방어
 버프에 E4를 쓰면 자기 턴 종료 즉시 사라져 적 턴을 못 막습니다.
 
 ---
@@ -268,8 +314,8 @@ active로 만드는 지점에서 제거합니다.
 | 7 | `card.vicious-swing` | Strike | 2 | enemy | extraWeaponDice + MAP 2 + melee requirement |
 | 8 | `card.intimidating-strike` | Strike | 2 | enemy | Strike + valued Frightened |
 | 9 | `card.combat-grab` | Strike | 1 | enemy | Strike + Grabbed |
-| 10 | `card.precise-jab` | Strike | 1 | enemy | agile/finesse requirement, MAP 완화 축 |
-| 11 | `card.shield-bash` | Strike | 1 | enemy | shield slot requirement |
+| 10 | `card.aimed-shot` | Strike | 2 | enemy | ranged weapon requirement + extra die |
+| 11 | `card.shield-press` | Strike | 1 | enemy | shield slot requirement |
 | 12 | `card.grapple` | Check | 1 | enemy | Athletics vs Fortitude DC |
 | 13 | `card.demoralize` | Check | 1 | enemy | Intimidation vs Will DC → Frightened |
 | 14 | `card.slip-free` | Check | 1 | self | Acrobatics escape |
@@ -280,30 +326,30 @@ active로 만드는 지점에서 제거합니다.
 | 19 | `card.telekinetic-projectile` | Check | 2 | enemy | skill vs 대상 AC |
 | 20 | `card.ember-lash` | Check | 2 | enemy | skill vs 대상 AC, fire |
 | 21 | `card.daze` | Check | 2 | enemy | 대상 Will save, mental |
-| 22 | `card.overwhelming-presence` | Check | 2 | enemy | **Class DC** 사용 (대상 Will vs actor Class DC) |
+| 22 | `card.iron-presence` | Check | 2 | enemy | **Class DC** 사용 (대상 Will vs actor Class DC) |
 | 23 | `card.force-barrage` | Direct | 1 | enemy | 판정 없는 자동 피해 |
 | 24 | `card.heal` | Direct | 1 | creature | restore-hp, creature target |
 | 25 | `card.soothe` | Direct | 2 | ally | restore-hp, ally target |
 | 26 | `card.lay-on-hands` | Direct | 1 | creature | Focus restore-hp |
-| 27 | `card.runic-weapon` | Direct | 2 | ally | ally 공격 status 보너스 |
+| 27 | `card.spirit-edge` | Direct | 2 | ally | ally 공격 status 보너스 |
 | 28 | `card.brace-behind-cover` | Direct | 1 | self | AC circumstance + turn decay |
 | 29 | `card.dueling-parry` | Direct | 1 | self | weapon slot requirement + AC |
 | 30 | `card.arcane-ward` | Direct | 1 | self | AC + turn decay (cantrip 축약) |
-| 31 | `card.tactical-step` | Move | 1 | tile | reaction 미유발 5ft |
-| 32 | `card.bounding-stride` | Move | 1 | tile | 이동 후 자세 정리 |
+| 31 | `card.careful-advance` | Move | 1 | tile | reaction 미유발 land Stride |
+| 32 | `card.hover-step` | Move | 1 | tile | fly 모드 5ft, reaction 미유발 |
 
 ### Coverage 확인
 
 | 요구 | 최소 | 후보 충족 |
 |---|---|---|
-| MoveResolution | 3 | 3 (`fly`, `tactical-step`, `bounding-stride`) |
-| StrikeResolution | 6 | 6 (`reactive-strike`, `knockdown`, `vicious-swing`, `intimidating-strike`, `combat-grab`, `precise-jab`, `shield-bash` = 7) |
+| MoveResolution | 3 | 3 (`fly`, `careful-advance`, `hover-step`) |
+| StrikeResolution | 6 | 7 (`reactive-strike`, `knockdown`, `vicious-swing`, `intimidating-strike`, `combat-grab`, `aimed-shot`, `shield-press`) |
 | CheckResolution | 7 | 11 |
 | DirectResolution | 3 | 8 |
 | Reaction | 1 | 1 (`reactive-strike`) |
-| Target-side Save | 3 | 5 (`spirit-lance`, `frostbite`, `fear`, `harm`, `daze`, `overwhelming-presence`) |
+| Target-side Save | 3 | 6 (`spirit-lance`, `frostbite`, `fear`, `harm`, `daze`, `iron-presence`) |
 | Skill vs Statistic DC | 3 | 5 (`trip`, `grapple`, `demoralize`, `telekinetic-projectile`, `ember-lash`) |
-| Class DC | 1 | 1 (`overwhelming-presence`) |
+| Class DC | 1 | 1 (`iron-presence`) |
 | HP Restore | 2 | 4 (`battle-medicine`, `heal`, `soothe`, `lay-on-hands`) |
 | Valued Condition | 2 | 3 (`demoralize`, `intimidating-strike`, `fear`) |
 
@@ -316,6 +362,7 @@ active로 만드는 지점에서 제거합니다.
 | Phase A matrix | 완료 (reference 59개 분류) |
 | E1–E6 EXTEND 판정 (issue §5 명시) | **승인 · 구현 완료** |
 | E7 condition expiry policy (issue 미명시) | **승인 · 구현 완료** |
+| E8 basic save damage scaling (리뷰 지적) | **구현 완료** |
 | Phase B generic capability | 완료 |
 | Phase C content production | 완료 (production card 32장) |
 | Phase D/E validation | 완료 |
@@ -330,4 +377,13 @@ Pack version은 gameplay data가 늘었으므로 `cardguild.m7@0.1.0` → `@0.2.
 | `card.shield-bash` | AoN 원본 이름 | **`card.shield-press`** | shield weapon profile이 없어 장착 무기 damage를 쓴다. 핵심 semantics가 다르므로 CardGuild 고유 이름 |
 | `card.tactical-step` / `card.bounding-stride` | Move 2장 | **`card.careful-advance` / `card.hover-step`** | 초안 2장은 기존 `step`/`stride` basic action과 mechanical duplicate였다. 최종 3장은 `movementMode × step × triggersReactions` 조합이 모두 다름 |
 | `creature` targeting | "self 포함 가능" | self·아군·**적 포함** | issue §5.2의 "any non-defeated Actor" 정의를 그대로 따름. PF2e Heal도 대상을 "living creature"로 지정하므로 fidelity에 부합 |
+
+## 11. 리뷰 대응 (`be74f08` REQUEST CHANGES)
+
+| Finding | 조치 |
+|---|---|
+| **1 · P1** — `initialConditions`가 value policy 검증을 우회 | Condition value invariant를 `validateConditionValue()` 하나로 뽑고 `apply-condition`과 `ActorDefinition.initialConditions` **두 authoring path가 같은 검사를 통과**하도록 했습니다. 범위 내 허용 / 범위 초과 거부 / policy 없는 Condition에 value 거부 3건을 회귀 테스트로 고정했습니다 |
+| **2 · P1** — basic save가 recurring capability로 식별되지 않음 | **E8**로 소급 판정하고 §7·위 E8 절에 근거를 남겼습니다. `damageTotal()` 공유 경계에 내림 규칙을 두고 Frostbite(60ft, 2d4) · Daze(60ft, 1d6) · Harm(1-action touch, 1d8)을 원본 range·dice·basic save로 맞췄습니다 |
+| **3 · P1** — 일부 AoN 이름이 자체 fidelity gate 위반 | Battle Medicine 회복량을 Treat Wounds DC 15 원본(2d8 / crit 4d8)으로 되돌렸습니다. Runic Weapon은 핵심 효과(weapon dice 증가)를 표현할 수 없어 **D11 DEFER**로 내리고 카드를 `card.spirit-edge`로 rename했습니다. 리뷰가 지적하지 않았지만 같은 기준을 적용해 `card.overwhelming-presence`도 rename했습니다 — Overwhelming Presence는 rank 9 AoN 주문이며 이 카드와 semantics가 전혀 다릅니다 (`card.iron-presence`) |
+| **P2** — 문서 stale note | production table·coverage·E7 표를 실제 card ID로 맞추고, Soothe는 "축약"이 아니라 rider 생략으로, Force Barrage는 120ft→30ft 축소를 명시했습니다. matrix에 없던 Knockdown row와 Telekinetic Projectile의 spellcasting modifier 생략도 추가했습니다 |
 | Phase B 구현 | 승인 후 착수 |

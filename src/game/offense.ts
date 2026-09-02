@@ -280,11 +280,16 @@ export function weaponDamageRoll(rolledDice: number, flatModifier: number): numb
 }
 
 /**
- * The minimum applies to the normal damage, and only then does a critical or an action's
- * own multiplier double it — a penalised critical deals 2, not 0.
+ * The one place a rolled damage total becomes a number, shared by Strikes and by authored
+ * `damage` effects. The minimum applies to the normal damage first, and only then does a
+ * multiplier scale it — a penalised critical deals 2, not 0.
+ *
+ * Multipliers below 1 exist for PF2e's basic save, where a successful save takes half
+ * damage rounded down (https://2e.aonprd.com/Rules.aspx?ID=2296), so the rounding rule
+ * lives here rather than at any call site.
  */
-export function strikeDamageTotal(rolledDice: number, flatModifier: number, multiplier: number): number {
-  return weaponDamageRoll(rolledDice, flatModifier) * multiplier;
+export function damageTotal(rolledDice: number, flatModifier: number, multiplier: number): number {
+  return Math.floor(weaponDamageRoll(rolledDice, flatModifier) * multiplier);
 }
 
 function damageStrike(

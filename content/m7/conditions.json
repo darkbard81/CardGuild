@@ -30,10 +30,10 @@
     "expiry": "actor-turn-start"
   },
   {
-    "id": "runic-weapon",
-    "name": "Runic Weapon",
+    "id": "spirit-edge",
+    "name": "Spirit Edge",
     "traits": [{ "id": "condition" }],
-    "statModifiers": [{ "selector": { "kind": "attack" }, "type": "status", "value": 1, "label": "Runic weapon" }],
+    "statModifiers": [{ "selector": { "kind": "attack" }, "type": "status", "value": 1, "label": "Spirit edge" }],
     "valuePolicy": { "min": 0, "max": 1, "merge": "max", "modifierScale": "multiply-by-value", "endTurnDelta": -1 }
   }
 ]

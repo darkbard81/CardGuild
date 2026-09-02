@@ -4,7 +4,7 @@ import {
   resolveMapPenalty,
   resolveStrike,
   resolveStrikeSource,
-  strikeDamageTotal,
+  damageTotal,
   weaponDamageRoll,
 } from "./offense";
 import { equipmentTraits, getEquipmentActionGrants, getEquipmentCardGrants } from "./rules";
@@ -350,9 +350,13 @@ describe("Strike damage roll minimum", () => {
 
   it("applies the minimum before a critical or action multiplier doubles it", () => {
     // A penalised critical deals 2, not 0: PF2e resolves normal damage first.
-    expect(strikeDamageTotal(1, -30, 2)).toBe(2);
-    expect(strikeDamageTotal(1, -30, 1)).toBe(1);
-    expect(strikeDamageTotal(6, 4, 2)).toBe(20);
+    expect(damageTotal(1, -30, 2)).toBe(2);
+    expect(damageTotal(1, -30, 1)).toBe(1);
+    expect(damageTotal(6, 4, 2)).toBe(20);
+    // A basic save's successful degree halves the total and rounds down.
+    expect(damageTotal(5, 0, 0.5)).toBe(2);
+    expect(damageTotal(4, 0, 0.5)).toBe(2);
+    expect(damageTotal(1, 0, 0.5)).toBe(0);
   });
 });
 

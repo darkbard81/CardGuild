@@ -8,7 +8,7 @@ import {
   type ResolvedActionPlan,
 } from "./action-plan";
 import { findPath, getTile, gridDistance, hasLineOfSight, positionKey } from "./grid";
-import { strikeDamageTotal } from "./offense";
+import { damageTotal } from "./offense";
 import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
@@ -526,7 +526,7 @@ function applyOutcomeEffect(
         draft,
         plan.actionActorId,
         actorId,
-        strikeDamageTotal(roll.total, effect.flatModifier, effect.multiplier ?? 1),
+        damageTotal(roll.total, effect.flatModifier, effect.multiplier ?? 1),
         effect.damageType,
         events,
       );
@@ -863,7 +863,7 @@ function executeResolvedAction(
   if (resolution.kind === "strike" && isSuccessful(degree)) {
     const damageRoll = rollDice(draft.rng, resolution.strike.damage.count, resolution.strike.damage.sides);
     draft.rng = damageRoll.rng;
-    const damage = strikeDamageTotal(
+    const damage = damageTotal(
       damageRoll.total,
       resolution.strike.damage.flatModifier,
       resolution.damageMultiplier * (degree === "critical-success" ? 2 : 1),

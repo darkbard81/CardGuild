@@ -33,7 +33,7 @@ export {
   resolveMapPenalty,
   resolveStrike,
   resolveStrikeSource,
-  strikeDamageTotal,
+  damageTotal,
   weaponDamageRoll,
 } from "./offense";
 export type { StrikeResolutionOptions, StrikeSource } from "./offense";

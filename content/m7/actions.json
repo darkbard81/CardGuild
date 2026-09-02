@@ -381,8 +381,8 @@
         "dc": { "kind": "fixed", "value": 15 }
       },
       "outcomes": {
-        "critical-success": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 2, "sides": 8 }, "flatModifier": 0 }],
-        "success": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0 }],
+        "critical-success": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 4, "sides": 8 }, "flatModifier": 0 }],
+        "success": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 2, "sides": 8 }, "flatModifier": 0 }],
         "failure": [],
         "critical-failure": []
       }
@@ -391,11 +391,11 @@
   {
     "id": "frostbite",
     "name": "Frostbite",
-    "description": "서리를 씌워 냉기 피해를 줍니다. 대상이 Fortitude로 저항합니다.",
+    "description": "서리를 씌워 냉기 피해를 줍니다. 대상이 Fortitude basic save로 저항합니다.",
     "timing": { "kind": "turn", "actions": 2 },
     "traits": [{ "id": "cantrip" }, { "id": "cold" }, { "id": "concentrate" }, { "id": "spell" }],
     "targeting": "enemy",
-    "range": { "kind": "feet", "value": 30 },
+    "range": { "kind": "feet", "value": 60 },
     "resolution": {
       "kind": "check",
       "check": {
@@ -410,20 +410,13 @@
       "outcomes": {
         "critical-success": [],
         "success": [
-          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 4 }, "flatModifier": 0, "damageType": "cold" }
+          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "damageType": "cold", "multiplier": 0.5 }
         ],
         "failure": [
-          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "damageType": "cold" }
+          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "damageType": "cold", "multiplier": 1 }
         ],
         "critical-failure": [
-          {
-            "kind": "damage",
-            "owner": "target",
-            "dice": { "count": 2, "sides": 4 },
-            "flatModifier": 0,
-            "damageType": "cold",
-            "multiplier": 2
-          }
+          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "damageType": "cold", "multiplier": 2 }
         ]
       }
     }
@@ -454,11 +447,11 @@
   {
     "id": "harm",
     "name": "Harm",
-    "description": "공허의 기운으로 생명력을 앗아갑니다. 대상이 Fortitude로 저항합니다.",
+    "description": "손을 뻗어 공허의 기운으로 생명력을 앗아갑니다. 대상이 Fortitude basic save로 저항합니다.",
     "timing": { "kind": "turn", "actions": 1 },
     "traits": [{ "id": "concentrate" }, { "id": "spell" }, { "id": "void" }],
     "targeting": "enemy",
-    "range": { "kind": "feet", "value": 30 },
+    "range": { "kind": "feet", "value": 5 },
     "resolution": {
       "kind": "check",
       "check": {
@@ -469,20 +462,13 @@
       "outcomes": {
         "critical-success": [],
         "success": [
-          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 4 }, "flatModifier": 0, "damageType": "void" }
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0, "damageType": "void", "multiplier": 0.5 }
         ],
         "failure": [
-          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0, "damageType": "void" }
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0, "damageType": "void", "multiplier": 1 }
         ],
         "critical-failure": [
-          {
-            "kind": "damage",
-            "owner": "target",
-            "dice": { "count": 1, "sides": 8 },
-            "flatModifier": 0,
-            "damageType": "void",
-            "multiplier": 2
-          }
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0, "damageType": "void", "multiplier": 2 }
         ]
       }
     }
@@ -490,11 +476,11 @@
   {
     "id": "daze",
     "name": "Daze",
-    "description": "정신을 뒤흔들어 정신 피해를 줍니다. 대상이 Will로 저항합니다.",
+    "description": "정신을 뒤흔들어 정신 피해를 줍니다. 대상이 Will basic save로 저항합니다.",
     "timing": { "kind": "turn", "actions": 2 },
     "traits": [{ "id": "cantrip" }, { "id": "concentrate" }, { "id": "mental" }, { "id": "spell" }],
     "targeting": "enemy",
-    "range": { "kind": "feet", "value": 30 },
+    "range": { "kind": "feet", "value": 60 },
     "resolution": {
       "kind": "check",
       "check": {
@@ -504,26 +490,21 @@
       },
       "outcomes": {
         "critical-success": [],
-        "success": [],
+        "success": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 6 }, "flatModifier": 0, "damageType": "mental", "multiplier": 0.5 }
+        ],
         "failure": [
-          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 6 }, "flatModifier": 0, "damageType": "mental" }
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 6 }, "flatModifier": 0, "damageType": "mental", "multiplier": 1 }
         ],
         "critical-failure": [
-          {
-            "kind": "damage",
-            "owner": "target",
-            "dice": { "count": 1, "sides": 6 },
-            "flatModifier": 0,
-            "damageType": "mental",
-            "multiplier": 2
-          }
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 6 }, "flatModifier": 0, "damageType": "mental", "multiplier": 2 }
         ]
       }
     }
   },
   {
-    "id": "overwhelming-presence",
-    "name": "Overwhelming Presence",
+    "id": "iron-presence",
+    "name": "Iron Presence",
     "description": "수련으로 벼린 존재감으로 압도합니다. Class DC에 대해 대상이 Will로 저항합니다.",
     "timing": { "kind": "turn", "actions": 2 },
     "traits": [{ "id": "concentrate" }, { "id": "emotion" }, { "id": "fear" }, { "id": "mental" }],
@@ -673,16 +654,16 @@
     }
   },
   {
-    "id": "runic-weapon",
-    "name": "Runic Weapon",
-    "description": "동료의 무기에 룬을 새겨 다음 턴까지 공격 판정을 높입니다.",
+    "id": "spirit-edge",
+    "name": "Spirit Edge",
+    "description": "동료의 무기에 영적인 날을 씌워 다음 턴까지 공격 판정을 높입니다.",
     "timing": { "kind": "turn", "actions": 2 },
     "traits": [{ "id": "concentrate" }, { "id": "spell" }],
     "targeting": "ally",
     "range": { "kind": "feet", "value": 30 },
     "resolution": {
       "kind": "direct",
-      "effects": [{ "kind": "apply-condition", "owner": "target", "condition": "runic-weapon", "value": 1 }]
+      "effects": [{ "kind": "apply-condition", "owner": "target", "condition": "spirit-edge", "value": 1 }]
     }
   },
   {

@@ -205,6 +205,31 @@ function validateActionCheck(
   }
 }
 
+/**
+ * The one place an authored Condition value is checked. Both authoring paths — an
+ * `apply-condition` outcome and an Actor's `initialConditions` — run through this, so a
+ * value can never reach the runtime modifier stack without a policy that bounds it.
+ */
+function validateConditionValue(
+  context: ValidationContext,
+  category: ContentSourceCategory,
+  conditionsById: ReadonlyMap<ConditionId, ConditionDefinition>,
+  definitionId: string,
+  path: string,
+  condition: ConditionId,
+  value: number | undefined,
+): void {
+  if (value === undefined) return;
+  const policy = conditionsById.get(condition)?.valuePolicy;
+  if (!policy) {
+    addIssue(context, category, path, "CONDITION_VALUE_NOT_SUPPORTED", `Condition "${condition}" does not declare a valuePolicy.`, definitionId);
+    return;
+  }
+  if (value < policy.min || value > policy.max) {
+    addIssue(context, category, path, "CONDITION_VALUE_OUT_OF_RANGE", `Condition "${condition}" allows ${String(policy.min)}–${String(policy.max)}, not ${String(value)}.`, definitionId);
+  }
+}
+
 function validateOutcomeEffect(
   context: ValidationContext,
   knownConditions: ReadonlySet<ConditionId>,
@@ -220,15 +245,8 @@ function validateOutcomeEffect(
       addIssue(context, "actions", `${path}.owner`, "EFFECT_REQUIRES_TARGET", `Action "${definition.id}" affects the target but does not target an Actor.`, definition.id);
     }
   }
-  // A Condition value is only meaningful where the Condition itself declares a policy, and
-  // the authored number has to sit inside that policy's range.
-  if (effect.kind === "apply-condition" && effect.value !== undefined) {
-    const policy = conditionsById.get(effect.condition)?.valuePolicy;
-    if (!policy) {
-      addIssue(context, "actions", `${path}.value`, "CONDITION_VALUE_NOT_SUPPORTED", `Condition "${effect.condition}" does not declare a valuePolicy.`, definition.id);
-    } else if (effect.value < policy.min || effect.value > policy.max) {
-      addIssue(context, "actions", `${path}.value`, "CONDITION_VALUE_OUT_OF_RANGE", `Condition "${effect.condition}" allows ${String(policy.min)}–${String(policy.max)}, not ${String(effect.value)}.`, definition.id);
-    }
+  if (effect.kind === "apply-condition") {
+    validateConditionValue(context, "actions", conditionsById, definition.id, `${path}.value`, effect.condition, effect.value);
   }
   if (effect.kind === "restore-hp") {
     if (effect.dice.count > 0 && effect.dice.sides < 2) {
@@ -468,9 +486,14 @@ export function validateContentPackSemantics(
       }
     });
     (actor.initialConditions ?? []).forEach((condition, conditionIndex) => {
+      const path = `[${index}].initialConditions[${conditionIndex}]`;
       if (!knownConditions.has(condition.id)) {
-        addIssue(context, "actors", `[${index}].initialConditions[${conditionIndex}].id`, "UNKNOWN_CONDITION", `Condition "${condition.id}" is not defined.`, actor.id);
+        addIssue(context, "actors", `${path}.id`, "UNKNOWN_CONDITION", `Condition "${condition.id}" is not defined.`, actor.id);
+        return;
       }
+      // An Actor starts combat with these, so an unbounded value here would reach the
+      // modifier stack exactly like a bad outcome effect would.
+      validateConditionValue(context, "actors", conditionsById, actor.id, `${path}.value`, condition.id, condition.value);
     });
   });
 

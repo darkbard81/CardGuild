@@ -72,6 +72,35 @@ describe("M7 capability authoring contract", () => {
     }));
   });
 
+  it("holds an Actor's initial Conditions to the same value invariant as an outcome effect", () => {
+    const pack = source();
+    const playable = pack.actors.find((entry) => entry.traits.some((trait) => trait.id === "playable"));
+    if (!playable) throw new Error("A playable Actor is missing.");
+    const withInitial = (condition: { id: string; sourceId: string; value?: number }): ContentPackSource => ({
+      ...pack,
+      actors: pack.actors.map((entry) =>
+        entry.id === playable.id ? { ...entry, initialConditions: [condition] } : entry),
+    });
+
+    // In range: an Actor may legitimately start an encounter already frightened.
+    expect(validateContentPackSemantics(withInitial({ id: "frightened", sourceId: "fixture", value: 2 }))).toEqual([]);
+
+    // Out of range: without this the value would reach the modifier stack unscaled, and a
+    // status penalty of -99 would poison every statistic until the Condition decayed away.
+    expect(validateContentPackSemantics(withInitial({ id: "frightened", sourceId: "fixture", value: 99 })))
+      .toContainEqual(expect.objectContaining({
+        code: "CONDITION_VALUE_OUT_OF_RANGE",
+        definitionId: playable.id,
+      }));
+
+    // A Condition with no policy cannot carry a value on either authoring path.
+    expect(validateContentPackSemantics(withInitial({ id: "prone", sourceId: "fixture", value: 2 })))
+      .toContainEqual(expect.objectContaining({
+        code: "CONDITION_VALUE_NOT_SUPPORTED",
+        definitionId: playable.id,
+      }));
+  });
+
   it("rejects a value policy on a Condition that contributes no modifier", () => {
     const invalid = withCondition("prone", (condition) => ({
       ...condition,

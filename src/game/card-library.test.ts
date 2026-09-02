@@ -259,7 +259,7 @@ describe("valued conditions", () => {
 
   it("raises a lower value and refuses to lower a higher one", () => {
     const raised = combat({ "goblin-skirmisher": conditions(frightened(1)) });
-    const first = withCard(raised, "hero", "card.overwhelming-presence");
+    const first = withCard(raised, "hero", "card.iron-presence");
     const applied = dispatchCombatCommand(first.state, play(first.state, first.source, ENEMY), CONTENT);
     expect(applied.accepted).toBe(true);
     const after = actor(applied.state, "goblin-skirmisher").conditions.find((entry) => entry.id === "frightened");
@@ -464,10 +464,10 @@ describe("spell-like checks", () => {
 
   it("reads a Class DC without any authored spell DC", () => {
     const state = combat();
-    const plan = planFor(state, "overwhelming-presence", ENEMY);
+    const plan = planFor(state, "iron-presence", ENEMY);
     if (plan?.resolution.kind !== "check") throw new Error("Expected a check.");
     expect(plan.resolution.check.dc).toBe(resolveClassDC(actor(state, "hero"), CONTEXT).value);
-    const authored = JSON.stringify(CONTENT.actions["overwhelming-presence"]);
+    const authored = JSON.stringify(CONTENT.actions["iron-presence"]);
     expect(authored).not.toContain('"fixed"');
   });
 
@@ -483,6 +483,45 @@ describe("spell-like checks", () => {
     expect(preview.criticalChance).toBeUndefined();
     const total = Object.values(preview.degreeProbabilities ?? {}).reduce((sum, value) => sum + value, 0);
     expect(total).toBeCloseTo(1);
+  });
+
+  it("scales one authored base die across the four basic-save degrees", () => {
+    // PF2e basic save: no damage / half / full / double from the same authored dice
+    // (https://2e.aonprd.com/Rules.aspx?ID=2296), not four separate dice profiles.
+    for (const [id, count, sides] of [["frostbite", 2, 4], ["daze", 1, 6], ["harm", 1, 8]] as const) {
+      const action = CONTENT.actions[id];
+      if (action?.resolution.kind !== "check") throw new Error(`${id} must be a check.`);
+      const { outcomes } = action.resolution;
+      expect(`${id}:${String(outcomes["critical-success"].length)}`).toBe(`${id}:0`);
+      for (const [degree, multiplier] of [["success", 0.5], ["failure", 1], ["critical-failure", 2]] as const) {
+        const effect = outcomes[degree][0];
+        if (effect?.kind !== "damage") throw new Error(`${id} ${degree} must deal damage.`);
+        expect(`${id}.${degree}`).toBe(`${id}.${degree}`);
+        expect({ count: effect.dice.count, sides: effect.dice.sides, multiplier: effect.multiplier }).toEqual({
+          count, sides, multiplier,
+        });
+      }
+    }
+  });
+
+  it("rounds a successful basic save down to half the rolled damage", () => {
+    const state = combat();
+    const played = withCard(state, "hero", "card.frostbite");
+    const result = dispatchCombatCommand(played.state, play(played.state, played.source, ENEMY), CONTENT);
+    expect(result.accepted).toBe(true);
+    const rolled = result.events.find((event) => event.type === "CHECK_ROLLED");
+    const dealt = result.events.find((event) => event.type === "DAMAGE_DEALT");
+    if (!rolled) throw new Error("Expected a save roll.");
+    if (rolled.degree === "critical-success") {
+      expect(dealt).toBeUndefined();
+      return;
+    }
+    if (!dealt) throw new Error("Expected damage.");
+    // 2d4 can never exceed 8, so a successful save can never deal more than 4.
+    const cap = rolled.degree === "success" ? 4 : rolled.degree === "failure" ? 8 : 16;
+    expect(dealt.amount).toBeLessThanOrEqual(cap);
+    expect(dealt.amount).toBeGreaterThanOrEqual(1);
+    expect(Number.isInteger(dealt.amount)).toBe(true);
   });
 
   it("preserves the authored damage type all the way into the event", () => {

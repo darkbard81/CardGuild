@@ -9,7 +9,7 @@ import {
   hasLineOfSight,
   positionKey,
 } from "./grid";
-import { strikeDamageTotal } from "./offense";
+import { damageTotal } from "./offense";
 import {
   getConditionActionGrants,
   getEquipmentActionGrants,
@@ -445,8 +445,8 @@ export function previewAction(
     criticalChance: probabilities["critical-success"],
     damageRange: [
       // Both ends run the execution helper, so the minimum-1 rule cannot drift.
-      strikeDamageTotal(strike.damage.count, strike.damage.flatModifier, resolution.damageMultiplier),
-      strikeDamageTotal(strike.damage.count * strike.damage.sides, strike.damage.flatModifier, resolution.damageMultiplier),
+      damageTotal(strike.damage.count, strike.damage.flatModifier, resolution.damageMultiplier),
+      damageTotal(strike.damage.count * strike.damage.sides, strike.damage.flatModifier, resolution.damageMultiplier),
     ],
   };
 }
