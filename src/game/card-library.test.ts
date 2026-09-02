@@ -55,7 +55,7 @@ function withInitiative(actor: ActorSetup, value: number): Partial<ActorSetup> {
  * Aerin acts first with the skirmisher adjacent to her, a second hero stands behind her as
  * an ally target, and the brute waits out of reach.
  */
-function combat(overrides: Readonly<Record<string, Partial<ActorSetup>>> = {}): CombatState {
+function combat(overrides: Readonly<Record<string, Partial<ActorSetup>>> = {}, seed = 33): CombatState {
   const hero = setup("hero");
   const skirmisher = setup("goblin-skirmisher");
   const brute = setup("goblin-brute");
@@ -81,7 +81,7 @@ function combat(overrides: Readonly<Record<string, Partial<ActorSetup>>> = {}): 
     },
     { ...brute, position: { x: 8, y: 6 }, ...withInitiative(brute, -101), ...overrides["goblin-brute"] },
   ];
-  return createCombat({ ...M7_COMBAT_DEFINITION, scenario: { ...M7_COMBAT_DEFINITION.scenario, actors } }, 33).state;
+  return createCombat({ ...M7_COMBAT_DEFINITION, scenario: { ...M7_COMBAT_DEFINITION.scenario, actors } }, seed).state;
 }
 
 function actor(state: CombatState, id: string): Actor {
@@ -522,6 +522,28 @@ describe("spell-like checks", () => {
     expect(dealt.amount).toBeLessThanOrEqual(cap);
     expect(dealt.amount).toBeGreaterThanOrEqual(1);
     expect(Number.isInteger(dealt.amount)).toBe(true);
+  });
+
+  it("never lets a halved basic save erase damage that was rolled", () => {
+    // Daze is 1d6, so a successful save halves a base roll that can be 1. Rounding down
+    // must not turn that into 0 damage — only resistance, a later step, may do that.
+    let halved = 0;
+    for (let seed = 1; seed <= 60; seed += 1) {
+      const state = combat({}, seed);
+      const played = withCard(state, "hero", "card.daze");
+      const result = dispatchCombatCommand(played.state, play(played.state, played.source, ENEMY), CONTENT);
+      expect(result.accepted).toBe(true);
+      const rolled = result.events.find((event) => event.type === "CHECK_ROLLED");
+      if (rolled?.degree !== "success") continue;
+      halved += 1;
+      const dealt = result.events.find((event) => event.type === "DAMAGE_DEALT");
+      expect(`seed ${String(seed)}: ${String(dealt?.amount)}`).toBe(`seed ${String(seed)}: ${String(dealt?.amount)}`);
+      if (!dealt) throw new Error(`Seed ${String(seed)} halved Daze to no damage at all.`);
+      expect(dealt.amount).toBeGreaterThanOrEqual(1);
+      expect(dealt.amount).toBeLessThanOrEqual(3);
+    }
+    // The sweep is only meaningful if it actually produced successful saves.
+    expect(halved).toBeGreaterThan(0);
   });
 
   it("preserves the authored damage type all the way into the event", () => {

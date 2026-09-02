@@ -93,6 +93,13 @@ describe("M7 capability authoring contract", () => {
         definitionId: playable.id,
       }));
 
+    // The policy minimum is the "gone" value, so an Actor cannot start already at it.
+    expect(validateContentPackSemantics(withInitial({ id: "frightened", sourceId: "fixture", value: 0 })))
+      .toContainEqual(expect.objectContaining({
+        code: "CONDITION_VALUE_OUT_OF_RANGE",
+        definitionId: playable.id,
+      }));
+
     // A Condition with no policy cannot carry a value on either authoring path.
     expect(validateContentPackSemantics(withInitial({ id: "prone", sourceId: "fixture", value: 2 })))
       .toContainEqual(expect.objectContaining({

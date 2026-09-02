@@ -258,7 +258,12 @@ EXTEND입니다.
 |---|---|
 | 구현 | 새 executor 없이 기존 `ActionOutcomeEffect.damage`의 `multiplier`를 `0.5` / `1` / `2`로 authoring |
 | 경계 | `strikeDamageTotal()` → **`damageTotal()`** 로 일반화하고 반올림 규칙을 그 안에 둠 |
-| 반올림 | `Math.floor(weaponDamageRoll(dice, flat) * multiplier)` — 분수 HP가 생기지 않음 |
+| 반올림 | `Math.floor(...)` — 분수 HP가 생기지 않음 |
+| 최소값 | 양수 피해를 양수 multiplier로 줄여도 **최소 1**. 절반은 내림하되 굴린 피해를 지우지는 않습니다 (Resistance는 이후 단계이며 0으로 만들 수 있음) |
+
+`1d6`인 Daze는 base roll이 1일 때만 이 경계가 드러납니다. Frostbite(`2d4`)는 최소 roll이 2라
+문제를 가리므로, 회귀는 `damageTotal(1, 0, 0.5) === 1`과 Daze production 경로 양쪽으로
+고정했습니다.
 
 Strike의 crit 배수는 정수라 `floor`가 no-op이고 기존 동작은 그대로입니다. Strike 전용 이름의
 helper를 spell damage에 재사용하지 않기 위해 이름도 중립적으로 바꿨습니다.
@@ -362,7 +367,7 @@ active로 만드는 지점에서 제거합니다.
 | Phase A matrix | 완료 (reference 59개 분류) |
 | E1–E6 EXTEND 판정 (issue §5 명시) | **승인 · 구현 완료** |
 | E7 condition expiry policy (issue 미명시) | **승인 · 구현 완료** |
-| E8 basic save damage scaling (리뷰 지적) | **구현 완료** |
+| E8 basic save damage scaling (리뷰 지적) | **구현 완료** (minimum-1 포함) |
 | Phase B generic capability | 완료 |
 | Phase C content production | 완료 (production card 32장) |
 | Phase D/E validation | 완료 |
@@ -385,5 +390,15 @@ Pack version은 gameplay data가 늘었으므로 `cardguild.m7@0.1.0` → `@0.2.
 | **1 · P1** — `initialConditions`가 value policy 검증을 우회 | Condition value invariant를 `validateConditionValue()` 하나로 뽑고 `apply-condition`과 `ActorDefinition.initialConditions` **두 authoring path가 같은 검사를 통과**하도록 했습니다. 범위 내 허용 / 범위 초과 거부 / policy 없는 Condition에 value 거부 3건을 회귀 테스트로 고정했습니다 |
 | **2 · P1** — basic save가 recurring capability로 식별되지 않음 | **E8**로 소급 판정하고 §7·위 E8 절에 근거를 남겼습니다. `damageTotal()` 공유 경계에 내림 규칙을 두고 Frostbite(60ft, 2d4) · Daze(60ft, 1d6) · Harm(1-action touch, 1d8)을 원본 range·dice·basic save로 맞췄습니다 |
 | **3 · P1** — 일부 AoN 이름이 자체 fidelity gate 위반 | Battle Medicine 회복량을 Treat Wounds DC 15 원본(2d8 / crit 4d8)으로 되돌렸습니다. Runic Weapon은 핵심 효과(weapon dice 증가)를 표현할 수 없어 **D11 DEFER**로 내리고 카드를 `card.spirit-edge`로 rename했습니다. 리뷰가 지적하지 않았지만 같은 기준을 적용해 `card.overwhelming-presence`도 rename했습니다 — Overwhelming Presence는 rank 9 AoN 주문이며 이 카드와 semantics가 전혀 다릅니다 (`card.iron-presence`) |
+| **P2** — Condition value 0 authoring | `policy.min`은 "Condition이 없는 값"이므로 authored value가 그 값이면 존재하지 않는 상태를 기술하게 됩니다. 허용 범위를 `min+1 … max`로 좁혀 runtime의 `addCondition()`(`incoming <= min`이면 무시)과 계약을 일치시켰습니다 |
 | **P2** — 문서 stale note | production table·coverage·E7 표를 실제 card ID로 맞추고, Soothe는 "축약"이 아니라 rider 생략으로, Force Barrage는 120ft→30ft 축소를 명시했습니다. matrix에 없던 Knockdown row와 Telekinetic Projectile의 spellcasting modifier 생략도 추가했습니다 |
 | Phase B 구현 | 승인 후 착수 |
+
+## 12. 2차 리뷰 대응 (`b08d43c`)
+
+| Finding | 조치 |
+|---|---|
+| **P1** — E8의 minimum-1 damage 규칙 | `damageTotal()`이 내림 후 최소 1을 보장합니다. 이전 구현은 `damageTotal(1, 0, 0.5) === 0`이라 Daze의 base roll 1이 Success에서 0 피해가 됐습니다 |
+| **P2** — Condition value 0 authoring | 허용 범위를 `min+1 … max`로 좁혔습니다 |
+
+1차 리뷰에서 CLOSED 처리된 Finding 1·3은 변경하지 않았습니다.

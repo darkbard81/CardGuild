@@ -225,8 +225,11 @@ function validateConditionValue(
     addIssue(context, category, path, "CONDITION_VALUE_NOT_SUPPORTED", `Condition "${condition}" does not declare a valuePolicy.`, definitionId);
     return;
   }
-  if (value < policy.min || value > policy.max) {
-    addIssue(context, category, path, "CONDITION_VALUE_OUT_OF_RANGE", `Condition "${condition}" allows ${String(policy.min)}–${String(policy.max)}, not ${String(value)}.`, definitionId);
+  // `policy.min` is the value at which the Condition is gone, so authoring it would
+  // describe a Condition that is not there — the runtime drops such an application.
+  const lowest = policy.min + 1;
+  if (value < lowest || value > policy.max) {
+    addIssue(context, category, path, "CONDITION_VALUE_OUT_OF_RANGE", `Condition "${condition}" allows ${String(lowest)}–${String(policy.max)}, not ${String(value)}.`, definitionId);
   }
 }
 

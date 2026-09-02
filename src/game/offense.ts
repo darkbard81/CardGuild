@@ -285,11 +285,14 @@ export function weaponDamageRoll(rolledDice: number, flatModifier: number): numb
  * multiplier scale it — a penalised critical deals 2, not 0.
  *
  * Multipliers below 1 exist for PF2e's basic save, where a successful save takes half
- * damage rounded down (https://2e.aonprd.com/Rules.aspx?ID=2296), so the rounding rule
- * lives here rather than at any call site.
+ * damage rounded down (https://2e.aonprd.com/Rules.aspx?ID=2296). Halving rounds down but
+ * never erases damage that was there: scaling positive damage by a positive multiplier
+ * still deals at least 1. Resistance is a later step and may take it to 0; this one never
+ * does. Both rules live here rather than at any call site.
  */
 export function damageTotal(rolledDice: number, flatModifier: number, multiplier: number): number {
-  return Math.floor(weaponDamageRoll(rolledDice, flatModifier) * multiplier);
+  if (multiplier <= 0) return 0;
+  return Math.max(1, Math.floor(weaponDamageRoll(rolledDice, flatModifier) * multiplier));
 }
 
 function damageStrike(

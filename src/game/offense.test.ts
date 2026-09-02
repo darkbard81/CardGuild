@@ -356,7 +356,10 @@ describe("Strike damage roll minimum", () => {
     // A basic save's successful degree halves the total and rounds down.
     expect(damageTotal(5, 0, 0.5)).toBe(2);
     expect(damageTotal(4, 0, 0.5)).toBe(2);
-    expect(damageTotal(1, 0, 0.5)).toBe(0);
+    // Halving rounds down but never erases damage: a 1 stays a 1, not a 0.
+    expect(damageTotal(1, 0, 0.5)).toBe(1);
+    expect(damageTotal(2, 0, 0.5)).toBe(1);
+    expect(damageTotal(1, -30, 0.5)).toBe(1);
   });
 });
 
