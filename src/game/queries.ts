@@ -170,6 +170,34 @@ function enemyTargets(
     .map((target) => ({ kind: "actor" as const, actorId: target.id, label: target.name }));
 }
 
+/**
+ * Support targeting. Range and line of effect still apply, but the front/side facing
+ * restriction does not: facing gates who an Actor can attack, not who it can reach to heal
+ * or buff. `creature` includes the acting Actor itself, `ally` excludes it.
+ */
+function actorScopeTargets(
+  state: CombatState,
+  actor: ActorState,
+  definition: ActionDefinition,
+  content: CombatContent,
+  scope: "ally" | "creature",
+): readonly LegalTarget[] {
+  const range = actionRangeFeet(definition, actor, { content });
+  return Object.values(state.actors)
+    .filter((candidate) => {
+      if (candidate.defeated) return false;
+      if (candidate.id === actor.id) return scope === "creature";
+      if (scope === "ally" && candidate.team !== actor.team) return false;
+      return (
+        gridDistance(actor.position, candidate.position) <= range &&
+        hasLineOfSight(state.map, actor.position, candidate.position) &&
+        hasLineOfEffect(state.map, actor.position, candidate.position)
+      );
+    })
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map((candidate) => ({ kind: "actor" as const, actorId: candidate.id, label: candidate.name }));
+}
+
 function listCandidateTargets(
   state: CombatState,
   actor: ActorState,
@@ -178,6 +206,9 @@ function listCandidateTargets(
 ): readonly LegalTarget[] {
   if (definition.resolution.kind === "move") return movementTargets(state, actor, definition);
   if (definition.targeting === "enemy") return enemyTargets(state, actor, definition, content);
+  if (definition.targeting === "ally" || definition.targeting === "creature") {
+    return actorScopeTargets(state, actor, definition, content, definition.targeting);
+  }
   if (definition.targeting === "object") {
     return Object.values(state.map.objects)
       .filter((object) => !object.used && gridDistance(actor.position, object.position) === 5)

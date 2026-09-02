@@ -39,8 +39,11 @@ import type {
   CombatSetupResult,
   CombatState,
   CommandResult,
+  DamageType,
   DegreeOfSuccess,
+  ConditionId,
   ConditionInstance,
+  ConditionValuePolicy,
   EffectInstance,
   MapObjectState,
   MoveContinuation,
@@ -266,20 +269,105 @@ function replaceActor(draft: CombatDraft, actor: ActorState): void {
   draft.actors[actor.id] = actor;
 }
 
+function clampConditionValue(policy: ConditionValuePolicy, value: number): number {
+  return Math.min(policy.max, Math.max(policy.min, value));
+}
+
+/**
+ * Applies a Condition, valued or not. A valued Condition merges under its own policy —
+ * `max` keeps the stronger application rather than adding — so Frightened 1 on top of
+ * Frightened 2 changes nothing and never becomes Frightened 3.
+ */
 function addCondition(
   draft: CombatDraft,
   actorId: string,
   condition: ConditionInstance["id"],
   sourceId: string,
+  content: CombatContent,
+  events: CombatEvent[],
+  value?: number,
+): void {
+  const actor = draft.actors[actorId];
+  if (!actor) return;
+  const existing = actor.conditions.find((entry) => entry.id === condition);
+  const policy = content.conditions[condition]?.valuePolicy;
+  if (!policy) {
+    if (existing) return;
+    replaceActor(draft, { ...actor, conditions: [...actor.conditions, { id: condition, sourceId }] });
+    events.push({ type: "CONDITION_APPLIED", actorId, condition, sourceId });
+    return;
+  }
+  const incoming = clampConditionValue(policy, value ?? 1);
+  if (incoming <= policy.min) return;
+  const merged = existing ? Math.max(existing.value ?? policy.min, incoming) : incoming;
+  if (existing && merged === (existing.value ?? policy.min)) return;
+  const instance: ConditionInstance = { id: condition, sourceId, value: merged };
+  replaceActor(draft, {
+    ...actor,
+    conditions: existing
+      ? actor.conditions.map((entry) => (entry.id === condition ? instance : entry))
+      : [...actor.conditions, instance],
+  });
+  events.push({ type: "CONDITION_APPLIED", actorId, condition, sourceId, value: merged });
+}
+
+/**
+ * End-of-turn decay for the conditioned Actor's own valued Conditions. Reaching the policy
+ * minimum removes the Condition, so Frightened wears off without a duration subsystem.
+ */
+function decayValuedConditions(
+  draft: CombatDraft,
+  actorId: string,
+  content: CombatContent,
   events: CombatEvent[],
 ): void {
   const actor = draft.actors[actorId];
-  if (!actor || actor.conditions.some((entry) => entry.id === condition)) return;
+  if (!actor) return;
+  const kept: ConditionInstance[] = [];
+  const removed: ConditionId[] = [];
+  const changed: { readonly condition: ConditionId; readonly value: number }[] = [];
+  for (const entry of actor.conditions) {
+    const policy = content.conditions[entry.id]?.valuePolicy;
+    if (!policy?.endTurnDelta) {
+      kept.push(entry);
+      continue;
+    }
+    const next = clampConditionValue(policy, (entry.value ?? policy.min) + policy.endTurnDelta);
+    if (next <= policy.min) {
+      removed.push(entry.id);
+      continue;
+    }
+    kept.push({ ...entry, value: next });
+    changed.push({ condition: entry.id, value: next });
+  }
+  if (removed.length === 0 && changed.length === 0) return;
+  replaceActor(draft, { ...actor, conditions: kept });
+  for (const entry of changed) {
+    events.push({ type: "CONDITION_VALUE_CHANGED", actorId, condition: entry.condition, value: entry.value });
+  }
+  for (const condition of removed) events.push({ type: "CONDITION_REMOVED", actorId, condition });
+}
+
+/**
+ * Clears Conditions that last until their owner acts again. This generalises what
+ * `shieldRaised` did for Raise a Shield: the effect covers everyone else's turns and ends
+ * as this Actor's next turn begins.
+ */
+function expireTurnStartConditions(
+  draft: CombatDraft,
+  actorId: string,
+  content: CombatContent,
+  events: CombatEvent[],
+): void {
+  const actor = draft.actors[actorId];
+  if (!actor) return;
+  const expired = actor.conditions.filter((entry) => content.conditions[entry.id]?.expiry === "actor-turn-start");
+  if (expired.length === 0) return;
   replaceActor(draft, {
     ...actor,
-    conditions: [...actor.conditions, { id: condition, sourceId }],
+    conditions: actor.conditions.filter((entry) => content.conditions[entry.id]?.expiry !== "actor-turn-start"),
   });
-  events.push({ type: "CONDITION_APPLIED", actorId, condition, sourceId });
+  for (const entry of expired) events.push({ type: "CONDITION_REMOVED", actorId, condition: entry.id });
 }
 
 function removeCondition(
@@ -349,7 +437,7 @@ function applyDamage(
   sourceActorId: string,
   targetActorId: string,
   amount: number,
-  damageType: "slashing" | "piercing" | "bludgeoning" | "force",
+  damageType: DamageType,
   events: CombatEvent[],
 ): void {
   const target = draft.actors[targetActorId];
@@ -360,6 +448,26 @@ function applyDamage(
   events.push({ type: "DAMAGE_DEALT", sourceActorId, targetActorId, amount, damageType, remainingHp: hp });
   if (defeated) events.push({ type: "ACTOR_DEFEATED", actorId: targetActorId });
   checkCombatOutcome(draft, events);
+}
+
+/**
+ * Healing against the #8 HP boundary: only current HP moves, it never passes max HP, and a
+ * defeated Actor stays defeated — Dying and Wounded are a separate system, so nothing here
+ * brings anyone back.
+ */
+function restoreHp(
+  draft: CombatDraft,
+  sourceActorId: string,
+  targetActorId: string,
+  amount: number,
+  events: CombatEvent[],
+): void {
+  const target = draft.actors[targetActorId];
+  if (!target || target.defeated || amount <= 0) return;
+  const hp = Math.min(target.maxHp, target.hp + amount);
+  if (hp === target.hp) return;
+  replaceActor(draft, { ...target, hp });
+  events.push({ type: "HP_RESTORED", sourceActorId, targetActorId, amount: hp - target.hp, remainingHp: hp });
 }
 
 /**
@@ -380,8 +488,22 @@ function applyOutcomeEffect(
     case "apply-condition": {
       const actorId = ownerId(effect.owner);
       if (actorId && !draft.actors[actorId]?.defeated) {
-        addCondition(draft, actorId, effect.condition, plan.actionId, events);
+        addCondition(draft, actorId, effect.condition, plan.actionId, content, events, effect.value);
       }
+      break;
+    }
+    case "restore-hp": {
+      const actorId = ownerId(effect.owner);
+      if (!actorId) break;
+      const roll = rollDice(draft.rng, effect.dice.count, effect.dice.sides);
+      draft.rng = roll.rng;
+      restoreHp(
+        draft,
+        plan.actionActorId,
+        actorId,
+        Math.max(0, roll.total + effect.flatModifier) * (effect.multiplier ?? 1),
+        events,
+      );
       break;
     }
     case "remove-condition": {
@@ -540,7 +662,7 @@ function applyWebTerrain(
     degree: check.degree,
     modifierSources: formatStatisticSources(reflex.sources),
   });
-  if (!isSuccessful(check.degree)) addCondition(draft, actorId, "grabbed", tile.id, events);
+  if (!isSuccessful(check.degree)) addCondition(draft, actorId, "grabbed", tile.id, content, events);
 }
 
 function completeMove(
@@ -766,9 +888,10 @@ function expireUnsustainedEffects(draft: CombatDraft, actorId: string, events: C
   }
 }
 
-function advanceTurn(draft: CombatDraft, events: CombatEvent[]): void {
+function advanceTurn(draft: CombatDraft, content: CombatContent, events: CombatEvent[]): void {
   const endedActorId = draft.turn.activeActorId;
   expireUnsustainedEffects(draft, endedActorId, events);
+  decayValuedConditions(draft, endedActorId, content, events);
   events.push({ type: "TURN_ENDED", actorId: endedActorId });
 
   const order = draft.turn.initiativeOrder;
@@ -787,6 +910,7 @@ function advanceTurn(draft: CombatDraft, events: CombatEvent[]): void {
   if (activeActor) {
     replaceActor(draft, { ...activeActor, reactionAvailable: true, shieldRaised: false });
   }
+  expireTurnStartConditions(draft, activeActorId, content, events);
   draft.turn = {
     initiativeOrder: order,
     activeIndex: nextIndex,
@@ -850,8 +974,13 @@ function useAction(
   draft.turn = {
     ...draft.turn,
     actionsRemaining: draft.turn.actionsRemaining - cost,
+    // An `attack` Action advances the MAP ladder by one stage by default; a heavy
+    // multi-action Strike declares how many attacks it counts as instead.
     attacksThisTurn:
-      draft.turn.attacksThisTurn + (resolved.definition.traits.some((trait) => trait.id === "attack") ? 1 : 0),
+      draft.turn.attacksThisTurn +
+      (resolved.definition.traits.some((trait) => trait.id === "attack")
+        ? resolved.definition.mapAttackCount ?? 1
+        : 0),
   };
   events.push({
     type: "ACTION_SPENT",
@@ -869,6 +998,7 @@ function useAction(
 function endTurn(
   state: CombatState,
   command: Extract<CombatCommand, { type: "end-turn" }>,
+  content: CombatContent,
 ): CommandResult {
   if (state.outcome) return fail(state, "Combat has ended.");
   if (state.pendingReaction) return fail(state, "Resolve the pending reaction first.");
@@ -876,7 +1006,7 @@ function endTurn(
   const draft = cloneState(state);
   const events: CombatEvent[] = [];
   beginAcceptedCommand(draft, command);
-  advanceTurn(draft, events);
+  advanceTurn(draft, content, events);
   return { accepted: true, state: asState(draft), events };
 }
 
@@ -890,7 +1020,7 @@ function resumeAfterReaction(
   const mover = draft.actors[pending.sourceActorId];
   if (mover?.defeated) {
     checkCombatOutcome(draft, events);
-    if (!draft.outcome) advanceTurn(draft, events);
+    if (!draft.outcome) advanceTurn(draft, content, events);
     return;
   }
   if (!validateMoveContinuation(asState(draft), pending.continuation, content).legal) return;
@@ -1022,7 +1152,7 @@ export function dispatchCombatCommand(
     case "use-action":
       return useAction(state, command, content);
     case "end-turn":
-      return endTurn(state, command);
+      return endTurn(state, command, content);
     case "use-reaction":
       return useReaction(state, command, content);
     case "pass-reaction":

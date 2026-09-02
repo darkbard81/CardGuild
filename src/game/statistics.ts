@@ -8,6 +8,8 @@ import type {
   CharacterStatProfile,
   CharacterWeaponProfile,
   CombatContent,
+  ConditionDefinition,
+  ConditionInstance,
   EquipmentDefinition,
   FixedCreatureStats,
   InitiativeStatisticSelector,
@@ -131,6 +133,19 @@ const SOURCE_KIND_ORDER: Readonly<Record<SourcedModifier["sourceKind"], number>>
   trait: 2,
   context: 3,
 };
+
+export const PROFICIENCY_RANKS = [
+  "untrained",
+  "trained",
+  "expert",
+  "master",
+  "legendary",
+] as const satisfies readonly ProficiencyRank[];
+
+/** Ordering for rank comparisons, so a requirement never re-spells the ladder. */
+export function proficiencyRankAtLeast(rank: ProficiencyRank, minimum: ProficiencyRank): boolean {
+  return PROFICIENCY_RANKS.indexOf(rank) >= PROFICIENCY_RANKS.indexOf(minimum);
+}
 
 export function proficiencyBonus(level: number, rank: ProficiencyRank): number {
   if (!Number.isInteger(level) || level < 0) throw new Error("Character level must be a non-negative integer.");
@@ -260,6 +275,27 @@ function derivedEquipmentModifiers(
   return derived;
 }
 
+/**
+ * A valued Condition scales its authored modifiers by its current value, so Frightened 2 is
+ * one definition at value 2 rather than a second Condition id. The scaled contribution then
+ * goes through the ordinary stacking core — the same one Equipment and Traits use — which
+ * is also why the `all` selector already excludes damage: a fear penalty hits checks, DCs
+ * and AC, never a weapon's damage roll.
+ */
+function scaleConditionModifiers(
+  definition: ConditionDefinition,
+  instance: ConditionInstance,
+): readonly StatisticModifierContribution[] {
+  const authored = definition.statModifiers ?? [];
+  const value = instance.value;
+  if (!definition.valuePolicy || value === undefined) return authored;
+  return authored.map((modifier) => ({
+    ...modifier,
+    value: modifier.value * value,
+    label: `${modifier.label} ${String(value)}`,
+  }));
+}
+
 function collectModifiers(actor: ActorState, context: StatisticResolutionContext): readonly SourcedModifier[] {
   const modifiers: SourcedModifier[] = [
     ...traitModifiers(actor.traits, context, `actor:${actor.id}`),
@@ -278,7 +314,7 @@ function collectModifiers(actor: ActorState, context: StatisticResolutionContext
     const definition = context.content.conditions[condition.id];
     if (!definition) continue;
     modifiers.push(
-      ...sourced(definition.statModifiers, "condition", `${condition.id}:${condition.sourceId}`),
+      ...sourced(scaleConditionModifiers(definition, condition), "condition", `${condition.id}:${condition.sourceId}`),
       ...traitModifiers(definition.traits, context, `condition:${condition.id}:${condition.sourceId}`),
     );
   }

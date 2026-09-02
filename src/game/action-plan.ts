@@ -2,6 +2,7 @@ import { attacksForMap, resolveMapPenalty, resolveStrike } from "./offense";
 import { isDirectlyBehind } from "./rules";
 import {
   formatStatisticSources,
+  proficiencyRankAtLeast,
   resolveArmorClass,
   resolveClassDC,
   resolveStatisticDC,
@@ -12,6 +13,7 @@ import type {
   ActionCheckDefinition,
   ActionDcRef,
   ActionDefinition,
+  ActionRequirement,
   ActionMapContext,
   ActionOutcomeEffect,
   ActionParticipant,
@@ -170,15 +172,46 @@ function resolveCheck(
   };
 }
 
+/**
+ * Whether one capability gate is met. Each kind reads an existing source of truth — the #9
+ * resolved Strike, the Actor's equipment, the #7 Character profile — so a requirement can
+ * only observe the rules, never restate them.
+ */
+function requirementMet(
+  requirement: ActionRequirement,
+  actor: ActorState,
+  context: StatisticResolutionContext,
+): boolean {
+  if (requirement.kind === "weapon-mode") {
+    // A Creature's authored Strike declares only a range, so it satisfies no weapon mode.
+    return resolveStrike(actor, context).attackMode === requirement.mode;
+  }
+  if (requirement.kind === "equipped-slot") {
+    return actor.equipmentIds.some((id) => context.content.equipment[id]?.slot === requirement.slot);
+  }
+  // Skill ranks live on the Character profile; a Creature carries final numbers instead.
+  if (actor.statProfile.kind !== "character") return false;
+  return proficiencyRankAtLeast(actor.statProfile.stats.skills[requirement.skill], requirement.minimum);
+}
+
+export function meetsActionRequirements(
+  definition: ActionDefinition,
+  actor: ActorState,
+  context: StatisticResolutionContext,
+): boolean {
+  return (definition.requirements ?? []).every((requirement) => requirementMet(requirement, actor, context));
+}
+
 /** A Strike rolls its #9 attack modifier against the target's #8 Armor Class. */
 function resolveStrikeCheck(
   participants: ActionParticipants,
   context: StatisticResolutionContext,
   attacksThisTurn: number,
+  extraWeaponDice: number,
 ): { readonly check: ResolvedActionCheck; readonly strike: ResolvedStrikeProfile } | null {
   const { actor, target } = participants;
   if (!target) return null;
-  const strike = resolveStrike(actor, context, { attacksThisTurn });
+  const strike = resolveStrike(actor, context, { attacksThisTurn, extraWeaponDice });
   const armorClass = resolveArmorClass(target, context);
   const rearAdjustment = isDirectlyBehind(actor.position, target) ? -2 : 0;
   const rearSources: readonly StatisticSource[] = rearAdjustment
@@ -218,6 +251,9 @@ export function buildResolvedActionPlan(
   const targetActor = target.kind === "actor" ? state.actors[target.actorId] : undefined;
   const participants: ActionParticipants = { actor, target: targetActor };
   const context: StatisticResolutionContext = { content };
+  // An unmet requirement makes the plan unresolvable rather than producing numbers a UI
+  // would then have to hide: legality, preview and execution all read the same null.
+  if (!meetsActionRequirements(definition, actor, context)) return null;
   const attacksThisTurn = attacksForMap(mapContext, definition.traits.some((trait) => trait.id === "attack"));
   const base = {
     actionId: definition.id,
@@ -236,8 +272,12 @@ export function buildResolvedActionPlan(
     return { ...base, resolution, notes: [] };
   }
   if (resolution.kind === "strike") {
-    const resolved = resolveStrikeCheck(participants, context, attacksThisTurn);
+    const extraWeaponDice = resolution.extraWeaponDice ?? 0;
+    const resolved = resolveStrikeCheck(participants, context, attacksThisTurn, extraWeaponDice);
     if (!resolved) return null;
+    const extraDiceNote = extraWeaponDice > 0
+      ? [`+${String(extraWeaponDice)}d${String(resolved.strike.damage.sides)} weapon damage`]
+      : [];
     return {
       ...base,
       resolution: {
@@ -247,7 +287,7 @@ export function buildResolvedActionPlan(
         damageMultiplier: resolution.damageMultiplier,
         outcomes: resolution.outcomes,
       },
-      notes: checkNotes(resolved.check, [resolved.strike.weaponName]),
+      notes: checkNotes(resolved.check, [resolved.strike.weaponName, ...extraDiceNote]),
     };
   }
   const check = resolveCheck(resolution.check, participants, context, resolveMapPenalty(attacksThisTurn));

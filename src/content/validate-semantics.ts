@@ -8,6 +8,7 @@ import type {
   ActionStatisticRef,
   ActionTargeting,
   CharacterWeaponProfile,
+  ConditionDefinition,
   ConditionId,
   FixedStrikeProfile,
   StatisticModifierContribution,
@@ -26,12 +27,15 @@ interface ValidationContext {
   readonly issues: ContentValidationIssue[];
 }
 
+/** Targeting values that name another Actor, so a target-side check or effect has a subject. */
+const ACTOR_TARGETING: readonly ActionTargeting[] = ["enemy", "ally", "creature"];
+
 /** Which targeting a resolution can legally pair with, replacing the old 1:1 effect table. */
 const RESOLUTION_TARGETING: Readonly<Record<ActionResolution["kind"], readonly ActionTargeting[]>> = {
   move: ["tile"],
   strike: ["enemy"],
-  check: ["enemy", "self"],
-  direct: ["none", "self", "object", "effect"],
+  check: ["enemy", "ally", "creature", "self"],
+  direct: ["none", "self", "ally", "creature", "enemy", "object", "effect"],
 };
 
 /** Targeting each effect primitive needs in order to have something to act on. */
@@ -189,8 +193,8 @@ function validateActionCheck(
   }
   // A check that reads the target — as roller or as DC owner — needs an enemy to read.
   const needsTarget = check.roller === "target" || (check.dc.kind !== "fixed" && check.dc.owner === "target");
-  if (needsTarget && definition.targeting !== "enemy") {
-    addIssue(context, "actions", `${path}`, "CHECK_REQUIRES_TARGET", `Action "${definition.id}" reads the target but does not target an enemy.`, definition.id);
+  if (needsTarget && !ACTOR_TARGETING.includes(definition.targeting)) {
+    addIssue(context, "actions", `${path}`, "CHECK_REQUIRES_TARGET", `Action "${definition.id}" reads the target but does not target an Actor.`, definition.id);
   }
   if (check.dc.kind === "fixed" && (!Number.isInteger(check.dc.value) || check.dc.value <= 0)) {
     addIssue(context, "actions", `${path}.dc.value`, "INVALID_FIXED_DC", "A fixed DC must be a positive integer.", definition.id);
@@ -204,6 +208,7 @@ function validateActionCheck(
 function validateOutcomeEffect(
   context: ValidationContext,
   knownConditions: ReadonlySet<ConditionId>,
+  conditionsById: ReadonlyMap<ConditionId, ConditionDefinition>,
   knownActions: ReadonlySet<string>,
   definition: ActionDefinition,
   path: string,
@@ -211,8 +216,29 @@ function validateOutcomeEffect(
 ): void {
   if (effect.kind === "apply-condition" || effect.kind === "remove-condition") {
     validateConditionReference(context, knownConditions, definition, effect.condition, `${path}.condition`);
-    if (effect.owner === "target" && definition.targeting !== "enemy") {
-      addIssue(context, "actions", `${path}.owner`, "EFFECT_REQUIRES_TARGET", `Action "${definition.id}" affects the target but does not target an enemy.`, definition.id);
+    if (effect.owner === "target" && !ACTOR_TARGETING.includes(definition.targeting)) {
+      addIssue(context, "actions", `${path}.owner`, "EFFECT_REQUIRES_TARGET", `Action "${definition.id}" affects the target but does not target an Actor.`, definition.id);
+    }
+  }
+  // A Condition value is only meaningful where the Condition itself declares a policy, and
+  // the authored number has to sit inside that policy's range.
+  if (effect.kind === "apply-condition" && effect.value !== undefined) {
+    const policy = conditionsById.get(effect.condition)?.valuePolicy;
+    if (!policy) {
+      addIssue(context, "actions", `${path}.value`, "CONDITION_VALUE_NOT_SUPPORTED", `Condition "${effect.condition}" does not declare a valuePolicy.`, definition.id);
+    } else if (effect.value < policy.min || effect.value > policy.max) {
+      addIssue(context, "actions", `${path}.value`, "CONDITION_VALUE_OUT_OF_RANGE", `Condition "${effect.condition}" allows ${String(policy.min)}–${String(policy.max)}, not ${String(effect.value)}.`, definition.id);
+    }
+  }
+  if (effect.kind === "restore-hp") {
+    if (effect.dice.count > 0 && effect.dice.sides < 2) {
+      addIssue(context, "actions", `${path}.dice`, "INVALID_RESTORE_DICE", "Restore dice must have at least 2 sides.", definition.id);
+    }
+    if (effect.dice.count === 0 && effect.flatModifier <= 0) {
+      addIssue(context, "actions", `${path}`, "INVALID_RESTORE_AMOUNT", "A restore-hp effect must roll dice or carry a positive flat amount.", definition.id);
+    }
+    if (effect.owner === "target" && !ACTOR_TARGETING.includes(definition.targeting)) {
+      addIssue(context, "actions", `${path}.owner`, "EFFECT_REQUIRES_TARGET", `Action "${definition.id}" heals the target but does not target an Actor.`, definition.id);
     }
   }
   if (effect.kind === "lock-action" && !knownActions.has(effect.actionId)) {
@@ -222,8 +248,8 @@ function validateOutcomeEffect(
     if (!Number.isInteger(effect.dice.count) || effect.dice.count < 1 || !Number.isInteger(effect.dice.sides) || effect.dice.sides < 2) {
       addIssue(context, "actions", `${path}.dice`, "INVALID_DAMAGE_DICE", "Damage dice must have a positive count and at least 2 sides.", definition.id);
     }
-    if (effect.owner === "target" && definition.targeting !== "enemy") {
-      addIssue(context, "actions", `${path}.owner`, "EFFECT_REQUIRES_TARGET", `Action "${definition.id}" damages the target but does not target an enemy.`, definition.id);
+    if (effect.owner === "target" && !ACTOR_TARGETING.includes(definition.targeting)) {
+      addIssue(context, "actions", `${path}.owner`, "EFFECT_REQUIRES_TARGET", `Action "${definition.id}" damages the target but does not target an Actor.`, definition.id);
     }
   }
   const requiredTargeting = EFFECT_TARGETING[effect.kind];
@@ -280,9 +306,19 @@ export function validateContentPackSemantics(
     });
   });
 
+  const conditionsById = new Map(source.conditions.map((definition) => [definition.id, definition]));
+
   source.conditions.forEach((definition, index) => {
     validateTraits(context, knownTraits, "conditions", definition.id, `[${index}].traits`, definition.traits);
     validateStatModifiers(context, "conditions", definition.id, `[${index}].statModifiers`, definition.statModifiers);
+    const policy = definition.valuePolicy;
+    if (policy && policy.max <= policy.min) {
+      addIssue(context, "conditions", `[${index}].valuePolicy`, "INVALID_CONDITION_VALUE_POLICY", `Condition "${definition.id}" needs max greater than min.`, definition.id);
+    }
+    // Scaling only means something for a Condition that actually contributes a modifier.
+    if (policy && (definition.statModifiers ?? []).length === 0) {
+      addIssue(context, "conditions", `[${index}].valuePolicy`, "INVALID_CONDITION_VALUE_POLICY", `Condition "${definition.id}" scales modifiers by value but declares none.`, definition.id);
+    }
   });
 
   source.actions.forEach((definition, index) => {
@@ -299,6 +335,17 @@ export function validateContentPackSemantics(
     if (definition.range?.kind === "feet" && (!Number.isInteger(definition.range.value) || definition.range.value <= 0 || definition.range.value % 5 !== 0)) {
       addIssue(context, "actions", `${path}.range.value`, "INVALID_ACTION_RANGE", "Action range must be a positive multiple of 5 feet.", definition.id);
     }
+    // MAP stages are counted from attack usage, so declaring a count without the trait
+    // would silently do nothing.
+    if (definition.mapAttackCount !== undefined && !hasAttackTrait(definition)) {
+      addIssue(context, "actions", `${path}.mapAttackCount`, "MAP_COUNT_NOT_APPLICABLE", `Action "${definition.id}" declares a MAP attack count without the attack trait.`, definition.id);
+    }
+    // `weapon-mode` reads the resolved Strike, which only an attack-flavoured Action has.
+    for (const [requirementIndex, requirement] of (definition.requirements ?? []).entries()) {
+      if (requirement.kind === "weapon-mode" && resolution.kind !== "strike" && !hasAttackTrait(definition)) {
+        addIssue(context, "actions", `${path}.requirements[${String(requirementIndex)}]`, "REQUIREMENT_NOT_APPLICABLE", `Action "${definition.id}" requires a weapon mode without a Strike resolution or the attack trait.`, definition.id);
+      }
+    }
 
     if (resolution.kind === "check") {
       validateActionCheck(context, definition, `${path}.resolution.check`, resolution.check);
@@ -311,13 +358,13 @@ export function validateContentPackSemantics(
           continue;
         }
         outcomes.forEach((outcome, outcomeIndex) => {
-          validateOutcomeEffect(context, knownConditions, knownActions, definition, `${path}.resolution.outcomes.${degree}[${outcomeIndex}]`, outcome);
+          validateOutcomeEffect(context, knownConditions, conditionsById, knownActions, definition, `${path}.resolution.outcomes.${degree}[${outcomeIndex}]`, outcome);
         });
       }
     }
     if (resolution.kind === "direct") {
       resolution.effects.forEach((outcome, outcomeIndex) => {
-        validateOutcomeEffect(context, knownConditions, knownActions, definition, `${path}.resolution.effects[${outcomeIndex}]`, outcome);
+        validateOutcomeEffect(context, knownConditions, conditionsById, knownActions, definition, `${path}.resolution.effects[${outcomeIndex}]`, outcome);
       });
     }
   });

@@ -30,6 +30,12 @@ const AGILE_MAP = [0, -4, -8] as const;
 export interface StrikeResolutionOptions {
   /** Attacks already made this turn, before this one. The MAP ladder is derived from it. */
   readonly attacksThisTurn?: number;
+  /**
+   * Extra dice of the weapon's own base die, from an Action such as a heavy two-action
+   * swing. Only the die count grows: the attack modifier and the Attribute damage
+   * contribution are resolved once and never duplicated.
+   */
+  readonly extraWeaponDice?: number;
 }
 
 /**
@@ -180,6 +186,7 @@ export function resolveStrike(
   const source = resolveStrikeSource(actor, context);
   const traits = [...new Set(source.traits.map((trait) => trait.id))].sort();
   const mapPenalty = resolveMapPenalty(options.attacksThisTurn ?? 0, traits);
+  const extraDice = Math.max(0, options.extraWeaponDice ?? 0);
   const penaltySources = mapSources(mapPenalty, traits.includes("agile"));
   const attackStack = resolveModifierStack(actor, { kind: "attack" }, context);
   const damageStack = resolveModifierStack(actor, { kind: "damage" }, context);
@@ -217,7 +224,7 @@ export function resolveStrike(
       mapPenalty,
       rangeFeet: profile.rangeFeet,
       traits,
-      damage: damageStrike(profile.damage.count, profile.damage.sides, profile.damage.damageType, damageSources),
+      damage: damageStrike(profile.damage.count + extraDice, profile.damage.sides, profile.damage.damageType, damageSources),
       sources: attackSources,
     };
   }
@@ -258,7 +265,7 @@ export function resolveStrike(
     mapPenalty,
     rangeFeet: profile.rangeFeet,
     traits,
-    damage: damageStrike(profile.damage.count, profile.damage.sides, profile.damage.damageType, damageSources),
+    damage: damageStrike(profile.damage.count + extraDice, profile.damage.sides, profile.damage.damageType, damageSources),
     sources: attackSources,
   };
 }

@@ -1,4 +1,39 @@
 [
   { "id": "prone", "name": "Prone", "traits": [{ "id": "condition" }, { "id": "prone" }] },
-  { "id": "grabbed", "name": "Grabbed", "traits": [{ "id": "condition" }, { "id": "grabbed" }] }
+  { "id": "grabbed", "name": "Grabbed", "traits": [{ "id": "condition" }, { "id": "grabbed" }] },
+  {
+    "id": "frightened",
+    "name": "Frightened",
+    "traits": [{ "id": "condition" }, { "id": "emotion" }, { "id": "fear" }, { "id": "mental" }],
+    "statModifiers": [{ "selector": { "kind": "all" }, "type": "status", "value": -1, "label": "Frightened" }],
+    "valuePolicy": { "min": 0, "max": 4, "merge": "max", "modifierScale": "multiply-by-value", "endTurnDelta": -1 }
+  },
+  {
+    "id": "covered",
+    "name": "Taking Cover",
+    "traits": [{ "id": "condition" }],
+    "statModifiers": [{ "selector": { "kind": "ac" }, "type": "circumstance", "value": 2, "label": "Taking cover" }],
+    "expiry": "actor-turn-start"
+  },
+  {
+    "id": "parrying",
+    "name": "Parrying",
+    "traits": [{ "id": "condition" }],
+    "statModifiers": [{ "selector": { "kind": "ac" }, "type": "circumstance", "value": 2, "label": "Dueling parry" }],
+    "expiry": "actor-turn-start"
+  },
+  {
+    "id": "warded",
+    "name": "Warded",
+    "traits": [{ "id": "condition" }],
+    "statModifiers": [{ "selector": { "kind": "ac" }, "type": "circumstance", "value": 1, "label": "Arcane ward" }],
+    "expiry": "actor-turn-start"
+  },
+  {
+    "id": "runic-weapon",
+    "name": "Runic Weapon",
+    "traits": [{ "id": "condition" }],
+    "statModifiers": [{ "selector": { "kind": "attack" }, "type": "status", "value": 1, "label": "Runic weapon" }],
+    "valuePolicy": { "min": 0, "max": 1, "merge": "max", "modifierScale": "multiply-by-value", "endTurnDelta": -1 }
+  }
 ]

@@ -56,8 +56,15 @@
       "required": ["id", "sourceId"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
-        "sourceId": { "$ref": "#/$defs/nonEmptyString" }
+        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
+        "value": { "type": "integer" }
       }
+    },
+    "damageType": {
+      "enum": [
+        "slashing", "piercing", "bludgeoning", "force",
+        "acid", "cold", "electricity", "fire", "mental", "poison", "sonic", "spirit", "vitality", "void"
+      ]
     },
     "damageDie": {
       "type": "object",
@@ -67,7 +74,7 @@
         "count": { "type": "integer", "minimum": 1 },
         "sides": { "type": "integer", "minimum": 2 },
         "modifier": { "type": "integer" },
-        "damageType": { "enum": ["slashing", "piercing", "bludgeoning", "force"] }
+        "damageType": { "$ref": "#/$defs/damageType" }
       }
     },
     "weaponCategory": { "enum": ["unarmed", "simple", "martial", "advanced"] },
@@ -79,7 +86,7 @@
       "properties": {
         "count": { "type": "integer", "minimum": 1 },
         "sides": { "type": "integer", "minimum": 2 },
-        "damageType": { "enum": ["slashing", "piercing", "bludgeoning", "force"] }
+        "damageType": { "$ref": "#/$defs/damageType" }
       }
     },
     "characterWeaponProfile": {
@@ -236,7 +243,8 @@
           "properties": {
             "kind": { "const": "apply-condition" },
             "owner": { "$ref": "#/$defs/actionParticipant" },
-            "condition": { "$ref": "#/$defs/nonEmptyString" }
+            "condition": { "$ref": "#/$defs/nonEmptyString" },
+            "value": { "type": "integer", "minimum": 1 }
           }
         },
         {
@@ -275,7 +283,27 @@
               }
             },
             "flatModifier": { "type": "integer" },
-            "damageType": { "enum": ["slashing", "piercing", "bludgeoning", "force"] },
+            "damageType": { "$ref": "#/$defs/damageType" },
+            "multiplier": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "owner", "dice", "flatModifier"],
+          "properties": {
+            "kind": { "const": "restore-hp" },
+            "owner": { "$ref": "#/$defs/actionParticipant" },
+            "dice": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["count", "sides"],
+              "properties": {
+                "count": { "type": "integer", "minimum": 0 },
+                "sides": { "type": "integer", "minimum": 2 }
+              }
+            },
+            "flatModifier": { "type": "integer", "minimum": 0 },
             "multiplier": { "type": "number", "exclusiveMinimum": 0 }
           }
         },
@@ -349,6 +377,7 @@
           "properties": {
             "kind": { "const": "strike" },
             "damageMultiplier": { "type": "number", "exclusiveMinimum": 0 },
+            "extraWeaponDice": { "type": "integer", "minimum": 1 },
             "outcomes": { "$ref": "#/$defs/degreeOutcomeMap" }
           }
         },
@@ -373,6 +402,38 @@
         }
       ]
     },
+    "actionRequirement": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "mode"],
+          "properties": {
+            "kind": { "const": "weapon-mode" },
+            "mode": { "$ref": "#/$defs/weaponAttackMode" }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "slot"],
+          "properties": {
+            "kind": { "const": "equipped-slot" },
+            "slot": { "enum": ["weapon", "armor", "shield", "feet"] }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "skill", "minimum"],
+          "properties": {
+            "kind": { "const": "skill-rank" },
+            "skill": { "$ref": "#/$defs/skillId" },
+            "minimum": { "$ref": "#/$defs/proficiencyRank" }
+          }
+        }
+      ]
+    },
     "actionDefinition": {
       "type": "object",
       "additionalProperties": false,
@@ -383,8 +444,10 @@
         "description": { "type": "string" },
         "timing": { "$ref": "#/$defs/actionTiming" },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
-        "targeting": { "enum": ["none", "self", "enemy", "tile", "object", "effect"] },
+        "targeting": { "enum": ["none", "self", "ally", "creature", "enemy", "tile", "object", "effect"] },
         "range": { "$ref": "#/$defs/actionRange" },
+        "requirements": { "type": "array", "items": { "$ref": "#/$defs/actionRequirement" } },
+        "mapAttackCount": { "enum": [1, 2, 3] },
         "resolution": { "$ref": "#/$defs/actionResolution" }
       }
     },
@@ -429,6 +492,18 @@
         "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } }
       }
     },
+    "conditionValuePolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max", "merge", "modifierScale"],
+      "properties": {
+        "min": { "type": "integer", "minimum": 0 },
+        "max": { "type": "integer", "minimum": 1 },
+        "merge": { "const": "max" },
+        "modifierScale": { "const": "multiply-by-value" },
+        "endTurnDelta": { "const": -1 }
+      }
+    },
     "conditionDefinition": {
       "type": "object",
       "additionalProperties": false,
@@ -437,7 +512,9 @@
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
-        "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } }
+        "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } },
+        "valuePolicy": { "$ref": "#/$defs/conditionValuePolicy" },
+        "expiry": { "enum": ["actor-turn-start"] }
       }
     },
     "statModifierSelector": {
