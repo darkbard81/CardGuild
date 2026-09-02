@@ -1,4 +1,4 @@
-import { type Application, Container, Graphics, Sprite, type Texture, TexturePool } from "pixi.js";
+import { type Application, Container, Graphics, RenderTexture, Sprite, type Texture } from "pixi.js";
 
 import type { CombatState, GridPosition, TileState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
@@ -38,8 +38,14 @@ export class TerrainRenderer {
     const width = tilemap.width * cell;
     const height = tilemap.height * cell;
     if (!this.boardTexture || this.boardTexture.width !== width || this.boardTexture.height !== height) {
-      if (this.boardTexture) TexturePool.returnTexture(this.boardTexture);
-      this.boardTexture = TexturePool.getOptimalTexture(width, height, 1, false);
+      this.boardTexture?.destroy(true);
+      // Exactly the board's own size. A pooled texture is rounded up to a power of two and
+      // handed back with a smaller frame over a larger source, and that pairing is shared
+      // between encounters — a 5x3 board asks for 640x384 and gets a 1024x512 source the
+      // previous encounter also used. Sizing the target to the board keeps the mesh's
+      // texture and the projection's cells describing the same rectangle, and costs less
+      // memory than the padded page it replaces.
+      this.boardTexture = RenderTexture.create({ width, height, resolution: 1, antialias: false });
     }
     const composition = new Container({ label: "board-texture-composition" });
     for (let row = 0; row < tilemap.height; row += 1) {
@@ -112,8 +118,19 @@ export class TerrainRenderer {
     return { display, position, footRowOffset: this.config.propFootRowOffset, layerPriority, stableId };
   }
 
+  /**
+   * The board texture's own size against the size of the page it lives on, as `WxH/WxH`.
+   * The mesh maps the whole page onto the projected quad, so the two must stay equal;
+   * a padded page is the shape this renderer regressed into and is worth pinning.
+   */
+  public get boardTextureFit(): string {
+    const texture = this.boardTexture;
+    if (!texture) return "";
+    return `${texture.width}x${texture.height}/${texture.source.width}x${texture.source.height}`;
+  }
+
   public destroy(): void {
-    if (this.boardTexture) TexturePool.returnTexture(this.boardTexture);
+    this.boardTexture?.destroy(true);
     this.boardTexture = null;
   }
 }

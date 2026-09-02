@@ -434,6 +434,7 @@ export class BattleView {
   }
 
   private publishLayout(): void {
+    this.app.canvas.dataset.boardTextureFit = this.terrainRenderer.boardTextureFit;
     this.app.canvas.dataset.boardCorners = JSON.stringify(
       this.projection.corners.map((point) => ({ x: Number(point.x.toFixed(2)), y: Number(point.y.toFixed(2)) })),
     );

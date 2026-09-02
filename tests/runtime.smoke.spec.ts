@@ -357,6 +357,12 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#combat-log")).toContainText("used trip");
   await expect(page.locator("#action-pips .available")).toHaveCount(0);
 
+  // The mesh maps the whole board texture onto the projected quad, so the texture has to be
+  // exactly its own page. A padded page shrinks the art inside the quad and leaves actors
+  // standing off the drawn board.
+  const textureFit = await page.locator("#pixi-canvas").getAttribute("data-board-texture-fit");
+  expect(textureFit).toMatch(/^(\d+x\d+)\/\1$/);
+
   const beforeZoom = await boardCorners(page);
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   await page.mouse.wheel(0, -240);
