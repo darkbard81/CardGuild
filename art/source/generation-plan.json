@@ -1217,6 +1217,636 @@
         }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style lean goblin slinger whirling a leather sling Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/ui/equipment-icons-2.png",
+      "mode": "ui-icon",
+      "grid": {
+        "rows": 2,
+        "cols": 11
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "ui.equipment.light-blade",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.guardian-mace",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.composite-shortbow",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.leather-armor",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.scale-mail",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.half-plate",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.dueling-rapier",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.throwing-axes",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.greatsword",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.boar-spear",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.executioner-axe",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.flick-mace",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.scout-leather",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.brigandine",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.buckler",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.tower-shield",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.spiked-shield",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.striders-boots",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.medics-kit",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.warding-charm",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.hexers-focus",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.bloodied-talisman",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. CardGuild equipment inventory icons: the remaining 22 production weapons, armour, shields and utility items, in one 2x11 transparent sprite sheet."
+    },
+    {
+      "input": "art/source/ui/card-icons-2.png",
+      "mode": "ui-icon",
+      "grid": {
+        "rows": 4,
+        "cols": 7
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "ui.card.knockdown",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.vicious-swing",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.intimidating-strike",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.combat-grab",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.aimed-shot",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.shield-press",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.grapple",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.demoralize",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.slip-free",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.battle-medicine",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.frostbite",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.fear",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.harm",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.daze",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.iron-presence",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.telekinetic-projectile",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.ember-lash",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.force-barrage",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.heal",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.soothe",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.lay-on-hands",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.spirit-edge",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.brace-behind-cover",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.dueling-parry",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.arcane-ward",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.careful-advance",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.hover-step",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.spirit-lance",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. CardGuild tactical card icons: the remaining 28 production cards, in one 4x7 transparent sprite sheet."
     }
   ],
   "presentation": {
@@ -1237,13 +1867,63 @@
     "equipmentVisuals": {
       "halberd": "ui.equipment.halberd",
       "shield": "ui.equipment.shield",
-      "boots-of-fly": "ui.equipment.boots-of-fly"
+      "boots-of-fly": "ui.equipment.boots-of-fly",
+      "leather-armor": "ui.equipment.leather-armor",
+      "scale-mail": "ui.equipment.scale-mail",
+      "half-plate": "ui.equipment.half-plate",
+      "light-blade": "ui.equipment.light-blade",
+      "guardian-mace": "ui.equipment.guardian-mace",
+      "composite-shortbow": "ui.equipment.composite-shortbow",
+      "dueling-rapier": "ui.equipment.dueling-rapier",
+      "throwing-axes": "ui.equipment.throwing-axes",
+      "greatsword": "ui.equipment.greatsword",
+      "boar-spear": "ui.equipment.boar-spear",
+      "executioner-axe": "ui.equipment.executioner-axe",
+      "flick-mace": "ui.equipment.flick-mace",
+      "scout-leather": "ui.equipment.scout-leather",
+      "brigandine": "ui.equipment.brigandine",
+      "buckler": "ui.equipment.buckler",
+      "tower-shield": "ui.equipment.tower-shield",
+      "spiked-shield": "ui.equipment.spiked-shield",
+      "striders-boots": "ui.equipment.striders-boots",
+      "medics-kit": "ui.equipment.medics-kit",
+      "warding-charm": "ui.equipment.warding-charm",
+      "hexers-focus": "ui.equipment.hexers-focus",
+      "bloodied-talisman": "ui.equipment.bloodied-talisman"
     },
     "cardVisuals": {
       "card.trip": "ui.card.trip",
       "card.fly": "ui.card.fly",
       "card.spirit-beacon": "ui.card.spirit-beacon",
-      "card.reactive-strike": "ui.card.reactive-strike"
+      "card.reactive-strike": "ui.card.reactive-strike",
+      "card.spirit-lance": "ui.card.spirit-lance",
+      "card.knockdown": "ui.card.knockdown",
+      "card.vicious-swing": "ui.card.vicious-swing",
+      "card.intimidating-strike": "ui.card.intimidating-strike",
+      "card.combat-grab": "ui.card.combat-grab",
+      "card.aimed-shot": "ui.card.aimed-shot",
+      "card.shield-press": "ui.card.shield-press",
+      "card.grapple": "ui.card.grapple",
+      "card.demoralize": "ui.card.demoralize",
+      "card.slip-free": "ui.card.slip-free",
+      "card.battle-medicine": "ui.card.battle-medicine",
+      "card.frostbite": "ui.card.frostbite",
+      "card.fear": "ui.card.fear",
+      "card.harm": "ui.card.harm",
+      "card.daze": "ui.card.daze",
+      "card.iron-presence": "ui.card.iron-presence",
+      "card.telekinetic-projectile": "ui.card.telekinetic-projectile",
+      "card.ember-lash": "ui.card.ember-lash",
+      "card.force-barrage": "ui.card.force-barrage",
+      "card.heal": "ui.card.heal",
+      "card.soothe": "ui.card.soothe",
+      "card.lay-on-hands": "ui.card.lay-on-hands",
+      "card.spirit-edge": "ui.card.spirit-edge",
+      "card.brace-behind-cover": "ui.card.brace-behind-cover",
+      "card.dueling-parry": "ui.card.dueling-parry",
+      "card.arcane-ward": "ui.card.arcane-ward",
+      "card.careful-advance": "ui.card.careful-advance",
+      "card.hover-step": "ui.card.hover-step"
     }
   }
 }

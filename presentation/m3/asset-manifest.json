@@ -556,6 +556,506 @@
         "y": 1
       },
       "displayHeight": 132
+    },
+    "ui.equipment.light-blade": {
+      "frame": "ui.equipment.light-blade",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.guardian-mace": {
+      "frame": "ui.equipment.guardian-mace",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.composite-shortbow": {
+      "frame": "ui.equipment.composite-shortbow",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.leather-armor": {
+      "frame": "ui.equipment.leather-armor",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.scale-mail": {
+      "frame": "ui.equipment.scale-mail",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.half-plate": {
+      "frame": "ui.equipment.half-plate",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.dueling-rapier": {
+      "frame": "ui.equipment.dueling-rapier",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.throwing-axes": {
+      "frame": "ui.equipment.throwing-axes",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.greatsword": {
+      "frame": "ui.equipment.greatsword",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.boar-spear": {
+      "frame": "ui.equipment.boar-spear",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.executioner-axe": {
+      "frame": "ui.equipment.executioner-axe",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.flick-mace": {
+      "frame": "ui.equipment.flick-mace",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.scout-leather": {
+      "frame": "ui.equipment.scout-leather",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.brigandine": {
+      "frame": "ui.equipment.brigandine",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.buckler": {
+      "frame": "ui.equipment.buckler",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.tower-shield": {
+      "frame": "ui.equipment.tower-shield",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.spiked-shield": {
+      "frame": "ui.equipment.spiked-shield",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.striders-boots": {
+      "frame": "ui.equipment.striders-boots",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.medics-kit": {
+      "frame": "ui.equipment.medics-kit",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.warding-charm": {
+      "frame": "ui.equipment.warding-charm",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.hexers-focus": {
+      "frame": "ui.equipment.hexers-focus",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.equipment.bloodied-talisman": {
+      "frame": "ui.equipment.bloodied-talisman",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.knockdown": {
+      "frame": "ui.card.knockdown",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.vicious-swing": {
+      "frame": "ui.card.vicious-swing",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.intimidating-strike": {
+      "frame": "ui.card.intimidating-strike",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.combat-grab": {
+      "frame": "ui.card.combat-grab",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.aimed-shot": {
+      "frame": "ui.card.aimed-shot",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.shield-press": {
+      "frame": "ui.card.shield-press",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.grapple": {
+      "frame": "ui.card.grapple",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.demoralize": {
+      "frame": "ui.card.demoralize",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.slip-free": {
+      "frame": "ui.card.slip-free",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.battle-medicine": {
+      "frame": "ui.card.battle-medicine",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.frostbite": {
+      "frame": "ui.card.frostbite",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.fear": {
+      "frame": "ui.card.fear",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.harm": {
+      "frame": "ui.card.harm",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.daze": {
+      "frame": "ui.card.daze",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.iron-presence": {
+      "frame": "ui.card.iron-presence",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.telekinetic-projectile": {
+      "frame": "ui.card.telekinetic-projectile",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.ember-lash": {
+      "frame": "ui.card.ember-lash",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.force-barrage": {
+      "frame": "ui.card.force-barrage",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.heal": {
+      "frame": "ui.card.heal",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.soothe": {
+      "frame": "ui.card.soothe",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.lay-on-hands": {
+      "frame": "ui.card.lay-on-hands",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.spirit-edge": {
+      "frame": "ui.card.spirit-edge",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.brace-behind-cover": {
+      "frame": "ui.card.brace-behind-cover",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.dueling-parry": {
+      "frame": "ui.card.dueling-parry",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.arcane-ward": {
+      "frame": "ui.card.arcane-ward",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.careful-advance": {
+      "frame": "ui.card.careful-advance",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.hover-step": {
+      "frame": "ui.card.hover-step",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
+    "ui.card.spirit-lance": {
+      "frame": "ui.card.spirit-lance",
+      "kind": "ui",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
     }
   },
   "actorVisuals": {
@@ -661,12 +1161,62 @@
   "equipmentVisuals": {
     "halberd": "ui.equipment.halberd",
     "shield": "ui.equipment.shield",
-    "boots-of-fly": "ui.equipment.boots-of-fly"
+    "boots-of-fly": "ui.equipment.boots-of-fly",
+    "leather-armor": "ui.equipment.leather-armor",
+    "scale-mail": "ui.equipment.scale-mail",
+    "half-plate": "ui.equipment.half-plate",
+    "light-blade": "ui.equipment.light-blade",
+    "guardian-mace": "ui.equipment.guardian-mace",
+    "composite-shortbow": "ui.equipment.composite-shortbow",
+    "dueling-rapier": "ui.equipment.dueling-rapier",
+    "throwing-axes": "ui.equipment.throwing-axes",
+    "greatsword": "ui.equipment.greatsword",
+    "boar-spear": "ui.equipment.boar-spear",
+    "executioner-axe": "ui.equipment.executioner-axe",
+    "flick-mace": "ui.equipment.flick-mace",
+    "scout-leather": "ui.equipment.scout-leather",
+    "brigandine": "ui.equipment.brigandine",
+    "buckler": "ui.equipment.buckler",
+    "tower-shield": "ui.equipment.tower-shield",
+    "spiked-shield": "ui.equipment.spiked-shield",
+    "striders-boots": "ui.equipment.striders-boots",
+    "medics-kit": "ui.equipment.medics-kit",
+    "warding-charm": "ui.equipment.warding-charm",
+    "hexers-focus": "ui.equipment.hexers-focus",
+    "bloodied-talisman": "ui.equipment.bloodied-talisman"
   },
   "cardVisuals": {
     "card.trip": "ui.card.trip",
     "card.fly": "ui.card.fly",
     "card.spirit-beacon": "ui.card.spirit-beacon",
-    "card.reactive-strike": "ui.card.reactive-strike"
+    "card.reactive-strike": "ui.card.reactive-strike",
+    "card.spirit-lance": "ui.card.spirit-lance",
+    "card.knockdown": "ui.card.knockdown",
+    "card.vicious-swing": "ui.card.vicious-swing",
+    "card.intimidating-strike": "ui.card.intimidating-strike",
+    "card.combat-grab": "ui.card.combat-grab",
+    "card.aimed-shot": "ui.card.aimed-shot",
+    "card.shield-press": "ui.card.shield-press",
+    "card.grapple": "ui.card.grapple",
+    "card.demoralize": "ui.card.demoralize",
+    "card.slip-free": "ui.card.slip-free",
+    "card.battle-medicine": "ui.card.battle-medicine",
+    "card.frostbite": "ui.card.frostbite",
+    "card.fear": "ui.card.fear",
+    "card.harm": "ui.card.harm",
+    "card.daze": "ui.card.daze",
+    "card.iron-presence": "ui.card.iron-presence",
+    "card.telekinetic-projectile": "ui.card.telekinetic-projectile",
+    "card.ember-lash": "ui.card.ember-lash",
+    "card.force-barrage": "ui.card.force-barrage",
+    "card.heal": "ui.card.heal",
+    "card.soothe": "ui.card.soothe",
+    "card.lay-on-hands": "ui.card.lay-on-hands",
+    "card.spirit-edge": "ui.card.spirit-edge",
+    "card.brace-behind-cover": "ui.card.brace-behind-cover",
+    "card.dueling-parry": "ui.card.dueling-parry",
+    "card.arcane-ward": "ui.card.arcane-ward",
+    "card.careful-advance": "ui.card.careful-advance",
+    "card.hover-step": "ui.card.hover-step"
   }
 }

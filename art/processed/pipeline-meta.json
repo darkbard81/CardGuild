@@ -996,6 +996,856 @@
         "x": 0.5,
         "y": 1
       }
+    },
+    "ui.equipment.light-blade": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-light-blade.png",
+      "sourceBox": {
+        "left": 44,
+        "top": 16,
+        "width": 168,
+        "height": 224
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.guardian-mace": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-guardian-mace.png",
+      "sourceBox": {
+        "left": 44,
+        "top": 16,
+        "width": 167,
+        "height": 224
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.composite-shortbow": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-composite-shortbow.png",
+      "sourceBox": {
+        "left": 54,
+        "top": 16,
+        "width": 147,
+        "height": 224
+      },
+      "sourceIndex": 2,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.leather-armor": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-leather-armor.png",
+      "sourceBox": {
+        "left": 53,
+        "top": 16,
+        "width": 150,
+        "height": 224
+      },
+      "sourceIndex": 3,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.scale-mail": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-scale-mail.png",
+      "sourceBox": {
+        "left": 50,
+        "top": 16,
+        "width": 156,
+        "height": 224
+      },
+      "sourceIndex": 4,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.half-plate": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-half-plate.png",
+      "sourceBox": {
+        "left": 38,
+        "top": 16,
+        "width": 179,
+        "height": 224
+      },
+      "sourceIndex": 5,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.dueling-rapier": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-dueling-rapier.png",
+      "sourceBox": {
+        "left": 57,
+        "top": 16,
+        "width": 142,
+        "height": 224
+      },
+      "sourceIndex": 6,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.throwing-axes": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-throwing-axes.png",
+      "sourceBox": {
+        "left": 20,
+        "top": 16,
+        "width": 215,
+        "height": 224
+      },
+      "sourceIndex": 7,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.greatsword": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-greatsword.png",
+      "sourceBox": {
+        "left": 54,
+        "top": 16,
+        "width": 148,
+        "height": 224
+      },
+      "sourceIndex": 8,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.boar-spear": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-boar-spear.png",
+      "sourceBox": {
+        "left": 60,
+        "top": 16,
+        "width": 135,
+        "height": 224
+      },
+      "sourceIndex": 9,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.executioner-axe": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-executioner-axe.png",
+      "sourceBox": {
+        "left": 46,
+        "top": 16,
+        "width": 163,
+        "height": 224
+      },
+      "sourceIndex": 10,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.flick-mace": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-flick-mace.png",
+      "sourceBox": {
+        "left": 45,
+        "top": 16,
+        "width": 165,
+        "height": 224
+      },
+      "sourceIndex": 11,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.scout-leather": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-scout-leather.png",
+      "sourceBox": {
+        "left": 51,
+        "top": 16,
+        "width": 153,
+        "height": 224
+      },
+      "sourceIndex": 12,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.brigandine": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-brigandine.png",
+      "sourceBox": {
+        "left": 47,
+        "top": 16,
+        "width": 162,
+        "height": 224
+      },
+      "sourceIndex": 13,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.buckler": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-buckler.png",
+      "sourceBox": {
+        "left": 31,
+        "top": 16,
+        "width": 193,
+        "height": 224
+      },
+      "sourceIndex": 14,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.tower-shield": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-tower-shield.png",
+      "sourceBox": {
+        "left": 82,
+        "top": 16,
+        "width": 92,
+        "height": 224
+      },
+      "sourceIndex": 15,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.spiked-shield": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-spiked-shield.png",
+      "sourceBox": {
+        "left": 39,
+        "top": 16,
+        "width": 177,
+        "height": 224
+      },
+      "sourceIndex": 16,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.striders-boots": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-striders-boots.png",
+      "sourceBox": {
+        "left": 34,
+        "top": 16,
+        "width": 187,
+        "height": 224
+      },
+      "sourceIndex": 17,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.medics-kit": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-medics-kit.png",
+      "sourceBox": {
+        "left": 30,
+        "top": 16,
+        "width": 195,
+        "height": 224
+      },
+      "sourceIndex": 18,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.warding-charm": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-warding-charm.png",
+      "sourceBox": {
+        "left": 68,
+        "top": 16,
+        "width": 120,
+        "height": 224
+      },
+      "sourceIndex": 19,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.hexers-focus": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-hexers-focus.png",
+      "sourceBox": {
+        "left": 68,
+        "top": 16,
+        "width": 119,
+        "height": 224
+      },
+      "sourceIndex": 20,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.bloodied-talisman": {
+      "source": "art/source/ui/equipment-icons-2.png",
+      "output": "art/processed/ui/equipment-bloodied-talisman.png",
+      "sourceBox": {
+        "left": 74,
+        "top": 16,
+        "width": 107,
+        "height": 224
+      },
+      "sourceIndex": 21,
+      "flipX": false,
+      "processingScale": 1.028571,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.knockdown": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-knockdown.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 32,
+        "width": 204,
+        "height": 191
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.vicious-swing": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-vicious-swing.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 37,
+        "width": 204,
+        "height": 181
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.intimidating-strike": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-intimidating-strike.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 42,
+        "width": 204,
+        "height": 172
+      },
+      "sourceIndex": 2,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.combat-grab": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-combat-grab.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 37,
+        "width": 204,
+        "height": 181
+      },
+      "sourceIndex": 3,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.aimed-shot": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-aimed-shot.png",
+      "sourceBox": {
+        "left": 30,
+        "top": 26,
+        "width": 196,
+        "height": 204
+      },
+      "sourceIndex": 4,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.shield-press": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-shield-press.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 41,
+        "width": 204,
+        "height": 174
+      },
+      "sourceIndex": 5,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.grapple": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-grapple.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 42,
+        "width": 204,
+        "height": 172
+      },
+      "sourceIndex": 6,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.demoralize": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-demoralize.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 27,
+        "width": 204,
+        "height": 201
+      },
+      "sourceIndex": 7,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.slip-free": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-slip-free.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 33,
+        "width": 204,
+        "height": 190
+      },
+      "sourceIndex": 8,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.battle-medicine": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-battle-medicine.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 47,
+        "width": 204,
+        "height": 162
+      },
+      "sourceIndex": 9,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.frostbite": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-frostbite.png",
+      "sourceBox": {
+        "left": 38,
+        "top": 26,
+        "width": 179,
+        "height": 204
+      },
+      "sourceIndex": 10,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.fear": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-fear.png",
+      "sourceBox": {
+        "left": 38,
+        "top": 26,
+        "width": 180,
+        "height": 204
+      },
+      "sourceIndex": 11,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.harm": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-harm.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 43,
+        "width": 204,
+        "height": 170
+      },
+      "sourceIndex": 12,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.daze": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-daze.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 28,
+        "width": 204,
+        "height": 199
+      },
+      "sourceIndex": 13,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.iron-presence": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-iron-presence.png",
+      "sourceBox": {
+        "left": 49,
+        "top": 26,
+        "width": 158,
+        "height": 204
+      },
+      "sourceIndex": 14,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.telekinetic-projectile": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-telekinetic-projectile.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 32,
+        "width": 204,
+        "height": 191
+      },
+      "sourceIndex": 15,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.ember-lash": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-ember-lash.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 28,
+        "width": 204,
+        "height": 200
+      },
+      "sourceIndex": 16,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.force-barrage": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-force-barrage.png",
+      "sourceBox": {
+        "left": 36,
+        "top": 26,
+        "width": 183,
+        "height": 204
+      },
+      "sourceIndex": 17,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.heal": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-heal.png",
+      "sourceBox": {
+        "left": 27,
+        "top": 26,
+        "width": 202,
+        "height": 204
+      },
+      "sourceIndex": 18,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.soothe": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-soothe.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 32,
+        "width": 204,
+        "height": 192
+      },
+      "sourceIndex": 19,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.lay-on-hands": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-lay-on-hands.png",
+      "sourceBox": {
+        "left": 36,
+        "top": 26,
+        "width": 184,
+        "height": 204
+      },
+      "sourceIndex": 20,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.spirit-edge": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-spirit-edge.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 29,
+        "width": 204,
+        "height": 198
+      },
+      "sourceIndex": 21,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.brace-behind-cover": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-brace-behind-cover.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 31,
+        "width": 204,
+        "height": 194
+      },
+      "sourceIndex": 22,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.dueling-parry": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-dueling-parry.png",
+      "sourceBox": {
+        "left": 27,
+        "top": 26,
+        "width": 201,
+        "height": 204
+      },
+      "sourceIndex": 23,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.arcane-ward": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-arcane-ward.png",
+      "sourceBox": {
+        "left": 32,
+        "top": 26,
+        "width": 192,
+        "height": 204
+      },
+      "sourceIndex": 24,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.careful-advance": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-careful-advance.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 37,
+        "width": 204,
+        "height": 182
+      },
+      "sourceIndex": 25,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.hover-step": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-hover-step.png",
+      "sourceBox": {
+        "left": 26,
+        "top": 45,
+        "width": 204,
+        "height": 166
+      },
+      "sourceIndex": 26,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.card.spirit-lance": {
+      "source": "art/source/ui/card-icons-2.png",
+      "output": "art/processed/ui/card-spirit-lance.png",
+      "sourceBox": {
+        "left": 29,
+        "top": 26,
+        "width": 198,
+        "height": 204
+      },
+      "sourceIndex": 27,
+      "flipX": false,
+      "processingScale": 1.129412,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
     }
   }
 }
