@@ -7,7 +7,7 @@
     "outputAlpha": "straight"
   },
   "atlas": {
-    "size": 2048,
+    "size": 4096,
     "padding": 2
   },
   "assets": {
@@ -485,6 +485,516 @@
       "anchor": {
         "x": 0.5,
         "y": 0.5
+      }
+    },
+    "actor.skeleton-rabble.front": {
+      "source": "art/source/actors/skeleton-rabble-front-back.png",
+      "output": "art/processed/actors/skeleton-rabble/front.png",
+      "sourceBox": {
+        "left": 8,
+        "top": 149,
+        "width": 497,
+        "height": 1332
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.270991,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.skeleton-rabble.back": {
+      "source": "art/source/actors/skeleton-rabble-front-back.png",
+      "output": "art/processed/actors/skeleton-rabble/back.png",
+      "sourceBox": {
+        "left": 22,
+        "top": 149,
+        "width": 468,
+        "height": 1332
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.270991,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.skeleton-guard.front": {
+      "source": "art/source/actors/skeleton-guard-front-back.png",
+      "output": "art/processed/actors/skeleton-guard/front.png",
+      "sourceBox": {
+        "left": 21,
+        "top": 104,
+        "width": 459,
+        "height": 1372
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.26309,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.skeleton-guard.back": {
+      "source": "art/source/actors/skeleton-guard-front-back.png",
+      "output": "art/processed/actors/skeleton-guard/back.png",
+      "sourceBox": {
+        "left": 28,
+        "top": 106,
+        "width": 462,
+        "height": 1370
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.26309,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.skeleton-archer.front": {
+      "source": "art/source/actors/skeleton-archer-front-back.png",
+      "output": "art/processed/actors/skeleton-archer/front.png",
+      "sourceBox": {
+        "left": 36,
+        "top": 221,
+        "width": 448,
+        "height": 1255
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.287618,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.skeleton-archer.back": {
+      "source": "art/source/actors/skeleton-archer-front-back.png",
+      "output": "art/processed/actors/skeleton-archer/back.png",
+      "sourceBox": {
+        "left": 7,
+        "top": 236,
+        "width": 473,
+        "height": 1240
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.287618,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.bone-hulk.front": {
+      "source": "art/source/actors/bone-hulk-front-back.png",
+      "output": "art/processed/actors/bone-hulk/front.png",
+      "sourceBox": {
+        "left": 13,
+        "top": 275,
+        "width": 486,
+        "height": 1201
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.30055,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.bone-hulk.back": {
+      "source": "art/source/actors/bone-hulk-front-back.png",
+      "output": "art/processed/actors/bone-hulk/back.png",
+      "sourceBox": {
+        "left": 16,
+        "top": 279,
+        "width": 480,
+        "height": 1197
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.30055,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.bone-priest.front": {
+      "source": "art/source/actors/bone-priest-front-back.png",
+      "output": "art/processed/actors/bone-priest/front.png",
+      "sourceBox": {
+        "left": 29,
+        "top": 308,
+        "width": 452,
+        "height": 1168
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.309041,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.bone-priest.back": {
+      "source": "art/source/actors/bone-priest-front-back.png",
+      "output": "art/processed/actors/bone-priest/back.png",
+      "sourceBox": {
+        "left": 22,
+        "top": 316,
+        "width": 452,
+        "height": 1160
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.309041,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.wolf-yearling.front": {
+      "source": "art/source/actors/wolf-yearling-front-back.png",
+      "output": "art/processed/actors/wolf-yearling/front.png",
+      "sourceBox": {
+        "left": 94,
+        "top": 263,
+        "width": 322,
+        "height": 1057
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.34085,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.wolf-yearling.back": {
+      "source": "art/source/actors/wolf-yearling-front-back.png",
+      "output": "art/processed/actors/wolf-yearling/back.png",
+      "sourceBox": {
+        "left": 95,
+        "top": 260,
+        "width": 323,
+        "height": 1059
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.34085,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dire-wolf.front": {
+      "source": "art/source/actors/dire-wolf-front-back.png",
+      "output": "art/processed/actors/dire-wolf/front.png",
+      "sourceBox": {
+        "left": 11,
+        "top": 185,
+        "width": 488,
+        "height": 1136
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.317746,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dire-wolf.back": {
+      "source": "art/source/actors/dire-wolf-front-back.png",
+      "output": "art/processed/actors/dire-wolf/back.png",
+      "sourceBox": {
+        "left": 10,
+        "top": 185,
+        "width": 492,
+        "height": 1136
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.317746,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.cave-spider.front": {
+      "source": "art/source/actors/cave-spider-front-back.png",
+      "output": "art/processed/actors/cave-spider/front.png",
+      "sourceBox": {
+        "left": 31,
+        "top": 984,
+        "width": 450,
+        "height": 334
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.534756,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.cave-spider.back": {
+      "source": "art/source/actors/cave-spider-front-back.png",
+      "output": "art/processed/actors/cave-spider/back.png",
+      "sourceBox": {
+        "left": 34,
+        "top": 988,
+        "width": 443,
+        "height": 332
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.534756,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.giant-spider.front": {
+      "source": "art/source/actors/giant-spider-front-back.png",
+      "output": "art/processed/actors/giant-spider/front.png",
+      "sourceBox": {
+        "left": 20,
+        "top": 555,
+        "width": 471,
+        "height": 763
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.47308,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.giant-spider.back": {
+      "source": "art/source/actors/giant-spider-front-back.png",
+      "output": "art/processed/actors/giant-spider/back.png",
+      "sourceBox": {
+        "left": 23,
+        "top": 557,
+        "width": 466,
+        "height": 761
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.47308,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.cult-initiate.front": {
+      "source": "art/source/actors/cult-initiate-front-back.png",
+      "output": "art/processed/actors/cult-initiate/front.png",
+      "sourceBox": {
+        "left": 21,
+        "top": 83,
+        "width": 455,
+        "height": 1374
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.262707,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.cult-initiate.back": {
+      "source": "art/source/actors/cult-initiate-front-back.png",
+      "output": "art/processed/actors/cult-initiate/back.png",
+      "sourceBox": {
+        "left": 28,
+        "top": 90,
+        "width": 463,
+        "height": 1354
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.262707,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.cult-firebrand.front": {
+      "source": "art/source/actors/cult-firebrand-front-back.png",
+      "output": "art/processed/actors/cult-firebrand/front.png",
+      "sourceBox": {
+        "left": 25,
+        "top": 92,
+        "width": 448,
+        "height": 1351
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.26718,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.cult-firebrand.back": {
+      "source": "art/source/actors/cult-firebrand-front-back.png",
+      "output": "art/processed/actors/cult-firebrand/back.png",
+      "sourceBox": {
+        "left": 9,
+        "top": 92,
+        "width": 481,
+        "height": 1345
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.26718,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.cult-hierophant.front": {
+      "source": "art/source/actors/cult-hierophant-front-back.png",
+      "output": "art/processed/actors/cult-hierophant/front.png",
+      "sourceBox": {
+        "left": 18,
+        "top": 89,
+        "width": 482,
+        "height": 1342
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.268972,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.cult-hierophant.back": {
+      "source": "art/source/actors/cult-hierophant-front-back.png",
+      "output": "art/processed/actors/cult-hierophant/back.png",
+      "sourceBox": {
+        "left": 11,
+        "top": 85,
+        "width": 469,
+        "height": 1335
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.268972,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.goblin-lackey.front": {
+      "source": "art/source/actors/goblin-lackey-front-back.png",
+      "output": "art/processed/actors/goblin-lackey/front.png",
+      "sourceBox": {
+        "left": 20,
+        "top": 127,
+        "width": 441,
+        "height": 1264
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.28557,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.goblin-lackey.back": {
+      "source": "art/source/actors/goblin-lackey-front-back.png",
+      "output": "art/processed/actors/goblin-lackey/back.png",
+      "sourceBox": {
+        "left": 53,
+        "top": 132,
+        "width": 436,
+        "height": 1238
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.28557,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.goblin-spearman.front": {
+      "source": "art/source/actors/goblin-spearman-front-back.png",
+      "output": "art/processed/actors/goblin-spearman/front.png",
+      "sourceBox": {
+        "left": 32,
+        "top": 36,
+        "width": 423,
+        "height": 1421
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.254018,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.goblin-spearman.back": {
+      "source": "art/source/actors/goblin-spearman-front-back.png",
+      "output": "art/processed/actors/goblin-spearman/back.png",
+      "sourceBox": {
+        "left": 70,
+        "top": 51,
+        "width": 403,
+        "height": 1400
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.254018,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.goblin-slinger.front": {
+      "source": "art/source/actors/goblin-slinger-front-back.png",
+      "output": "art/processed/actors/goblin-slinger/front.png",
+      "sourceBox": {
+        "left": 14,
+        "top": 144,
+        "width": 453,
+        "height": 1256
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.287389,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.goblin-slinger.back": {
+      "source": "art/source/actors/goblin-slinger-front-back.png",
+      "output": "art/processed/actors/goblin-slinger/back.png",
+      "sourceBox": {
+        "left": 29,
+        "top": 162,
+        "width": 464,
+        "height": 1190
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.287389,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
       }
     }
   }

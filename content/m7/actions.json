@@ -711,5 +711,127 @@
     "traits": [{ "id": "move" }, { "id": "fly" }],
     "targeting": "tile",
     "resolution": { "kind": "move", "movementMode": "fly", "step": true, "triggersReactions": false }
+  },
+  {
+    "id": "mend-bone",
+    "name": "Mend Bone",
+    "description": "부서진 아군을 임시로 이어 붙여 HP를 회복시킵니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "healing" }],
+    "targeting": "ally",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0 }]
+    }
+  },
+  {
+    "id": "soothing-litany",
+    "name": "Soothing Litany",
+    "description": "의식 구절을 읊어 아군의 상처를 덮습니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "concentrate" }, { "id": "healing" }],
+    "targeting": "ally",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 1, "sides": 10 }, "flatModifier": 2 }]
+    }
+  },
+  {
+    "id": "terrifying-howl",
+    "name": "Terrifying Howl",
+    "description": "소름 끼치는 포효로 상대를 위축시킵니다. 대상이 Will로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "emotion" }, { "id": "fear" }, { "id": "mental" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "will" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "intimidation" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 1 }],
+        "failure": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 2 }],
+        "critical-failure": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 3 }]
+      }
+    }
+  },
+  {
+    "id": "web-spit",
+    "name": "Web Spit",
+    "description": "끈적한 거미줄을 뱉어 대상을 붙잡습니다. 대상이 Reflex로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "reflex" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "athletics" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [],
+        "failure": [{ "kind": "apply-condition", "owner": "target", "condition": "grabbed" }],
+        "critical-failure": [{ "kind": "apply-condition", "owner": "target", "condition": "grabbed" }]
+      }
+    }
+  },
+  {
+    "id": "hex-bolt",
+    "name": "Hex Bolt",
+    "description": "주술의 불꽃을 쏘아 보냅니다. 대상이 Reflex basic save로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "concentrate" }, { "id": "fire" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "reflex" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "occultism" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 6 },
+            "flatModifier": 0,
+            "damageType": "fire",
+            "multiplier": 0.5
+          }
+        ],
+        "failure": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 6 },
+            "flatModifier": 0,
+            "damageType": "fire",
+            "multiplier": 1
+          }
+        ],
+        "critical-failure": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 6 },
+            "flatModifier": 0,
+            "damageType": "fire",
+            "multiplier": 2
+          }
+        ]
+      }
+    }
   }
 ]

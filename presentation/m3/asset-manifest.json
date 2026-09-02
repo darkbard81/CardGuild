@@ -4,8 +4,8 @@
   "atlas": {
     "path": "/assets/m3-atlas.json",
     "imagePath": "/assets/m3-atlas.webp",
-    "width": 2048,
-    "height": 2048
+    "width": 4096,
+    "height": 4096
   },
   "assets": {
     "terrain.stone-floor": {
@@ -286,6 +286,276 @@
       },
       "displayWidth": 64,
       "displayHeight": 64
+    },
+    "actor.skeleton-rabble.front": {
+      "frame": "actor.skeleton-rabble.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.skeleton-rabble.back": {
+      "frame": "actor.skeleton-rabble.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.skeleton-guard.front": {
+      "frame": "actor.skeleton-guard.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.skeleton-guard.back": {
+      "frame": "actor.skeleton-guard.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.skeleton-archer.front": {
+      "frame": "actor.skeleton-archer.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.skeleton-archer.back": {
+      "frame": "actor.skeleton-archer.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.bone-hulk.front": {
+      "frame": "actor.bone-hulk.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.bone-hulk.back": {
+      "frame": "actor.bone-hulk.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.bone-priest.front": {
+      "frame": "actor.bone-priest.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.bone-priest.back": {
+      "frame": "actor.bone-priest.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.wolf-yearling.front": {
+      "frame": "actor.wolf-yearling.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.wolf-yearling.back": {
+      "frame": "actor.wolf-yearling.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.dire-wolf.front": {
+      "frame": "actor.dire-wolf.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.dire-wolf.back": {
+      "frame": "actor.dire-wolf.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.cave-spider.front": {
+      "frame": "actor.cave-spider.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.cave-spider.back": {
+      "frame": "actor.cave-spider.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.giant-spider.front": {
+      "frame": "actor.giant-spider.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.giant-spider.back": {
+      "frame": "actor.giant-spider.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.cult-initiate.front": {
+      "frame": "actor.cult-initiate.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.cult-initiate.back": {
+      "frame": "actor.cult-initiate.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.cult-firebrand.front": {
+      "frame": "actor.cult-firebrand.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.cult-firebrand.back": {
+      "frame": "actor.cult-firebrand.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.cult-hierophant.front": {
+      "frame": "actor.cult-hierophant.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.cult-hierophant.back": {
+      "frame": "actor.cult-hierophant.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.goblin-lackey.front": {
+      "frame": "actor.goblin-lackey.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.goblin-lackey.back": {
+      "frame": "actor.goblin-lackey.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.goblin-spearman.front": {
+      "frame": "actor.goblin-spearman.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.goblin-spearman.back": {
+      "frame": "actor.goblin-spearman.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.goblin-slinger.front": {
+      "frame": "actor.goblin-slinger.front",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
+    },
+    "actor.goblin-slinger.back": {
+      "frame": "actor.goblin-slinger.back",
+      "kind": "actor",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132
     }
   },
   "actorVisuals": {
@@ -312,6 +582,66 @@
     "enemy.goblin-chief": {
       "front": "actor.goblin-chief.front",
       "back": "actor.goblin-chief.back"
+    },
+    "enemy.skeleton-rabble": {
+      "front": "actor.skeleton-rabble.front",
+      "back": "actor.skeleton-rabble.back"
+    },
+    "enemy.skeleton-guard": {
+      "front": "actor.skeleton-guard.front",
+      "back": "actor.skeleton-guard.back"
+    },
+    "enemy.skeleton-archer": {
+      "front": "actor.skeleton-archer.front",
+      "back": "actor.skeleton-archer.back"
+    },
+    "enemy.bone-hulk": {
+      "front": "actor.bone-hulk.front",
+      "back": "actor.bone-hulk.back"
+    },
+    "enemy.bone-priest": {
+      "front": "actor.bone-priest.front",
+      "back": "actor.bone-priest.back"
+    },
+    "enemy.wolf-yearling": {
+      "front": "actor.wolf-yearling.front",
+      "back": "actor.wolf-yearling.back"
+    },
+    "enemy.dire-wolf": {
+      "front": "actor.dire-wolf.front",
+      "back": "actor.dire-wolf.back"
+    },
+    "enemy.cave-spider": {
+      "front": "actor.cave-spider.front",
+      "back": "actor.cave-spider.back"
+    },
+    "enemy.giant-spider": {
+      "front": "actor.giant-spider.front",
+      "back": "actor.giant-spider.back"
+    },
+    "enemy.cult-initiate": {
+      "front": "actor.cult-initiate.front",
+      "back": "actor.cult-initiate.back"
+    },
+    "enemy.cult-firebrand": {
+      "front": "actor.cult-firebrand.front",
+      "back": "actor.cult-firebrand.back"
+    },
+    "enemy.cult-hierophant": {
+      "front": "actor.cult-hierophant.front",
+      "back": "actor.cult-hierophant.back"
+    },
+    "enemy.goblin-lackey": {
+      "front": "actor.goblin-lackey.front",
+      "back": "actor.goblin-lackey.back"
+    },
+    "enemy.goblin-spearman": {
+      "front": "actor.goblin-spearman.front",
+      "back": "actor.goblin-spearman.back"
+    },
+    "enemy.goblin-slinger": {
+      "front": "actor.goblin-slinger.front",
+      "back": "actor.goblin-slinger.back"
     }
   },
   "terrainVisuals": {
