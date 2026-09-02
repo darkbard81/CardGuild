@@ -14,6 +14,10 @@ import type {
   StatisticModifierContribution,
   TraitInstance,
 } from "../game/types";
+import {
+  PARTY_SIZES,
+  placementAppliesToPartySize,
+} from "./content-types";
 import type {
   ContentPackSource,
   ContentSourceCategory,
@@ -530,8 +534,8 @@ export function validateContentPackSemantics(
       validateTraits(context, knownTraits, "scenarios", object.id, `${prefix}.map.objects[${index}].traits`, object.traits);
     }
 
+    // ---- Authored invariants: true no matter which party walks in. ----
     const placementIds = new Set<string>();
-    const occupied = new Set<string>();
     scenario.placements.forEach((placement, placementIndex) => {
       const path = `${prefix}.placements[${placementIndex}]`;
       if (!knownActors.has(placement.actorDefinitionId)) {
@@ -543,6 +547,10 @@ export function validateContentPackSemantics(
       if (placement.team === "heroes") {
         addIssue(context, "scenarios", `${path}.team`, "STATIC_HERO_PLACEMENT", "Party heroes must use partySpawnSlots instead of static placements.", placement.instanceId);
       }
+      const range = placement.partySize;
+      if (range && range.min > range.max) {
+        addIssue(context, "scenarios", `${path}.partySize`, "INVALID_PLACEMENT_PARTY_SIZE", `Placement "${placement.instanceId}" has minimum ${String(range.min)} above maximum ${String(range.max)}.`, placement.instanceId);
+      }
       const key = positionKey(placement.position);
       const tile = map.tiles.find((candidate) => positionKey(candidate.position) === key);
       if (!tile) {
@@ -550,9 +558,7 @@ export function validateContentPackSemantics(
       } else if (tile.traits.some((trait) => trait.id === "blocked" || trait.id === "impassable")) {
         addIssue(context, "scenarios", `${path}.position`, "ACTOR_TILE_BLOCKED", `Placement "${placement.instanceId}" starts on blocked tile "${tile.id}".`, placement.instanceId);
       }
-      if (occupied.has(key)) addIssue(context, "scenarios", `${path}.position`, "ACTOR_POSITION_CONFLICT", `Multiple actors start at ${key}.`, placement.instanceId);
       placementIds.add(placement.instanceId);
-      occupied.add(key);
     });
 
     const spawnSeats = new Set<number>();
@@ -569,15 +575,47 @@ export function validateContentPackSemantics(
       } else if (tile.traits.some((trait) => trait.id === "blocked" || trait.id === "impassable")) {
         addIssue(context, "scenarios", `${path}.position`, "PARTY_SPAWN_TILE_BLOCKED", `Party spawn seat ${spawn.seat} starts on blocked tile "${tile.id}".`, scenario.id);
       }
-      if (occupied.has(key)) {
-        addIssue(context, "scenarios", `${path}.position`, "PARTY_SPAWN_STATIC_CONFLICT", `Party spawn seat ${spawn.seat} conflicts with a static actor at ${key}.`, scenario.id);
-      }
       if (spawnPositions.has(key)) {
         addIssue(context, "scenarios", `${path}.position`, "DUPLICATE_PARTY_SPAWN_POSITION", `Multiple party spawn slots occupy ${key}.`, scenario.id);
       }
       spawnSeats.add(spawn.seat);
       spawnPositions.add(key);
     });
+
+    // ---- Effective composition: collisions only bind Actors that coexist. ----
+    // Two placements authored for disjoint party sizes never share a board, so they may
+    // legitimately reuse the same tile.
+    for (const partySize of PARTY_SIZES) {
+      const activePlacements = scenario.placements
+        .map((placement, placementIndex) => ({ placement, placementIndex }))
+        .filter((entry) => placementAppliesToPartySize(entry.placement, partySize));
+      const activeSpawns = scenario.partySpawnSlots
+        .map((spawn, spawnIndex) => ({ spawn, spawnIndex }))
+        .filter((entry) => entry.spawn.seat <= partySize);
+      const occupied = new Map<string, string>();
+
+      for (const { placement, placementIndex } of activePlacements) {
+        const key = positionKey(placement.position);
+        const other = occupied.get(key);
+        if (other) {
+          addIssue(context, "scenarios", `${prefix}.placements[${placementIndex}].position`, "ACTOR_POSITION_CONFLICT", `Placements "${other}" and "${placement.instanceId}" both start at ${key} for a party of ${String(partySize)}.`, placement.instanceId);
+        }
+        occupied.set(key, placement.instanceId);
+      }
+
+      for (const { spawn, spawnIndex } of activeSpawns) {
+        const key = positionKey(spawn.position);
+        const other = occupied.get(key);
+        if (other) {
+          addIssue(context, "scenarios", `${prefix}.partySpawnSlots[${spawnIndex}].position`, "PARTY_SPAWN_STATIC_CONFLICT", `Party spawn seat ${String(spawn.seat)} conflicts with placement "${other}" at ${key} for a party of ${String(partySize)}.`, scenario.id);
+        }
+      }
+
+      // A composition with no enemy is an Encounter that ends before it starts.
+      if (activeSpawns.length > 0 && !activePlacements.some((entry) => entry.placement.team === "enemies")) {
+        addIssue(context, "scenarios", `${prefix}.placements`, "NO_ENEMY_FOR_PARTY_SIZE", `Scenario "${scenario.id}" has no enemy for a party of ${String(partySize)}.`, scenario.id);
+      }
+    }
   });
 
   const knownScenarios = new Set(source.scenarios.map((scenario) => scenario.id));

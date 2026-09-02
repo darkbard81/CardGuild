@@ -1,4 +1,5 @@
 import { getContentIdentity } from "../content/compile-content";
+import { placementAppliesToPartySize } from "../content/content-types";
 import type { CompiledContentPack } from "../content/content-types";
 import { positionKey } from "../game/grid";
 import type { CombatDefinition } from "../game/types";
@@ -22,7 +23,11 @@ export function buildAdventureEncounter(
   const validation = validatePartyLoadout(state.party, state.collection, pack);
   if (!validation.valid) throw new Error(`Adventure party loadout is invalid: ${validation.issues[0]?.message ?? "unknown error"}`);
 
-  const staticActors = source.placements.map((placement) => {
+  // Static composition follows the party that actually walked in.
+  const partySize = Object.keys(state.party.members).length;
+  const staticActors = source.placements
+    .filter((placement) => placementAppliesToPartySize(placement, partySize))
+    .map((placement) => {
     const actorDefinition = pack.actorDefinitions[placement.actorDefinitionId];
     if (!actorDefinition) throw new Error(`Actor definition "${placement.actorDefinitionId}" is missing.`);
     return deriveActorSetup(actorDefinition, placement, actorDefinition.starterLoadout, pack.combatContent);

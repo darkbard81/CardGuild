@@ -53,12 +53,35 @@ export interface StarterLoadout {
   readonly preparedCards: readonly CardDefinitionId[];
 }
 
+export type PartySizeNumber = 1 | 2 | 3;
+
+export const PARTY_SIZES = [1, 2, 3] as const satisfies readonly PartySizeNumber[];
+
 export interface EncounterActorPlacement {
   readonly instanceId: string;
   readonly actorDefinitionId: ActorDefinitionId;
   readonly team: TeamId;
   readonly position: { readonly x: number; readonly y: number };
   readonly facing: Direction;
+  /**
+   * Which party sizes this static Actor appears for. Absent means every size, so an
+   * Encounter authored before this contract keeps exactly the composition it had.
+   */
+  readonly partySize?: { readonly min: PartySizeNumber; readonly max: PartySizeNumber };
+}
+
+/**
+ * The single answer to "does this static Actor exist for a party of this size". The runtime
+ * bridge, the compile-time preview and the validator all ask here, so a composition can
+ * never be legal in one of them and not another.
+ */
+export function placementAppliesToPartySize(
+  placement: EncounterActorPlacement,
+  partySize: number,
+): boolean {
+  const range = placement.partySize;
+  if (!range) return true;
+  return partySize >= range.min && partySize <= range.max;
 }
 
 export interface PartySpawnSlot {

@@ -857,7 +857,16 @@
         "actorDefinitionId": { "$ref": "#/$defs/nonEmptyString" },
         "team": { "const": "enemies" },
         "position": { "$ref": "#/$defs/gridPosition" },
-        "facing": { "enum": ["north", "east", "south", "west"] }
+        "facing": { "enum": ["north", "east", "south", "west"] },
+        "partySize": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "properties": {
+            "min": { "enum": [1, 2, 3] },
+            "max": { "enum": [1, 2, 3] }
+          }
+        }
       }
     },
     "partySpawnSlot": {
