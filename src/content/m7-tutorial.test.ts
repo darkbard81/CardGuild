@@ -189,6 +189,54 @@ describe("tutorial onboarding prefix", () => {
     expect(deck.some((card) => card.definitionId === cardId && card.source.kind === "prepared")).toBe(true);
   });
 
+  it("never offers a starter a reward it already has equipped", () => {
+    // An equipment reward that duplicates a starter's own gear changes nothing: the slot is
+    // already filled by the same item, so Manage Loadout shows no new option. Onboarding is
+    // where that lands worst, so every tutorial reward has to move something.
+    for (const definition of Object.values(PACK.actorDefinitions)) {
+      if (!definition.traits.some((trait) => trait.id === "playable")) continue;
+      const equipped = new Set(Object.values(definition.starterLoadout.equipment).filter(Boolean));
+      for (const reward of ADVENTURE.rewards) {
+        for (const choice of reward.choices) {
+          const dead = choice.kind === "equipment" && equipped.has(choice.definitionId);
+          expect(`${definition.id}/${reward.id}/${choice.definitionId}:dead=${String(dead)}`)
+            .toBe(`${definition.id}/${reward.id}/${choice.definitionId}:dead=false`);
+        }
+      }
+    }
+  });
+
+  it("lets a solo starter prepare either side of every reward", () => {
+    // A card copy always changes deck composition, but it still has to fit the Character's
+    // remaining prepared capacity for the choice to be real.
+    for (const definition of Object.values(PACK.actorDefinitions)) {
+      if (!definition.traits.some((trait) => trait.id === "playable")) continue;
+      const free = definition.loadoutProfile.preparedCardCapacity - definition.starterLoadout.preparedCards.length;
+      expect(`${definition.id}:free=${String(free >= 1)}`).toBe(`${definition.id}:free=true`);
+      for (const reward of ADVENTURE.rewards) {
+        for (const choice of reward.choices) {
+          if (choice.kind !== "card") continue;
+          const member = { id: "party.hero-1", seat: 1 as const, actorDefinitionId: definition.id, loadout: definition.starterLoadout };
+          const collection = { equipment: {}, cards: { [choice.definitionId]: 1 } };
+          const prepared = {
+            members: {
+              [member.id]: {
+                ...member,
+                loadout: { ...member.loadout, preparedCards: [...member.loadout.preparedCards, choice.definitionId] },
+              },
+            },
+          };
+          const issues = validatePartyLoadout(prepared, {
+            equipment: Object.fromEntries(Object.values(definition.starterLoadout.equipment).filter(Boolean).map((id) => [id as string, 1])),
+            cards: { ...collection.cards, ...Object.fromEntries(definition.starterLoadout.preparedCards.map((id) => [id, 1])) },
+          }, PACK).issues;
+          expect(`${definition.id}/${choice.definitionId}:${JSON.stringify(issues)}`)
+            .toBe(`${definition.id}/${choice.definitionId}:[]`);
+        }
+      }
+    }
+  });
+
   it("gives every starter a legal action on the opening board", () => {
     for (const starter of STARTERS) {
       let state = createAdventureSession(CONTEXT, party([starter]), 21);

@@ -121,13 +121,34 @@ reserve로 남습니다.
 
 | 단계 | Encounter | 무엇을 가르치는가 | 이어지는 보상 |
 |---|---|---|---|
-| T1 | `road-ambush` | Stride/Step, 3-action, 기본 Strike. 3×3에 적 1명 | **Steel Shield** ↔ **Brace Behind Cover** — 방어를 장비 슬롯과 준비 카드 두 방식으로 |
+| T1 | `road-ambush` | Stride/Step, 3-action, 기본 Strike. 3×3에 적 1명 | **Brace Behind Cover** ↔ **Careful Advance** — 버틸 것인가 반응을 피할 것인가 |
 | T2 | `spear-line` | 위치와 방어. 10ft reach 창병이 좁은 통로를 잠금 | **Trip** ↔ **Demoralize** — Athletics 대 Intimidation, 두 통제 축 |
-| T3 | `ruined-gate` | 기술/세이브/통제. 레버 상호작용, web의 Reflex 세이브 | **Boots of Fly** ↔ **Spirit Lance** — 기동 대 세이브 주문 |
+| T3 | `ruined-gate` | 기술/세이브/통제. 레버 상호작용, web의 Reflex 세이브 | **Spirit Lance** ↔ **Arcane Ward** — elite 전 압박이냐 보호냐 |
 | T4 | `goblin-chief` | 앞서 고른 보상을 실제 전투에서 사용 | — |
 
-보상은 전부 **#13 production card 또는 starter가 이미 쓰는 baseline equipment**입니다.
-따라서 #17 reward pool이 없어도 tutorial prefix 자체는 완결됩니다.
+### 보상을 카드만으로 구성한 이유
+
+세 보상 여섯 선택지가 전부 **#13 production card**입니다. baseline equipment를 보상으로
+주면 반드시 어떤 Starter에게는 **이미 장착한 같은 물건**이 되기 때문입니다.
+
+| 후보 | 이미 장착한 Starter |
+|---|---|
+| Steel Shield | Aerin, Brom |
+| Boots of Fly | Aerin, Lyra |
+| Leather Armour | Lyra, Nera |
+
+1P에서 그런 선택지를 고르면 collection 수량만 1 → 2가 되고 슬롯은 그대로라 **Manage
+Loadout에 새 선택지가 하나도 생기지 않습니다.** 보상과 Loadout을 처음 배우는 자리에서 가장
+나쁜 결과입니다. baseline 9종은 전부 누군가의 starter 장비이므로 이 문제를 피할 수 있는
+equipment 보상이 없고, 그렇다고 #17 reward pool을 쓰면 tutorial prefix가 #17에 의존하게
+됩니다.
+
+카드 사본은 다릅니다. 이미 같은 카드를 가진 Starter도 prepared 사본이 늘면 덱 구성이 실제로
+바뀌므로 dead choice가 아닙니다. 넷 모두 prepared 여유 칸을 1개 이상 남겨 두었으므로 어느
+선택지든 실제로 준비할 수 있습니다. 이 조건은 회귀 테스트로 고정되어 있습니다.
+
+equipment sidegrade 보상은 원래 #19의 책임이고, #17의 reward pool이 Starter 장비와 겹치지
+않으므로 그때는 이 문제가 생기지 않습니다.
 
 각 단계의 보상은 *다음* 단계가 가르칠 것을 미리 쥐여 줍니다 — T1의 방어 보상이 T2의 위치·방어
 수업에, T2의 통제 보상이 T3의 기술·세이브 수업에 쓰입니다.
