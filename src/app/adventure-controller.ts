@@ -1,6 +1,6 @@
 import type { AdventureState } from "../adventure";
 import { isTerminalHandshakeFailure, SessionClient, type SessionCredential } from "../client";
-import { PRODUCTION_CONTENT } from "../content";
+import { PRODUCTION_CONTENT } from "../content/production-content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
 import { SessionLobbyUi } from "../dom/session-lobby-ui";

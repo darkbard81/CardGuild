@@ -1,7 +1,7 @@
 import path from "node:path";
 import process from "node:process";
 
-import { PRODUCTION_CONTENT } from "../content";
+import { PRODUCTION_CONTENT } from "../content/production-content";
 import { createOpaqueId, createReconnectCredential } from "./credentials";
 import { startCardGuildServer } from "./server";
 

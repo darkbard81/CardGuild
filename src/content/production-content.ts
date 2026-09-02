@@ -17,6 +17,12 @@ import {
  * Changing the production pack means changing the loader imported below and
  * nothing else. This is deliberately not a dynamic selector — no environment
  * switch, no runtime branching, no mod loading.
+ *
+ * Production code imports this module directly rather than through
+ * `src/content/index.ts`. The barrel re-exports every milestone loader, and each
+ * loader compiles its pack at module scope, so a barrel import would pull the M3
+ * and M6 regression fixtures into the shipped client and server bundles. Tests
+ * may keep using the barrel.
  */
 export interface ProductionContent {
   readonly pack: CompiledContentPack;

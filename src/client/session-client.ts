@@ -1,4 +1,4 @@
-import { PRODUCTION_CONTENT } from "../content";
+import { PRODUCTION_CONTENT } from "../content/production-content";
 import type {
   ClientHello,
   ClientIntentEnvelope,

@@ -34,6 +34,11 @@ Selector에는 environment switch나 dynamic loading이 없습니다. 이후 mil
 production pack을 바꿀 때 이 파일이 import하는 loader만 교체합니다. Milestone loader
 (`load-m6-content.ts` 등)는 regression fixture용으로 그대로 남습니다.
 
+Production 코드는 barrel(`src/content/index.ts`)이 아니라
+`src/content/production-content.ts`를 직접 import합니다. Barrel은 모든 milestone loader를
+re-export하고 각 loader가 module scope에서 pack을 compile하므로, barrel을 거치면 M3/M6
+fixture가 배포 bundle에 함께 들어갑니다. 테스트는 barrel을 계속 사용해도 됩니다.
+
 ## Pack 구조
 
 각 pack directory는 다음 파일을 모두 가집니다.
