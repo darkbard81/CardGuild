@@ -59,7 +59,7 @@ state나 환경 변수로 composition을 바꾸지 않습니다.
 
 | Scenario | Purpose | Map | Terrain / interactable | 1P | 2P | 3P | Creature roles | AoN threat band | Status | Balance risk |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `encounter.road-ambush` | 첫 접촉. 단일 위협으로 기본 조작만 가르침 | 3×3 | 없음 | skirmisher ×1 | 동일 | 동일 | Skirmisher | Trivial | **Tutorial** | 없음. 의도적으로 확장하지 않음 |
+| `encounter.road-ambush` | 첫 접촉. 단일 위협으로 기본 조작만 가르침 | 3×3 | **difficult ×2** | skirmisher ×1 | 동일 | 동일 | Skirmisher | Trivial | **Tutorial** | 없음. 의도적으로 확장하지 않음 |
 | `encounter.ruined-gate` | 상호작용 도입. 레버로 문을 열어야 전선이 열림 | 9×7 | **lever + gate**, difficult, web, chasm | skirmisher + brute | 동일 | 동일 | Skirmisher, Brute | Low | **Tutorial** | 레버를 못 찾으면 교착 |
 | `encounter.goblin-chief` | 첫 elite. 단일 강적 + 호위 | 5×3 | 없음 | brute + chief | 동일 | 동일 | Brute, Elite | Moderate | **Main** | 좁은 맵이라 1P가 협공당함 |
 | `encounter.bone-cellar` | 잡졸 물량. 수가 party size를 따라 늘어남 | 7×5 | 기둥 2개, difficult 2칸 | guard + rabble ×1 | + rabble ×1 | + rabble ×1 | Soldier, Lackey | Low → Moderate | Main | 3P에서 4마리가 동시에 붙음 |

@@ -3,6 +3,19 @@ import { describe, expect, it } from "vitest";
 import { buildAdventureEncounter, createAdventureSession, dispatchAdventureCommand } from "../adventure";
 import type { AdventureRuntimeContext, PartyState } from "../adventure";
 import tilemapPack from "../../presentation/m3/tilemaps.json";
+
+interface GeneratedTilemap {
+  readonly width: number;
+  readonly height: number;
+  readonly meta: {
+    readonly tileIds: readonly (string | null)[];
+    readonly type: readonly string[];
+    readonly walkable: readonly boolean[];
+    readonly cost: readonly (number | null)[];
+  };
+}
+
+const TILEMAPS = tilemapPack.maps as unknown as Readonly<Record<string, GeneratedTilemap>>;
 import { compileContentPack } from "./compile-content";
 import {
   PARTY_SIZES,
@@ -52,13 +65,28 @@ function partyOf(count: 1 | 2 | 3): PartyState {
   };
 }
 
-/** Drives the adventure to its first combat with a party of the given size. */
-function firstEncounter(count: 1 | 2 | 3) {
-  const ready = createAdventureSession(CONTEXT, partyOf(count), 7);
-  const started = dispatchAdventureCommand(ready, { type: "start-adventure" }, CONTEXT);
-  const combat = dispatchAdventureCommand(started.state, { type: "start-encounter" }, CONTEXT);
+/**
+ * Runs one Scenario through the real Adventure bridge with a party of the given size.
+ * The adventure definition is built around the Scenario under test so the bridge, not a
+ * helper, decides which static Actors exist.
+ */
+function encounterFor(scenarioId: string, count: 1 | 2 | 3) {
+  const context: AdventureRuntimeContext = {
+    ...CONTEXT,
+    definition: { ...M7_ADVENTURE, encounterIds: [scenarioId], rewards: [] },
+  };
+  const ready = createAdventureSession(context, partyOf(count), 7);
+  const started = dispatchAdventureCommand(ready, { type: "start-adventure" }, context);
+  const combat = dispatchAdventureCommand(started.state, { type: "start-encounter" }, context);
   expect(combat.accepted).toBe(true);
   return buildAdventureEncounter(PACK, combat.state);
+}
+
+function enemyIdsFor(scenarioId: string, count: 1 | 2 | 3): readonly string[] {
+  return encounterFor(scenarioId, count).definition.scenario.actors
+    .filter((actor) => actor.team === "enemies")
+    .map((actor) => actor.id)
+    .sort();
 }
 
 describe("M7 encounter library", () => {
@@ -68,12 +96,49 @@ describe("M7 encounter library", () => {
   });
 
   it("gives every scenario a generated tilemap whose size matches the gameplay map", () => {
-    const maps = tilemapPack.maps as Readonly<Record<string, { width: number; height: number }>>;
     for (const scenario of SCENARIOS) {
-      const tilemap = maps[scenario.id];
+      const tilemap = TILEMAPS[scenario.id];
       expect(`${scenario.id}:${String(Boolean(tilemap))}`).toBe(`${scenario.id}:true`);
       expect(`${scenario.id}:${String(tilemap?.width)}x${String(tilemap?.height)}`)
         .toBe(`${scenario.id}:${String(scenario.map.width)}x${String(scenario.map.height)}`);
+    }
+  });
+
+  it("carries every authored tile's semantics into the generated tilemap", () => {
+    // width and height agreeing is not enough: a builder drift would silently change what
+    // a tile means. Every authored tile is compared cell by cell.
+    for (const scenario of SCENARIOS) {
+      const tilemap = TILEMAPS[scenario.id];
+      if (!tilemap) throw new Error(`${scenario.id} has no tilemap.`);
+      for (const tile of scenario.map.tiles) {
+        const index = tile.position.y * scenario.map.width + tile.position.x;
+        const traits = new Set(tile.traits.map((trait) => trait.id));
+        const blocked = traits.has("blocked") || traits.has("impassable") || traits.has("gate");
+        const expected = {
+          tileId: tile.id,
+          type: traits.has("gate") || traits.has("gate-open")
+            ? "gate"
+            : traits.has("blocked")
+              ? "blocked"
+              : traits.has("impassable")
+                ? "impassable"
+                : traits.has("web")
+                  ? "web"
+                  : traits.has("difficult")
+                    ? "difficult"
+                    : "open",
+          walkable: !blocked,
+          cost: blocked ? null : traits.has("difficult") ? 2 : 1,
+        };
+        const actual = {
+          tileId: tilemap.meta.tileIds[index],
+          type: tilemap.meta.type[index],
+          walkable: tilemap.meta.walkable[index],
+          cost: tilemap.meta.cost[index],
+        };
+        expect(`${scenario.id}/${tile.id}:${JSON.stringify(actual)}`)
+          .toBe(`${scenario.id}/${tile.id}:${JSON.stringify(expected)}`);
+      }
     }
   });
 
@@ -117,18 +182,21 @@ describe("party-size placement applicability", () => {
   });
 
   it("builds a different static composition for each party size at runtime", () => {
-    const counts = ([1, 2, 3] as const).map((count) => {
-      const encounter = firstEncounter(count);
-      const actors = Object.values(encounter.definition.scenario.actors);
-      return {
-        heroes: actors.filter((actor) => actor.team === "heroes").length,
-        enemies: actors.filter((actor) => actor.team === "enemies").length,
-      };
-    });
-    expect(counts.map((entry) => entry.heroes)).toEqual([1, 2, 3]);
-    // The shipped first encounter is the unscaled tutorial, so its enemy count is stable —
-    // what matters here is that the bridge derived a size and applied the predicate.
-    for (const entry of counts) expect(entry.enemies).toBeGreaterThan(0);
+    // Bone Cellar is authored to grow, so this fails if the bridge stops filtering.
+    expect(enemyIdsFor("encounter.bone-cellar", 1)).toEqual(["skeleton-guard", "skeleton-rabble-a"]);
+    expect(enemyIdsFor("encounter.bone-cellar", 2))
+      .toEqual(["skeleton-guard", "skeleton-rabble-a", "skeleton-rabble-b"]);
+    expect(enemyIdsFor("encounter.bone-cellar", 3))
+      .toEqual(["skeleton-guard", "skeleton-rabble-a", "skeleton-rabble-b", "skeleton-rabble-c"]);
+  });
+
+  it("seats exactly the party that entered and leaves an unscaled Scenario alone", () => {
+    for (const count of [1, 2, 3] as const) {
+      const actors = encounterFor("encounter.bone-cellar", count).definition.scenario.actors;
+      expect(actors.filter((actor) => actor.team === "heroes")).toHaveLength(count);
+      // Road Ambush authors no range, so its composition must not move with party size.
+      expect(enemyIdsFor("encounter.road-ambush", count)).toEqual(["goblin-skirmisher"]);
+    }
   });
 
   it("compiles the preview at a party of one", () => {
