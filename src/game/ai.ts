@@ -91,7 +91,8 @@ function woundedAllyTarget(
 /**
  * Turns one legal innate Action into a command, or nothing when the AI has no policy for
  * aiming it. Targeting drives the choice, so control, damage and healing all arrive here
- * through the same path — the resolution kind is never inspected.
+ * through the same path; no branch here is keyed on the resolution kind. (`restoresHp()`
+ * reads it only to know where a resolution keeps its effects.)
  */
 function innateCommand(
   state: CombatState,

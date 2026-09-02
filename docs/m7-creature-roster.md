@@ -81,8 +81,9 @@ palette swap은 없습니다.
 | `web-spit` | 신규 | 대상 Reflex vs actor Athletics DC → Grabbed | cave-spider, giant-spider |
 | `hex-bolt` | 신규 | 대상 Reflex **basic save** → 1d6 fire | cult-initiate, cult-firebrand, bone-priest, cult-hierophant |
 
-신규 4종은 전부 기존 `check` / `direct` resolution과 `apply-condition` / `damage` /
-`restore-hp` primitive만 씁니다.
+신규 5종(`mend-bone`, `soothing-litany`, `terrifying-howl`, `web-spit`, `hex-bolt`)은 전부
+기존 `check` / `direct` resolution과 `apply-condition` / `damage` / `restore-hp` primitive만
+씁니다.
 
 ---
 
@@ -140,8 +141,12 @@ goblin-chief: ["knockdown", "demoralize"]
 | `tile` / `object` / `effect` | 정책 없음 → 건너뜀 |
 
 `creature` targeting은 적도 legal target이지만 AI는 팀 검사를 따로 하므로 **적을 회복시키지
-않습니다.** resolution kind는 어디에서도 검사하지 않습니다 — control / damage / healing이
-모두 targeting 하나로 갈립니다.
+않습니다.**
+
+행동 선택과 조준은 **resolution kind로 분기하지 않습니다** — control / damage / healing이
+모두 targeting 하나로 갈립니다. `actionEffects()`가 effect 목록을 꺼내기 위해
+`resolution.kind`를 읽지만(`direct`는 `effects`, `check`/`strike`는 `outcomes`, `move`는 없음)
+이는 shape 접근일 뿐이고 그 결과로 AI의 선택이 달라지지 않습니다.
 
 ### 의도적으로 하지 않은 것
 
