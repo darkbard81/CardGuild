@@ -70,7 +70,7 @@ port 8787 backend로 proxy합니다.
 
 - `Goblin Trouble`은 Road Ambush에서 Cult Sanctum까지 이어지는 8 Encounter linear Adventure이며,
   앞의 4개가 tutorial prefix입니다.
-- 여섯 번의 전투 승리 뒤 Reward 선택지(카드 3–4, 장비 4) 중 하나를 획득하며, `Manage Loadout`에서 장비 slot과 준비
+- 여섯 번의 전투 승리 뒤 Reward 선택지(카드 보상 3개, 장비 보상 4개) 중 하나를 획득하며, `Manage Loadout`에서 장비 slot과 준비
   카드를 click/select 방식으로 편성합니다. 장착해도 Collection 수량은 차감되지 않습니다.
 - Builder Preview와 다음 전투는 같은 loadout resolver를 사용합니다. AC/Reflex,
   Class DC, resolved Strike(attack/damage/range/trait), Trait-granted Card,
@@ -140,8 +140,9 @@ Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Re
 Playable Character의 Save/Skill/Perception/Initiative는 Level, Attribute modifier,
 Proficiency Rank와 Equipment/Condition/Trait modifier contribution을 입력으로 받는 하나의
 deterministic resolver에서 파생합니다. Creature/Enemy는 같은 resolver 경계에 authored
-fixed statistic을 제공하므로 PC용 16 Skill profile을 강제하지 않습니다. 같은 typed
-bonus/penalty는 가장 큰 값만 적용되고, untyped는 penalty로만 존재하며 모두 누적됩니다.
+fixed statistic을 제공하므로 PC용 16 Skill profile을 강제하지 않습니다. typed
+bonus/penalty는 type마다 가장 큰 bonus와 가장 나쁜 penalty가 각각 적용되고, untyped는
+penalty로만 존재하며 모두 누적됩니다.
 Initiative source는 Perception 또는 Skill로만 선택할 수 있습니다.
 
 Armor Class와 Max HP도 같은 경계에서 파생합니다. Character AC는
@@ -182,16 +183,20 @@ off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `r
 따로 보고하므로 대상이 굴리는 Save도 모호하지 않습니다.
 
 Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며 pack identity는
-`cardguild.m7@0.3.0`, contract는 schema v8입니다. Client UI, battle rendering, WebSocket
-hello와 authoritative server는 모두 `src/content/production-content.ts`의
-`PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다. [`content/m6`](content/m6)의
-`cardguild.m6@0.9.0`과 [`content/m3`](content/m3)의 `cardguild.m4@0.6.0` pack은 규칙 회귀
-fixture로 보존되며 production authoring 대상이 아닙니다. 디렉터리 안내는
-[`content/README.md`](content/README.md)에 있습니다. **신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
+`cardguild.m7`, contract는 schema v8입니다. 현재 authored revision과 fingerprint는
+`content/m7/manifest.json`과 `npm run content:check` 출력이 소유하므로 이 README에 복제하지
+않습니다. Client UI, battle rendering, WebSocket hello와 authoritative server는 모두
+`src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다.
+[`content/m6`](content/m6)의 `cardguild.m6@0.9.0`과 [`content/m3`](content/m3)의
+`cardguild.m4@0.6.0` pack은 규칙 회귀 fixture로 보존되며 production authoring 대상이 아닙니다.
+디렉터리 안내는 [`content/README.md`](content/README.md)에 있습니다.
+
+**신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md) 하나에 있습니다** — schema 계약,
-현재 release envelope, asset 절차, 검증 절차가 모두 그 문서의 golden path에 있습니다.
-Equipment, Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
-추가할 수 있습니다.
+현재 release envelope, asset 절차, 검증 절차가 모두 그 문서의 golden path에 있습니다. 위에서
+소개용으로 적은 수치(Starter 수, Encounter 수, 보상 선택지 수)의 현재 값과 허용 범위도 그 문서
+§1.3 표와 `tools/content/m7-production-policy.ts`가 소유합니다. Equipment, Card, Condition과
+Trait provider는 engine TypeScript를 수정하지 않고 JSON으로 추가할 수 있습니다.
 
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
 `art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는

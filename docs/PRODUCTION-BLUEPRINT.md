@@ -9,9 +9,12 @@
 함께 적었습니다 — 문서가 코드보다 오래됐다고 의심되면 그 경로가 정답입니다.
 
 ```text
-Baseline   cardguild.m7@0.3.0 / schema v8 / fnv1a64:887ee163d92faa57
-확인 방법   npm run content:check && npm run content:production-check
+작성 시점 baseline   cardguild.m7@0.3.0 / schema v8 / fnv1a64:887ee163d92faa57
+지금 값 확인         npm run content:check && npm run content:production-check
 ```
+
+위 두 값은 **스냅샷**입니다. version과 fingerprint는 gameplay data가 바뀔 때마다 움직이므로,
+현재 값이 필요하면 문서가 아니라 위 command 출력을 보세요.
 
 ---
 
@@ -147,7 +150,10 @@ gate를 우회하는 flag는 없습니다.
 - `manifest.json`: `schemaVersion` 8 고정, `id` `cardguild.m7`, `rulesetId`
   `cardguild.pf2e-remaster.v1`.
 - **gameplay authored data를 바꾸면 `version`을 올립니다**(예: 0.2.0 → 0.3.0). 문서/asset만
-  바뀌면 올리지 않습니다.
+  바뀌면 올리지 않습니다. 값은 `content/m7/manifest.json` **한 곳에만** 있습니다 — 테스트와
+  runtime identity는 전부 거기서 파생되므로 다른 파일을 함께 고칠 일이 없어야 합니다.
+  어딘가에 version 문자열을 다시 적으면 그 순간부터 routine content 변경이 남의 테스트를
+  깨뜨립니다.
 - JSON shape을 호환 불가하게 바꾸면 `schemaVersion`을 올리고 명시적 migration을 추가합니다.
   기존 schema를 덮어써 조용히 재해석하지 않습니다.
 - **fingerprint는 authoring 대상이 아닙니다.** `fingerprintContentPack()`이 정규화된 pack
@@ -248,7 +254,9 @@ selector  all | perception | ac | attack | damage | class-dc | save(id) | skill(
 type      circumstance | item | status | untyped
 ```
 
-- 같은 typed bonus/penalty는 **가장 큰 것 하나만** 적용됩니다. untyped는 모두 누적됩니다.
+- typed(`circumstance`/`item`/`status`)마다 **가장 큰 bonus 하나와 가장 나쁜 penalty 하나가
+  각각** 적용됩니다. 같은 type의 `+2`와 `-1`은 둘 다 살아 있습니다. untyped penalty는 모두
+  누적됩니다(`selectedTypedIndices()` in `src/game/statistics.ts`).
 - **PF2e Remaster에는 untyped bonus가 없습니다.** `untyped`는 음수(penalty)만 허용되고
   양수는 schema와 `UNTYPED_MODIFIER_MUST_BE_PENALTY` 양쪽에서 거부됩니다.
 - Armor의 `acItemBonus`와 raised Shield의 `shieldBonus`는 `statModifiers`로 중복 선언하지
@@ -265,7 +273,7 @@ type      circumstance | item | status | untyped
 > **Do not edit** `presentation/m3/**`, `public/assets/**`, `art/processed/**`
 > **Required test** `src/game/card-library.test.ts`(새 mechanic이면), `npm run test:unit`
 > **Required asset** UI icon 1개 (예외 없음 — §11)
-> **Required command** `npm run assets && npm run check`
+> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
 
 ### 4.1 절차
 
@@ -341,7 +349,7 @@ Character의 최종 공격 수치, 최종 DC, flat weapon damage modifier는 aut
 > **Do not edit** generated asset (§1.1)
 > **Required test** `src/content/m7-equipment.test.ts`, `src/loadout/loadout.test.ts`
 > **Required asset** UI icon 1개
-> **Required command** `npm run assets && npm run check`
+> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
 
 ### 5.1 slot 계약
 
@@ -430,7 +438,7 @@ Archer Perch : tower-shield / buckler / striders-boots / spiked-shield    → 1�
 > **Do not edit** 파생 수치(아래 금지 목록), generated asset
 > **Required test** `src/content/m7-starters.test.ts`
 > **Required asset** front/back 두 면 standee (§11)
-> **Required command** `npm run assets && npm run check`
+> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
 > **주의** 현재 정확히 4명 정책 — 5번째는 routine 작업이 아닙니다(§1.4)
 
 ### 6.1 authored
@@ -517,7 +525,7 @@ snapshot.contextActionIds;
 > **Do not edit** `src/game/ai.ts`의 행동 목록, generated asset
 > **Required test** `src/game/creature-ai.test.ts`(roster 계약이 여기 있습니다)
 > **Required asset** front/back 두 면 standee
-> **Required command** `npm run assets && npm run check`
+> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
 > **Envelope** 18/20 — 현재 2마리 여유
 
 ### 7.0 절차
@@ -600,7 +608,7 @@ Character의 16 Skill / defense / offense profile을 요구하지 않습니다.
 > **Do not edit** `presentation/m3/tilemaps.json` (map에서 자동 생성됩니다)
 > **Required test** `src/content/m7-encounters.test.ts`
 > **Required asset** 새 terrain/object 종류를 쓸 때만 (§11)
-> **Required command** `npm run assets && npm run check`
+> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
 > **Envelope** 10/12 — 2개 여유. Adventure에 넣으려면 §9
 
 ### 8.1 구조
@@ -675,7 +683,7 @@ build를 다시 돌려야** tilemap이 생깁니다. tilemaps.json을 손으로 
 > **Do not edit** 두 번째 production Adventure를 만드는 일 (§1.4)
 > **Required test** `src/content/m7-vertical-slice.test.ts`, `src/content/m7-tutorial.test.ts`,
 > `tests/network/adventure-progression.integration.test.ts`
-> **Required command** `npm run check && npm run test:network && npm run test:smoke`
+> **최소 검증** `npm run check && npm run test:network && npm run test:smoke` (전체 DoD는 §12)
 
 ### 9.1 구조
 
@@ -695,7 +703,7 @@ Adventure
 
 ### 9.1.1 보상 → loadout → 다음 전투는 어디서 검증되는가
 
-새 보상을 넣었다면 이 네 곳이 그것을 지납니다. 하나라도 실패하면 보상이 화면에만 있고 전투에
+새 보상을 넣었다면 이 다섯 층이 그것을 지납니다. 하나라도 실패하면 보상이 화면에만 있고 전투에
 도달하지 못한다는 뜻입니다.
 
 | 층 | 파일 | 무엇을 확인하는가 |
@@ -793,7 +801,7 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 
 > **Files to edit** `art/source/**/*.png`, `art/source/generation-plan.json`
 > **Do not edit** `art/processed/**`, `presentation/m3/**`, `public/assets/**`
-> **Required command** `npm run assets` (build + check)
+> **최소 검증** `npm run assets` (build + check, 전체 DoD는 §12)
 
 ### 11.1 무엇이 필요한가
 
@@ -821,9 +829,15 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
   "prompt": "Reference art/STYLE.md, ..." }
 ```
 
-`assets:check`가 강제하는 정규화 규격: actor 256×384, UI icon 256×256, object는 256 또는 384
-폭, terrain은 128×128 footprint를 선언합니다. anchor는 prop/actor가 `(0.5, 1)`(발밑 접점),
-UI/terrain이 `(0.5, 0.5)`입니다.
+두 층을 구분하세요.
+
+| | 무엇을 말하는가 | 어디가 소유하는가 |
+|---|---|---|
+| **checker가 강제** | actor 256×384, UI icon 256×256, object 폭 256\|384, terrain footprint 128×128, anchor가 `0..1` 범위, manifest와 atlas의 anchor·frame 일치, 알파 청결 | `tools/assets/check-assets.ts` |
+| **STYLE/plan convention** | prop·actor anchor `(0.5, 1)`(발밑 접점), UI·terrain anchor `(0.5, 0.5)`, front|back 순서, 좌우 동일 feet line | `art/STYLE.md`, `art/source/generation-plan.json` |
+
+convention을 어겨도 checker가 잡지 못하는 경우가 있습니다(예: actor anchor를 `(0.5, 0.4)`로
+적으면 범위 검사는 통과하고 화면에서 발이 뜹니다). plan을 복사해 시작하세요.
 
 `art/STYLE.md`가 투영·팔레트·조명·실루엣 기준이며 모든 생성 프롬프트가 이를 참조해야 합니다.
 투시/아이소메트릭/3D 렌더/바닥 정렬 캐릭터는 source에서 금지입니다. 배경은 투명이어야 하고,
@@ -853,6 +867,9 @@ atlas에서 일치하는지, 알파가 깨끗한지(모서리 배경·마젠타 
 ---
 
 ## 12. Validation / Definition of Done
+
+각 golden path의 **최소 검증**은 그 변경을 되돌려 볼 수 있는 최소 명령이고, 아래는 PR을 올릴 때
+지나야 하는 **production DoD**입니다.
 
 ```bash
 npm run assets        # asset을 건드렸다면 (build + check)

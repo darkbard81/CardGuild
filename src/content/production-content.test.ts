@@ -8,7 +8,9 @@ import { PRODUCTION_CONTENT } from "./production-content";
 describe("production content selector", () => {
   it("points at the M7 pack identity", () => {
     expect(PRODUCTION_CONTENT.pack.manifest.id).toBe("cardguild.m7");
-    expect(PRODUCTION_CONTENT.pack.manifest.version).toBe("0.3.0");
+    // The authored revision is not pinned here. It moves with every gameplay data change,
+    // and a second copy of it would turn a routine content edit into a surprise test failure.
+    expect(PRODUCTION_CONTENT.pack.manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
     expect(PRODUCTION_CONTENT.pack.manifest.schemaVersion).toBe(8);
     expect(PRODUCTION_CONTENT.pack.manifest.rulesetId).toBe("cardguild.pf2e-remaster.v1");
   });
@@ -22,7 +24,7 @@ describe("production content selector", () => {
   it("derives the content identity from the selected pack", () => {
     expect(PRODUCTION_CONTENT.contentIdentity).toEqual(getContentIdentity(PRODUCTION_CONTENT.pack));
     expect(PRODUCTION_CONTENT.contentIdentity.packId).toBe("cardguild.m7");
-    expect(PRODUCTION_CONTENT.contentIdentity.packVersion).toBe("0.3.0");
+    expect(PRODUCTION_CONTENT.contentIdentity.packVersion).toBe(PRODUCTION_CONTENT.pack.manifest.version);
     expect(PRODUCTION_CONTENT.contentIdentity.fingerprint).toBe(PRODUCTION_CONTENT.pack.fingerprint);
   });
 

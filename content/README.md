@@ -14,10 +14,13 @@
 개념이 없으므로 어떤 pack도 다른 pack의 정의를 참조하지 않습니다.
 
 ```text
-content/m7   authoritative production pack (cardguild.m7@0.3.0)  ← 신규 콘텐츠는 여기에만
+content/m7   authoritative production pack (cardguild.m7)  ← 신규 콘텐츠는 여기에만
 content/m6   M6 규칙 회귀 fixture (cardguild.m6@0.9.0)
 content/m3   M4 회귀 fixture (cardguild.m4@0.6.0)
 ```
+
+m7의 현재 authored revision은 `content/m7/manifest.json`이 소유하며 `npm run content:check`가
+identity와 fingerprint를 출력합니다. 이 문서는 그 값을 복제하지 않습니다.
 
 회귀 fixture는 이미 검증된 규칙을 고정하기 위해 존재합니다. content volume을 늘리려고 함께
 수정하지 않습니다. M7 release 정책(volume/reachability)은 fixture에 적용되지 않습니다.
