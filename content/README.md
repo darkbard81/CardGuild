@@ -10,7 +10,7 @@ Compiler에는 pack inheritance/dependency 개념이 없으므로 어떤 pack도
 정의를 참조하지 않습니다.
 
 ```text
-content/m7   authoritative production pack (cardguild.m7@0.1.0)
+content/m7   authoritative production pack (cardguild.m7@0.2.0)
 content/m6   M6 규칙 회귀 fixture (cardguild.m6@0.9.0)
 content/m3   M4 회귀 fixture (cardguild.m4@0.6.0)
 ```
@@ -74,6 +74,44 @@ Definition: halberd
 Path: [0].traits[1].id
 UNKNOWN_TRAIT: Trait "tirp" is not defined.
 ```
+
+## Release gate
+
+`content:check`와 `content:production-check`는 서로 다른 질문을 합니다.
+
+```text
+npm run content:check              모든 milestone pack이 유효한 pack인가
+npm run content:production-check   PRODUCTION_CONTENT가 지금 출시 가능한가
+```
+
+Generic validator에 `starter == 4`, `enemy >= 15` 같은 M7 volume을 넣으면 M3/M6 회귀
+fixture까지 production 기준에 묶입니다. 그래서 release policy는 authoritative pack
+하나에만 적용되며 `tools/content/m7-production-policy.ts`에 있습니다. CI는 이 파일을
+source of truth로 읽고, `docs/`의 matrix 문서는 사람이 보는 design rationale로 남습니다.
+
+Production check가 보는 것은 pack의 일반적 유효성이 아니라 **현재 release contract**입니다.
+
+- volume — starter 4, card 24–32, enemy 15–20, scenario 8–12, equipment 20–30,
+  Adventure encounter 6–8, tutorial prefix 3–4
+- reachability — authoritative Adventure에서 출발해 encounter → placement → actor,
+  reward → collection, starter loadout → equipment trait → card까지 따라가 도달하지
+  못하는 정의를 찾습니다
+- tutorial prefix — `tutorialEncounterIds`가 Adventure `encounterIds`의 **앞에서부터
+  연속된 prefix**이며 순서까지 같은지
+- 1P/2P/3P coverage — 실제 runtime(`createAdventureSession` → `buildAdventureEncounter`
+  → `createCombat`)으로 모든 encounter를 조립해 seat/threat/중복 배치를 확인합니다
+- required visual — reachable actor/equipment/card가 asset manifest에 있는지
+  (asset 자체의 유효성은 계속 `assets:check`가 소유합니다)
+
+Reserve는 orphan 검사를 면제하는 allowlist가 아닙니다. 각 항목은 실재하는 정의를
+가리켜야 하고, 이유와 이를 정리할 issue를 함께 적어야 하며, **여전히 도달 불가능해야**
+합니다. Adventure가 쓰기 시작한 정의가 reserve에 남아 있으면 `RESERVE_STALE`로
+실패하므로 목록이 이유보다 오래 살아남지 못합니다. 또한 `reachableMinimum`이 도달
+가능한 수량의 하한이라 정의를 reserve로 옮기는 것만으로는 volume을 만족시킬 수
+없습니다.
+
+Policy는 gameplay가 아니라 QA configuration이므로 `src/` 아래 어떤 파일도 import할 수
+없습니다. import하면 `POLICY_LEAKED_INTO_RUNTIME`으로 gate가 실패합니다.
 
 ## 작성 규칙
 
@@ -156,7 +194,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 - Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
   PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
 - `playable` Trait을 가진 Actor만 Party Builder 후보입니다. 현재 authoritative production
-  pack은 `content/m7`의 `cardguild.m7@0.1.0`이고, `content/m6`의 M6 pack과 `content/m3`의
+  pack은 `content/m7`의 `cardguild.m7@0.2.0`이고, `content/m6`의 M6 pack과 `content/m3`의
   M4 pack은 규칙 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.

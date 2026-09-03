@@ -4,7 +4,7 @@ M7-6(#17)의 equipment 설계 기록입니다. 목적은 **#19 Adventure가 고�
 pool**을 만드는 것이며, #17 자체는 reward를 Adventure에 연결하지 않습니다.
 
 - 최종 reward placement — #19
-- reachability / reserve allowlist gate — #20
+- reachability / reserve gate — #20 (`docs/m7-production-gate.md`)
 - fixed starter kit — #14 (아래 `baseline` item을 그대로 사용)
 
 #13과 같은 원칙입니다: 수량이 아니라 **resolver가 실제로 보는 차이**가 item을 정당화합니다.

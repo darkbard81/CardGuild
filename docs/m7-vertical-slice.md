@@ -61,7 +61,8 @@ metadata가 아니라 이 문서의 design matrix에만 있으므로, 같은 rol
 | Creature (#15) | 13 | 18 | spider ×2, `bone-hulk`, `goblin-slinger`, `goblin-lackey` |
 | Reward equipment (#17) | 9 | 13 | `dueling-rapier`, `boar-spear`, `scout-leather`, `spiked-shield` |
 
-남긴 것은 전부 **의도적 reserve**이며 #20의 allowlist 후보입니다.
+남긴 것은 전부 **의도적 reserve**이며, #20이 이유·후속 issue와 함께
+`tools/content/m7-production-policy.ts`에 기록했습니다(`docs/m7-production-gate.md`).
 
 - `web-hollow`는 brute + skirmisher라 role 축에서 `goblin-chief`·`ruined-gate`와 겹칩니다.
   8개 안에 넣으면 역할 곡선이 평평해집니다. web 지형 노출은 `ruined-gate`가 이미 합니다.
