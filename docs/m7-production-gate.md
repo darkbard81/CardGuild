@@ -53,14 +53,27 @@ orphan 검사를 끄는 ID 목록이면, 도달 불가능한 content가 늘어�
 마지막 조건이 목록을 살아 있게 합니다. Adventure가 쓰기 시작한 정의를 reserve에 그대로 두면
 gate가 실패하므로, reserve는 자기 이유보다 오래 살아남지 못합니다.
 
-### Reserve에는 값이 붙는다
+### reachableMinimum이 실제로 보장하는 것
 
-`reachableMinimum`은 **도달 가능한** 수량의 하한이고 `volume`은 authoring 수량의 상한입니다.
-둘이 함께 reserve 예산을 만듭니다 — 별도의 budget 숫자가 없어도, card 하나를 reserve로 옮기면
-도달 가능한 card가 하한 아래로 떨어집니다. 새 reserve는 새 reachable content로 갚거나,
-검토를 거쳐 하한 자체를 고쳐야 합니다.
+`reachableMinimum`은 **이미 도달 가능한 정의를 reserve로 내려 release surface를 줄이는 것**을
+막습니다. card 하나를 reserve로 옮기면 도달 가능한 card가 하한 아래로 떨어지므로, 그 이동은
+하한 자체를 고치는 검토를 거쳐야 합니다.
+
+reserve 예산은 아닙니다. 새로 authoring한 정의를 처음부터 reserve에 넣으면 reachable 수량은
+그대로이므로 `volume` 상한(예: equipment 30)까지는 gate를 통과합니다. #20이 요구한 것은
+reserve가 wildcard 면제가 아니라 explicit / reviewable / stale-detectable 목록이어야 한다는
+것이므로 별도의 reserve max나 ratio는 두지 않았습니다. 그것을 invariant로 만들고 싶다면
+별도 budget이 필요하고, 그 판단은 이 issue의 scope 밖입니다.
 
 wildcard나 regex로 family 전체를 숨기는 방법은 제공하지 않습니다. ID를 하나씩 적어야 합니다.
+
+### 사용된 것과 소유할 수 있는 것
+
+reachability는 두 집합입니다. orphan 검사와 visual coverage는 release가 **사용하는** 정의를
+묻고(enemy가 착용한 item도 사용된 것입니다), `reachableMinimum`은 플레이어가 **소유할 수
+있는** 정의(starter의 kit과 Adventure reward)만 셉니다. 현재 M7 enemy는 equipment도
+baseCardGrant도 없어 두 집합이 같지만, 나중에 enemy가 장비를 들어도 player floor가
+그것으로 채워지지 않습니다.
 
 ## 4. Volume과 reachability는 현재 release contract
 
@@ -71,10 +84,10 @@ validator가 소유합니다.
 | | 현재 | contract |
 |---|---:|---|
 | playable starter | 4 | 정확히 4 |
-| player card | 32 authored / **21 reachable** | 24–32 / 최소 21 |
-| enemy | 18 authored / **13 reachable** | 15–20 / 최소 13 |
-| scenario | 10 authored / **8 reachable** | 8–12 / 최소 8 |
-| equipment | 25 authored / **18 reachable** | 20–30 / 최소 18 |
+| player card | 32 authored / **21 player-reachable** | 24–32 / 최소 21 |
+| enemy | 18 authored / **13 배치됨** | 15–20 / 최소 13 |
+| scenario | 10 authored / **8 사용됨** | 8–12 / 최소 8 |
+| equipment | 25 authored / **18 player-reachable** | 20–30 / 최소 18 |
 | Adventure encounter | 8 | 6–8, authoritative Adventure 정확히 1개 |
 | tutorial prefix | 4 | 3–4, `encounterIds`의 연속 prefix |
 

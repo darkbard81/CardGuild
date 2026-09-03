@@ -21,12 +21,13 @@
  * since started using fails the gate as a stale entry, so the list cannot quietly
  * outlive its reason.
  *
- * Reserve also is not free. `reachableMinimum` below is a floor on what the
- * release actually puts in front of a player, and `volume` is a ceiling on what
- * the pack authors. Together they cap the reserve without a separate budget
- * number: moving one more card into reserve drops the reachable count under its
- * floor, so new reserve has to be paid for with new reachable content or with a
- * reviewed edit to the floor itself.
+ * `reachableMinimum` below is what stops the reserve lists from shrinking the
+ * release: moving a definition a player can currently get to into reserve drops
+ * the reachable count under its floor, so that move costs a reviewed edit to the
+ * floor itself. It is not a reserve budget. Authoring *new* content straight into
+ * reserve leaves the reachable counts alone and is bounded only by the `volume`
+ * ceiling and by review of the list itself, which is what #20 asked for: explicit,
+ * reviewable, stale-detectable entries rather than a wildcard exemption.
  */
 
 /** One intentionally unreachable production definition. */
@@ -74,9 +75,10 @@ export const M7_PRODUCTION_POLICY = {
   },
 
   /**
-   * How much of that content a player can actually reach. Set to what the
-   * current release reaches, so growing the reserve lists without growing the
-   * reachable pool fails the gate instead of hiding inside the volume ranges.
+   * How much of that content a player can actually get to: what the four starters
+   * walk in with, and what the Adventure hands out. Set to what the current release
+   * reaches, so retiring reachable content into reserve fails the gate instead of
+   * hiding inside the volume ranges.
    */
   reachableMinimum: {
     playerCards: 21,
@@ -93,7 +95,9 @@ export const M7_PRODUCTION_POLICY = {
     },
     {
       id: "card.aimed-shot",
-      reason: "#13 ranged Strike. Needs a ranged weapon no starter carries.",
+      reason:
+        "#13 ranged Strike. Nera can take it with her starter shortbow and has a free prepared slot, " +
+        "but no starter prepares it and no reward offers it.",
       followUp: "#21",
     },
     {
@@ -166,7 +170,9 @@ export const M7_PRODUCTION_POLICY = {
     },
     {
       id: "executioner-axe",
-      reason: "Advanced proficiency: no starter can attack with it (m7-equipment-matrix §5).",
+      reason:
+        "Advanced weapon. Every starter is untrained in it, so the Strike is legal but loses 3 to 5 " +
+        "attack: a build-gated hold for later proficiency, not an unusable item (m7-equipment-matrix §5).",
       followUp: "#21",
     },
     {

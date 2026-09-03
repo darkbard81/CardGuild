@@ -76,17 +76,25 @@ function withinRange(count: number, range: VolumeRange): boolean {
 }
 
 /**
- * What a player can actually get to, walked the way the game walks it: the
- * authoritative Adventure's encounters, the Actors those encounters place, the
- * four starters, and everything a starter or a reward can put in a deck.
+ * What the shipped Adventure actually reaches, walked the way the game walks it:
+ * its encounters, the Actors those encounters place, the four starters, and
+ * everything a starter or a reward can put in a deck.
+ *
+ * Two questions want two answers here. Orphan detection and visual coverage ask
+ * what the release *uses*, so an item worn by an enemy counts. The reachable
+ * floors ask what a player can *own*, so they count only the starters' own kit and
+ * what the Adventure hands out. The sets are equal today because no M7 enemy
+ * carries equipment or a base card grant, and they stay honest if one ever does.
  */
 interface ReachableContent {
   readonly starters: readonly ActorDefinition[];
   readonly scenarios: readonly ScenarioSource[];
   readonly actorIds: ReadonlySet<string>;
   readonly enemyIds: ReadonlySet<string>;
-  readonly equipmentIds: ReadonlySet<string>;
-  readonly cardIds: ReadonlySet<string>;
+  readonly usedEquipmentIds: ReadonlySet<string>;
+  readonly usedCardIds: ReadonlySet<string>;
+  readonly playerEquipmentIds: ReadonlySet<string>;
+  readonly playerCardIds: ReadonlySet<string>;
 }
 
 /** Every card the runtime would put in this member's deck with this loadout. */
@@ -115,24 +123,34 @@ function collectReachable(pack: CompiledContentPack, reporter: Reporter): Reacha
     }
   }
 
-  const equipmentIds = new Set<string>();
-  const cardIds = new Set<string>();
-  // Whatever an Actor the Adventure spawns already wears or knows.
+  const usedEquipmentIds = new Set<string>();
+  const usedCardIds = new Set<string>();
+  const playerEquipmentIds = new Set<string>();
+  const playerCardIds = new Set<string>();
+  // Whatever an Actor the Adventure spawns already wears or knows. A starter's own kit is
+  // also the player's, because the party walks in holding it.
   for (const actorId of [...actorIds].sort()) {
     const actor = pack.actorDefinitions[actorId];
     if (!actor) continue;
+    const owned = isPlayable(actor);
     for (const slot of EQUIPMENT_SLOT_ORDER) {
       const id = actor.starterLoadout.equipment[slot];
-      if (id) equipmentIds.add(id);
+      if (!id) continue;
+      usedEquipmentIds.add(id);
+      if (owned) playerEquipmentIds.add(id);
     }
-    for (const cardId of deckCardIds(actor, actor.starterLoadout, pack)) cardIds.add(cardId);
+    for (const cardId of deckCardIds(actor, actor.starterLoadout, pack)) {
+      usedCardIds.add(cardId);
+      if (owned) playerCardIds.add(cardId);
+    }
   }
 
   // Whatever a reward can hand the party, judged by whether a starter can use it.
   for (const reward of adventure.rewards) {
     for (const choice of reward.choices) {
       if (choice.kind === "card") {
-        cardIds.add(choice.definitionId);
+        usedCardIds.add(choice.definitionId);
+        playerCardIds.add(choice.definitionId);
         if (!starters.some((starter) => canPrepare(starter, choice.definitionId, pack))) {
           reporter.issue(
             PACK_SOURCE,
@@ -144,7 +162,8 @@ function collectReachable(pack: CompiledContentPack, reporter: Reporter): Reacha
         }
         continue;
       }
-      equipmentIds.add(choice.definitionId);
+      usedEquipmentIds.add(choice.definitionId);
+      playerEquipmentIds.add(choice.definitionId);
       const wearers = starters.filter((starter) => canEquip(starter, choice.definitionId, pack));
       if (wearers.length === 0) {
         reporter.issue(
@@ -160,13 +179,14 @@ function collectReachable(pack: CompiledContentPack, reporter: Reporter): Reacha
       // reachable exactly when the item is.
       for (const starter of wearers) {
         for (const cardId of deckCardIds(starter, equippedLoadout(starter, choice.definitionId, pack), pack)) {
-          cardIds.add(cardId);
+          usedCardIds.add(cardId);
+          playerCardIds.add(cardId);
         }
       }
     }
   }
 
-  return { starters, scenarios, actorIds, enemyIds, equipmentIds, cardIds };
+  return { starters, scenarios, actorIds, enemyIds, usedEquipmentIds, usedCardIds, playerEquipmentIds, playerCardIds };
 }
 
 /** The starter's authored loadout with one item swapped into its own slot. */
@@ -367,8 +387,8 @@ function checkVolume(pack: CompiledContentPack, reachable: ReachableContent, rep
   }
 
   const floors: readonly (readonly [string, number, number])[] = [
-    ["player cards", reachable.cardIds.size, policy.reachableMinimum.playerCards],
-    ["equipment", reachable.equipmentIds.size, policy.reachableMinimum.equipment],
+    ["player cards", reachable.playerCardIds.size, policy.reachableMinimum.playerCards],
+    ["equipment", reachable.playerEquipmentIds.size, policy.reachableMinimum.equipment],
     ["enemies", reachable.enemyIds.size, policy.reachableMinimum.enemies],
     ["scenarios", reachable.scenarios.length, policy.reachableMinimum.scenarios],
   ];
@@ -378,7 +398,7 @@ function checkVolume(pack: CompiledContentPack, reachable: ReachableContent, rep
       PACK_SOURCE,
       "reachableMinimum",
       "PRODUCTION_REACHABLE_FLOOR",
-      `Only ${count} ${label} are reachable; the release contract is at least ${minimum}. Reserving more content does not satisfy this floor.`,
+      `Only ${count} ${label} are reachable; the release contract is at least ${minimum}. Retiring reachable content into the reserve lists does not satisfy this floor.`,
     );
   }
 }
@@ -577,11 +597,11 @@ async function checkVisualCoverage(reachable: ReachableContent, reporter: Report
     if (visual?.["front"] && visual["back"]) continue;
     reporter.issue(ASSET_MANIFEST_SOURCE, "actorVisuals", "PRODUCTION_MISSING_ACTOR_VISUAL", `Actor "${actorId}" is reachable in the shipped Adventure but has no two-sided visual.`, actorId);
   }
-  for (const equipmentId of [...reachable.equipmentIds].sort()) {
+  for (const equipmentId of [...reachable.usedEquipmentIds].sort()) {
     if (manifest.equipmentVisuals[equipmentId]) continue;
     reporter.issue(ASSET_MANIFEST_SOURCE, "equipmentVisuals", "PRODUCTION_MISSING_EQUIPMENT_VISUAL", `Reachable equipment "${equipmentId}" has no visual.`, equipmentId);
   }
-  for (const cardId of [...reachable.cardIds].sort()) {
+  for (const cardId of [...reachable.usedCardIds].sort()) {
     if (manifest.cardVisuals[cardId]) continue;
     reporter.issue(ASSET_MANIFEST_SOURCE, "cardVisuals", "PRODUCTION_MISSING_CARD_VISUAL", `Reachable card "${cardId}" has no visual.`, cardId);
   }
@@ -623,14 +643,14 @@ async function main(): Promise<void> {
       field: "reserveCards",
       entries: M7_PRODUCTION_POLICY.reserveCards,
       known: new Set(Object.keys(pack.combatContent.cards)),
-      reachable: reachable.cardIds,
+      reachable: reachable.usedCardIds,
     },
     {
       label: "equipment",
       field: "reserveEquipment",
       entries: M7_PRODUCTION_POLICY.reserveEquipment,
       known: new Set(Object.keys(pack.combatContent.equipment)),
-      reachable: reachable.equipmentIds,
+      reachable: reachable.usedEquipmentIds,
     },
     {
       label: "actor",
@@ -675,7 +695,7 @@ async function main(): Promise<void> {
       `  Adventure ${PRODUCTION_CONTENT.adventureId}: ${String(PRODUCTION_CONTENT.adventure.encounterIds.length)} encounters ` +
       `(${String(M7_PRODUCTION_POLICY.tutorialEncounterIds.length)} tutorial), buildable at ${PARTY_SIZES.map(String).join("P/")}P\n` +
       `  Reachable: ${String(reachable.starters.length)} starters, ${String(reachable.enemyIds.size)} enemies, ` +
-      `${String(reachable.cardIds.size)} cards, ${String(reachable.equipmentIds.size)} equipment\n` +
+      `${String(reachable.playerCardIds.size)} player cards, ${String(reachable.playerEquipmentIds.size)} player equipment\n` +
       `  Reserved: ${String(reserved)} definitions, each with a reason and a follow-up\n`,
   );
 }

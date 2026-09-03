@@ -106,9 +106,17 @@ Production check가 보는 것은 pack의 일반적 유효성이 아니라 **현
 Reserve는 orphan 검사를 면제하는 allowlist가 아닙니다. 각 항목은 실재하는 정의를
 가리켜야 하고, 이유와 이를 정리할 issue를 함께 적어야 하며, **여전히 도달 불가능해야**
 합니다. Adventure가 쓰기 시작한 정의가 reserve에 남아 있으면 `RESERVE_STALE`로
-실패하므로 목록이 이유보다 오래 살아남지 못합니다. 또한 `reachableMinimum`이 도달
-가능한 수량의 하한이라 정의를 reserve로 옮기는 것만으로는 volume을 만족시킬 수
-없습니다.
+실패하므로 목록이 이유보다 오래 살아남지 못합니다.
+
+`reachableMinimum`은 **이미 도달 가능한 정의를 reserve로 내려 release surface를 줄이는
+것**을 막습니다. 새로 authoring한 정의를 곧바로 reserve에 넣는 경우는 reachable 수량을
+건드리지 않으므로 `volume` 상한과 목록 자체의 review가 제한합니다. reserve 비율에 대한
+별도 budget은 두지 않았습니다.
+
+reachability에는 두 집합이 있습니다. orphan 검사와 visual coverage는 release가
+**사용하는** 것(enemy가 착용한 item 포함)을 묻고, `reachableMinimum`은 플레이어가
+**소유할 수 있는** 것(starter의 kit과 Adventure reward)만 셉니다. 현재 M7 enemy는
+equipment도 baseCardGrant도 없어 두 집합이 같습니다.
 
 Policy는 gameplay가 아니라 QA configuration이므로 `src/` 아래 어떤 파일도 import할 수
 없습니다. import하면 `POLICY_LEAKED_INTO_RUNTIME`으로 gate가 실패합니다.
