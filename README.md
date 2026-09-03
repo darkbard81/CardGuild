@@ -251,6 +251,24 @@ newest-wins reconnect와 protocol v1 fail-fast를 검증합니다. Playwright는
 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어, 2P fallback,
 3P 분산 제어와 hash 수렴을 검증하며 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
 
+## UI/UX 리뷰 캡쳐
+
+UI를 고치기 전후를 같은 자리에서 비교하려고, 실제 앱을 solo host로 한 판 돌리면서 화면별
+대표 이미지를 찍어 둡니다. 목업이 아니라 지금 코드가 그리는 화면입니다.
+
+```bash
+npm run ui:capture:baseline # 원본(개선 전) 캡쳐 -> docs/ui-review/baseline/
+npm run ui:capture          # 변경(개선 후) 캡쳐 -> docs/ui-review/current/
+npm run ui:compare          # docs/ui-review/index.html 좌우 비교 페이지만 재생성
+```
+
+세션 로비, 파티 편성, Adventure 진행, Loadout Builder 세 상태, 전투 HUD와 액션 링, 보상
+선택, 실패 화면을 1440x900과 1024x768로 찍습니다. 각 해상도의 `manifest.json`이 화면 ID와
+리뷰 포인트, 그리고 찍지 못한 화면과 그 이유를 함께 남기므로 캡쳐 순서가 바뀌어도 원본과
+변경이 화면 ID로 짝지어집니다. 자세한 사용법은 `docs/ui-review/README.md`에 있습니다.
+캡쳐는 `playwright.capture.config.ts`로만 돌아가고 `npm run test:smoke`는 이 파일을
+실행하지 않으므로, 테스트가 리뷰 자료를 덮어쓰지 않습니다.
+
 ## M5 범위 밖
 
 계정/OAuth, matchmaking/public room, late join/spectator, host migration/kick, chat,

@@ -33,7 +33,10 @@
     "typecheck": "tsc --noEmit",
     "typecheck:game": "tsc --project tsconfig.game.json",
     "typecheck:tools": "tsc --project tsconfig.tools.json",
-    "typecheck:server": "tsc --project tsconfig.server.json"
+    "typecheck:server": "tsc --project tsconfig.server.json",
+    "ui:capture": "playwright test --config playwright.capture.config.ts && npm run ui:compare",
+    "ui:capture:baseline": "CARDGUILD_UI_SHOT_DIR=docs/ui-review/baseline playwright test --config playwright.capture.config.ts && npm run ui:compare",
+    "ui:compare": "tsx tools/ui/build-compare-page.ts"
   },
   "dependencies": {
     "ajv": "^8.20.0",
