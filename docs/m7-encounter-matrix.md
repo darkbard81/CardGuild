@@ -1,5 +1,9 @@
 # M7 Encounter Threat Matrix
 
+> **설계 근거 기록입니다.** 콘텐츠를 추가·수정하는 절차와 현재 계약은
+> [`docs/PRODUCTION-BLUEPRINT.md`](PRODUCTION-BLUEPRINT.md)에 있습니다. 이 문서는 왜 지금
+> 이 수치와 구성인지 알고 싶을 때만 읽으면 됩니다.
+
 M7-5(#16)의 Encounter Library 설계 기록입니다. 목적은 새 encounter scripting system이 아니라
 **map geometry × party-size composition × creature role** 조합으로 서로 다른 전술 문제를
 만드는 것입니다.

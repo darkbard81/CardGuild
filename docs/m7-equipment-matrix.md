@@ -1,5 +1,9 @@
 # M7 Equipment Trade-off Matrix
 
+> **설계 근거 기록입니다.** 콘텐츠를 추가·수정하는 절차와 현재 계약은
+> [`docs/PRODUCTION-BLUEPRINT.md`](PRODUCTION-BLUEPRINT.md)에 있습니다. 이 문서는 왜 지금
+> 이 수치와 구성인지 알고 싶을 때만 읽으면 됩니다.
+
 M7-6(#17)의 equipment 설계 기록입니다. 목적은 **#19 Adventure가 고르게 할 reward/sidegrade
 pool**을 만드는 것이며, #17 자체는 reward를 Adventure에 연결하지 않습니다.
 

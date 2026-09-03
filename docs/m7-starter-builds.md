@@ -1,5 +1,9 @@
 # M7 Starter Characters & Build Kits
 
+> **설계 근거 기록입니다.** 콘텐츠를 추가·수정하는 절차와 현재 계약은
+> [`docs/PRODUCTION-BLUEPRINT.md`](PRODUCTION-BLUEPRINT.md)에 있습니다. 이 문서는 왜 지금
+> 이 수치와 구성인지 알고 싶을 때만 읽으면 됩니다.
+
 M7-3(#14)의 Starter 설계 기록입니다. **4명은 동시에 쓰는 4인 파티가 아니라 Party Builder에서
 고를 수 있는 roster**이고, runtime party size는 계속 1–3P입니다.
 

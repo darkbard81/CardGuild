@@ -1,5 +1,9 @@
 # M7 Production Content Gate
 
+> **설계 근거 기록입니다.** 콘텐츠를 추가·수정하는 절차와 현재 계약은
+> [`docs/PRODUCTION-BLUEPRINT.md`](PRODUCTION-BLUEPRINT.md)에 있습니다. 이 문서는 왜 지금
+> 이 수치와 구성인지 알고 싶을 때만 읽으면 됩니다.
+
 M7-9(#20)의 release gate 설계 기록입니다. 새 validator framework를 만드는 이슈가 아니라,
 이미 있는 schema/semantic/fingerprint validator와 runtime을 **authoritative pack 하나에만
 적용되는 release policy**로 다시 묶는 이슈입니다.

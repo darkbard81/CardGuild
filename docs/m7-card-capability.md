@@ -1,5 +1,9 @@
 # M7 Card Capability Matrix
 
+> **설계 근거 기록입니다.** 콘텐츠를 추가·수정하는 절차와 현재 계약은
+> [`docs/PRODUCTION-BLUEPRINT.md`](PRODUCTION-BLUEPRINT.md)에 있습니다. 이 문서는 왜 지금
+> 이 수치와 구성인지 알고 싶을 때만 읽으면 됩니다.
+
 M7-2(#13)의 **Rule Backflow 판단 기록 source of truth**입니다. 새 AoN reference나 production
 card 후보는 구현 전에 여기에서 판정하고, 상태와 근거를 남깁니다.
 

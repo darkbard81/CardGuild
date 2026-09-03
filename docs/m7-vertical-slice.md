@@ -1,5 +1,9 @@
 # M7 Production Vertical Slice
 
+> **설계 근거 기록입니다.** 콘텐츠를 추가·수정하는 절차와 현재 계약은
+> [`docs/PRODUCTION-BLUEPRINT.md`](PRODUCTION-BLUEPRINT.md)에 있습니다. 이 문서는 왜 지금
+> 이 수치와 구성인지 알고 싶을 때만 읽으면 됩니다.
+
 M7-8(#19)의 설계 기록입니다. 새 시스템을 만드는 이슈가 아니라, #13~#18이 만든 것을 **하나의
 authoritative Adventure로 조립**해 onboarding부터 finale victory까지 실제로 완주되게 하는
 이슈입니다.

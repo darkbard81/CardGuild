@@ -43,7 +43,7 @@ port 8787 backend로 proxy합니다.
 ## M5 파티 편성과 캐릭터 제어
 
 - Players와 Party는 서로 다른 모델입니다. 한 세션에는 1–3명의 player seat가 있고,
-  호스트는 3명의 playable character 중 중복 없이 1–3명을 골라 `party.hero-1`부터
+  호스트는 4명의 playable character 중 중복 없이 1–3명을 골라 `party.hero-1`부터
   순서대로 편성합니다. 네트워크 player ID, 영속 PartyMember ID, 전투 actor ID는 분리됩니다.
 - Slot 1은 항상 호스트 소유입니다. 게스트는 편성된 Slot 2/3 중 비어 있는 캐릭터 하나를
   선택하거나 원자적으로 다른 캐릭터로 바꿉니다. 호스트는 온라인 게스트가 선택한
@@ -68,8 +68,9 @@ port 8787 backend로 proxy합니다.
 
 ## 플레이
 
-- `Goblin Trouble`은 Road Ambush → Ruined Gate → Goblin Chief의 linear Adventure입니다.
-- 전투 승리 후 두 Reward 중 하나를 획득하며, `Manage Loadout`에서 장비 slot과 준비
+- `Goblin Trouble`은 Road Ambush에서 Cult Sanctum까지 이어지는 8 Encounter linear Adventure이며,
+  앞의 4개가 tutorial prefix입니다.
+- 여섯 번의 전투 승리 뒤 Reward 선택지(카드 3–4, 장비 4) 중 하나를 획득하며, `Manage Loadout`에서 장비 slot과 준비
   카드를 click/select 방식으로 편성합니다. 장착해도 Collection 수량은 차감되지 않습니다.
 - Builder Preview와 다음 전투는 같은 loadout resolver를 사용합니다. AC/Reflex,
   Class DC, resolved Strike(attack/damage/range/trait), Trait-granted Card,
@@ -106,7 +107,7 @@ PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 
 
 ```text
 src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
-src/content JSON authoring DTO, semantic compiler, canonical fingerprint, v6 loader
+src/content JSON authoring DTO, semantic compiler, canonical fingerprint, schema v8 loader
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
@@ -181,18 +182,20 @@ off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `r
 따로 보고하므로 대상이 굴리는 Save도 모호하지 않습니다.
 
 Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며 pack identity는
-`cardguild.m7@0.1.0`, contract는 schema v8입니다. Client UI, battle rendering, WebSocket
+`cardguild.m7@0.3.0`, contract는 schema v8입니다. Client UI, battle rendering, WebSocket
 hello와 authoritative server는 모두 `src/content/production-content.ts`의
 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다. [`content/m6`](content/m6)의
 `cardguild.m6@0.9.0`과 [`content/m3`](content/m3)의 `cardguild.m4@0.6.0` pack은 규칙 회귀
-fixture로 보존되며 production authoring 대상이 아닙니다. Schema와
-작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
-Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
+fixture로 보존되며 production authoring 대상이 아닙니다. 디렉터리 안내는
+[`content/README.md`](content/README.md)에 있습니다. **신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
+[`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md) 하나에 있습니다** — schema 계약,
+현재 release envelope, asset 절차, 검증 절차가 모두 그 문서의 golden path에 있습니다.
+Equipment, Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
 추가할 수 있습니다.
 
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
 `art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
-`art/processed`, 2048² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
+`art/processed`, 4096² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
 layer 및 Equipment/Card icon mapping은 `presentation/m3`에 있습니다. 보드 위 콘텐츠는 절대 픽셀이 아니라
 투영된 셀 폭 대비(`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다. 창 크기가
 달라져도 스탠디가 칸에서 차지하는 비율은 고정이고 카메라 zoom만 크기를 바꿉니다.
@@ -213,7 +216,8 @@ GitHub 이슈 `#7`을 따릅니다.
 ## 검증
 
 ```bash
-npm run content:check # Schema, references, compile, fingerprint
+npm run content:check # 모든 pack의 Schema, references, compile, fingerprint
+npm run content:production-check # 현재 M7 release policy/reachability/1P-3P 구조 coverage
 npm run assets        # raw PNG cleanup -> normalized frames -> atlas/tilemap -> validation
 npm run assets:build  # 위 pipeline 산출물 재생성
 npm run assets:check  # alpha, anchors, 양면 standee, atlas, layered tilemap 검증
@@ -223,12 +227,13 @@ npm run typecheck:server # DOM 없는 server/session/protocol type boundary
 npm run test:network # 실제 random-port HTTP/WebSocket 3-client integration
 npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive smoke
 npm test             # unit + network + Playwright
+npm run playtest     # seeded 자동 플레이(밸런스 조사 도구, gate 아님)
 ```
 
-Vitest는 Content v6 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
-typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 3인 profile과 1–3P spawn,
+Vitest는 Content schema v8 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
+typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
 Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
-deck/stat/context, Adventure 3전/Reward/실패/seed/Combat bridge,
+deck/stat/context, Adventure 8전/Reward/실패/seed/Combat bridge,
 projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
 Reaction lifecycle, replay setup identity/hash, victory/defeat를 검증합니다. Playwright는
