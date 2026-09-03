@@ -1,7 +1,12 @@
 import {
+  SAVE_IDS,
+  equippedArmor,
   listLegalActions,
   resolveArmorClass,
+  resolveClassDC,
+  resolveInitiative,
   resolveStatisticDC,
+  resolveStatisticModifier,
   resolveStrike,
 } from "../game";
 import type {
@@ -12,6 +17,7 @@ import type {
   CombatState,
   LegalAction,
   ResolvedStrikeProfile,
+  SaveId,
   ScenarioDefinition,
 } from "../game";
 import type { AssetCatalog } from "../presentation";
@@ -64,6 +70,52 @@ function signed(value: number): string {
 function strikeLabel(strike: ResolvedStrikeProfile): string {
   const { count, sides, flatModifier } = strike.damage;
   return `${strike.weaponName} ${signed(strike.attackModifier)} · ${count}d${sides}${signed(flatModifier)}`;
+}
+
+/** Tall enough that the square portrait window crops to head and shoulders. */
+const PORTRAIT_ART_HEIGHT = 190;
+
+/** The grid has room for three columns, the sheet has room for the whole word. */
+const SAVE_LABELS: Readonly<Record<SaveId, string>> = {
+  fortitude: "Fort",
+  reflex: "Ref",
+  will: "Will",
+};
+
+const SAVE_SHEET_LABELS: Readonly<Record<SaveId, string>> = {
+  fortitude: "Fortitude DC",
+  reflex: "Reflex DC",
+  will: "Will DC",
+};
+
+function hpBlock(actor: ActorState): readonly HTMLElement[] {
+  const hpRow = element("div", "hp-row");
+  hpRow.append(element("span", undefined, "HP"), element("strong", undefined, `${actor.hp}/${actor.maxHp}`));
+  const bar = element("div", "hp-bar");
+  const fill = element("span", "hp-fill");
+  fill.style.width = `${Math.max(0, Math.min(100, (actor.hp / actor.maxHp) * 100))}%`;
+  bar.append(fill);
+  return [hpRow, bar];
+}
+
+/** Two or three labelled numbers on one line, for the values read at a glance. */
+function statPair(entries: readonly (readonly [string, string])[]): HTMLElement {
+  const row = element("div", "stat-pair");
+  for (const [label, value] of entries) {
+    const cell = element("div", "stat-cell");
+    cell.append(element("span", "stat-label", label), element("strong", undefined, value));
+    row.append(cell);
+  }
+  return row;
+}
+
+function conditionLine(actor: ActorState): HTMLElement {
+  const conditions = actor.conditions.map((condition) => condition.id);
+  return element(
+    "p",
+    conditions.length ? "condition-line" : "condition-line empty",
+    conditions.length ? conditions.join(" · ") : "No conditions",
+  );
 }
 
 function percentage(value: number | undefined): string {
@@ -145,6 +197,9 @@ export class BattleUi {
   private readonly initiative = required<HTMLOListElement>("#initiative-list");
   private readonly heroHeading = required<HTMLElement>("#hero-heading");
   private readonly heroStats = required<HTMLElement>("#hero-stats");
+  private readonly heroPortrait = required<HTMLElement>("#hero-portrait");
+  private readonly heroDetails = required<HTMLElement>("#hero-details");
+  private readonly heroDetailsToggle = required<HTMLButtonElement>("#hero-details-toggle");
   private readonly actionPips = required<HTMLElement>("#action-pips");
   private readonly endTurn = required<HTMLButtonElement>("#end-turn");
   private readonly selectedDetail = required<HTMLElement>("#selected-detail");
@@ -163,6 +218,10 @@ export class BattleUi {
   private readonly resultDescription = required<HTMLElement>("#result-description");
   private readonly resultAction = required<HTMLButtonElement>("#restart-battle");
 
+  /** The character sheet stays where the player left it across snapshots. */
+  private heroDetailsOpen = false;
+  private portraitDefinitionId: string | null = null;
+
   public constructor(
     private readonly content: CombatContent,
     private readonly scenario: ScenarioDefinition,
@@ -171,6 +230,10 @@ export class BattleUi {
   ) {
     this.resultAction.textContent = "Return to Adventure";
     const listenerOptions = { signal: this.abortController.signal };
+    this.heroDetailsToggle.addEventListener("click", () => {
+      this.heroDetailsOpen = !this.heroDetailsOpen;
+      this.applyHeroDetailsState();
+    }, listenerOptions);
     this.endTurn.addEventListener("click", handlers.onEndTurn, listenerOptions);
     this.reactionUse.addEventListener("click", handlers.onUseReaction, listenerOptions);
     this.reactionPass.addEventListener("click", handlers.onPassReaction, listenerOptions);
@@ -204,7 +267,7 @@ export class BattleUi {
     this.boardPrompt.textContent = presentation.prompt;
 
     this.renderInitiative(state);
-    this.renderStats(hero);
+    this.renderHeroCard(hero);
     this.renderPips(presentation.canControl ? state.turn.actionsRemaining : 0);
     this.renderCards(
       actions.filter((action) => action.source.kind === "card"),
@@ -237,38 +300,95 @@ export class BattleUi {
     }
   }
 
-  private renderStats(hero: ActorState): void {
-    this.heroStats.replaceChildren();
-    this.heroStats.append(...this.statBlock(hero, [
-      ["AC", resolveArmorClass(hero, { content: this.content }).value],
-      ["Reflex DC", resolveStatisticDC(hero, { kind: "save", id: "reflex" }, { content: this.content }).value],
-      ["Speed", `${hero.speedFeet}ft`],
+  /**
+   * The card answers "can I act, and am I in trouble" at a glance: portrait, HP,
+   * the two numbers every attack is read against, and the three saves. Everything
+   * a player only consults deliberately lives behind the toggle instead.
+   */
+  private renderHeroCard(hero: ActorState): void {
+    this.renderPortrait(hero);
+    const context = { content: this.content };
+    const savesRow = element("div", "save-grid");
+    for (const id of SAVE_IDS) {
+      const cell = element("div", "save-cell");
+      cell.dataset.saveId = id;
+      cell.append(
+        element("span", "stat-label", SAVE_LABELS[id]),
+        element("strong", undefined, signed(resolveStatisticModifier(hero, { kind: "save", id }, context).value)),
+      );
+      savesRow.append(cell);
+    }
+    this.heroStats.replaceChildren(
+      ...hpBlock(hero),
+      statPair([
+        ["AC", String(resolveArmorClass(hero, context).value)],
+        ["Speed", `${hero.speedFeet}ft`],
+      ]),
+      savesRow,
+      conditionLine(hero),
+    );
+    this.renderHeroDetails(hero);
+    this.applyHeroDetailsState();
+  }
+
+  /** A bust crop of the same standee the board draws, so the card names a face. */
+  private renderPortrait(hero: ActorState): void {
+    if (this.portraitDefinitionId === hero.definitionId) return;
+    this.portraitDefinitionId = hero.definitionId;
+    this.heroPortrait.replaceChildren();
+    const visual = this.catalog.manifest.actorVisuals[hero.definitionId];
+    if (!visual) {
+      this.heroPortrait.classList.add("missing");
+      this.heroPortrait.textContent = hero.name.slice(0, 1);
+      return;
+    }
+    this.heroPortrait.classList.remove("missing");
+    const art = element("span", "hero-portrait-art");
+    Object.assign(art.style, this.catalog.domAtlasPortraitStyle(visual.front, PORTRAIT_ART_HEIGHT));
+    this.heroPortrait.append(art);
+  }
+
+  private renderHeroDetails(hero: ActorState): void {
+    const context = { content: this.content };
+    const strike = resolveStrike(hero, context);
+    const armor = equippedArmor(hero, context);
+    const sheet = element("dl", "stats-grid");
+    const rows: readonly (readonly [string, string])[] = [
+      ["Perception", signed(resolveStatisticModifier(hero, { kind: "perception" }, context).value)],
+      ["Initiative", signed(resolveInitiative(hero, context).value)],
+      ["Class DC", String(resolveClassDC(hero, context).value)],
+      ...SAVE_IDS.map((id) => [
+        SAVE_SHEET_LABELS[id],
+        String(resolveStatisticDC(hero, { kind: "save", id }, context).value),
+      ] as const),
       ["Facing", hero.facing],
-      ["Strike", strikeLabel(resolveStrike(hero, { content: this.content }))],
-    ]));
+      ["Strike", strikeLabel(strike)],
+      ["Damage", `${strike.damage.damageType}`],
+      ["Reach", `${strike.rangeFeet}ft`],
+      ["Traits", strike.traits.length ? strike.traits.join(" · ") : "—"],
+      ["Armor", armor?.name ?? "Unarmored"],
+    ];
+    for (const [label, value] of rows) {
+      sheet.append(element("dt", undefined, label), element("dd", undefined, value));
+    }
+    this.heroDetails.replaceChildren(sheet);
+  }
+
+  private applyHeroDetailsState(): void {
+    this.heroDetails.hidden = !this.heroDetailsOpen;
+    this.heroDetailsToggle.setAttribute("aria-expanded", String(this.heroDetailsOpen));
+    this.heroDetailsToggle.textContent = this.heroDetailsOpen ? "닫기" : "상세";
   }
 
   private statBlock(
     actor: ActorState,
     rows: readonly (readonly [string, string | number])[],
   ): readonly HTMLElement[] {
-    const hpRow = element("div", "hp-row");
-    hpRow.append(element("span", undefined, "HP"), element("strong", undefined, `${actor.hp}/${actor.maxHp}`));
-    const bar = element("div", "hp-bar");
-    const fill = element("span", "hp-fill");
-    fill.style.width = `${Math.max(0, Math.min(100, (actor.hp / actor.maxHp) * 100))}%`;
-    bar.append(fill);
     const stats = element("dl", "stats-grid");
     for (const [label, value] of rows) {
       stats.append(element("dt", undefined, label), element("dd", undefined, String(value)));
     }
-    const conditions = actor.conditions.map((condition) => condition.id);
-    const status = element(
-      "p",
-      conditions.length ? "condition-line" : "condition-line empty",
-      conditions.length ? conditions.join(" · ") : "No conditions",
-    );
-    return [hpRow, bar, stats, status];
+    return [...hpBlock(actor), stats, conditionLine(actor)];
   }
 
   private renderPips(remaining: number): void {

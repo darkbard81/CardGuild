@@ -48,9 +48,10 @@ UI를 고친 뒤에는 `npm run ui:capture`만 다시 돌리고 `docs/ui-review/
 | 06 | `loadout-preview-diff` | 적용 전 변화 미리보기 | Apply 전에 보여주는 스탯 diff의 가독성 |
 | 07 | `combat-turn` | 전투 화면 · 내 턴 시작 | 보드 위 반투명 HUD 배치, 액션 pip, 이니셔티브, 핸드 독 |
 | 08 | `combat-action-ring` | 타겟 선택 후 액션 링 | target-first 라디얼 메뉴와 Detail 패널의 명중/피해 설명 |
-| 09 | `reward-choice` | 보상 선택 화면 | 보상 카드가 스스로를 설명하는 방식과 선택 압박 |
-| 10 | `adventure-after-reward` | 보상 수령 후 Adventure | 미장착 보상 안내(loadout nudge)와 다음 단계 유도 |
-| 11 | `adventure-outcome` | Adventure 실패 화면 | 패배 후 재도전 동선 |
+| 09 | `combat-hero-sheet` | 캐릭터 상세 시트 | 상세 버튼이 펼치는 시트 — 세이브 DC, Strike, 장비 수치가 요약 카드 대신 여기 모인다 |
+| 10 | `reward-choice` | 보상 선택 화면 | 보상 카드가 스스로를 설명하는 방식과 선택 압박 |
+| 11 | `adventure-after-reward` | 보상 수령 후 Adventure | 미장착 보상 안내(loadout nudge)와 다음 단계 유도 |
+| 12 | `adventure-outcome` | Adventure 실패 화면 | 패배 후 재도전 동선 |
 
 ## 찍지 못한 화면
 
@@ -58,7 +59,7 @@ UI를 고친 뒤에는 `npm run ui:capture`만 다시 돌리고 `docs/ui-review/
   반응 기회가 열리지 않았습니다. 캡쳐가 필요하면 반응이 실제로 발생한 판에서 수동으로
   찍어 `baseline/<해상도>/`에 넣고 `manifest.json`에 항목을 추가하세요.
 - `encounter-result` — 전투 결과 모달. Adventure 흐름에서는 전투가 끝나는 즉시 Adventure
-  화면으로 넘어가기 때문에 이 모달이 화면에 남지 않습니다. 승패 안내는 보상 화면(09)과
-  실패 화면(11)이 대신하고 있습니다.
+  화면으로 넘어가기 때문에 이 모달이 화면에 남지 않습니다. 승패 안내는 보상 화면(10)과
+  실패 화면(12)이 대신하고 있습니다.
 
 두 항목은 `manifest.json`에도 이유와 함께 남아 있고, 비교 페이지에서는 빈 칸으로 표시됩니다.

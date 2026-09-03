@@ -45,10 +45,23 @@
         <div class="combat-hud">
           <section class="hud-card hero-card" data-hud-gutter="left" aria-labelledby="hero-heading">
             <div class="hero-id">
-              <h2 id="hero-heading">Aerin</h2>
-              <div id="action-pips" class="action-pips" aria-label="Actions remaining"></div>
+              <span id="hero-portrait" class="hero-portrait" aria-hidden="true"></span>
+              <div class="hero-name">
+                <h2 id="hero-heading">Aerin</h2>
+                <div id="action-pips" class="action-pips" aria-label="Actions remaining"></div>
+              </div>
+              <button
+                id="hero-details-toggle"
+                class="hero-details-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="hero-details"
+              >
+                상세
+              </button>
             </div>
             <div id="hero-stats" class="actor-stats"></div>
+            <div id="hero-details" class="hero-details" hidden></div>
           </section>
 
           <div class="hud-status" data-hud-gutter="top">

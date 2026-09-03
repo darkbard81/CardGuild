@@ -143,17 +143,142 @@ button {
 }
 
 .hero-id {
-  display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.55rem;
   align-items: center;
 }
 
-.hero-id h2 {
+/* A square window onto the same standee the board draws, cropped to the face. */
+.hero-portrait {
+  position: relative;
+  overflow: hidden;
+  width: 3.1rem;
+  height: 3.1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: #12100c;
+}
+
+.hero-portrait-art {
+  position: absolute;
+  top: -0.15rem;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.hero-portrait.missing {
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.4rem;
+}
+
+.hero-name {
+  display: grid;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.hero-name h2 {
   margin: 0;
+  overflow: hidden;
   color: var(--gold-bright);
   font-family: Georgia, "Times New Roman", serif;
   font-size: 1.05rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.hero-details-toggle {
+  align-self: start;
+  padding: 0.22rem 0.5rem;
+  border: 1px solid var(--line);
+  border-radius: 0.4rem;
+  background: rgb(255 255 255 / 4%);
+  color: var(--muted);
+  font-size: 0.7rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.hero-details-toggle:hover {
+  border-color: var(--gold);
+  color: var(--ink);
+}
+
+.hero-details-toggle[aria-expanded="true"] {
+  border-color: var(--gold);
+  background: rgb(217 173 85 / 22%);
+  color: var(--gold-bright);
+}
+
+/* AC and Speed: the two numbers read on every attack, kept on one line. */
+.stat-pair {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding-top: 0.4rem;
+  border-top: 1px solid rgb(112 96 62 / 32%);
+}
+
+.stat-cell {
+  display: flex;
+  gap: 0.35rem;
+  align-items: baseline;
+  font-size: 0.82rem;
+}
+
+.stat-cell strong {
+  font-weight: 800;
+}
+
+.stat-label {
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.save-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.3rem;
+}
+
+.save-cell {
+  display: grid;
+  gap: 0.05rem;
+  justify-items: center;
+  padding: 0.3rem 0.15rem;
+  border: 1px solid rgb(112 96 62 / 40%);
+  border-radius: 0.4rem;
+  background: rgb(0 0 0 / 22%);
+  font-size: 0.84rem;
+}
+
+/* The character sheet: everything the summary deliberately left out. */
+.hero-details {
+  max-height: 34vh;
+  overflow-y: auto;
+  padding-top: 0.45rem;
+  border-top: 1px solid rgb(112 96 62 / 32%);
+}
+
+/*
+ * The sheet spells the saves out, so the label column is sized by its longest
+ * label instead of a share of the card. "Fortitude DC" stays on one line and the
+ * value keeps whatever is left.
+ */
+.hero-details .stats-grid {
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 0.55rem;
+}
+
+.hero-details .stats-grid dt {
+  white-space: nowrap;
 }
 
 .action-pips {

@@ -57,6 +57,13 @@ async function openBattle(page: Page): Promise<void> {
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
 }
 
+/** The character sheet is behind a toggle now, so a test that reads it has to open it. */
+async function openHeroDetails(page: Page): Promise<void> {
+  const toggle = page.locator("#hero-details-toggle");
+  if (await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
+  await expect(page.locator("#hero-details")).toBeVisible();
+}
+
 async function controlledActorId(page: Page): Promise<string> {
   const actorId = await page.locator("#app").getAttribute("data-controlled-actor-id");
   if (!actorId) throw new Error("The client has not published its controlled actor ID.");
@@ -309,14 +316,18 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator(".loadout-nudge")).toHaveCount(0);
   await page.getByRole("button", { name: "Enter Encounter" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.spear-line");
-  await expect(page.locator("#hero-stats")).toContainText("Reflex DC");
-  await expect(page.locator("#hero-stats")).toContainText("15");
   // Aerin acts first in the spear corridor, so she opens on the dealt six rather than
   // having drawn the following turn's card during an enemy turn.
   await expect(page.locator("#hand-count")).toHaveText("6");
   // Nine cards remain after the loadout edits, so three are still undrawn.
   await expect(page.locator("#deck-count")).toHaveText("3");
   await expect(page.locator('.tactical-card[data-card-definition-id="card.brace-behind-cover"][data-card-source-kind="prepared"]')).toHaveCount(1);
+  // The summary carries AC and the three save modifiers; the DCs behind them are
+  // sheet material, so the toggle is the only way to read them.
+  await expect(page.locator("#hero-details")).toBeHidden();
+  await openHeroDetails(page);
+  await expect(page.locator("#hero-details")).toContainText("Reflex DC");
+  await expect(page.locator("#hero-details")).toContainText("15");
 
   const nextMap = { width: 7, height: 4 };
   const hero = projectCorners(await boardCorners(page), nextMap, 0.5, 1.5);
@@ -355,7 +366,11 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#board-prompt")).toContainText("바라볼 방향");
   await clickBoardPoint(page, 1.5, 1.7);
 
-  await expect(page.locator("#hero-stats")).toContainText("south");
+  // Facing changed, and the card reports it on the sheet rather than in the summary.
+  await expect(page.locator("#hero-stats .save-cell")).toHaveCount(3);
+  await expect(page.locator("#hero-details")).toBeHidden();
+  await openHeroDetails(page);
+  await expect(page.locator("#hero-details")).toContainText("south");
   await expect(page.locator("#action-pips .available")).toHaveCount(2);
   await expect(page.locator("#combat-log")).toContainText("now faces south");
   await expect(page.locator("#app")).not.toHaveAttribute("data-state-hash", initialHash ?? "");

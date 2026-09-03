@@ -1,0 +1,91 @@
+{
+  "viewport": {
+    "id": "1024x768",
+    "width": 1024,
+    "height": 768,
+    "label": "지원 최소 해상도"
+  },
+  "capturedAt": "2026-09-03T16:39:35.656Z",
+  "shots": [
+    {
+      "id": "session-lobby",
+      "title": "세션 로비 (진입 화면)",
+      "note": "첫 화면. 이름 입력, Create & Host, Join Host가 한 화면에 있고 첫 행동이 무엇인지 안내한다.",
+      "file": "01-session-lobby.png"
+    },
+    {
+      "id": "party-builder",
+      "title": "호스트 로비 · 파티 편성",
+      "note": "Session ID 공유, seat 목록, 4명 중 1–3명 캐릭터 편성과 Begin Adventure 게이팅.",
+      "file": "02-party-builder.png"
+    },
+    {
+      "id": "adventure-brief",
+      "title": "Adventure 진행 화면",
+      "note": "8단계 진행 레일, 보상 표시, 소유 Collection, 다음 Encounter 브리핑.",
+      "file": "03-adventure-brief.png"
+    },
+    {
+      "id": "loadout-builder",
+      "title": "Loadout Builder (기본 상태)",
+      "note": "장비 슬롯 · Collection · 덱 기여 카드가 한 화면에 있는 편성 화면.",
+      "file": "04-loadout-builder.png"
+    },
+    {
+      "id": "loadout-card-picker",
+      "title": "Loadout · 준비 카드 추가",
+      "note": "Prepared Cards 슬롯에 넣을 카드 후보 목록. 덱 미리보기와 나란히 놓인다.",
+      "file": "05-loadout-card-picker.png"
+    },
+    {
+      "id": "loadout-preview-diff",
+      "title": "Loadout · 적용 전 변화 미리보기",
+      "note": "무기를 비웠을 때 명중/피해가 어떻게 바뀌는지 Apply 전에 diff로 보여주는 상태.",
+      "file": "06-loadout-preview-diff.png"
+    },
+    {
+      "id": "combat-turn",
+      "title": "전투 화면 · 내 턴 시작",
+      "note": "canvas 전체가 전장이고 HUD는 그 위 반투명 패널. 액션 pip, 이니셔티브, 핸드 독, 로그.",
+      "file": "07-combat-turn.png"
+    },
+    {
+      "id": "combat-action-ring",
+      "title": "전투 화면 · 타겟 선택 후 액션 링",
+      "note": "칸을 먼저 고르고 그 자리에서 행동을 고르는 target-first 라디얼 메뉴.",
+      "file": "08-combat-action-ring.png"
+    },
+    {
+      "id": "combat-hero-sheet",
+      "title": "전투 화면 · 캐릭터 상세 시트",
+      "note": "상세 버튼으로 펼친 시트. 요약 카드가 덜어낸 세이브 DC, Strike, 장비 수치가 여기 모인다.",
+      "file": "09-combat-hero-sheet.png"
+    },
+    {
+      "id": "reward-choice",
+      "title": "보상 선택 화면",
+      "note": "Encounter 승리 후 파티가 공유하는 보상 하나를 고르는 화면.",
+      "file": "10-reward-choice.png"
+    },
+    {
+      "id": "adventure-after-reward",
+      "title": "보상 수령 후 Adventure",
+      "note": "미장착 보상 안내와 다음 단계로 진행하는 상태.",
+      "file": "11-adventure-after-reward.png"
+    },
+    {
+      "id": "reaction-window",
+      "title": "리액션 창",
+      "note": "적의 이동으로 열린 반응 기회. 게임을 멈추고 쓸지 넘길지 묻는 유일한 인터럽트 UI.",
+      "file": null,
+      "skipped": "1440x900 캡쳐를 참고하세요. 이 해상도에서는 인터럽트 패스를 돌리지 않습니다."
+    },
+    {
+      "id": "encounter-result",
+      "title": "전투 결과 모달",
+      "note": "Encounter가 끝났을 때 승패를 알리고 같은 시드로 다시 시작하게 하는 모달.",
+      "file": null,
+      "skipped": "1440x900 캡쳐를 참고하세요. 이 해상도에서는 인터럽트 패스를 돌리지 않습니다."
+    }
+  ]
+}

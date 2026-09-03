@@ -1,4 +1,4 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import sharp from "sharp";
@@ -68,6 +68,20 @@ class ScreenAlbum {
 
   private get directory(): string {
     return path.join(SHOT_ROOT, this.viewport.id);
+  }
+
+  /**
+   * Shots are numbered by capture order, so a set that gains or loses a screen
+   * renumbers the ones after it. Clearing first keeps the orphans from the previous
+   * run out of the folder the review page reads.
+   */
+  async open(): Promise<void> {
+    await mkdir(this.directory, { recursive: true });
+    for (const entry of await readdir(this.directory, { withFileTypes: true })) {
+      if (entry.isFile() && (entry.name.endsWith(".png") || entry.name === "manifest.json")) {
+        await rm(path.join(this.directory, entry.name));
+      }
+    }
   }
 
   async shot(id: string, title: string, note: string, fullPage = true): Promise<void> {
@@ -189,6 +203,16 @@ async function captureCombat(page: Page, album: ScreenAlbum): Promise<void> {
       "적 칸 클릭에서 라디얼 메뉴가 열리지 않았습니다.",
     );
   }
+
+  await page.locator("#hero-details-toggle").click();
+  await expect(page.locator("#hero-details")).toBeVisible();
+  await album.shot(
+    "combat-hero-sheet",
+    "전투 화면 · 캐릭터 상세 시트",
+    "상세 버튼으로 펼친 시트. 요약 카드가 덜어낸 세이브 DC, Strike, 장비 수치가 여기 모인다.",
+    false,
+  );
+  await page.locator("#hero-details-toggle").click();
 }
 
 /** A screen that only shows up mid-fight, tracked so it can be reported when it never did. */
@@ -330,6 +354,7 @@ for (const [index, viewport] of VIEWPORTS.entries()) {
     test.setTimeout(300_000);
     const album = new ScreenAlbum(page, viewport);
     const interrupts: Interrupts = { reaction: false, result: false };
+    await album.open();
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     await openSoloAdventure(page, album);
