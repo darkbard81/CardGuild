@@ -58,6 +58,28 @@ const BUILD_DIRECTIONS: Readonly<Record<string, readonly string[]>> = {
   "spell skirmisher": ["hexers-focus", "throwing-axes"],
 };
 
+/**
+ * Whether one run could end up holding all of `items`, given that each reward offer yields a
+ * single choice. Every item has to come from a different offer, so this is a small bipartite
+ * matching and not a set-membership test.
+ */
+function canOwnTogether(items: readonly string[], groups: readonly (readonly string[])[]): boolean {
+  const options = items.map((item) => groups.flatMap((group, index) => (group.includes(item) ? [index] : [])));
+  if (options.some((option) => option.length === 0)) return false;
+  const used = new Set<number>();
+  const assign = (index: number): boolean => {
+    if (index >= options.length) return true;
+    for (const group of options[index] ?? []) {
+      if (used.has(group)) continue;
+      used.add(group);
+      if (assign(index + 1)) return true;
+      used.delete(group);
+    }
+    return false;
+  };
+  return assign(0);
+}
+
 function party(actorDefinitionIds: readonly string[]): PartyState {
   return {
     members: Object.fromEntries(actorDefinitionIds.map((actorDefinitionId, index) => {
@@ -179,18 +201,21 @@ describe("production vertical slice", () => {
   });
 
   it("hands out enough equipment to assemble at least two #17 build directions", () => {
-    const offered = new Set(ADVENTURE.rewards
-      .flatMap((reward) => reward.choices)
-      .filter((choice) => choice.kind === "equipment")
-      .map((choice) => choice.definitionId));
+    const groups = ADVENTURE.rewards
+      .map((reward) => reward.choices.filter((choice) => choice.kind === "equipment").map((choice) => choice.definitionId))
+      .filter((group) => group.length > 0);
+    // A reward hands out one choice, not a shelf. Two items from the same offer can never be
+    // owned together, so feasibility is an assignment of items to distinct offers rather than
+    // membership in the union of everything ever printed on a choice screen.
     const assemblable = Object.entries(BUILD_DIRECTIONS)
-      .filter(([, items]) => items.every((item) => offered.has(item)))
+      .filter(([, items]) => canOwnTogether(items, groups))
       .map(([direction]) => direction)
       .sort();
     expect(assemblable.length).toBeGreaterThanOrEqual(2);
     // What actually shipped, so a quiet drop shows up as a diff rather than a near miss.
-    // #21 added a fourth choice to each equipment offer, which is what finally puts
-    // scout-leather and dueling-rapier in front of a player: all five directions assemble.
+    // #21 added a fourth choice to each equipment offer and moved Strider's Boots and the
+    // Warding Charm into different offers, which is what makes the last two directions
+    // reachable in one run rather than only on paper.
     expect(assemblable).toEqual([
       "defensive duelist",
       "dex controller",
@@ -199,6 +224,7 @@ describe("production vertical slice", () => {
       "spell skirmisher",
     ]);
     // The offers have to move more than one slot, or "direction" means nothing.
+    const offered = new Set(groups.flat());
     const slots = new Set([...offered].map((id) => CONTENT.equipment[id]?.slot));
     expect(slots.size).toBeGreaterThanOrEqual(3);
   });

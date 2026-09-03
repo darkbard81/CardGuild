@@ -5,7 +5,7 @@ pool**을 만드는 것이며, #17 자체는 reward를 Adventure에 연결하지
 
 - 최종 reward placement — #19
 - reachability / reserve gate — #20 (`docs/m7-production-gate.md`)
-- 최종 balance와 노출 확대 — #21 (`docs/m7-playtest-report.md`): `dueling-rapier`·`scout-leather`·`spiked-shield`가 보상으로 나가고 reserve는 4종으로 줄었습니다
+- 최종 balance와 노출 확대 — #21 (`docs/m7-playtest-report.md`): `dueling-rapier`·`scout-leather`·`spiked-shield`가 보상으로 나가고 reserve는 4종으로 줄었습니다. 한 보상에서 하나만 고를 수 있으므로 `striders-boots`와 `warding-charm`은 서로 다른 보상으로 옮겨 §4의 다섯 방향이 실제로 조립되게 했습니다
 - fixed starter kit — #14 (아래 `baseline` item을 그대로 사용)
 
 #13과 같은 원칙입니다: 수량이 아니라 **resolver가 실제로 보는 차이**가 item을 정당화합니다.

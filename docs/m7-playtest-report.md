@@ -5,12 +5,17 @@ production content를 **실제로 플레이해 보고** authored 수치·배치�
 Release Candidate를 확정하는 단계입니다.
 
 ```text
-Build          62d44a9 (+ #21 working tree)
+Build          010ee77 + 리뷰 반영 커밋 (feat/m7-content-pack-bootstrap)
 Pack           cardguild.m7@0.3.0
-Fingerprint    fnv1a64:c984b4bf18da99db
+Fingerprint    fnv1a64:887ee163d92faa57
 Adventure      adventure.goblin-trouble (8 encounters, tutorial prefix 4)
-Harness        npm run playtest -- --seeds 12   (432 runs, 3,456 encounters)
+Harness        npm run playtest -- --seeds 12
+               432 run, 실제 실행된 encounter 2,567건 (패배 시 run이 끝나므로 최대 3,456 slot 중)
 ```
+
+fingerprint가 재현의 기준입니다. 리뷰 반영 커밋은 reward 두 개의 **중간 선택지**를 서로 바꾸고
+(§3.5) 검증/보고를 고쳤을 뿐이라, `first`/`last` route가 고르는 항목이 달라지지 않아 아래
+432 run 수치는 `010ee77`과 동일합니다(완주 151/432).
 
 ---
 
@@ -175,8 +180,34 @@ Goblin Spearman의 한 턴:  trip → strike → strike → end-turn   (이전: 
 | wolf-run | `scout-leather` | **dex controller** 방향 |
 | archer-perch | `spiked-shield` | `card.shield-press` provider |
 
-#17의 다섯 build direction 중 조립 가능한 것이 **3 → 5**가 되었습니다(#19가 남긴 숙제).
-`m7-vertical-slice.test.ts`가 이 목록을 고정합니다.
+### 선택지를 더하는 것만으로는 방향이 열리지 않는다
+
+**보상은 진열대가 아니라 하나를 고르는 자리입니다.** 같은 offer 안의 두 item은 한 run에서 동시에
+가질 수 없으므로, "전부 어딘가에 등장한다"와 "한 run에서 모을 수 있다"는 다른 문제입니다. 처음 이
+검증을 union으로 짜서 다섯 방향이 열렸다고 적었지만, 실제 제약을 넣으면 두 방향이 막혀 있었습니다.
+
+```text
+DEX controller     flick-mace + scout-leather + striders-boots
+                   → scout-leather와 striders-boots가 둘 다 Wolf Run offer
+Defensive duelist  dueling-rapier + buckler + warding-charm
+                   → buckler와 warding-charm이 둘 다 Archer Perch offer
+```
+
+그래서 두 offer의 **중간 선택지를 서로 바꿨습니다** — `striders-boots`는 Archer Perch로,
+`warding-charm`은 Wolf Run으로. offer의 개수도 강도도 그대로이고, `first`/`last` route가 고르는
+항목(각 offer의 처음과 마지막)도 그대로입니다. 이제 다섯 방향 모두 **서로 다른 offer에서 하나씩**
+모을 수 있습니다.
+
+| Direction | 어느 offer에서 | 가능? |
+|---|---|---|
+| heavy breaker | greatsword(Chief) + tower-shield(Perch) | ✅ |
+| party support | medics-kit(Wolf) | ✅ |
+| spell skirmisher | throwing-axes(Chief) + hexers-focus(Wolf) | ✅ |
+| dex controller | flick-mace(Chief) + scout-leather(Wolf) + striders-boots(Perch) | ✅ (교환 후) |
+| defensive duelist | dueling-rapier(Chief) + buckler(Perch) + warding-charm(Wolf) | ✅ (교환 후) |
+
+`m7-vertical-slice.test.ts`는 이제 union이 아니라 **offer마다 최대 하나를 배정하는 매칭**으로
+feasibility를 계산합니다. 교환을 되돌리면 그 테스트는 3개만 보고하며 실패합니다.
 
 ### 3.6 되돌린 것
 
@@ -215,12 +246,15 @@ AI를 더 영리하게 만들지 않았습니다. 3.1은 **authored role이 보�
 | 손에는 왔지만 policy가 쓰지 않음 | careful-advance, fly, hover-step (이동 카드), intimidating-strike, knockdown (2-action Strike, 점수가 기본 Strike와 1점 이내), slip-free (context escape-grab이 먼저), spirit-beacon (지속 효과 정책 없음) |
 | 이번 run에서 손에 오지 않음 | aimed-shot, arcane-ward, daze, ember-lash, frostbite, harm, spirit-edge, spirit-lance, telekinetic-projectile, vicious-swing |
 
-마지막 줄은 두 종류가 섞여 있습니다.
+마지막 줄은 세 종류가 섞여 있습니다.
 
-- `spirit-lance`(171회 획득), `vicious-swing`(172회), `arcane-ward`는 **보상으로는 실제로
-  선택됐지만 준비되지 못했습니다.** Starter마다 prepared 여유 슬롯이 하나뿐이라 **첫 카드 보상
-  이후의 카드 보상은 1P에서 갈 곳이 없습니다.** 이것은 content 문제이자 harness 한계입니다
-  (§6-1).
+- `spirit-lance`(171회 획득)와 `vicious-swing`(172회)은 **보상으로는 실제로 선택됐지만 준비되지
+  못했습니다.** Starter마다 prepared 여유 슬롯이 하나뿐이라 **첫 카드 보상 이후의 카드 보상은
+  1P에서 갈 곳이 없습니다.** content 문제이자 harness 한계입니다(§6-1).
+- `arcane-ward`는 Ruined Gate offer의 **중간 선택지**입니다. 이 matrix의 route는 `first`와
+  `last` 둘뿐이라 중간 선택지는 애초에 선택되지 않습니다 — 도달 불가능한 것이 아니라
+  **이번 matrix가 시험하지 않은** 선택지입니다. equipment 쪽에서는 `striders-boots`·
+  `warding-charm`·`greatsword`·`flick-mace`·`buckler`·`hexers-focus`가 같은 위치에 있습니다.
 - `aimed-shot`, `daze`, `ember-lash`, `harm`, `spirit-edge`, `telekinetic-projectile`은
   #20의 explicit reserve로 남습니다. 이유와 후속 issue가 `tools/content/m7-production-policy.ts`에
   기록돼 있습니다.
@@ -230,11 +264,14 @@ AI를 더 영리하게 만들지 않았습니다. 3.1은 **authored role이 보�
 ### Equipment / reward
 
 - 보상 선택은 route에 따라 고르게 나뉩니다: `dueling-rapier` 136, `throwing-axes` 130,
-  `medics-kit` 119, `scout-leather` 118, `tower-shield` 101, `spiked-shield` 100.
+  `medics-kit` 119, `scout-leather` 118, `tower-shield` 101, `spiked-shield` 100. 각 offer의
+  중간 선택지는 `first`/`last` route가 건드리지 않으므로 이 수치에 나타나지 않습니다.
 - 실제 장착까지 간 보상: `dueling-rapier`(172 encounter-instance), `spiked-shield`(48),
   `medics-kit`(21). `scout-leather`는 118번 획득됐지만 harness의 장비 점수가 leather-armor보다
   높게 보지 않아 한 번도 장착되지 않았습니다 — **보상이 곧 상위 호환은 아니라는** 신호이며,
   DEX controller 방향은 사람이 의도적으로 조립해야 완성됩니다.
+- 216개 run이 실제로 `set-member-loadout`을 실행했고, 그중 **38개 완주 run이 장비를 바꾼 뒤에도
+  완주**했습니다(1P 7, 2P 22, 3P 9).
 - 보상은 다음 전투를 실제로 바꿉니다: `adapt` route는 `authored`와 다른 카드/장비로 싸우고,
   1P에서는 `adapt`가 10/96 대 8/96으로 근소하게 앞섭니다.
 
@@ -273,7 +310,7 @@ npm run content:check              OK  (m4@0.6.0, m6@0.9.0, m7@0.3.0)
 npm run content:production-check   OK  (4 starters, 14 enemies, 26 player cards, 21 player equipment,
                                         reserve 16 — 각 항목에 이유와 후속 issue)
 npm run assets:check               OK  (110 frames, 22 two-sided actors, 10 tilemaps)
-npm run test:unit                  OK  (281 tests)
+npm run test:unit                  OK  (CI 기준 25 files / 295 tests)
 npm run test:network               OK  (8 tests, production pack으로 실제 WebSocket 세션 완주)
 npm run test:smoke                 OK  (11 Playwright tests)
 ```
@@ -282,6 +319,34 @@ M6 회귀 fixture는 generic `content:check`로만 검증되며 M7 volume/reacha
 않습니다. deterministic seed / replay / content identity는 유지됩니다 — 같은 seed는 같은 run을
 만들고(432 run 재현), fingerprint는 `fnv1a64:c984b4bf18da99db`입니다.
 
-**Exit criterion**: Aerin은 1P `first`/`authored` route seed 6에서 onboarding → 보상/장비 변화 →
-main progression → elite → finale victory까지 content-ID special case 없이 완주하며,
-1P/2P/3P representative playtest와 Production Gate가 모두 통과합니다.
+### Exit criterion — 실제 loadout 변화를 포함한 완주
+
+`1P guardian / last reward / adapt loadout`, **seed 2**. 보상을 받는 데서 끝나지 않고 그것을
+실제로 **입고 준비한 뒤** 남은 encounter를 지나 finale까지 갑니다.
+
+```text
+Brom 시작        weapon guardian-mace / armor half-plate / shield shield / prepared [grapple]
+
+reward 1 road-ambush → card.force-barrage
+  set-member-loadout  prepared += card.force-barrage        (spear-line 시작 전)
+reward 2 spear-line   → card.fear
+reward 3 ruined-gate  → card.vicious-swing
+reward 4 goblin-chief → dueling-rapier
+reward 5 wolf-run     → scout-leather
+reward 6 archer-perch → spiked-shield
+  set-member-loadout  shield: shield → spiked-shield        (cult-sanctum 시작 전)
+
+road-ambush 3R/0%  spear-line 8R/46%  ruined-gate 5R/27%  goblin-chief 2R/0%
+bone-cellar 5R/0%  wolf-run 6R/0%     archer-perch 6R/31%  cult-sanctum 6R/58% → victory
+
+Brom 종료        weapon guardian-mace / armor half-plate / shield spiked-shield
+                 prepared [grapple, card.force-barrage]
+```
+
+`card.force-barrage`는 T2부터 일곱 전투를 함께 지났고, `spiked-shield`는 finale을 앞두고 기본
+방패를 대체했습니다(그 자체가 `card.shield-press`의 provider입니다). 즉 이 한 run이
+**onboarding → reward/loadout 변화 → main progression → elite → boss → victory**를 전부
+지납니다. `authored` route의 완주 사례(예: 1P Aerin seed 6)는 같은 경로를 지나되 시작 장비를
+그대로 유지하므로, exit statement는 위 `adapt` run을 기준으로 합니다.
+
+1P/2P/3P representative playtest와 Production Gate는 모두 통과합니다.

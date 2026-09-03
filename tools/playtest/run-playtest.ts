@@ -63,6 +63,17 @@ interface EncounterReport {
   readonly rejectedCommands: number;
 }
 
+/** One accepted `set-member-loadout`, so a completed run can show what a reward changed. */
+interface LoadoutChange {
+  readonly beforeEncounterId: string;
+  readonly memberId: string;
+  readonly actorDefinitionId: string;
+  readonly equipped: readonly string[];
+  readonly unequipped: readonly string[];
+  readonly prepared: readonly string[];
+  readonly unprepared: readonly string[];
+}
+
 interface RunReport {
   readonly specId: string;
   readonly label: string;
@@ -74,6 +85,8 @@ interface RunReport {
   readonly completed: boolean;
   readonly failedAt: string | null;
   readonly rewardPicks: readonly string[];
+  readonly loadoutChanges: readonly LoadoutChange[];
+  readonly startingLoadouts: Readonly<Record<string, PartyMemberLoadout>>;
   readonly finalLoadouts: Readonly<Record<string, PartyMemberLoadout>>;
   readonly encounters: readonly EncounterReport[];
 }
@@ -398,6 +411,10 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
   const encounters: EncounterReport[] = [];
   const rewardPicks: string[] = [];
   const grantedCards: string[] = [];
+  const loadoutChanges: LoadoutChange[] = [];
+  const startingLoadouts = Object.fromEntries(
+    Object.values(state.party.members).map((member) => [member.actorDefinitionId, member.loadout]),
+  );
   let rewardIndex = 0;
   let failedAt: string | null = null;
 
@@ -433,6 +450,23 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
           const result = dispatchAdventureCommand(state, { type: "set-member-loadout", memberId: member.id, loadout: next }, context);
           if (result.accepted) state = result.state;
           const settled = state.party.members[member.id]?.loadout ?? member.loadout;
+          const worn = (loadout: PartyMemberLoadout): readonly string[] =>
+            EQUIPMENT_SLOT_ORDER.flatMap((slot) => {
+              const id = loadout.equipment[slot];
+              return id ? [id] : [];
+            });
+          const change: LoadoutChange = {
+            beforeEncounterId: state.currentEncounterId ?? "",
+            memberId: member.id,
+            actorDefinitionId: member.actorDefinitionId,
+            equipped: worn(settled).filter((id) => !worn(member.loadout).includes(id)),
+            unequipped: worn(member.loadout).filter((id) => !worn(settled).includes(id)),
+            prepared: settled.preparedCards.filter((id) => !member.loadout.preparedCards.includes(id)),
+            unprepared: member.loadout.preparedCards.filter((id) => !settled.preparedCards.includes(id)),
+          };
+          if (change.equipped.length + change.unequipped.length + change.prepared.length + change.unprepared.length > 0) {
+            loadoutChanges.push(change);
+          }
           for (const slot of EQUIPMENT_SLOT_ORDER) {
             const id = settled.equipment[slot];
             if (id) taken.add(id);
@@ -498,6 +532,8 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
     completed: state.phase === "complete",
     failedAt,
     rewardPicks,
+    loadoutChanges,
+    startingLoadouts,
     finalLoadouts: Object.fromEntries(
       Object.values(state.party.members).map((member) => [member.actorDefinitionId, member.loadout]),
     ),

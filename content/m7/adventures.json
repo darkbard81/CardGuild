@@ -57,7 +57,7 @@
         "afterEncounterId": "encounter.wolf-run",
         "choices": [
           { "kind": "equipment", "definitionId": "medics-kit" },
-          { "kind": "equipment", "definitionId": "striders-boots" },
+          { "kind": "equipment", "definitionId": "warding-charm" },
           { "kind": "equipment", "definitionId": "hexers-focus" },
           { "kind": "equipment", "definitionId": "scout-leather" }
         ]
@@ -68,7 +68,7 @@
         "choices": [
           { "kind": "equipment", "definitionId": "tower-shield" },
           { "kind": "equipment", "definitionId": "buckler" },
-          { "kind": "equipment", "definitionId": "warding-charm" },
+          { "kind": "equipment", "definitionId": "striders-boots" },
           { "kind": "equipment", "definitionId": "spiked-shield" }
         ]
       }
