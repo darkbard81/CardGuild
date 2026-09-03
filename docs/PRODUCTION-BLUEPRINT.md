@@ -23,7 +23,7 @@
 ```text
 1. JSON Schema / TypeScript DTO / semantic validator / runtime resolver   = machine contract
 2. tools/content/m7-production-policy.ts                                  = 현재 M7 release envelope
-3. art/source/generation-plan.json + tools/assets/check-assets.ts         = asset contract
+3. art/source/generation-plan.json + tools/assets/{build,check}-assets.ts  = asset contract
 4. docs/PRODUCTION-BLUEPRINT.md (이 문서)                                  = 사람이 쓰는 단일 guide
 5. docs/m7-*.md / 과거 issue                                              = 근거·역사, 필수 아님
 ```
@@ -74,8 +74,9 @@ RELEASE QA (gameplay이 아님, src/는 import 금지)
   tools/playtest/**                         seeded 자동 플레이 하네스
 
 AUTHORED ART
-  art/STYLE.md                     프롬프트·팔레트·투영 기준
+  art/STYLE.md                     프롬프트·팔레트·투영 기준 (모든 prompt가 참조해야 함)
   art/source/generation-plan.json  source PNG → asset frame → presentation mapping (SSOT)
+                                   build 시작 시 validatePlan()이 이 파일을 먼저 검증합니다
   art/source/**/*.png              원본 이미지
 
 GENERATED — 직접 수정 금지
@@ -829,19 +830,20 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
   "prompt": "Reference art/STYLE.md, ..." }
 ```
 
-두 층을 구분하세요.
+세 층을 구분하세요. 앞의 둘은 기계가 잡고, 마지막은 사람이 지켜야 합니다.
 
-| | 무엇을 말하는가 | 어디가 소유하는가 |
+| 층 | 무엇을 강제하는가 | 소유자 |
 |---|---|---|
-| **checker가 강제** | actor 256×384, UI icon 256×256, object 폭 256\|384, terrain footprint 128×128, anchor가 `0..1` 범위, manifest와 atlas의 anchor·frame 일치, 알파 청결 | `tools/assets/check-assets.ts` |
-| **STYLE/plan convention** | prop·actor anchor `(0.5, 1)`(발밑 접점), UI·terrain anchor `(0.5, 0.5)`, front|back 순서, 좌우 동일 feet line | `art/STYLE.md`, `art/source/generation-plan.json` |
+| **plan 검증** (`assets:build` 시작 시) | plan version 3, 배경 `transparent`, atlas 크기 2의 거듭제곱·padding 1–2, `frames.length == rows × cols`, assetId 유일, anchor `0..1`, **`two-sided-actor`의 side 순서가 정확히 `front → back`**, `definitionId` 존재, **모든 prompt가 `art/STYLE.md`를 참조** | `validatePlan()` in `tools/assets/build-assets.ts` |
+| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조 | `tools/assets/check-assets.ts` |
+| **convention** (기계가 잡지 않음) | prop·actor anchor `(0.5, 1)`(발밑 접점), UI·terrain anchor `(0.5, 0.5)`, 좌우 동일 feet line·동일 정체성, 투영·팔레트·조명 기준 | `art/STYLE.md` |
 
-convention을 어겨도 checker가 잡지 못하는 경우가 있습니다(예: actor anchor를 `(0.5, 0.4)`로
-적으면 범위 검사는 통과하고 화면에서 발이 뜹니다). plan을 복사해 시작하세요.
+마지막 층이 위험합니다 — actor anchor를 `(0.5, 0.4)`로 적으면 범위 검사(0..1)는 통과하고
+화면에서 발이 뜹니다. 새 source를 넣을 때는 비슷한 기존 plan 항목을 복사해 시작하세요.
 
-`art/STYLE.md`가 투영·팔레트·조명·실루엣 기준이며 모든 생성 프롬프트가 이를 참조해야 합니다.
-투시/아이소메트릭/3D 렌더/바닥 정렬 캐릭터는 source에서 금지입니다. 배경은 투명이어야 하고,
-build가 가장자리 잔여를 정리하지만 `assets:check`가 모서리 배경과 마젠타 오염을 다시 봅니다.
+`art/STYLE.md`는 참조 의무가 있는 기준 문서입니다 — 투시/아이소메트릭/3D 렌더/바닥 정렬
+캐릭터는 source에서 금지이고, 배경은 투명이어야 합니다. build가 가장자리 잔여를 정리하지만
+`assets:check`가 모서리 배경과 마젠타 오염을 다시 봅니다.
 
 ### 11.2 reserve라고 아이콘을 빼면 안 됩니다
 
