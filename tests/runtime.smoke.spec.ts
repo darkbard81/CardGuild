@@ -27,6 +27,9 @@ function captureRuntimeErrors(page: Page): string[] {
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
+    // PixiJS reports resource-lifetime mistakes — a texture freed while a shader still
+    // binds it, say — as warnings, and those are bugs even when nothing throws.
+    if (message.type() === "warning" && message.text().includes("PixiJS Warning")) errors.push(message.text());
   });
   return errors;
 }
@@ -173,11 +176,27 @@ test("shows the Adventure shell after reusing the lobby actor atlas without load
   await openAdventure(page);
 
   await expect(page.locator("#adventure-content h1")).toHaveText("Road Ambush");
-  await expect(page.locator("#adventure-progress li")).toHaveCount(4);
-  await expect(page.locator("#adventure-collection")).toContainText("Halberd ×1");
-  await expect(page.locator("#adventure-collection")).toContainText("Steel Shield ×1");
-  await expect(page.locator("#adventure-collection")).toContainText("Boots of Fly ×1");
+  // Every step of the run is on the rail, the last one marked as the finale.
+  const steps = page.locator("#adventure-progress li");
+  await expect(steps).toHaveCount(8);
+  await expect(steps.first()).toHaveAttribute("aria-current", "step");
+  await expect(steps.last()).toContainText("Finale");
+  // A step that pays out says so before the party walks into it.
+  await expect(page.locator("#adventure-progress li .progress-tag.reward").first()).toBeVisible();
+  const owned = page.locator("#adventure-collection .collection-chip");
+  await expect(owned.filter({ hasText: "Halberd" })).toHaveCount(1);
+  await expect(owned.filter({ hasText: "Steel Shield" })).toHaveCount(1);
+  await expect(owned.filter({ hasText: "Boots of Fly" })).toHaveCount(1);
   expect(new Set(webpRequests.map((url) => new URL(url).pathname))).toEqual(new Set(["/assets/m3-atlas.webp"]));
+
+  // The whole run has to be readable at the supported minimum. A rail that scrolls hides
+  // the finale, which is the one step the player is heading for.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(steps).toHaveCount(8);
+  await expect.poll(async () => page.locator("#adventure-progress")
+    .evaluate((rail) => rail.scrollHeight - rail.clientHeight)).toBeLessThanOrEqual(1);
+  await expect(steps.last()).toBeInViewport();
+  await expect(page.locator("#adventure-collection")).toBeInViewport();
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-adventure.png"), fullPage: true });
 });
@@ -257,7 +276,9 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(braceChoice).toContainText("1 액션");
   await braceChoice.click();
   await expect(page.locator("#app")).toHaveAttribute("data-adventure-phase", "between-encounters");
-  await expect(page.locator("#adventure-collection")).toContainText("Brace Behind Cover ×1");
+  await expect(page.locator("#adventure-collection .collection-chip").filter({ hasText: "Brace Behind Cover" })).toHaveCount(1);
+  // An unworn reward is exactly what Manage Loadout is for, so the screen says so.
+  await expect(page.locator(".loadout-nudge")).toContainText("보상 1개 대기 중");
   // The next encounter names its threats before the party commits to it.
   await expect(page.locator(".encounter-threats")).toContainText("Goblin Spearman");
   await page.getByRole("button", { name: "Manage Loadout" }).click();

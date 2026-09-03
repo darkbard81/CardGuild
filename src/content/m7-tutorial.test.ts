@@ -25,6 +25,18 @@ const CONTEXT: AdventureRuntimeContext = {
   combatContent: CONTENT,
 };
 
+/**
+ * The onboarding order #18 authored. #19 extends the same adventure past it, so the prefix
+ * is pinned here: anything that reorders or replaces these four changes what the game
+ * teaches before it starts asking.
+ */
+const TUTORIAL_PREFIX = [
+  "encounter.road-ambush",
+  "encounter.spear-line",
+  "encounter.ruined-gate",
+  "encounter.goblin-chief",
+] as const;
+
 const STARTERS = Object.values(PACK.actorDefinitions)
   .filter((actor) => actor.traits.some((trait) => trait.id === "playable"))
   .map((actor) => actor.id)
@@ -100,13 +112,12 @@ describe("tutorial onboarding prefix", () => {
     expect(playableAdventures.some((adventure) => adventure.id === PRODUCTION_CONTENT.adventureId)).toBe(true);
   });
 
-  it("orders three to four encounters, all drawn from the shipped library", () => {
-    expect(ADVENTURE.encounterIds.length).toBeGreaterThanOrEqual(3);
-    expect(ADVENTURE.encounterIds.length).toBeLessThanOrEqual(4);
+  it("opens with the onboarding prefix, in order, all drawn from the shipped library", () => {
+    expect(ADVENTURE.encounterIds.slice(0, TUTORIAL_PREFIX.length)).toEqual([...TUTORIAL_PREFIX]);
     for (const encounterId of ADVENTURE.encounterIds) {
       expect(`${encounterId}:${String(Boolean(PACK.scenarioSources[encounterId]))}`).toBe(`${encounterId}:true`);
     }
-    // Complexity climbs: the opener is the smallest board with the fewest enemies.
+    // Complexity climbs: the opener is the smallest board in the whole adventure.
     const sizes = ADVENTURE.encounterIds.map((id) => {
       const source = PACK.scenarioSources[id];
       if (!source) throw new Error(`${id} is missing.`);
@@ -115,20 +126,19 @@ describe("tutorial onboarding prefix", () => {
     expect(sizes[0]).toBe(Math.min(...sizes));
   });
 
-  it("offers at least one reward the party can take without any #17 equipment", () => {
-    expect(ADVENTURE.rewards.length).toBeGreaterThanOrEqual(1);
-    // Baseline equipment is what a starter already owns; anything else would make the
-    // tutorial depend on the reward pool #17 owns.
-    const baseline = new Set(Object.values(PACK.actorDefinitions)
-      .flatMap((actor) => Object.values(actor.starterLoadout.equipment))
-      .filter((id): id is string => Boolean(id)));
-    for (const reward of ADVENTURE.rewards) {
+  it("keeps every reward offered during onboarding card-only", () => {
+    // Onboarding must stay playable on the starter kit alone. An equipment offer here would
+    // either duplicate gear a starter already wears or pull the tutorial into the #17 reward
+    // pool; #19 opens that pool only once the prefix is behind the party.
+    const onboarding = ADVENTURE.rewards.filter((reward) =>
+      TUTORIAL_PREFIX.slice(0, -1).includes(reward.afterEncounterId as (typeof TUTORIAL_PREFIX)[number]));
+    expect(onboarding.length).toBeGreaterThanOrEqual(1);
+    for (const reward of onboarding) {
       expect(reward.choices.length).toBeGreaterThanOrEqual(2);
       for (const choice of reward.choices) {
-        const known = choice.kind === "card"
-          ? Boolean(CONTENT.cards[choice.definitionId])
-          : baseline.has(choice.definitionId);
-        expect(`${reward.id}/${choice.definitionId}:${String(known)}`).toBe(`${reward.id}/${choice.definitionId}:true`);
+        const card = choice.kind === "card" && Boolean(CONTENT.cards[choice.definitionId]);
+        expect(`${reward.id}/${choice.definitionId}:card=${String(card)}`)
+          .toBe(`${reward.id}/${choice.definitionId}:card=true`);
       }
     }
   });

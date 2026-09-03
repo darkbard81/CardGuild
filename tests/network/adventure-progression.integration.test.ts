@@ -4,6 +4,9 @@ import { afterEach, describe, expect, it } from "vitest";
 import { PRODUCTION_CONTENT } from "../../src/content";
 import { gridDistance, listLegalActions, listLegalTargets } from "../../src/game";
 import type { ActionSource, ActionTarget, CombatState, LegalTarget } from "../../src/game";
+import type { AdventureState } from "../../src/adventure";
+import type { RewardGrant } from "../../src/content";
+import { deriveLoadoutSnapshot } from "../../src/loadout";
 import type { ClientIntentEnvelope, ServerAck, ServerMessage } from "../../src/protocol";
 import { digestReconnectToken } from "../../src/server/credentials";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
@@ -19,6 +22,14 @@ type Host = NonNullable<ReturnType<RunningCardGuildServer["store"]["get"]>>;
 
 function actorTargets(targets: readonly LegalTarget[]): readonly Extract<LegalTarget, { kind: "actor" }>[] {
   return targets.filter((target): target is Extract<LegalTarget, { kind: "actor" }> => target.kind === "actor");
+}
+
+/** Whether an Action heals, read off its authored effects rather than an id list. */
+function restoresHp(actionId: string): boolean {
+  const resolution = CONTENT.actions[actionId]?.resolution;
+  if (!resolution || resolution.kind === "move") return false;
+  const effects = resolution.kind === "direct" ? resolution.effects : Object.values(resolution.outcomes).flat();
+  return effects.some((effect) => effect.kind === "restore-hp");
 }
 
 /**
@@ -42,12 +53,28 @@ function heroIntent(combat: CombatState, actorId: string): SessionIntent {
       .find((candidate): candidate is Extract<LegalTarget, { kind: "object" }> => candidate.kind === "object");
     if (target) return use(interact.source, { kind: "object", objectId: target.objectId });
   }
-  // Cheapest offence first, so a turn buys the most attacks it can.
+  // Patch up a badly hurt ally before swinging, or the healers on the far side of the
+  // adventure simply out-attrit a party that only attacks.
+  const hurt = Object.values(combat.actors)
+    .filter((candidate) => candidate.team === actor.team && !candidate.defeated && candidate.hp * 2 <= candidate.maxHp);
+  if (hurt.length > 0) {
+    for (const candidate of actions.filter((entry) => restoresHp(entry.actionId))) {
+      const target = actorTargets(listLegalTargets(combat, actorId, candidate.source, CONTENT))
+        .filter((entry) => hurt.some((ally) => ally.id === entry.actorId))
+        .sort((left, right) => (combat.actors[left.actorId]?.hp ?? 0) - (combat.actors[right.actorId]?.hp ?? 0))[0];
+      if (target) return use(candidate.source, { kind: "actor", actorId: target.actorId });
+    }
+  }
+  // Cheapest offence first, so a turn buys the most attacks it can, aimed at whoever is
+  // closest to dropping. Spreading damage loses to anything that heals.
   const offensive = actions
     .filter((candidate) => CONTENT.actions[candidate.actionId]?.targeting === "enemy" && candidate.timing.kind === "turn")
     .map((candidate) => ({
       entry: candidate,
-      target: actorTargets(listLegalTargets(combat, actorId, candidate.source, CONTENT))[0],
+      target: actorTargets(listLegalTargets(combat, actorId, candidate.source, CONTENT))
+        .sort((left, right) =>
+          (combat.actors[left.actorId]?.hp ?? 0) - (combat.actors[right.actorId]?.hp ?? 0) ||
+          left.actorId.localeCompare(right.actorId))[0],
       cost: candidate.timing.kind === "turn" ? candidate.timing.actions : 9,
     }))
     .filter((candidate) => candidate.target)
@@ -75,6 +102,37 @@ function heroIntent(combat: CombatState, actorId: string): SessionIntent {
     }
   }
   return { type: "end-turn" };
+}
+
+/**
+ * Wears a just-granted item, as the Loadout screen would: on whoever has the slot free,
+ * otherwise on whoever it does not make worse. "Worse" is read off the production resolver,
+ * so this driver never invents its own arithmetic. Card rewards are left alone — preparing
+ * one is a capacity decision this driver has no policy for.
+ */
+function equipIntent(adventure: AdventureState | null, grant: RewardGrant): SessionIntent | null {
+  if (!adventure || grant.kind !== "equipment") return null;
+  const equipment = CONTENT.equipment[grant.definitionId];
+  if (!equipment) return null;
+  const members = Object.values(adventure.party.members).sort((left, right) => left.id.localeCompare(right.id));
+  const wear = (member: (typeof members)[number]): SessionIntent => ({
+    type: "set-loadout",
+    memberId: member.id,
+    loadout: { ...member.loadout, equipment: { ...member.loadout.equipment, [equipment.slot]: equipment.id } },
+  });
+  const empty = members.find((member) => !member.loadout.equipment[equipment.slot]);
+  if (empty) return wear(empty);
+  for (const member of members) {
+    const definition = PRODUCTION_CONTENT.pack.actorDefinitions[member.actorDefinitionId];
+    if (!definition) continue;
+    const intent = wear(member) as Extract<SessionIntent, { type: "set-loadout" }>;
+    const before = deriveLoadoutSnapshot(definition, member.loadout, CONTENT, member.id);
+    const after = deriveLoadoutSnapshot(definition, intent.loadout, CONTENT, member.id);
+    const damage = (snapshot: typeof before): number =>
+      snapshot.strike.damage.count * (snapshot.strike.damage.sides + 1) / 2 + snapshot.strike.damage.flatModifier;
+    if (after.statistics.ac >= before.statistics.ac && damage(after) >= damage(before)) return intent;
+  }
+  return null;
 }
 
 /** A hero reaction is a human boundary: the server waits, so the client must answer it. */
@@ -164,7 +222,7 @@ async function post<T>(origin: string, path: string, body: unknown): Promise<T> 
   return await response.json() as T;
 }
 
-describe("tutorial prefix completes over a real co-op session", () => {
+describe("the production adventure completes over a real co-op session", () => {
   let running: RunningCardGuildServer | null = null;
   const sockets: SocketClient[] = [];
 
@@ -189,7 +247,10 @@ describe("tutorial prefix completes over a real co-op session", () => {
           const token = "reconnect-" + String(++tokenSequence);
           return { token, digest: digestReconnectToken(token) };
         },
-        adventureSeed: () => 99,
+        // Chosen so the run both opens a hero reaction window and is winnable by the
+        // policy below. Balance across every starter and party size is #21's, not this
+        // test's: a scripted party only has to prove the path connects end to end.
+        adventureSeed: () => 1,
       },
     });
     running = server;
@@ -201,7 +262,7 @@ describe("tutorial prefix completes over a real co-op session", () => {
 
     let requestSequence = 0;
     const send = async (intent: SessionIntent): Promise<void> => {
-      const requestId = `prefix-${String(++requestSequence)}`;
+      const requestId = `run-${String(++requestSequence)}`;
       const mark = client.mark();
       client.send({ v: 3, type: "intent", requestId, expectedRevision: host.state.revision, intent });
       const ack = await client.waitForAck(requestId, mark);
@@ -215,6 +276,7 @@ describe("tutorial prefix completes over a real co-op session", () => {
 
     const played: string[] = [];
     const rewards: string[] = [];
+    const equipments: string[] = [];
     let heroReactions = 0;
     for (let guard = 0; guard < 4_000 && host.state.adventure?.phase !== "complete"; guard += 1) {
       const adventure = host.state.adventure;
@@ -225,8 +287,17 @@ describe("tutorial prefix completes over a real co-op session", () => {
         continue;
       }
       if (adventure.phase === "reward" && adventure.pendingReward) {
-        rewards.push(adventure.pendingReward.rewardId);
-        await send({ type: "choose-reward", rewardId: adventure.pendingReward.rewardId, choiceIndex: 0 });
+        const offer = adventure.pendingReward;
+        rewards.push(offer.rewardId);
+        await send({ type: "choose-reward", rewardId: offer.rewardId, choiceIndex: 0 });
+        // Taking a reward is only half the loop the adventure is built around; the party
+        // has to be able to put it on before the next fight, over the same transport.
+        const grant = offer.choices[0];
+        const equipped = grant ? equipIntent(host.state.adventure, grant) : null;
+        if (equipped) {
+          await send(equipped);
+          equipments.push(grant?.definitionId as string);
+        }
         continue;
       }
       if (adventure.phase === "combat") {
@@ -247,16 +318,22 @@ describe("tutorial prefix completes over a real co-op session", () => {
       ADVENTURE.rewards.filter((reward) => reward.afterEncounterId === encounterId).map((reward) => reward.id));
     expect(rewards).toEqual(inPlayOrder);
     expect(host.state.combat).toBeNull();
+    // Every equipment reward taken is worn at the end, so the loadout path carried it.
+    const worn = new Set(Object.values(host.state.adventure?.party.members ?? {})
+      .flatMap((member) => Object.values(member.loadout.equipment).filter((id): id is string => Boolean(id))));
+    expect(equipments.length).toBeGreaterThan(0);
+    expect(equipments.filter((id) => !worn.has(id))).toEqual([]);
     // This seed opens a hero reaction window, and the host must hand it back to the client
     // rather than resolving it. Seeing none would mean the server crossed that boundary.
     expect(heroReactions).toBeGreaterThan(0);
-    // Each reward's first choice is owned afterwards, on top of the starters' own cards.
-    const owned = host.state.adventure?.collection.cards ?? {};
+    // Each reward's first choice is owned afterwards, in its own half of the collection.
+    const collection = host.state.adventure?.collection;
     for (const encounterId of ADVENTURE.encounterIds) {
       for (const reward of ADVENTURE.rewards.filter((entry) => entry.afterEncounterId === encounterId)) {
         const choice = reward.choices[0];
         if (!choice) throw new Error(`${reward.id} offers nothing.`);
-        expect(`${reward.id}/${choice.definitionId}:${String((owned[choice.definitionId] ?? 0) > 0)}`)
+        const owned = choice.kind === "card" ? collection?.cards : collection?.equipment;
+        expect(`${reward.id}/${choice.definitionId}:${String((owned?.[choice.definitionId] ?? 0) > 0)}`)
           .toBe(`${reward.id}/${choice.definitionId}:true`);
       }
     }

@@ -126,18 +126,7 @@ export class AdventureUi {
       required<HTMLElement>("#reaction-modal").hidden = true;
       required<HTMLElement>("#result-modal").hidden = true;
     }
-    this.progress.replaceChildren();
-    for (const [index, encounterId] of this.definition.encounterIds.entries()) {
-      const scenario = this.pack.scenarios[encounterId];
-      const completed = state.completedEncounterIds.includes(encounterId);
-      const item = element("li", completed ? "complete" : encounterId === state.currentEncounterId ? "current" : "upcoming");
-      if (encounterId === state.currentEncounterId) item.setAttribute("aria-current", "step");
-      item.append(
-        element("span", "progress-index", completed ? "✓" : String(index + 1)),
-        element("strong", undefined, scenario?.name ?? encounterId),
-      );
-      this.progress.append(item);
-    }
+    this.renderProgress(state);
     this.renderCollection(state);
     this.content.replaceChildren();
 
@@ -182,6 +171,15 @@ export class AdventureUi {
         );
         this.content.append(preview);
       }
+      const waiting = this.unequipped(state);
+      if (waiting > 0) {
+        const note = element("p", "loadout-nudge");
+        note.append(
+          element("strong", undefined, `보상 ${String(waiting)}개 대기 중`),
+          element("span", undefined, "Manage Loadout에서 장착하거나 준비해야 다음 전투에 반영됩니다."),
+        );
+        this.content.append(note);
+      }
       this.content.append(actions);
       return;
     }
@@ -192,6 +190,7 @@ export class AdventureUi {
         element("p", "adventure-description", "획득한 보상은 Collection에 남고 현재 Loadout은 바뀌지 않습니다."),
       );
       const choices = element("div", "reward-choices");
+      choices.style.setProperty("--reward-choice-count", String(state.pendingReward.choices.length));
       state.pendingReward.choices.forEach((grant, index) => {
         const name = rewardName(grant, this.pack);
         const button = this.actionButton(name, () => {
@@ -231,14 +230,90 @@ export class AdventureUi {
     }
   }
 
+  /**
+   * The whole run at a glance. An eight-step rail has to stay readable in the 1024x768
+   * minimum, so each row is one line and the rail scrolls rather than pushing the
+   * Collection off the card. Both markers are read off position and the reward table, so
+   * nothing here knows a content id.
+   */
+  private renderProgress(state: AdventureState): void {
+    const total = this.definition.encounterIds.length;
+    const done = state.completedEncounterIds.length;
+    this.progress.replaceChildren();
+    this.progress.setAttribute("aria-label", `Encounter ${String(Math.min(done + 1, total))} of ${String(total)}`);
+    const rewarded = new Set(this.definition.rewards.map((reward) => reward.afterEncounterId));
+    for (const [index, encounterId] of this.definition.encounterIds.entries()) {
+      const scenario = this.pack.scenarios[encounterId];
+      const completed = state.completedEncounterIds.includes(encounterId);
+      const current = encounterId === state.currentEncounterId;
+      const item = element("li", completed ? "complete" : current ? "current" : "upcoming");
+      item.dataset.encounterId = encounterId;
+      if (current) item.setAttribute("aria-current", "step");
+      if (index === total - 1) item.classList.add("finale");
+      item.append(
+        element("span", "progress-index", completed ? "✓" : String(index + 1)),
+        element("strong", undefined, scenario?.name ?? encounterId),
+      );
+      if (index === total - 1) item.append(element("span", "progress-tag", "Finale"));
+      else if (rewarded.has(encounterId)) {
+        const tag = element("span", "progress-tag reward", "◆");
+        tag.title = "이 전투를 이기면 보상을 하나 고릅니다.";
+        tag.setAttribute("aria-label", "보상 있음");
+        item.append(tag);
+      }
+      this.progress.append(item);
+    }
+  }
+
+  /**
+   * Copies the party owns but is not carrying, which is what Manage Loadout is for. Counted
+   * per copy, not per id: a second copy of a card already prepared elsewhere is still an
+   * unused reward.
+   */
+  private unequipped(state: AdventureState): number {
+    const members = Object.values(state.party.members);
+    const carried = new Map<string, number>();
+    const use = (id: string): void => {
+      carried.set(id, (carried.get(id) ?? 0) + 1);
+    };
+    for (const member of members) {
+      for (const id of Object.values(member.loadout.equipment)) if (id) use(id);
+      for (const id of member.loadout.preparedCards) use(id);
+    }
+    const spare = ([id, owned]: readonly [string, number]): number => Math.max(0, owned - (carried.get(id) ?? 0));
+    return [
+      ...Object.entries(state.collection.equipment),
+      ...Object.entries(state.collection.cards),
+    ].reduce((total, entry) => total + spare(entry), 0);
+  }
+
+  private chip(assetId: string | null, name: string, count: number, kind: string): HTMLElement {
+    const chip = element("span", "collection-chip");
+    chip.dataset.rewardKind = kind;
+    chip.append(this.icon(assetId, name), element("span", "chip-name", name));
+    if (count > 1) chip.append(element("span", "chip-count", `×${String(count)}`));
+    return chip;
+  }
+
   private renderCollection(state: AdventureState): void {
     this.collection.replaceChildren();
-    const entries = [
-      ...Object.entries(state.collection.equipment).map(([id, count]) => `${this.pack.combatContent.equipment[id]?.name ?? id} ×${count}`),
-      ...Object.entries(state.collection.cards).map(([id, count]) => `${this.pack.combatContent.cards[id]?.name ?? id} ×${count}`),
+    const content = this.pack.combatContent;
+    const chips = [
+      ...Object.entries(state.collection.equipment).map(([id, count]) =>
+        this.chip(this.catalog?.equipmentVisual(id) ?? null, content.equipment[id]?.name ?? id, count, "equipment")),
+      ...Object.entries(state.collection.cards).map(([id, count]) =>
+        this.chip(this.catalog?.cardVisual(id) ?? null, content.cards[id]?.name ?? id, count, "card")),
     ];
-    this.collection.append(element("strong", undefined, "Collection"));
-    this.collection.append(element("span", undefined, entries.length ? entries.join(" · ") : "No rewards yet"));
+    const heading = element("strong", undefined, "Collection");
+    this.collection.append(heading);
+    if (chips.length === 0) {
+      this.collection.append(element("span", "collection-empty", "아직 획득한 보상이 없습니다."));
+      return;
+    }
+    heading.append(element("span", "collection-count", String(chips.length)));
+    const list = element("div", "collection-chips");
+    list.append(...chips);
+    this.collection.append(list);
   }
 
   private actionButton(label: string, onClick: () => void, enabled = true): HTMLButtonElement {

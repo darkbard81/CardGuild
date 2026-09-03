@@ -1151,7 +1151,7 @@ button {
 /* Adventure screen */
 .adventure-screen {
   display: grid;
-  grid-template-columns: minmax(16rem, 22rem) minmax(20rem, 40rem);
+  grid-template-columns: minmax(16rem, 22rem) minmax(20rem, 46rem);
   gap: clamp(1rem, 4vw, 4rem);
   min-height: 100vh;
   padding: clamp(1rem, 5vw, 5rem);
@@ -1189,23 +1189,40 @@ button {
   font-family: Georgia, "Times New Roman", serif;
 }
 
+/*
+ * The rail carries the whole run, so it has to stay legible at eight steps in the
+ * 1024x768 minimum. Rows are one line each and the rail scrolls before it can push the
+ * Collection off the bottom of the card.
+ */
 .adventure-progress {
   display: grid;
-  gap: 0.55rem;
-  margin: 1.2rem 0;
+  gap: 0.3rem;
+  max-height: min(30rem, 52vh);
+  margin: 1rem 0;
   padding: 0;
+  overflow-y: auto;
   list-style: none;
+  overscroll-behavior: contain;
 }
 
 .adventure-progress li {
-  display: flex;
-  gap: 0.75rem;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  gap: 0.6rem;
   align-items: center;
-  padding: 0.8rem;
+  padding: 0.35rem 0.55rem;
   border: 1px solid #3d392f;
-  border-radius: 0.5rem;
+  border-radius: 0.45rem;
   color: var(--muted);
+  font-size: 0.78rem;
   background: #111413;
+}
+
+.adventure-progress li strong {
+  overflow: hidden;
+  font-weight: 700;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .adventure-progress li.current {
@@ -1218,15 +1235,42 @@ button {
   color: #9fd5b2;
 }
 
+.adventure-progress li.finale {
+  border-color: #7a3f2c;
+}
+
 .progress-index {
   display: grid;
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 1.3rem;
+  height: 1.3rem;
   border: 1px solid currentColor;
   border-radius: 50%;
   place-items: center;
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 900;
+}
+
+.progress-tag {
+  padding: 0.1rem 0.4rem;
+  border: 1px solid currentColor;
+  border-radius: 0.65rem;
+  opacity: 0.8;
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Most encounters pay out, so the marker is a pip: present without competing with the
+   step name, and the finale keeps the one worded tag. */
+.progress-tag.reward {
+  padding: 0;
+  border: 0;
+  color: #e2bd74;
+  font-size: 0.7rem;
+}
+
+.adventure-progress li.finale .progress-tag {
+  color: #e09070;
 }
 
 .adventure-collection {
@@ -1240,7 +1284,66 @@ button {
 }
 
 .adventure-collection strong {
+  display: flex;
+  gap: 0.45rem;
+  align-items: center;
   color: var(--ink);
+}
+
+.collection-count {
+  padding: 0.05rem 0.4rem;
+  border: 1px solid #5b5340;
+  border-radius: 0.65rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  font-weight: 700;
+}
+
+.collection-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  max-height: 11rem;
+  margin-top: 0.5rem;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.collection-chip {
+  display: flex;
+  gap: 0.35rem;
+  align-items: center;
+  padding: 0.2rem 0.45rem 0.2rem 0.2rem;
+  border: 1px solid #3d392f;
+  border-radius: 1rem;
+  background: #14100c;
+}
+
+.collection-chip[data-reward-kind="equipment"] {
+  border-color: #5a4a2c;
+}
+
+.collection-chip .reward-icon {
+  width: 20px;
+  height: 20px;
+  border: 0;
+  border-radius: 50%;
+  background-size: 20px 20px;
+}
+
+.chip-name {
+  overflow: hidden;
+  max-width: 9rem;
+  color: var(--ink);
+  font-size: 0.72rem;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.chip-count {
+  color: #e2bd74;
+  font-size: 0.68rem;
+  font-weight: 700;
 }
 
 .adventure-content {
@@ -1286,13 +1389,27 @@ button {
   background: linear-gradient(#35322b, #211f1b);
 }
 
+/*
+ * Two or three choices sit on one row, never two-and-an-orphan: auto-fit would drop the
+ * third onto its own line and read as a lesser option. The count comes from the offer.
+ */
 .reward-choices {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--reward-choice-count, 2), minmax(0, 1fr));
   gap: 0.8rem;
 }
 
+/* Narrow enough that three across would be unreadable, so they stack evenly instead. */
+@media (width <= 1100px) {
+  .reward-choices {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
 .reward-choice {
+  /* The action button defaults to hugging its label; in the choice grid every option has
+     to be the same size or the offer reads as a ranking. */
+  justify-self: stretch;
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-areas:
@@ -1311,6 +1428,8 @@ button {
 /* The button's own label node is its first text child; keep it in the name cell. */
 .reward-choice > :not(.reward-icon):not(.reward-kind):not(.reward-detail) {
   grid-area: name;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .reward-icon {
@@ -1334,6 +1453,8 @@ button {
 
 .reward-kind {
   grid-area: kind;
+  min-width: 0;
+  overflow-wrap: anywhere;
   color: #ffd89a;
   font-size: 0.7rem;
   letter-spacing: 0.1em;
@@ -1348,6 +1469,26 @@ button {
   font-weight: 500;
   line-height: 1.45;
   white-space: normal;
+}
+
+.loadout-nudge {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.2rem 0.6rem;
+  align-items: baseline;
+  max-width: 42rem;
+  margin: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid #6a5427;
+  border-left-width: 3px;
+  border-radius: 0.4rem;
+  color: #c7c0ae;
+  font-size: 0.82rem;
+  background: rgb(94 74 33 / 14%);
+}
+
+.loadout-nudge strong {
+  color: #e2bd74;
 }
 
 .encounter-threats {

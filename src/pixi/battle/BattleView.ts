@@ -466,6 +466,9 @@ export class BattleView {
     this.app.canvas.removeEventListener("pointermove", this.pointerMoveHandler);
     this.app.canvas.removeEventListener("pointerup", this.pointerUpHandler);
     if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
+    // Draw once with the mesh still on stage so its bind group actually rebuilds against
+    // the empty texture; the board texture is freed below and a stale binding to it warns.
+    this.app.renderer.render({ container: this.app.stage, clear: true });
     this.scene.removeFromParent();
     this.app.renderer.render({ container: this.app.stage, clear: true });
     this.scene.destroy({ children: true });
