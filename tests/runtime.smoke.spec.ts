@@ -536,11 +536,11 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   await page.mouse.up();
   await page.keyboard.up("Alt");
   await page.waitForTimeout(150);
-  expect((await actorFeet("goblin-skirmisher")).x).toBeGreaterThan(canvasBox.width);
+  expect((await actorFeet("goblin-lackey")).x).toBeGreaterThan(canvasBox.width);
 
   await page.locator("#end-turn").click();
   await page.waitForTimeout(600);
-  const goblin = await actorFeet("goblin-skirmisher");
+  const goblin = await actorFeet("goblin-lackey");
   expect(goblin.x).toBeGreaterThan(0);
   expect(goblin.x).toBeLessThan(canvasBox.width);
   expect(goblin.y).toBeGreaterThan(0);

@@ -20,7 +20,8 @@
         "afterEncounterId": "encounter.road-ambush",
         "choices": [
           { "kind": "card", "definitionId": "card.brace-behind-cover" },
-          { "kind": "card", "definitionId": "card.careful-advance" }
+          { "kind": "card", "definitionId": "card.careful-advance" },
+          { "kind": "card", "definitionId": "card.force-barrage" }
         ]
       },
       {
@@ -28,7 +29,8 @@
         "afterEncounterId": "encounter.spear-line",
         "choices": [
           { "kind": "card", "definitionId": "card.trip" },
-          { "kind": "card", "definitionId": "card.demoralize" }
+          { "kind": "card", "definitionId": "card.demoralize" },
+          { "kind": "card", "definitionId": "card.fear" }
         ]
       },
       {
@@ -36,7 +38,8 @@
         "afterEncounterId": "encounter.ruined-gate",
         "choices": [
           { "kind": "card", "definitionId": "card.spirit-lance" },
-          { "kind": "card", "definitionId": "card.arcane-ward" }
+          { "kind": "card", "definitionId": "card.arcane-ward" },
+          { "kind": "card", "definitionId": "card.vicious-swing" }
         ]
       },
       {
@@ -45,7 +48,8 @@
         "choices": [
           { "kind": "equipment", "definitionId": "throwing-axes" },
           { "kind": "equipment", "definitionId": "greatsword" },
-          { "kind": "equipment", "definitionId": "flick-mace" }
+          { "kind": "equipment", "definitionId": "flick-mace" },
+          { "kind": "equipment", "definitionId": "dueling-rapier" }
         ]
       },
       {
@@ -54,7 +58,8 @@
         "choices": [
           { "kind": "equipment", "definitionId": "medics-kit" },
           { "kind": "equipment", "definitionId": "striders-boots" },
-          { "kind": "equipment", "definitionId": "hexers-focus" }
+          { "kind": "equipment", "definitionId": "hexers-focus" },
+          { "kind": "equipment", "definitionId": "scout-leather" }
         ]
       },
       {
@@ -63,7 +68,8 @@
         "choices": [
           { "kind": "equipment", "definitionId": "tower-shield" },
           { "kind": "equipment", "definitionId": "buckler" },
-          { "kind": "equipment", "definitionId": "warding-charm" }
+          { "kind": "equipment", "definitionId": "warding-charm" },
+          { "kind": "equipment", "definitionId": "spiked-shield" }
         ]
       }
     ]

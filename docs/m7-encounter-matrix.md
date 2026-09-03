@@ -13,6 +13,10 @@ baseline을 가진 **calibration reference**로만 참고하고 XP/level을 Scen
 
 Balance 수치의 최종 승인은 #21, visual coverage release gate는 #20입니다.
 
+> **#21 업데이트** — playtest가 1P/2P 벽을 찾아내 party-size composition과 일부 creature 수치를
+> 조정했습니다. 아래 1P/2P/3P 열과 threat 평가는 조정 후 기준이며, 측정 근거는
+> `docs/m7-playtest-report.md`에 있습니다.
+
 ---
 
 ## 1. Party-size scaling contract
@@ -59,16 +63,16 @@ state나 환경 변수로 composition을 바꾸지 않습니다.
 
 | Scenario | Purpose | Map | Terrain / interactable | 1P | 2P | 3P | Creature roles | AoN threat band | Status | Balance risk |
 |---|---|---|---|---|---|---|---|---|---|---|
-| `encounter.road-ambush` | 첫 접촉. 단일 위협으로 기본 조작만 가르침 | 3×3 | **difficult ×2** | skirmisher ×1 | 동일 | 동일 | Skirmisher | Trivial | **Tutorial (T1)** | 없음. 의도적으로 확장하지 않음 |
-| `encounter.ruined-gate` | 상호작용 도입. 레버로 문을 열어야 전선이 열림 | 9×7 | **lever + gate**, difficult, web, chasm | skirmisher + brute | 동일 | 동일 | Skirmisher, Brute | Low | **Tutorial (T3)** | 레버를 못 찾으면 교착 |
-| `encounter.goblin-chief` | 첫 elite. 앞서 고른 보상을 실제로 쓰는 자리 | 5×3 | 없음 | brute + chief | 동일 | 동일 | Brute, Elite | Moderate | **Tutorial (T4)** | 좁은 맵이라 1P가 협공당함 |
-| `encounter.bone-cellar` | 잡졸 물량. 수가 party size를 따라 늘어남 | 7×5 | 기둥 2개, difficult 2칸 | guard + rabble ×1 | + rabble ×1 | + rabble ×1 | Soldier, Lackey | Low → Moderate | Main | 3P에서 4마리가 동시에 붙음 |
-| `encounter.wolf-run` | 기동 압박. speed 35–40 적이 후열을 노림 | 9×7 | 개활지, difficult 3칸 | dire wolf + yearling | + yearling | + yearling | Skirmisher, Lackey | Moderate | Main | 개활지라 Nera·Lyra가 먼저 물림 |
+| `encounter.road-ambush` | 첫 접촉. 단일 위협으로 기본 조작만 가르침 | 3×3 | **difficult ×2** | lackey ×1 | skirmisher ×1 | skirmisher ×1 | Lackey(1P) / Skirmisher(2P+) | Trivial | **Tutorial (T1)** | 없음. #21이 1P를 Lackey로 낮춤 |
+| `encounter.ruined-gate` | 상호작용 도입. 레버로 문을 열어야 전선이 열림 | 9×7 | **lever + gate**, difficult, web, chasm | skirmisher | + brute | + brute | Skirmisher, Brute | Low | **Tutorial (T3)** | 레버를 못 찾으면 교착. web 타일이 통로를 지킴 |
+| `encounter.goblin-chief` | 첫 elite. 앞서 고른 보상을 실제로 쓰는 자리 | 5×3 | 없음 | chief | chief | brute + chief | Brute, Elite | Moderate | **Tutorial (T4)** | 좁은 맵. #21에서 solo 최대 난관(전멸 56%) |
+| `encounter.bone-cellar` | 잡졸 물량. 수가 party size를 따라 늘어남 | 7×5 | 기둥 2개, difficult 2칸 | guard | + rabble ×2 | + rabble ×3 | Soldier, Lackey | Low → Moderate | Main | 3P에서 4마리가 동시에 붙음 |
+| `encounter.wolf-run` | 기동 압박. speed 35–40 적이 후열을 노림 | 9×7 | 개활지, difficult 3칸 | dire wolf | + yearling ×2 | + yearling ×3 | Skirmisher, Lackey | Moderate | Main | 개활지라 Nera·Lyra가 먼저 물림 |
 | `encounter.spear-line` | 대열 통제. 10ft reach가 통로를 잠금 | 7×4 | **좁은 통로**, 기둥 4개 | spearman ×1 | spearman ×2 | + skeleton guard | Soldier | Low → Moderate | **Tutorial (T2)** | 통로가 좁아 근접 파티가 줄서기를 강요당함 |
-| `encounter.archer-perch` | 원거리 + 회복 압박. 사제를 먼저 끊어야 함 | 9×7 | 엄폐 기둥 4개, difficult | archer + priest | + archer | + rabble | Ranged, Support | Moderate | Main | 사제 회복이 장기전을 만듦 |
+| `encounter.archer-perch` | 원거리 + 회복 압박. 사제를 먼저 끊어야 함 | 9×7 | 엄폐 기둥 4개, difficult | archer | + priest | + archer | Ranged, Support | Moderate | Main | 사제 회복이 장기전을 만듦. 2P가 가장 험함 |
 | `encounter.web-hollow` | 지형 통제. 거미줄이 접근을 늦추고 거미가 붙잡음 | 7×5 | **web ×6**, difficult | giant + cave spider | + cave spider | + cave spider | Brute, Skirmisher | Moderate | Main | Grabbed 연쇄 시 1P가 묶임 |
 | `encounter.collapsed-span` | 분단된 보드. 원거리만 즉시 교전 가능 | 9×7 | **impassable 6칸(협곡)**, difficult | slinger + bone hulk | + slinger | + lackey | Ranged, Brute | Moderate | **Reserve** | 근접 전용 파티가 첫 라운드에 할 일이 없음 |
-| `encounter.cult-sanctum` | 피날레 후보. 회복 리더 + 화력 + 잡졸 | 9×7 | 기둥 2개, difficult 3칸 | hierophant + firebrand + initiate | + initiate | + initiate | Elite/Support, Ranged, Lackey | Severe | **Main** (finale 후보) | hierophant 회복 + firebrand 화력이 겹치면 1P는 거의 불가능 |
+| `encounter.cult-sanctum` | 피날레 후보. 회복 리더 + 화력 + 잡졸 | 9×7 | 기둥 2개, difficult 3칸 | hierophant | + firebrand | + initiate ×3 | Elite/Support, Ranged, Lackey | Severe | **Main** (finale) | 1P는 hierophant 단독으로 낮췄고, 그래도 solo 전멸 55% |
 
 ### Tactical identity 확인
 
@@ -76,9 +80,9 @@ state나 환경 변수로 composition을 바꾸지 않습니다.
 
 | Scenario | Map geometry | Composition scaling | Creature role |
 |---|---|---|---|
-| road-ambush | 3×3 최소 | 고정 | 단일 |
-| ruined-gate | interactable gate | 고정 | 근접 2종 |
-| goblin-chief | 5×3 좁음 | 고정 | elite |
+| road-ambush | 3×3 최소 | **creature 교체** | 단일 |
+| ruined-gate | interactable gate | **증가** | 근접 2종 |
+| goblin-chief | 5×3 좁음 | **증가** | elite |
 | bone-cellar | 기둥 분할 | **증가** | soldier + lackey |
 | wolf-run | 개활지 9×7 | **증가** | 고속 skirmisher |
 | spear-line | **통로 7×4** | **증가** | reach soldier |
@@ -87,21 +91,23 @@ state나 환경 변수로 composition을 바꾸지 않습니다.
 | collapsed-span | **분단 협곡** | **증가** | 원거리 + 중장 |
 | cult-sanctum | 개활 9×7 | **증가** | 3역할 동시 |
 
-7개 Scenario가 party size로 composition을 바꾸고, 나머지 3개는 tutorial/elite로 고정
-composition을 유지합니다.
+#21 playtest 이후 **10개 Scenario 전부**가 party size로 composition을 바꿉니다. 고정
+composition으로 남아 있던 road-ambush·ruined-gate·goblin-chief가 1P에서 완주 불가능한 벽이었기
+때문입니다(`docs/m7-playtest-report.md` §3.2). road-ambush는 머릿수를 더하는 대신 **같은 타일에서
+creature를 교체**합니다 — 혼자 온 파티는 Lackey를, 파티는 Skirmisher를 만납니다.
 
 ### #15 creature role 분포
 
 | Role | 등장 Scenario |
 |---|---|
-| Lackey | bone-cellar, wolf-run, collapsed-span, cult-sanctum |
+| Lackey | road-ambush(1P), bone-cellar, wolf-run, collapsed-span, cult-sanctum |
 | Skirmisher | road-ambush, ruined-gate, wolf-run, web-hollow |
 | Brute | ruined-gate, goblin-chief, web-hollow, collapsed-span |
 | Soldier (reach) | bone-cellar, spear-line |
 | Ranged | archer-perch, collapsed-span, cult-sanctum |
 | Elite / Support | goblin-chief, archer-perch, cult-sanctum |
 
-#15의 6개 role이 모두 쓰이고, 18종 중 13종이 배치됐습니다. 나머지는 #19/#21에서 배치하거나
+#15의 6개 role이 모두 쓰이고, 18종 중 14종이 배치됐습니다(#21이 `goblin-lackey`를 T1 1P에 씀). 나머지는 #19/#21에서 배치하거나
 reserve로 남습니다.
 
 ### Tutorial / Main / Reserve

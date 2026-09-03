@@ -120,6 +120,24 @@ function innateCommand(
   return null;
 }
 
+/**
+ * Which innate Actions this Actor has already taken in the turn it is in.
+ *
+ * A turn only ends on an explicit `end-turn`, so the turn's own commands are the tail of the
+ * log back to this Actor's last one. Reading them costs no new state: `commandLog` is already
+ * part of the replayed CombatState, so this stays a pure function of it.
+ */
+function innateActionsTakenThisTurn(state: CombatState, actorId: string): ReadonlySet<string> {
+  const taken = new Set<string>();
+  for (let index = state.commandLog.length - 1; index >= 0; index -= 1) {
+    const command = state.commandLog[index];
+    if (!command || command.actorId !== actorId) continue;
+    if (command.type === "end-turn") break;
+    if (command.type === "use-action" && command.action.kind === "innate") taken.add(command.action.id);
+  }
+  return taken;
+}
+
 function enabled(actions: readonly LegalAction[], kind: ActionSource["kind"], actionId: string): LegalAction | undefined {
   return actions.find((action) => action.enabled && action.source.kind === kind && action.actionId === actionId);
 }
@@ -138,8 +156,14 @@ export function chooseAiCommand(state: CombatState, content: CombatContent): Com
   }
 
   // 2. Authored innate actions, in the order the creature declares them. That order is the
-  //    creature's whole AI preference — there is no separate priority schema.
+  //    creature's whole AI preference — there is no separate priority schema. Each one is a
+  //    preference and not a loop: taking it once per turn is what makes the declared order
+  //    mean anything, and it is what lets the creature's Strike appear at all. Without this a
+  //    Goblin Spearman spends every action of every turn on Trip, at -5 and then -10, and its
+  //    authored role never reaches the board (#21 playtest).
+  const alreadyTaken = innateActionsTakenThisTurn(state, actor.id);
   for (const actionId of actor.innateActionIds) {
+    if (alreadyTaken.has(actionId)) continue;
     const action = enabled(actions, "innate", actionId);
     if (!action) continue;
     const definition = content.actions[actionId];

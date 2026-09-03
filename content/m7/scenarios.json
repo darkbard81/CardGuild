@@ -7,7 +7,8 @@
     "description": "폐허로 가는 길을 막은 고블린 척후병을 쓰러뜨리세요."
   },
   "placements": [
-    { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 2, "y": 1 }, "facing": "west" }
+    { "instanceId": "goblin-lackey", "actorDefinitionId": "enemy.goblin-lackey", "team": "enemies", "position": { "x": 2, "y": 1 }, "facing": "west", "partySize": { "min": 1, "max": 1 } },
+    { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 2, "y": 1 }, "facing": "west", "partySize": { "min": 2, "max": 3 } }
   ],
   "partySpawnSlots": [
     { "seat": 1, "position": { "x": 0, "y": 1 }, "facing": "east" },
@@ -40,7 +41,7 @@
   },
   "placements": [
     { "instanceId": "goblin-skirmisher", "actorDefinitionId": "enemy.goblin-skirmisher", "team": "enemies", "position": { "x": 7, "y": 2 }, "facing": "west" },
-    { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 7, "y": 4 }, "facing": "west" }
+    { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 7, "y": 4 }, "facing": "west", "partySize": { "min": 2, "max": 3 } }
   ],
   "partySpawnSlots": [
     { "seat": 1, "position": { "x": 1, "y": 3 }, "facing": "east" },
@@ -141,7 +142,7 @@
     "description": "폐허 안뜰의 고블린 대장을 쓰러뜨리세요."
   },
   "placements": [
-    { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 4, "y": 0 }, "facing": "west" },
+    { "instanceId": "goblin-brute", "actorDefinitionId": "enemy.goblin-brute", "team": "enemies", "position": { "x": 4, "y": 0 }, "facing": "west", "partySize": { "min": 3, "max": 3 } },
     { "instanceId": "goblin-chief", "actorDefinitionId": "enemy.goblin-chief", "team": "enemies", "position": { "x": 4, "y": 2 }, "facing": "west" }
   ],
   "partySpawnSlots": [
@@ -189,7 +190,8 @@
         "actorDefinitionId": "enemy.skeleton-rabble",
         "team": "enemies",
         "position": { "x": 5, "y": 1 },
-        "facing": "west"
+        "facing": "west",
+        "partySize": { "min": 2, "max": 3 }
       },
       {
         "instanceId": "skeleton-rabble-b",
@@ -273,7 +275,8 @@
         "actorDefinitionId": "enemy.wolf-yearling",
         "team": "enemies",
         "position": { "x": 7, "y": 1 },
-        "facing": "west"
+        "facing": "west",
+        "partySize": { "min": 2, "max": 3 }
       },
       {
         "instanceId": "wolf-yearling-b",
@@ -455,21 +458,14 @@
         "actorDefinitionId": "enemy.bone-priest",
         "team": "enemies",
         "position": { "x": 8, "y": 3 },
-        "facing": "west"
+        "facing": "west",
+        "partySize": { "min": 2, "max": 3 }
       },
       {
         "instanceId": "skeleton-archer-b",
         "actorDefinitionId": "enemy.skeleton-archer",
         "team": "enemies",
         "position": { "x": 7, "y": 5 },
-        "facing": "west",
-        "partySize": { "min": 2, "max": 3 }
-      },
-      {
-        "instanceId": "skeleton-rabble",
-        "actorDefinitionId": "enemy.skeleton-rabble",
-        "team": "enemies",
-        "position": { "x": 5, "y": 3 },
         "facing": "west",
         "partySize": { "min": 3, "max": 3 }
       }
@@ -787,14 +783,16 @@
         "actorDefinitionId": "enemy.cult-firebrand",
         "team": "enemies",
         "position": { "x": 6, "y": 1 },
-        "facing": "west"
+        "facing": "west",
+        "partySize": { "min": 2, "max": 3 }
       },
       {
         "instanceId": "cult-initiate-a",
         "actorDefinitionId": "enemy.cult-initiate",
         "team": "enemies",
         "position": { "x": 6, "y": 5 },
-        "facing": "west"
+        "facing": "west",
+        "partySize": { "min": 3, "max": 3 }
       },
       {
         "instanceId": "cult-initiate-b",
@@ -802,7 +800,7 @@
         "team": "enemies",
         "position": { "x": 5, "y": 2 },
         "facing": "west",
-        "partySize": { "min": 2, "max": 3 }
+        "partySize": { "min": 3, "max": 3 }
       },
       {
         "instanceId": "cult-initiate-c",

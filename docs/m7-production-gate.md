@@ -84,18 +84,19 @@ validator가 소유합니다.
 | | 현재 | contract |
 |---|---:|---|
 | playable starter | 4 | 정확히 4 |
-| player card | 32 authored / **21 player-reachable** | 24–32 / 최소 21 |
-| enemy | 18 authored / **13 배치됨** | 15–20 / 최소 13 |
+| player card | 32 authored / **26 player-reachable** | 24–32 / 최소 26 |
+| enemy | 18 authored / **14 배치됨** | 15–20 / 최소 14 |
 | scenario | 10 authored / **8 사용됨** | 8–12 / 최소 8 |
-| equipment | 25 authored / **18 player-reachable** | 20–30 / 최소 18 |
+| equipment | 25 authored / **21 player-reachable** | 20–30 / 최소 21 |
 | Adventure encounter | 8 | 6–8, authoritative Adventure 정확히 1개 |
 | tutorial prefix | 4 | 3–4, `encounterIds`의 연속 prefix |
 
-Card 32개 중 11개가 도달 불가능하다는 것이 이 gate가 드러낸 가장 큰 사실입니다. 두 장
-(`shield-press`, `dueling-parry`)은 reserve equipment의 trait provider에만 달려 있어 그
-equipment가 노출되면 함께 살아납니다. 나머지 아홉 장은 #13 card library가 만들었지만 어떤
-starter도 준비하지 않고 어떤 reward도 제공하지 않습니다. 노출할지 잘라낼지는 balance 판단이라
-#21이 결정합니다 — gate는 그것을 조용히 넘어가지 않게만 합니다.
+Card 32개 중 11개가 도달 불가능하다는 것이 이 gate가 처음 드러낸 사실이었습니다. #21이 그중
+다섯 장을 열었습니다 — 보상마다 네 번째 선택지를 더해 `force-barrage`·`fear`·`vicious-swing`을
+직접 제공하고, `dueling-rapier`·`spiked-shield`를 노출해 provider에 달려 있던
+`dueling-parry`·`shield-press`까지 살렸습니다. 남은 여섯 장(`aimed-shot`, `daze`, `ember-lash`,
+`harm`, `spirit-edge`, `telekinetic-projectile`)은 이유와 후속 issue를 단 explicit reserve로
+남습니다. gate가 한 일은 그것을 조용히 넘어가지 않게 만든 것입니다.
 
 ## 5. 무엇을 만들지 않았는가
 
@@ -123,5 +124,7 @@ enemy가 앞뒤 두 장을 가졌는가.
 
 ## 6. 남는 판단
 
-- dead / dominant card와 equipment의 최종 정리 — #21
-- reserve 25개를 노출할지 잘라낼지 — #21 (`followUp`이 전부 `#21`을 가리킵니다)
+- dead / dominant card와 equipment의 최종 정리 — #21이 수행했습니다
+  (`docs/m7-playtest-report.md`). reserve는 25 → **16**으로 줄었고, 남은 항목은 전부 이유와
+  후속 issue를 답니다.
+- 남은 reserve를 언제 열거나 자를지 — 후속 balance 판단

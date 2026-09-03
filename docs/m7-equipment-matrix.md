@@ -5,6 +5,7 @@ pool**을 만드는 것이며, #17 자체는 reward를 Adventure에 연결하지
 
 - 최종 reward placement — #19
 - reachability / reserve gate — #20 (`docs/m7-production-gate.md`)
+- 최종 balance와 노출 확대 — #21 (`docs/m7-playtest-report.md`): `dueling-rapier`·`scout-leather`·`spiked-shield`가 보상으로 나가고 reserve는 4종으로 줄었습니다
 - fixed starter kit — #14 (아래 `baseline` item을 그대로 사용)
 
 #13과 같은 원칙입니다: 수량이 아니라 **resolver가 실제로 보는 차이**가 item을 정당화합니다.
@@ -98,7 +99,7 @@ feet    modifier/provider와 실제 build interaction
 
 ## 4. Reward build directions
 
-분류는 **baseline 9 + reward 13 + reserve 3 = 25**입니다. `reward` 13개가 아래 **다섯
+분류는 **baseline 9 + reward 13 + reserve 3 = 25**입니다(#21 이후 실제 노출은 12종, 미노출 reserve는 `boar-spear`·`executioner-axe`·`brigandine`·`bloodied-talisman` 4종입니다). `reward` 13개가 아래 **다섯
 방향**을 지원하며, AC가 요구한 최소 2개를 넘습니다.
 
 | Direction | 조합 | 무엇이 달라지는가 |

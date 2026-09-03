@@ -10,7 +10,7 @@ Compiler에는 pack inheritance/dependency 개념이 없으므로 어떤 pack도
 정의를 참조하지 않습니다.
 
 ```text
-content/m7   authoritative production pack (cardguild.m7@0.2.0)
+content/m7   authoritative production pack (cardguild.m7@0.3.0)
 content/m6   M6 규칙 회귀 fixture (cardguild.m6@0.9.0)
 content/m3   M4 회귀 fixture (cardguild.m4@0.6.0)
 ```
@@ -202,7 +202,7 @@ Policy는 gameplay가 아니라 QA configuration이므로 `src/` 아래 어떤 �
 - Adventure `partySize`는 현재 `{ "min": 1, "max": 3 }` contract입니다. 실제 roster의
   PartyMember ID와 authoritative starter loadout을 runtime에서 spawn slot에 merge합니다.
 - `playable` Trait을 가진 Actor만 Party Builder 후보입니다. 현재 authoritative production
-  pack은 `content/m7`의 `cardguild.m7@0.2.0`이고, `content/m6`의 M6 pack과 `content/m3`의
+  pack은 `content/m7`의 `cardguild.m7@0.3.0`이고, `content/m6`의 M6 pack과 `content/m3`의
   M4 pack은 규칙 회귀 fixture로 보존합니다.
 - JSON에는 script, 함수명, JavaScript expression을 넣지 않습니다. 새로운 동작은
   GameCore에 알려진 discriminated effect primitive로만 표현합니다.

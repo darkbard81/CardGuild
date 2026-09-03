@@ -14,7 +14,9 @@ import type { SessionCredentialResponse } from "../../src/server/session-store";
 import type { SessionIntent } from "../../src/session";
 
 const TEST_ORIGIN = "http://cardguild.test";
-const PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
+// A frontline, a guardian and the healer. The policy below has a heal branch, and after
+// #21's balance pass a party with nobody who can use it does not reach the finale.
+const PARTY = ["hero.aerin", "hero.brom", "hero.nera"] as const;
 const CONTENT = PRODUCTION_CONTENT.pack.combatContent;
 const ADVENTURE = PRODUCTION_CONTENT.adventure;
 
@@ -249,8 +251,10 @@ describe("the production adventure completes over a real co-op session", () => {
         },
         // Chosen so the run both opens a hero reaction window and is winnable by the
         // policy below. Balance across every starter and party size is #21's, not this
-        // test's: a scripted party only has to prove the path connects end to end.
-        adventureSeed: () => 1,
+        // test's: a scripted party only has to prove the path connects end to end. #21
+        // retuned the encounters, so this is simply a seed that still wins with the
+        // deliberately plain policy here — see docs/m7-playtest-report.md.
+        adventureSeed: () => 8,
       },
     });
     running = server;

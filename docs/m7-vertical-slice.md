@@ -58,11 +58,16 @@ metadata가 아니라 이 문서의 design matrix에만 있으므로, 같은 rol
 | | 사용 | 전체 | 남긴 것 |
 |---|---:|---:|---|
 | Scenario (#16) | 8 | 10 | `web-hollow`, `collapsed-span` |
-| Creature (#15) | 13 | 18 | spider ×2, `bone-hulk`, `goblin-slinger`, `goblin-lackey` |
-| Reward equipment (#17) | 9 | 13 | `dueling-rapier`, `boar-spear`, `scout-leather`, `spiked-shield` |
+| Creature (#15) | **14** | 18 | spider ×2, `bone-hulk`, `goblin-slinger` |
+| Reward equipment (#17) | **12** | 13 | `boar-spear` |
 
 남긴 것은 전부 **의도적 reserve**이며, #20이 이유·후속 issue와 함께
 `tools/content/m7-production-policy.ts`에 기록했습니다(`docs/m7-production-gate.md`).
+
+> **#21 업데이트** — playtest가 세 가지를 바꿨습니다. `goblin-lackey`는 Road Ambush의 1P
+> 배치로 들어가 reserve에서 빠졌고, 여섯 보상마다 네 번째 선택지가 생겨 `dueling-rapier`·
+> `scout-leather`·`spiked-shield`가 노출됐으며, 그 결과 #17의 다섯 build direction이 **전부**
+> 조립 가능해졌습니다. 측정 근거는 `docs/m7-playtest-report.md`입니다.
 
 - `web-hollow`는 brute + skirmisher라 role 축에서 `goblin-chief`·`ruined-gate`와 겹칩니다.
   8개 안에 넣으면 역할 곡선이 평평해집니다. web 지형 노출은 `ruined-gate`가 이미 합니다.
@@ -108,16 +113,19 @@ dead choice가 됩니다. #19는 그 제약을 tutorial prefix 안으로 좁히�
 leather-armor)는 이미 착용 중이라 Adventure가 나눠 줄 필요가 없습니다. 조합을 이쪽에서 줄여
 적지는 않습니다.
 
-| Direction | matrix 조합 | 나눠 줘야 하는 item | 노출 |
+아래 표의 "노출" 열은 #19 시점 기준입니다. #21이 네 번째 선택지를 더한 뒤에는 다섯 방향이 모두
+노출됩니다.
+
+| Direction | matrix 조합 | 나눠 줘야 하는 item | 노출 (#19) |
 |---|---|---|---|
 | Heavy breaker | greatsword + tower-shield (+ half-plate) | greatsword + tower-shield | ✅ |
 | Party support | medic's kit + shield + scale-mail | medic's kit | ✅ |
 | Spell skirmisher | hexer's focus + throwing axes + leather-armor | hexer's focus + throwing axes | ✅ |
-| DEX controller | flick-mace + scout-leather + strider's boots | flick-mace + scout-leather + strider's boots | ❌ (`scout-leather` 미노출) |
-| Defensive duelist | dueling-rapier + buckler + warding-charm | dueling-rapier + buckler + warding-charm | ❌ (`dueling-rapier` 미노출) |
+| DEX controller | flick-mace + scout-leather + strider's boots | flick-mace + scout-leather + strider's boots | ❌ → #21에서 ✅ |
+| Defensive duelist | dueling-rapier + buckler + warding-charm | dueling-rapier + buckler + warding-charm | ❌ → #21에서 ✅ |
 
 AC의 하한이 2이므로 세 방향으로 충분하고, 이를 채우려고 content를 더 넣지 않았습니다.
-`scout-leather`와 `dueling-rapier`는 #20의 노출 확대 대상으로 남습니다. 세 equipment 보상이
+`scout-leather`와 `dueling-rapier`는 #21이 각 보상의 네 번째 선택지로 노출했습니다. 세 equipment 보상이
 weapon / feet / shield 세 슬롯을 건드리므로 "방향"이 실제로 다른 build를 만듭니다. 이 목록도
 테스트에 그대로 적혀 있어, 조용히 하나가 빠지면 diff로 드러납니다.
 

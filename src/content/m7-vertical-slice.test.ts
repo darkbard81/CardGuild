@@ -80,6 +80,13 @@ function victory(state: AdventureState): EncounterResult {
   };
 }
 
+/** A creature's authored Max HP, the one threat number every enemy definition carries. */
+function creatureHp(actorDefinitionId: string): number {
+  const definition = PACK.actorDefinitions[actorDefinitionId];
+  if (!definition) throw new Error(`${actorDefinitionId} is missing.`);
+  return definition.statProfile.kind === "creature" ? definition.statProfile.stats.maxHp : 0;
+}
+
 /** Enemies this scenario actually fields at a party size, after #16's placement filter. */
 function opposition(encounterId: string, partySize: number): readonly string[] {
   const source = PACK.scenarioSources[encounterId];
@@ -106,27 +113,32 @@ describe("production vertical slice", () => {
   it("escalates the opposition from the opener to the finale at every party size", () => {
     const finale = ADVENTURE.encounterIds[ADVENTURE.encounterIds.length - 1] as string;
     for (const partySize of PARTY_SIZES) {
-      const counts = ADVENTURE.encounterIds.map((id) => opposition(id, partySize).length);
-      const opener = counts[0] as number;
-      const last = counts[counts.length - 1] as number;
+      // Body count stops separating fights once a solo party meets one creature at a time
+      // (#21), so escalation is measured in fielded HP, which is authored on every creature
+      // and moves with both composition and choice of creature.
+      const threats = ADVENTURE.encounterIds.map((id) =>
+        opposition(id, partySize).reduce((total, actorDefinitionId) => total + creatureHp(actorDefinitionId), 0));
+      const opener = threats[0] as number;
+      const last = threats[threats.length - 1] as number;
       expect(`${String(partySize)}P opener=${String(opener)}`)
-        .toBe(`${String(partySize)}P opener=${String(Math.min(...counts))}`);
+        .toBe(`${String(partySize)}P opener=${String(Math.min(...threats))}`);
       // The finale fields strictly more than anything before it.
       expect(`${String(partySize)}P finale=${String(last)}`)
-        .toBe(`${String(partySize)}P finale=${String(Math.max(...counts))}`);
-      expect(counts.slice(0, -1).every((count) => count < last)).toBe(true);
-      // Past onboarding, no encounter is one enemy definition repeated. Role is authored in the
-      // design matrix and is not runtime metadata, so this counts distinct definitions and
-      // nothing more — two definitions that share a role still pass. Role mix itself is a
-      // design review over docs/m7-vertical-slice.md.
+        .toBe(`${String(partySize)}P finale=${String(Math.max(...threats))}`);
+      expect(threats.slice(0, -1).every((threat) => threat < last)).toBe(true);
+      if (partySize === 1) continue;
+      // Past onboarding, no encounter a real party meets is one enemy definition repeated.
+      // Role is authored in the design matrix and is not runtime metadata, so this counts
+      // distinct definitions and nothing more — two definitions that share a role still pass.
+      // Role mix itself is a design review over docs/m7-vertical-slice.md.
       for (const encounterId of ADVENTURE.encounterIds.slice(ONBOARDING_LENGTH)) {
         const distinct = new Set(opposition(encounterId, partySize)).size;
         expect(`${encounterId}@${String(partySize)}P:${String(distinct >= 2)}`)
           .toBe(`${encounterId}@${String(partySize)}P:true`);
       }
-      // The finale is the only fight that puts three distinct definitions on the board at once.
-      expect(new Set(opposition(finale, partySize)).size).toBeGreaterThanOrEqual(3);
     }
+    // The finale is the only fight that puts three distinct definitions on the board at once.
+    expect(new Set(opposition(finale, 3)).size).toBeGreaterThanOrEqual(3);
   });
 
   it("puts most of the shipped creature roster on the board", () => {
@@ -177,9 +189,15 @@ describe("production vertical slice", () => {
       .sort();
     expect(assemblable.length).toBeGreaterThanOrEqual(2);
     // What actually shipped, so a quiet drop shows up as a diff rather than a near miss.
-    // `dex controller` needs scout-leather and `defensive duelist` needs dueling-rapier, and
-    // this run offers neither; three complete directions clears the floor without widening it.
-    expect(assemblable).toEqual(["heavy breaker", "party support", "spell skirmisher"]);
+    // #21 added a fourth choice to each equipment offer, which is what finally puts
+    // scout-leather and dueling-rapier in front of a player: all five directions assemble.
+    expect(assemblable).toEqual([
+      "defensive duelist",
+      "dex controller",
+      "heavy breaker",
+      "party support",
+      "spell skirmisher",
+    ]);
     // The offers have to move more than one slot, or "direction" means nothing.
     const slots = new Set([...offered].map((id) => CONTENT.equipment[id]?.slot));
     expect(slots.size).toBeGreaterThanOrEqual(3);

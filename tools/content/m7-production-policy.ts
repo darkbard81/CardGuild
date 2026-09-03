@@ -78,41 +78,22 @@ export const M7_PRODUCTION_POLICY = {
    * How much of that content a player can actually get to: what the four starters
    * walk in with, and what the Adventure hands out. Set to what the current release
    * reaches, so retiring reachable content into reserve fails the gate instead of
-   * hiding inside the volume ranges.
+   * hiding inside the volume ranges. #21 raised these when a fourth choice on each
+   * reward offer opened the last two #17 build directions.
    */
   reachableMinimum: {
-    playerCards: 21,
-    equipment: 18,
-    enemies: 13,
+    playerCards: 26,
+    equipment: 21,
+    enemies: 14,
     scenarios: 8,
   },
 
   reserveCards: [
     {
-      id: "card.vicious-swing",
-      reason: "#13 Strike family. No starter prepares it and no reward offers it.",
-      followUp: "#21",
-    },
-    {
       id: "card.aimed-shot",
       reason:
         "#13 ranged Strike. Nera can take it with her starter shortbow and has a free prepared slot, " +
         "but no starter prepares it and no reward offers it.",
-      followUp: "#21",
-    },
-    {
-      id: "card.shield-press",
-      reason: "Provided only by the spiked-shield `shield-spike` trait, itself reserved.",
-      followUp: "#21",
-    },
-    {
-      id: "card.dueling-parry",
-      reason: "Provided only by the dueling-rapier `parry` trait, itself reserved.",
-      followUp: "#21",
-    },
-    {
-      id: "card.fear",
-      reason: "#13 spell library. The four starters prepare none of it.",
       followUp: "#21",
     },
     {
@@ -136,11 +117,6 @@ export const M7_PRODUCTION_POLICY = {
       followUp: "#21",
     },
     {
-      id: "card.force-barrage",
-      reason: "#13 spell library. The four starters prepare none of it.",
-      followUp: "#21",
-    },
-    {
       id: "card.spirit-edge",
       reason: "#13 ally buff. No starter prepares it and no reward offers it.",
       followUp: "#21",
@@ -149,23 +125,8 @@ export const M7_PRODUCTION_POLICY = {
 
   reserveEquipment: [
     {
-      id: "dueling-rapier",
-      reason: "Defensive-duelist weapon. #19 left that build direction unexposed.",
-      followUp: "#21",
-    },
-    {
       id: "boar-spear",
       reason: "#17 reward-grade weapon the six reward offers did not take.",
-      followUp: "#21",
-    },
-    {
-      id: "scout-leather",
-      reason: "DEX-controller armor. #19 left that build direction unexposed.",
-      followUp: "#21",
-    },
-    {
-      id: "spiked-shield",
-      reason: "#17 reward-grade shield the six reward offers did not take.",
       followUp: "#21",
     },
     {
@@ -196,11 +157,6 @@ export const M7_PRODUCTION_POLICY = {
     {
       id: "enemy.giant-spider",
       reason: "Placed only in encounter.web-hollow, a reserved Scenario.",
-      followUp: "#21",
-    },
-    {
-      id: "enemy.goblin-lackey",
-      reason: "Placed only in encounter.collapsed-span, a reserved Scenario.",
       followUp: "#21",
     },
     {

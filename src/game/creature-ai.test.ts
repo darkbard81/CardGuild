@@ -190,6 +190,28 @@ describe("creature AI action consumption", () => {
     expect(current.turn.activeActorId).not.toBe("rabble");
   });
 
+  it("spends an innate action once a turn and then falls through to its Strike", () => {
+    // #21 found the Goblin Spearman spending every action of every turn on Trip, at -5 and
+    // then -10, so its authored Strike never appeared and the encounter dealt no damage.
+    const state = arena([
+      HERO,
+      { id: "spearman", definitionId: "enemy.goblin-spearman", team: "enemies", position: ADJACENT, facing: "west", initiative: 100 },
+    ]);
+    const taken: string[] = [];
+    let current = state;
+    for (let guard = 0; guard < 6; guard += 1) {
+      const command = chooseAiCommand(current, CONTENT);
+      if (!command) break;
+      taken.push(actionIdOf(command));
+      const result = dispatchCombatCommand(current, command, CONTENT);
+      expect(result.accepted).toBe(true);
+      current = result.state;
+      if (current.turn.activeActorId !== "spearman") break;
+    }
+    expect(taken).toEqual(["trip", "strike", "strike", "end-turn"]);
+    expect(taken.filter((actionId) => actionId === "trip")).toHaveLength(1);
+  });
+
   it("stays deterministic for the same state", () => {
     const build = (): CombatState => arena([
       HERO,

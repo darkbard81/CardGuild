@@ -183,19 +183,22 @@ describe("party-size placement applicability", () => {
 
   it("builds a different static composition for each party size at runtime", () => {
     // Bone Cellar is authored to grow, so this fails if the bridge stops filtering.
-    expect(enemyIdsFor("encounter.bone-cellar", 1)).toEqual(["skeleton-guard", "skeleton-rabble-a"]);
+    expect(enemyIdsFor("encounter.bone-cellar", 1)).toEqual(["skeleton-guard"]);
     expect(enemyIdsFor("encounter.bone-cellar", 2))
       .toEqual(["skeleton-guard", "skeleton-rabble-a", "skeleton-rabble-b"]);
     expect(enemyIdsFor("encounter.bone-cellar", 3))
       .toEqual(["skeleton-guard", "skeleton-rabble-a", "skeleton-rabble-b", "skeleton-rabble-c"]);
   });
 
-  it("seats exactly the party that entered and leaves an unscaled Scenario alone", () => {
+  it("seats exactly the party that entered and can swap one Actor for another by size", () => {
     for (const count of [1, 2, 3] as const) {
       const actors = encounterFor("encounter.bone-cellar", count).definition.scenario.actors;
       expect(actors.filter((actor) => actor.team === "heroes")).toHaveLength(count);
-      // Road Ambush authors no range, so its composition must not move with party size.
-      expect(enemyIdsFor("encounter.road-ambush", count)).toEqual(["goblin-skirmisher"]);
+      // Road Ambush reuses one tile for two placements with disjoint ranges (#21): a solo
+      // party meets the Lackey there and a real party meets the Skirmisher, which is the
+      // same applicability rule doing something other than adding bodies.
+      expect(enemyIdsFor("encounter.road-ambush", count))
+        .toEqual(count === 1 ? ["goblin-lackey"] : ["goblin-skirmisher"]);
     }
   });
 
@@ -304,25 +307,25 @@ describe("party-size authoring is part of the content identity", () => {
     expect(before).toBe(PACK.fingerprint);
   });
 
-  it("keeps a pack without any ranges compiling exactly as before", () => {
-    const stripped = source();
-    const withoutRanges: ContentPackSource = {
-      ...stripped,
-      scenarios: stripped.scenarios.map((scenario) => ({
-        ...scenario,
-        placements: scenario.placements.map((placement) => {
-          const stripped: Record<string, unknown> = { ...placement };
-          delete stripped.partySize;
-          return stripped as unknown as EncounterActorPlacement;
-        }),
-      })),
-    };
+  it("keeps a scenario authored without ranges compiling exactly as before", () => {
+    // Backward compatibility: a placement with no range is active at every size. This strips
+    // the ranges from one Encounter rather than the whole pack, because Road Ambush now has
+    // two placements sharing a tile with disjoint ranges (#21) — stripping those would author
+    // a collision, which is the validator working, not a regression.
+    const withoutRanges = withScenario("encounter.bone-cellar", (scenario) => ({
+      ...scenario,
+      placements: scenario.placements.map((placement) => {
+        const stripped: Record<string, unknown> = { ...placement };
+        delete stripped.partySize;
+        return stripped as unknown as EncounterActorPlacement;
+      }),
+    }));
     const compiled = compileContentPack(withoutRanges);
-    for (const scenario of Object.values(compiled.scenarioSources)) {
-      for (const partySize of PARTY_SIZES) {
-        expect(`${scenario.id}@${String(partySize)}`).toBe(`${scenario.id}@${String(partySize)}`);
-        expect(activeFor(scenario, partySize).length).toBe(scenario.placements.length);
-      }
+    const cellar = compiled.scenarioSources["encounter.bone-cellar"];
+    if (!cellar) throw new Error("Bone Cellar is missing.");
+    for (const partySize of PARTY_SIZES) {
+      expect(`${cellar.id}@${String(partySize)}:${String(activeFor(cellar, partySize).length)}`)
+        .toBe(`${cellar.id}@${String(partySize)}:${String(cellar.placements.length)}`);
     }
     expect(Object.keys(compiled.combatContent.actions).length)
       .toBe(Object.keys(M7_CONTENT.actions).length);

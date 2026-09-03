@@ -161,7 +161,7 @@
           "thievery": "trained"
         },
         "defense": {
-          "ancestryHp": 6,
+          "ancestryHp": 8,
           "classHpPerLevel": 8,
           "armorProficiencies": {
             "unarmored": "trained",
@@ -484,15 +484,15 @@
       "kind": "creature",
       "stats": {
         "ac": 18,
-        "maxHp": 34,
+        "maxHp": 28,
         "strike": {
           "name": "Chief's Glaive",
-          "attackModifier": 9,
+          "attackModifier": 8,
           "rangeFeet": 10,
           "damage": {
             "count": 1,
             "sides": 10,
-            "modifier": 4,
+            "modifier": 3,
             "damageType": "slashing"
           },
           "traits": []
@@ -536,7 +536,7 @@
       "kind": "creature",
       "stats": {
         "ac": 14,
-        "maxHp": 10,
+        "maxHp": 16,
         "strike": {
           "name": "Rusty Dagger",
           "attackModifier": 5,

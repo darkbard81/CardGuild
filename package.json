@@ -21,6 +21,7 @@
     "content:check": "tsx tools/content/check-content.ts",
     "content:production-check": "tsx tools/content/check-production-content.ts",
     "lint": "eslint .",
+    "playtest": "tsx tools/playtest/run-playtest.ts",
     "preview": "vite preview",
     "server:check": "npm run typecheck:server",
     "start:production": "node --env-file=deploy/cardguild.production.env dist-server/main.js",

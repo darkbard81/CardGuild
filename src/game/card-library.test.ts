@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { M7_COMBAT_DEFINITION, M7_CONTENT } from "../content/load-m7-content";
+import { buildActorSetup } from "../content/compile-content";
+import { M7_COMBAT_DEFINITION, M7_COMPILED_PACK, M7_CONTENT } from "../content/load-m7-content";
 import { buildResolvedActionPlan, turnMapContext } from "./action-plan";
 import { createCombat, dispatchCombatCommand } from "./engine";
 import { resolveStrike } from "./offense";
@@ -36,6 +37,21 @@ function setup(id: string): ActorSetup {
   return actor;
 }
 
+/**
+ * A creature this arena needs but the Scenario preview may not place. The preview composes
+ * the 1P party size, and #21 moved the Brute to 2P+, so it is built from its definition
+ * rather than from whichever Actors that one composition happens to contain.
+ */
+function creature(definitionId: string, id: string): ActorSetup {
+  const definition = M7_COMPILED_PACK.actorDefinitions[definitionId];
+  if (!definition) throw new Error(`Actor definition "${definitionId}" is missing.`);
+  return buildActorSetup(
+    definition,
+    { instanceId: id, actorDefinitionId: definitionId, team: "enemies", position: { x: 8, y: 6 }, facing: "west" },
+    CONTENT,
+  );
+}
+
 /** Forces a deterministic order by pushing the heroes' initiative statistic far apart. */
 function withInitiative(actor: ActorSetup, value: number): Partial<ActorSetup> {
   return actor.statProfile.kind === "character"
@@ -58,7 +74,7 @@ function withInitiative(actor: ActorSetup, value: number): Partial<ActorSetup> {
 function combat(overrides: Readonly<Record<string, Partial<ActorSetup>>> = {}, seed = 33): CombatState {
   const hero = setup("hero");
   const skirmisher = setup("goblin-skirmisher");
-  const brute = setup("goblin-brute");
+  const brute = creature("enemy.goblin-brute", "goblin-brute");
   const actors: ActorSetup[] = [
     { ...hero, position: { x: 1, y: 1 }, facing: "east", ...withInitiative(hero, 100), ...overrides.hero },
     {
