@@ -1,6 +1,7 @@
 import { positionKey } from "../game/grid";
 import type { ActorSetup, CombatDefinition, ContentIdentity, ScenarioDefinition } from "../game/types";
 import { deriveActorSetup } from "../loadout";
+import { placementAppliesToPartySize } from "./content-types";
 import type { PartyMemberLoadout } from "../loadout";
 import type {
   ActorDefinition,
@@ -60,7 +61,9 @@ export function compileScenario(
     objective: { ...source.objective },
     actors: [
       ...previewActors,
-      ...source.placements.map((placement) => {
+      // The preview seats a single hero, so it must show the 1P composition rather than
+      // every authored placement at once.
+      ...source.placements.filter((placement) => placementAppliesToPartySize(placement, 1)).map((placement) => {
         const definition = actorDefinitions[placement.actorDefinitionId];
         if (!definition) throw new Error(`Actor definition "${placement.actorDefinitionId}" is not present.`);
         return buildActorSetup(definition, placement, combatContent);

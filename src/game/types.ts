@@ -183,9 +183,31 @@ export interface TraitInstance {
 export interface ConditionInstance {
   readonly id: ConditionId;
   readonly sourceId: string;
+  /** Only present for a Condition whose definition declares a `valuePolicy`. */
+  readonly value?: number;
 }
 
-export type DamageType = "slashing" | "piercing" | "bludgeoning" | "force";
+/**
+ * Remaster damage types. Physical and force were the original set; the energy, mental and
+ * spirit/void entries are metadata only — Resistance, Weakness, Immunity and Persistent
+ * Damage remain a separate subsystem, so a type changes what an event reports, not what
+ * the damage pipeline does.
+ */
+export type DamageType =
+  | "slashing"
+  | "piercing"
+  | "bludgeoning"
+  | "force"
+  | "acid"
+  | "cold"
+  | "electricity"
+  | "fire"
+  | "mental"
+  | "poison"
+  | "sonic"
+  | "spirit"
+  | "vitality"
+  | "void";
 
 export interface DamageDie {
   readonly count: number;
@@ -452,7 +474,20 @@ export type ActionTiming =
   | { readonly kind: "turn"; readonly actions: 1 | 2 | 3 }
   | { readonly kind: "reaction" };
 
-export type ActionTargeting = "none" | "self" | "enemy" | "tile" | "object" | "effect";
+/**
+ * Which Actors an Action may name. `ally` is the acting Actor's own team minus itself,
+ * `creature` is any surviving Actor including itself; the `ActionTarget` wire shape is
+ * unchanged, so only the selector's meaning widens.
+ */
+export type ActionTargeting =
+  | "none"
+  | "self"
+  | "ally"
+  | "creature"
+  | "enemy"
+  | "tile"
+  | "object"
+  | "effect";
 
 /** Who an Action's check or effect refers to. Cards never name a concrete actor. */
 export type ActionParticipant = "actor" | "target";
@@ -489,7 +524,13 @@ export type ActionRange =
  * adds a primitive here — never a formula string or script in content.
  */
 export type ActionOutcomeEffect =
-  | { readonly kind: "apply-condition"; readonly owner: ActionParticipant; readonly condition: ConditionId }
+  | {
+      readonly kind: "apply-condition";
+      readonly owner: ActionParticipant;
+      readonly condition: ConditionId;
+      /** Only for a Condition with a `valuePolicy`; merged under that policy. */
+      readonly value?: number;
+    }
   | { readonly kind: "remove-condition"; readonly owner: ActionParticipant; readonly condition: ConditionId }
   | { readonly kind: "lock-action"; readonly actionId: ActionId }
   | {
@@ -498,6 +539,13 @@ export type ActionOutcomeEffect =
       readonly dice: { readonly count: number; readonly sides: number };
       readonly flatModifier: number;
       readonly damageType: DamageType;
+      readonly multiplier?: number;
+    }
+  | {
+      readonly kind: "restore-hp";
+      readonly owner: ActionParticipant;
+      readonly dice: { readonly count: number; readonly sides: number };
+      readonly flatModifier: number;
       readonly multiplier?: number;
     }
   | { readonly kind: "create-sustained-effect"; readonly effectName: string }
@@ -525,6 +573,11 @@ export type ActionResolution =
   | {
       readonly kind: "strike";
       readonly damageMultiplier: number;
+      /**
+       * Extra dice of the resolved weapon's own base die (#9). It never duplicates the
+       * attack modifier or the Attribute damage contribution.
+       */
+      readonly extraWeaponDice?: number;
       readonly outcomes: DegreeOutcomeMap;
     }
   | {
@@ -534,6 +587,17 @@ export type ActionResolution =
     }
   | { readonly kind: "direct"; readonly effects: readonly ActionOutcomeEffect[] };
 
+/**
+ * A capability gate evaluated at the shared legality/plan boundary, never in the UI.
+ * `weapon-mode` reads the #9 resolved Strike and `skill-rank` the #7 Character source, so
+ * a requirement never introduces a number of its own. Hand occupancy and handedness are
+ * deliberately absent: there is no source model for them yet.
+ */
+export type ActionRequirement =
+  | { readonly kind: "weapon-mode"; readonly mode: WeaponAttackMode }
+  | { readonly kind: "equipped-slot"; readonly slot: EquipmentSlotId }
+  | { readonly kind: "skill-rank"; readonly skill: SkillId; readonly minimum: ProficiencyRank };
+
 export interface ActionDefinition {
   readonly id: ActionId;
   readonly name: string;
@@ -542,6 +606,12 @@ export interface ActionDefinition {
   readonly traits: readonly TraitInstance[];
   readonly targeting: ActionTargeting;
   readonly range?: ActionRange;
+  readonly requirements?: readonly ActionRequirement[];
+  /**
+   * How many attacks this Action counts as for the next MAP stage. Defaults to 1 for an
+   * `attack` trait Action; a 2-action heavy Strike declares 2.
+   */
+  readonly mapAttackCount?: 1 | 2 | 3;
   readonly resolution: ActionResolution;
 }
 
@@ -593,11 +663,37 @@ export interface TraitDefinition {
   readonly statModifiers?: readonly StatisticModifierContribution[];
 }
 
+/**
+ * How a numeric Condition behaves. Frightened 2 is Frightened with a value, never a second
+ * Condition id: one definition owns the stacking rule, how the value scales its modifiers
+ * and how it decays, so the #7/#8/#9 modifier stack stays the only place a penalty is
+ * applied.
+ */
+export interface ConditionValuePolicy {
+  readonly min: number;
+  readonly max: number;
+  /** A second application keeps the larger value rather than adding to it. */
+  readonly merge: "max";
+  /** Each authored modifier is multiplied by the current value. */
+  readonly modifierScale: "multiply-by-value";
+  /** Applied at the end of the conditioned actor's own turn; reaching `min` removes it. */
+  readonly endTurnDelta?: -1;
+}
+
+/**
+ * When a Condition ends on its own. `actor-turn-start` generalises what `shieldRaised`
+ * hardcoded: the effect lasts through everyone else's turns and clears as its owner's
+ * next turn begins.
+ */
+export type ConditionExpiry = "actor-turn-start";
+
 export interface ConditionDefinition {
   readonly id: ConditionId;
   readonly name: string;
   readonly traits: readonly TraitInstance[];
   readonly statModifiers?: readonly StatisticModifierContribution[];
+  readonly valuePolicy?: ConditionValuePolicy;
+  readonly expiry?: ConditionExpiry;
 }
 
 export type DegreeOutcomeMap = Readonly<
@@ -702,10 +798,25 @@ export type CombatEvent =
       readonly remainingHp: number;
     }
   | {
+      readonly type: "HP_RESTORED";
+      readonly sourceActorId: EntityId;
+      readonly targetActorId: EntityId;
+      readonly amount: number;
+      readonly remainingHp: number;
+    }
+  | {
       readonly type: "CONDITION_APPLIED";
       readonly actorId: EntityId;
       readonly condition: ConditionInstance["id"];
       readonly sourceId: string;
+      /** Present for a valued Condition; this is the value after the merge policy. */
+      readonly value?: number;
+    }
+  | {
+      readonly type: "CONDITION_VALUE_CHANGED";
+      readonly actorId: EntityId;
+      readonly condition: ConditionId;
+      readonly value: number;
     }
   | {
       readonly type: "CONDITION_REMOVED";

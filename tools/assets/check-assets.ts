@@ -3,6 +3,8 @@ import path from "node:path";
 
 import sharp from "sharp";
 
+import { PRODUCTION_CONTENT } from "../../src/content/production-content";
+
 interface Point {
   readonly x: number;
   readonly y: number;
@@ -133,10 +135,10 @@ function assertVisualMap(
   visuals: Readonly<Record<string, string>>,
   manifest: AssetManifest,
 ): void {
-  const expected = definitions.map((definition) => definition.id).sort();
+  const expected = [...definitions].map((definition) => definition.id).sort();
   const actual = Object.keys(visuals).sort();
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
-    throw new Error(`${label} visual IDs must match M3 content definitions exactly.`);
+    throw new Error(`${label} visual IDs must match the production content pack exactly.`);
   }
   for (const [definitionId, assetId] of Object.entries(visuals)) {
     if (manifest.assets[assetId]?.kind !== "ui") {
@@ -178,8 +180,10 @@ async function main(): Promise<void> {
   const manifest = await readJson<AssetManifest>(path.join(presentationRoot, "asset-manifest.json"));
   const sources = await readJson<Readonly<Record<string, string>>>(path.join(presentationRoot, "asset-sources.json"));
   const tilemaps = await readJson<TilemapPack>(path.join(presentationRoot, "tilemaps.json"));
-  const equipment = await readJson<readonly ContentDefinition[]>(path.join(root, "content", "m3", "equipment.json"));
-  const cards = await readJson<readonly ContentDefinition[]>(path.join(root, "content", "m3", "cards.json"));
+  // Visual coverage is checked against whatever pack actually ships (#12), not against the
+  // legacy fixture the presentation directory is still named after.
+  const equipment: readonly ContentDefinition[] = Object.values(PRODUCTION_CONTENT.pack.combatContent.equipment);
+  const cards: readonly ContentDefinition[] = Object.values(PRODUCTION_CONTENT.pack.combatContent.cards);
   if (manifest.version !== 4) throw new Error("Presentation asset manifest version must be 4.");
   if (manifest.atlas.path !== "/assets/m3-atlas.json" || manifest.atlas.imagePath !== "/assets/m3-atlas.webp") {
     throw new Error("Presentation atlas paths are not canonical.");

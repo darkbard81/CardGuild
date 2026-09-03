@@ -96,8 +96,14 @@ function formatEvent(state: CombatState, event: CombatEvent): string | null {
       return `${event.label}: d20 ${event.roll} + ${event.modifier} vs DC ${event.dc} → ${event.degree}.`;
     case "DAMAGE_DEALT":
       return `${actorName(state, event.targetActorId)} took ${event.amount} ${event.damageType} damage (${event.remainingHp} HP).`;
+    case "HP_RESTORED":
+      return `${actorName(state, event.targetActorId)} recovered ${event.amount} HP (${event.remainingHp} HP).`;
     case "CONDITION_APPLIED":
-      return `${actorName(state, event.actorId)} gained ${event.condition}.`;
+      return event.value === undefined
+        ? `${actorName(state, event.actorId)} gained ${event.condition}.`
+        : `${actorName(state, event.actorId)} gained ${event.condition} ${event.value}.`;
+    case "CONDITION_VALUE_CHANGED":
+      return `${actorName(state, event.actorId)} is now ${event.condition} ${event.value}.`;
     case "CONDITION_REMOVED":
       return `${actorName(state, event.actorId)} removed ${event.condition}.`;
     case "ACTION_LOCKED":

@@ -1,6 +1,6 @@
 import type { AdventureState } from "../adventure";
 import { isTerminalHandshakeFailure, SessionClient, type SessionCredential } from "../client";
-import { M6_ADVENTURE, M6_COMPILED_PACK, M6_CONTENT_IDENTITY } from "../content";
+import { PRODUCTION_CONTENT } from "../content/production-content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
 import { SessionLobbyUi } from "../dom/session-lobby-ui";
@@ -23,7 +23,9 @@ const COMBAT_EVENT_TYPES = new Set<CombatEvent["type"]>([
   "FACING_CHANGED",
   "CHECK_ROLLED",
   "DAMAGE_DEALT",
+  "HP_RESTORED",
   "CONDITION_APPLIED",
+  "CONDITION_VALUE_CHANGED",
   "CONDITION_REMOVED",
   "ACTION_LOCKED",
   "SHIELD_RAISED",
@@ -60,18 +62,18 @@ export class AdventureController {
     private readonly catalog: AssetCatalog,
     private readonly root: HTMLElement,
   ) {
-    this.ui = new AdventureUi(M6_ADVENTURE, M6_COMPILED_PACK, {
+    this.ui = new AdventureUi(PRODUCTION_CONTENT.adventure, PRODUCTION_CONTENT.pack, {
       onStart: () => this.sendIntent({ type: "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
       onChooseReward: (rewardId, choiceIndex) => this.sendIntent({ type: "choose-reward", rewardId, choiceIndex }),
       onOpenLoadout: () => this.openLoadout(),
       onRetry: () => undefined,
-    });
-    this.loadoutUi = new LoadoutUi(M6_COMPILED_PACK, this.catalog, {
+    }, this.catalog);
+    this.loadoutUi = new LoadoutUi(PRODUCTION_CONTENT.pack, this.catalog, {
       onSetLoadout: (memberId, loadout) => this.setMemberLoadout(memberId, loadout),
       onDone: () => this.closeLoadout(),
     });
-    this.lobbyUi = new SessionLobbyUi(M6_COMPILED_PACK, this.catalog, {
+    this.lobbyUi = new SessionLobbyUi(PRODUCTION_CONTENT.pack, this.catalog, {
       onCreate: (displayName) => void this.createSession(displayName),
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
       onSetParty: (actorDefinitionIds) => this.sendIntent({ type: "set-party-composition", actorDefinitionIds }),
@@ -205,14 +207,14 @@ export class AdventureController {
     this.ui.render(snapshot.state.adventure as AdventureState, {
       isHost: snapshot.state.hostPlayerId === viewer.playerId,
     });
-    const staticScenario = M6_COMPILED_PACK.scenarios[combat.scenarioId];
+    const staticScenario = PRODUCTION_CONTENT.pack.scenarios[combat.scenarioId];
     if (!staticScenario) throw new Error(`Scenario "${combat.scenarioId}" is missing.`);
     const events = combatEvents(snapshot.events);
     if (!this.battle) {
       this.battle = new BattleController(this.app, this.catalog, {
         definition: {
-          content: M6_COMPILED_PACK.combatContent,
-          contentIdentity: M6_CONTENT_IDENTITY,
+          content: PRODUCTION_CONTENT.pack.combatContent,
+          contentIdentity: PRODUCTION_CONTENT.contentIdentity,
           scenario: {
             ...staticScenario,
             actors: Object.values(combat.actors),

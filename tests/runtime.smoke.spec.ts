@@ -27,6 +27,9 @@ function captureRuntimeErrors(page: Page): string[] {
   page.on("pageerror", (error) => errors.push(error.message));
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
+    // PixiJS reports resource-lifetime mistakes — a texture freed while a shader still
+    // binds it, say — as warnings, and those are bugs even when nothing throws.
+    if (message.type() === "warning" && message.text().includes("PixiJS Warning")) errors.push(message.text());
   });
   return errors;
 }
@@ -127,11 +130,15 @@ async function strikeRoadEnemy(page: Page): Promise<boolean> {
 }
 
 async function waitForRoadTurn(page: Page): Promise<void> {
-  for (let step = 0; step < 12; step += 1) {
+  for (let step = 0; step < 20; step += 1) {
     if (await page.locator("#app").getAttribute("data-screen") !== "combat") return;
     if (await page.locator("#result-modal").isVisible()) return;
     if (await page.locator("#reaction-modal").isVisible()) {
-      await page.getByRole("button", { name: "Use Reaction" }).click();
+      // The authoritative server can resolve the window between the visibility check and
+      // the click, so a vanished button means the reaction is already settled, not a
+      // failure. Take it when it is still there and keep waiting either way.
+      await page.getByRole("button", { name: "Use Reaction" }).click({ timeout: 2_000 })
+        .catch(() => undefined);
       continue;
     }
     if ((await page.locator("#initiative-list .active").textContent())?.includes("Aerin")) return;
@@ -169,11 +176,27 @@ test("shows the Adventure shell after reusing the lobby actor atlas without load
   await openAdventure(page);
 
   await expect(page.locator("#adventure-content h1")).toHaveText("Road Ambush");
-  await expect(page.locator("#adventure-progress li")).toHaveCount(3);
-  await expect(page.locator("#adventure-collection")).toContainText("Halberd ×1");
-  await expect(page.locator("#adventure-collection")).toContainText("Steel Shield ×1");
-  await expect(page.locator("#adventure-collection")).toContainText("Boots of Fly ×1");
+  // Every step of the run is on the rail, the last one marked as the finale.
+  const steps = page.locator("#adventure-progress li");
+  await expect(steps).toHaveCount(8);
+  await expect(steps.first()).toHaveAttribute("aria-current", "step");
+  await expect(steps.last()).toContainText("Finale");
+  // A step that pays out says so before the party walks into it.
+  await expect(page.locator("#adventure-progress li .progress-tag.reward").first()).toBeVisible();
+  const owned = page.locator("#adventure-collection .collection-chip");
+  await expect(owned.filter({ hasText: "Halberd" })).toHaveCount(1);
+  await expect(owned.filter({ hasText: "Steel Shield" })).toHaveCount(1);
+  await expect(owned.filter({ hasText: "Boots of Fly" })).toHaveCount(1);
   expect(new Set(webpRequests.map((url) => new URL(url).pathname))).toEqual(new Set(["/assets/m3-atlas.webp"]));
+
+  // The whole run has to be readable at the supported minimum. A rail that scrolls hides
+  // the finale, which is the one step the player is heading for.
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await expect(steps).toHaveCount(8);
+  await expect.poll(async () => page.locator("#adventure-progress")
+    .evaluate((rail) => rail.scrollHeight - rail.clientHeight)).toBeLessThanOrEqual(1);
+  await expect(steps.last()).toBeInViewport();
+  await expect(page.locator("#adventure-collection")).toBeInViewport();
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-adventure.png"), fullPage: true });
 });
@@ -188,9 +211,10 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await openAdventure(page);
   await page.getByRole("button", { name: "Manage Loadout" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "loadout");
-  await expect(page.locator(".collection-item")).toHaveCount(4);
-  await expect(page.locator(".deck-contribution")).toHaveCount(4);
-  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
+  // Aerin owns four equipment pieces and starts with two prepared cards.
+  await expect(page.locator(".collection-item")).toHaveCount(6);
+  await expect(page.locator(".deck-contribution")).toHaveCount(6);
+  await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
   await expect(page.locator('.deck-contribution[data-card-id="card.fly"]')).toContainText("Boots of Fly / Fly");
   await expect(page.locator('.deck-contribution[data-card-id="card.trip"]')).toContainText("Halberd / Trip");
   expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
@@ -216,7 +240,7 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
   await expect(page.locator("#loadout-detail")).toContainText("Fly ×2");
   await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("6 Tactical Cards");
+  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
   await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
   await expect(page.locator(".collection-panel")).toContainText("×1");
@@ -225,7 +249,7 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await page.locator('.loadout-option[data-option-id="boots-of-fly"]').click();
   await expect(page.locator("#loadout-detail")).toContainText("15 → 16");
   await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
+  await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
 
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
@@ -247,16 +271,23 @@ test("carries a reward loadout through the shared resolver into the next encount
   await winRoadAmbush(page);
 
   await expect(page.locator("#adventure-content h1")).toHaveText("Choose one reward");
-  await page.getByRole("button", { name: "Fly card" }).click();
+  // The reward card explains itself on the choice screen, not just by name.
+  const braceChoice = page.locator('.reward-choice', { hasText: "Brace Behind Cover" });
+  await expect(braceChoice).toContainText("1 액션");
+  await braceChoice.click();
   await expect(page.locator("#app")).toHaveAttribute("data-adventure-phase", "between-encounters");
-  await expect(page.locator("#adventure-collection")).toContainText("Fly ×1");
+  await expect(page.locator("#adventure-collection .collection-chip").filter({ hasText: "Brace Behind Cover" })).toHaveCount(1);
+  // An unworn reward is exactly what Manage Loadout is for, so the screen says so.
+  await expect(page.locator(".loadout-nudge")).toContainText("미장착 보상 1개");
+  // The next encounter names its threats before the party commits to it.
+  await expect(page.locator(".encounter-threats")).toContainText("Goblin Spearman");
   await page.getByRole("button", { name: "Manage Loadout" }).click();
 
   await page.getByRole("button", { name: "+ Add Card" }).click();
-  await page.locator('.loadout-option[data-option-id="card.fly"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("Fly ×1 (Prepared Card)");
+  await page.locator('.loadout-option[data-option-id="card.brace-behind-cover"]').click();
+  await expect(page.locator("#loadout-detail")).toContainText("Brace Behind Cover ×1 (Prepared Card)");
   await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
+  await expect(page.locator(".deck-panel h2")).toHaveText("11 Tactical Cards");
 
   await page.locator('.equipment-slot[data-slot="feet"]').click();
   await page.locator('.loadout-option[data-option-id="empty-feet"]').click();
@@ -266,31 +297,33 @@ test("carries a reward loadout through the shared resolver into the next encount
   await page.locator('.loadout-option[data-option-id="empty-shield"]').click();
   await expect(page.locator("#loadout-detail")).toContainText("− Context: Raise Shield");
   await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("7 Tactical Cards");
+  await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
   await expect(page.locator(".collection-panel")).toContainText("Steel Shield");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-reward-loadout.png"), fullPage: true });
 
   await page.getByRole("button", { name: "Done" }).click();
+  // The reward card is prepared now, and the only things left sitting in the collection are the
+  // starter shield and boots this loadout just took off. Swapped-out starter gear is not an
+  // unclaimed reward, so the notice is gone rather than stuck at "미장착 보상 2개".
+  await expect(page.locator(".loadout-nudge")).toHaveCount(0);
   await page.getByRole("button", { name: "Enter Encounter" }).click();
-  await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.ruined-gate");
+  await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.spear-line");
   await expect(page.locator("#hero-stats")).toContainText("Reflex DC");
   await expect(page.locator("#hero-stats")).toContainText("15");
-  // The authoritative server pumps the opening enemy turn before publishing the
-  // next human boundary, so Aerin has drawn the following turn's card already.
-  await expect(page.locator("#hand-count")).toHaveText("7");
-  await expect(page.locator("#deck-count")).toHaveText("0");
-  await expect(page.locator('.tactical-card[data-card-definition-id="card.fly"][data-card-source-kind="prepared"]')).toHaveCount(1);
+  // Aerin acts first in the spear corridor, so she opens on the dealt six rather than
+  // having drawn the following turn's card during an enemy turn.
+  await expect(page.locator("#hand-count")).toHaveText("6");
+  // Nine cards remain after the loadout edits, so three are still undrawn.
+  await expect(page.locator("#deck-count")).toHaveText("3");
+  await expect(page.locator('.tactical-card[data-card-definition-id="card.brace-behind-cover"][data-card-source-kind="prepared"]')).toHaveCount(1);
 
-  const nextMap = { width: 9, height: 7 };
-  const hero = projectCorners(await boardCorners(page), nextMap, 1.5, 3.5);
+  const nextMap = { width: 7, height: 4 };
+  const hero = projectCorners(await boardCorners(page), nextMap, 0.5, 1.5);
   await page.locator("#pixi-canvas").click({ position: hero });
+  // The shield came off in the loadout, so its context action is gone with it.
   await expect(page.locator('#ring-root .ring-option[data-action-id="raise-shield"]')).toHaveCount(0);
-  await page.keyboard.press("Escape");
-  await expect(page.locator("#ring-root")).toBeHidden();
-  const destination = projectCorners(await boardCorners(page), nextMap, 2.5, 3.5);
-  await page.locator("#pixi-canvas").click({ position: destination });
-  await expect(page.locator('#ring-root .ring-option[data-action-id="fly"]')).toBeVisible();
+  await expect(page.locator('#ring-root .ring-option[data-action-id="brace-behind-cover"]')).toBeVisible();
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-next-encounter.png"), fullPage: true });
 });
@@ -348,6 +381,12 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await clickBoardPoint(page, 2.5, 1.5);
   await expect(page.locator("#combat-log")).toContainText("used trip");
   await expect(page.locator("#action-pips .available")).toHaveCount(0);
+
+  // The mesh maps the whole board texture onto the projected quad, so the texture has to be
+  // exactly its own page. A padded page shrinks the art inside the quad and leaves actors
+  // standing off the drawn board.
+  const textureFit = await page.locator("#pixi-canvas").getAttribute("data-board-texture-fit");
+  expect(textureFit).toMatch(/^(\d+x\d+)\/\1$/);
 
   const beforeZoom = await boardCorners(page);
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
@@ -497,11 +536,11 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   await page.mouse.up();
   await page.keyboard.up("Alt");
   await page.waitForTimeout(150);
-  expect((await actorFeet("goblin-skirmisher")).x).toBeGreaterThan(canvasBox.width);
+  expect((await actorFeet("goblin-lackey")).x).toBeGreaterThan(canvasBox.width);
 
   await page.locator("#end-turn").click();
   await page.waitForTimeout(600);
-  const goblin = await actorFeet("goblin-skirmisher");
+  const goblin = await actorFeet("goblin-lackey");
   expect(goblin.x).toBeGreaterThan(0);
   expect(goblin.x).toBeLessThan(canvasBox.width);
   expect(goblin.y).toBeGreaterThan(0);

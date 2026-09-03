@@ -3,6 +3,8 @@ import path from "node:path";
 
 import sharp, { type OverlayOptions } from "sharp";
 
+import { PRODUCTION_CONTENT } from "../../src/content/production-content";
+
 type AssetKind = "actor" | "terrain" | "object" | "ui";
 type SourceMode = "square-terrain" | "web-overlay" | "grounded-object" | "two-sided-actor" | "ui-icon";
 
@@ -514,7 +516,9 @@ function semanticType(traits: ReadonlySet<string>): string {
 }
 
 async function buildTilemaps(root: string): Promise<void> {
-  const scenarios = await readJson<readonly ScenarioSource[]>(path.join(root, "content", "m3", "scenarios.json"));
+  // Tilemaps follow the pack the game actually ships (#12), so every production Scenario
+  // gets one. The legacy fixture path was left behind when the runtime moved.
+  const scenarios: readonly ScenarioSource[] = Object.values(PRODUCTION_CONTENT.pack.scenarioSources);
   const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm"];
   const transitionPalette = ["transition.web"];
   const objectPalette = ["object.wall", "object.gate.closed", "object.lever", "object.crate"];

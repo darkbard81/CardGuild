@@ -6,7 +6,7 @@ import {
   type AdventureState,
   type PartyState,
 } from "../adventure";
-import { getContentIdentity } from "../content";
+import { getContentIdentity } from "../content/compile-content";
 import {
   createCombat,
   dispatchCombatCommand,

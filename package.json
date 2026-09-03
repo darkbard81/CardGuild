@@ -14,12 +14,14 @@
     "build": "npm run build:client && npm run build:server",
     "build:client": "npm run content:check && npm run assets && tsc --noEmit && vite build",
     "build:server": "esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-server/main.js --external:ws",
-    "check": "npm run content:check && npm run assets:check && npm run typecheck && npm run typecheck:game && npm run typecheck:tools && npm run typecheck:server && npm run lint && npm run test:unit",
+    "check": "npm run content:check && npm run content:production-check && npm run assets:check && npm run typecheck && npm run typecheck:game && npm run typecheck:tools && npm run typecheck:server && npm run lint && npm run test:unit",
     "assets:build": "tsx tools/assets/build-assets.ts",
     "assets:check": "tsx tools/assets/check-assets.ts",
     "assets": "npm run assets:build && npm run assets:check",
     "content:check": "tsx tools/content/check-content.ts",
+    "content:production-check": "tsx tools/content/check-production-content.ts",
     "lint": "eslint .",
+    "playtest": "tsx tools/playtest/run-playtest.ts",
     "preview": "vite preview",
     "server:check": "npm run typecheck:server",
     "start:production": "node --env-file=deploy/cardguild.production.env dist-server/main.js",
@@ -31,7 +33,10 @@
     "typecheck": "tsc --noEmit",
     "typecheck:game": "tsc --project tsconfig.game.json",
     "typecheck:tools": "tsc --project tsconfig.tools.json",
-    "typecheck:server": "tsc --project tsconfig.server.json"
+    "typecheck:server": "tsc --project tsconfig.server.json",
+    "ui:capture": "playwright test --config playwright.capture.config.ts && npm run ui:compare",
+    "ui:capture:baseline": "CARDGUILD_UI_SHOT_DIR=docs/ui-review/baseline playwright test --config playwright.capture.config.ts && npm run ui:compare",
+    "ui:compare": "tsx tools/ui/build-compare-page.ts"
   },
   "dependencies": {
     "ajv": "^8.20.0",

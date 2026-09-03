@@ -4,7 +4,7 @@
   "promptConvention": "documents/ImageGen_Prompt.md",
   "background": "transparent",
   "atlas": {
-    "size": 2048,
+    "size": 4096,
     "padding": 2,
     "image": "public/assets/m3-atlas.webp",
     "data": "public/assets/m3-atlas.json"
@@ -13,90 +13,254 @@
     {
       "input": "art/source/terrain/stone-floor.png",
       "mode": "square-terrain",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "terrain.stone-floor", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 128, "height": 128 }, "footprint": { "width": 128, "height": 128 } }
+        {
+          "assetId": "terrain.stone-floor",
+          "kind": "terrain",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 128,
+            "height": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon stone floor Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/rubble.png",
       "mode": "square-terrain",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "terrain.rubble", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 128, "height": 128 }, "footprint": { "width": 128, "height": 128 } }
+        {
+          "assetId": "terrain.rubble",
+          "kind": "terrain",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 128,
+            "height": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square cracked rubble floor Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/chasm.png",
       "mode": "square-terrain",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "terrain.chasm", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 128, "height": 128 }, "footprint": { "width": 128, "height": 128 } }
+        {
+          "assetId": "terrain.chasm",
+          "kind": "terrain",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 128,
+            "height": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon chasm Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/web-overlay.png",
       "mode": "web-overlay",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "transition.web", "kind": "terrain", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 128, "height": 128 }, "footprint": { "width": 128, "height": 128 } }
+        {
+          "assetId": "transition.web",
+          "kind": "terrain",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 128,
+            "height": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square spider web floor overlay Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/objects/wall.png",
       "mode": "grounded-object",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 384, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 384,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "object.wall", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 108 } }
+        {
+          "assetId": "object.wall",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 108
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style dungeon stone wall Object Standee. 3:2ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/objects/crate.png",
       "mode": "grounded-object",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "object.crate", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 92 } }
+        {
+          "assetId": "object.crate",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 92
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style wooden crate Object Standee. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/objects/lever.png",
       "mode": "grounded-object",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "object.lever", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 88 } }
+        {
+          "assetId": "object.lever",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 88
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style dungeon lever Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/objects/gate-closed.png",
       "mode": "grounded-object",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "object.gate.closed", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 156 } }
+        {
+          "assetId": "object.gate.closed",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 156
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style closed dungeon gate Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/objects/gate-open.png",
       "mode": "grounded-object",
-      "grid": { "rows": 1, "cols": 1 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "object.gate.open", "kind": "object", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 156 } }
+        {
+          "assetId": "object.gate.open",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 156
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and the accepted closed gate. 2d high detailed Japanese anime style open dungeon gate Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
     },
@@ -104,11 +268,39 @@
       "input": "art/source/actors/aerin-front-back.png",
       "mode": "two-sided-actor",
       "definitionId": "hero.aerin",
-      "grid": { "rows": 1, "cols": 2 },
-      "canvas": { "width": 256, "height": 384 },
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
       "frames": [
-        { "assetId": "actor.hero.aerin.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 152 } },
-        { "assetId": "actor.hero.aerin.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 152 } }
+        {
+          "assetId": "actor.hero.aerin.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.hero.aerin.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md, documents/Template.png, and documents/view_modify.png. 2D high detailed Japanese anime style elf maid Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
@@ -116,11 +308,39 @@
       "input": "art/source/actors/lyra-front-back.png",
       "mode": "two-sided-actor",
       "definitionId": "hero.lyra",
-      "grid": { "rows": 1, "cols": 2 },
-      "canvas": { "width": 256, "height": 384 },
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
       "frames": [
-        { "assetId": "actor.hero.lyra.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 148 } },
-        { "assetId": "actor.hero.lyra.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 148 } }
+        {
+          "assetId": "actor.hero.lyra.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 148
+          }
+        },
+        {
+          "assetId": "actor.hero.lyra.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 148
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female mobile adventurer Lyra with Boots of Fly Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
@@ -128,23 +348,119 @@
       "input": "art/source/actors/brom-front-back.png",
       "mode": "two-sided-actor",
       "definitionId": "hero.brom",
-      "grid": { "rows": 1, "cols": 2 },
-      "canvas": { "width": 256, "height": 384 },
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
       "frames": [
-        { "assetId": "actor.hero.brom.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 158 } },
-        { "assetId": "actor.hero.brom.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 158 } }
+        {
+          "assetId": "actor.hero.brom.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 158
+          }
+        },
+        {
+          "assetId": "actor.hero.brom.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 158
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female durable guardian Brom with heavy armor and shield Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/nera-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "hero.nera",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.hero.nera.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.hero.nera.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style field tactician and battlefield medic Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/goblin-skirmisher-front-back.png",
       "mode": "two-sided-actor",
       "definitionId": "enemy.goblin-skirmisher",
-      "grid": { "rows": 1, "cols": 2 },
-      "canvas": { "width": 256, "height": 384 },
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
       "frames": [
-        { "assetId": "actor.goblin-skirmisher.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 132 } },
-        { "assetId": "actor.goblin-skirmisher.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 132 } }
+        {
+          "assetId": "actor.goblin-skirmisher.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.goblin-skirmisher.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin skirmisher Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
@@ -152,11 +468,39 @@
       "input": "art/source/actors/goblin-brute-front-back.png",
       "mode": "two-sided-actor",
       "definitionId": "enemy.goblin-brute",
-      "grid": { "rows": 1, "cols": 2 },
-      "canvas": { "width": 256, "height": 384 },
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
       "frames": [
-        { "assetId": "actor.goblin-brute.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 152 } },
-        { "assetId": "actor.goblin-brute.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 152 } }
+        {
+          "assetId": "actor.goblin-brute.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.goblin-brute.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin brute Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
@@ -164,38 +508,1385 @@
       "input": "art/source/actors/goblin-chief-front-back.png",
       "mode": "two-sided-actor",
       "definitionId": "enemy.goblin-chief",
-      "grid": { "rows": 1, "cols": 2 },
-      "canvas": { "width": 256, "height": 384 },
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
       "frames": [
-        { "assetId": "actor.goblin-chief.front", "side": "front", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 164 } },
-        { "assetId": "actor.goblin-chief.back", "side": "back", "kind": "actor", "anchor": { "x": 0.5, "y": 1 }, "displaySize": { "height": 164 } }
+        {
+          "assetId": "actor.goblin-chief.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 164
+          }
+        },
+        {
+          "assetId": "actor.goblin-chief.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 164
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin chief Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/ui/equipment-icons.png",
       "mode": "ui-icon",
-      "grid": { "rows": 1, "cols": 3 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 1,
+        "cols": 3
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "ui.equipment.halberd", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
-        { "assetId": "ui.equipment.shield", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
-        { "assetId": "ui.equipment.boots-of-fly", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } }
+        {
+          "assetId": "ui.equipment.halberd",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.shield",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.boots-of-fly",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md. CardGuild equipment inventory icons: Halberd, Steel Shield, and Boots of Fly, in one horizontal transparent sprite sheet."
     },
     {
       "input": "art/source/ui/card-icons.png",
       "mode": "ui-icon",
-      "grid": { "rows": 2, "cols": 2 },
-      "canvas": { "width": 256, "height": 256 },
+      "grid": {
+        "rows": 2,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
       "frames": [
-        { "assetId": "ui.card.trip", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
-        { "assetId": "ui.card.fly", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
-        { "assetId": "ui.card.spirit-beacon", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } },
-        { "assetId": "ui.card.reactive-strike", "kind": "ui", "anchor": { "x": 0.5, "y": 0.5 }, "displaySize": { "width": 64, "height": 64 } }
+        {
+          "assetId": "ui.card.trip",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.fly",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.spirit-beacon",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.reactive-strike",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        }
       ],
       "prompt": "Reference art/STYLE.md. CardGuild tactical-card icons: Trip, Fly, Spirit Beacon, and Reactive Strike, in a 2x2 transparent sprite sheet."
+    },
+    {
+      "input": "art/source/actors/skeleton-rabble-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.skeleton-rabble",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.skeleton-rabble.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.skeleton-rabble.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style skeleton rabble undead minion Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/skeleton-guard-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.skeleton-guard",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.skeleton-guard.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.skeleton-guard.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style armored skeleton guard with a halberd Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/skeleton-archer-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.skeleton-archer",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.skeleton-archer.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.skeleton-archer.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style hooded skeleton archer with a bone longbow Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/bone-hulk-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.bone-hulk",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.bone-hulk.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.bone-hulk.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style massive fused bone hulk brute with a bone maul Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/bone-priest-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.bone-priest",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.bone-priest.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.bone-priest.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style robed undead bone priest caster Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/wolf-yearling-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.wolf-yearling",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.wolf-yearling.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.wolf-yearling.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style young grey dungeon wolf Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/dire-wolf-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.dire-wolf",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.dire-wolf.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.dire-wolf.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style large scarred alpha dire wolf Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/cave-spider-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.cave-spider",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.cave-spider.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.cave-spider.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style small quick cave spider Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/giant-spider-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.giant-spider",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.giant-spider.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.giant-spider.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style large armoured hunting giant spider Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/cult-initiate-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.cult-initiate",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.cult-initiate.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.cult-initiate.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style hooded cult initiate with a ritual knife Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/cult-firebrand-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.cult-firebrand",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.cult-firebrand.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.cult-firebrand.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style robed cult firebrand fire caster Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/cult-hierophant-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.cult-hierophant",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.cult-hierophant.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.cult-hierophant.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style ornate cult hierophant leader with a ritual staff Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/goblin-lackey-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.goblin-lackey",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.goblin-lackey.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.goblin-lackey.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style small cowering goblin lackey with a rusty dagger Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/goblin-spearman-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.goblin-spearman",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.goblin-spearman.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.goblin-spearman.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin spearman in patched leather with a long spear Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/actors/goblin-slinger-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.goblin-slinger",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.goblin-slinger.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.goblin-slinger.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style lean goblin slinger whirling a leather sling Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+    },
+    {
+      "input": "art/source/ui/equipment-icons-2.png",
+      "mode": "ui-icon",
+      "grid": {
+        "rows": 2,
+        "cols": 11
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "ui.equipment.light-blade",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.guardian-mace",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.composite-shortbow",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.leather-armor",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.scale-mail",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.half-plate",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.dueling-rapier",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.throwing-axes",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.greatsword",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.boar-spear",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.executioner-axe",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.flick-mace",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.scout-leather",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.brigandine",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.buckler",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.tower-shield",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.spiked-shield",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.striders-boots",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.medics-kit",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.warding-charm",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.hexers-focus",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.equipment.bloodied-talisman",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. CardGuild equipment inventory icons: the remaining 22 production weapons, armour, shields and utility items, in one 2x11 transparent sprite sheet."
+    },
+    {
+      "input": "art/source/ui/card-icons-2.png",
+      "mode": "ui-icon",
+      "grid": {
+        "rows": 4,
+        "cols": 7
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "ui.card.knockdown",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.vicious-swing",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.intimidating-strike",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.combat-grab",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.aimed-shot",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.shield-press",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.grapple",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.demoralize",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.slip-free",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.battle-medicine",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.frostbite",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.fear",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.harm",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.daze",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.iron-presence",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.telekinetic-projectile",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.ember-lash",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.force-barrage",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.heal",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.soothe",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.lay-on-hands",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.spirit-edge",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.brace-behind-cover",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.dueling-parry",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.arcane-ward",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.careful-advance",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.hover-step",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        },
+        {
+          "assetId": "ui.card.spirit-lance",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. CardGuild tactical card icons: the remaining 28 production cards, in one 4x7 transparent sprite sheet."
     }
   ],
   "presentation": {
@@ -216,13 +1907,63 @@
     "equipmentVisuals": {
       "halberd": "ui.equipment.halberd",
       "shield": "ui.equipment.shield",
-      "boots-of-fly": "ui.equipment.boots-of-fly"
+      "boots-of-fly": "ui.equipment.boots-of-fly",
+      "leather-armor": "ui.equipment.leather-armor",
+      "scale-mail": "ui.equipment.scale-mail",
+      "half-plate": "ui.equipment.half-plate",
+      "light-blade": "ui.equipment.light-blade",
+      "guardian-mace": "ui.equipment.guardian-mace",
+      "composite-shortbow": "ui.equipment.composite-shortbow",
+      "dueling-rapier": "ui.equipment.dueling-rapier",
+      "throwing-axes": "ui.equipment.throwing-axes",
+      "greatsword": "ui.equipment.greatsword",
+      "boar-spear": "ui.equipment.boar-spear",
+      "executioner-axe": "ui.equipment.executioner-axe",
+      "flick-mace": "ui.equipment.flick-mace",
+      "scout-leather": "ui.equipment.scout-leather",
+      "brigandine": "ui.equipment.brigandine",
+      "buckler": "ui.equipment.buckler",
+      "tower-shield": "ui.equipment.tower-shield",
+      "spiked-shield": "ui.equipment.spiked-shield",
+      "striders-boots": "ui.equipment.striders-boots",
+      "medics-kit": "ui.equipment.medics-kit",
+      "warding-charm": "ui.equipment.warding-charm",
+      "hexers-focus": "ui.equipment.hexers-focus",
+      "bloodied-talisman": "ui.equipment.bloodied-talisman"
     },
     "cardVisuals": {
       "card.trip": "ui.card.trip",
       "card.fly": "ui.card.fly",
       "card.spirit-beacon": "ui.card.spirit-beacon",
-      "card.reactive-strike": "ui.card.reactive-strike"
+      "card.reactive-strike": "ui.card.reactive-strike",
+      "card.spirit-lance": "ui.card.spirit-lance",
+      "card.knockdown": "ui.card.knockdown",
+      "card.vicious-swing": "ui.card.vicious-swing",
+      "card.intimidating-strike": "ui.card.intimidating-strike",
+      "card.combat-grab": "ui.card.combat-grab",
+      "card.aimed-shot": "ui.card.aimed-shot",
+      "card.shield-press": "ui.card.shield-press",
+      "card.grapple": "ui.card.grapple",
+      "card.demoralize": "ui.card.demoralize",
+      "card.slip-free": "ui.card.slip-free",
+      "card.battle-medicine": "ui.card.battle-medicine",
+      "card.frostbite": "ui.card.frostbite",
+      "card.fear": "ui.card.fear",
+      "card.harm": "ui.card.harm",
+      "card.daze": "ui.card.daze",
+      "card.iron-presence": "ui.card.iron-presence",
+      "card.telekinetic-projectile": "ui.card.telekinetic-projectile",
+      "card.ember-lash": "ui.card.ember-lash",
+      "card.force-barrage": "ui.card.force-barrage",
+      "card.heal": "ui.card.heal",
+      "card.soothe": "ui.card.soothe",
+      "card.lay-on-hands": "ui.card.lay-on-hands",
+      "card.spirit-edge": "ui.card.spirit-edge",
+      "card.brace-behind-cover": "ui.card.brace-behind-cover",
+      "card.dueling-parry": "ui.card.dueling-parry",
+      "card.arcane-ward": "ui.card.arcane-ward",
+      "card.careful-advance": "ui.card.careful-advance",
+      "card.hover-step": "ui.card.hover-step"
     }
   }
 }

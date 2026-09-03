@@ -1,0 +1,77 @@
+[
+  {
+    "id": "adventure.goblin-trouble",
+    "name": "Goblin Trouble",
+    "description": "길목의 매복에서 시작해 창병 대열을 뚫고, 폐허의 문을 연 뒤 고블린 대장을 쓰러뜨립니다. 거기서 길은 뼈 지하실과 늑대 골짜기로 이어지고, 마지막에는 사교도 성소의 지도자와 맞섭니다. 각 전투는 앞선 전투에서 배운 것 위에 하나씩 얹습니다.",
+    "partySize": { "min": 1, "max": 3 },
+    "encounterIds": [
+      "encounter.road-ambush",
+      "encounter.spear-line",
+      "encounter.ruined-gate",
+      "encounter.goblin-chief",
+      "encounter.bone-cellar",
+      "encounter.wolf-run",
+      "encounter.archer-perch",
+      "encounter.cult-sanctum"
+    ],
+    "rewards": [
+      {
+        "id": "reward.road-ambush",
+        "afterEncounterId": "encounter.road-ambush",
+        "choices": [
+          { "kind": "card", "definitionId": "card.brace-behind-cover" },
+          { "kind": "card", "definitionId": "card.careful-advance" },
+          { "kind": "card", "definitionId": "card.force-barrage" }
+        ]
+      },
+      {
+        "id": "reward.spear-line",
+        "afterEncounterId": "encounter.spear-line",
+        "choices": [
+          { "kind": "card", "definitionId": "card.trip" },
+          { "kind": "card", "definitionId": "card.demoralize" },
+          { "kind": "card", "definitionId": "card.fear" }
+        ]
+      },
+      {
+        "id": "reward.ruined-gate",
+        "afterEncounterId": "encounter.ruined-gate",
+        "choices": [
+          { "kind": "card", "definitionId": "card.spirit-lance" },
+          { "kind": "card", "definitionId": "card.arcane-ward" },
+          { "kind": "card", "definitionId": "card.vicious-swing" }
+        ]
+      },
+      {
+        "id": "reward.goblin-chief",
+        "afterEncounterId": "encounter.goblin-chief",
+        "choices": [
+          { "kind": "equipment", "definitionId": "throwing-axes" },
+          { "kind": "equipment", "definitionId": "greatsword" },
+          { "kind": "equipment", "definitionId": "flick-mace" },
+          { "kind": "equipment", "definitionId": "dueling-rapier" }
+        ]
+      },
+      {
+        "id": "reward.wolf-run",
+        "afterEncounterId": "encounter.wolf-run",
+        "choices": [
+          { "kind": "equipment", "definitionId": "medics-kit" },
+          { "kind": "equipment", "definitionId": "warding-charm" },
+          { "kind": "equipment", "definitionId": "hexers-focus" },
+          { "kind": "equipment", "definitionId": "scout-leather" }
+        ]
+      },
+      {
+        "id": "reward.archer-perch",
+        "afterEncounterId": "encounter.archer-perch",
+        "choices": [
+          { "kind": "equipment", "definitionId": "tower-shield" },
+          { "kind": "equipment", "definitionId": "buckler" },
+          { "kind": "equipment", "definitionId": "striders-boots" },
+          { "kind": "equipment", "definitionId": "spiked-shield" }
+        ]
+      }
+    ]
+  }
+]

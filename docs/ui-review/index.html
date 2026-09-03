@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>CardGuild UI/UX 원본 ↔ 변경</title>
+<style>
+  :root { color-scheme: light dark; --line: #d5d3cd; --muted: #6b6862; --bg: #f6f4ef; --card: #fffdf8; }
+  @media (prefers-color-scheme: dark) { :root { --line: #35322c; --muted: #a09a90; --bg: #16150f; --card: #1e1c16; } }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); font: 15px/1.6 ui-sans-serif, system-ui, "Noto Sans KR", sans-serif; }
+  header.top { padding: 28px 32px 16px; border-bottom: 1px solid var(--line); }
+  h1 { margin: 0 0 6px; font-size: 22px; }
+  header.top p { margin: 0; color: var(--muted); max-width: 70ch; }
+  nav { display: flex; gap: 8px; padding: 14px 32px; position: sticky; top: 0; background: var(--bg); border-bottom: 1px solid var(--line); z-index: 2; }
+  nav button { border: 1px solid var(--line); background: var(--card); color: inherit; border-radius: 999px; padding: 6px 14px; cursor: pointer; font: inherit; }
+  nav button.active { background: #3b6ea5; border-color: #3b6ea5; color: #fff; }
+  main { padding: 8px 32px 64px; }
+  .captured { color: var(--muted); font-size: 13px; margin: 16px 0 8px; }
+  .screen { border: 1px solid var(--line); border-radius: 12px; background: var(--card); padding: 18px; margin: 18px 0; }
+  .screen header h3 { margin: 0; font-size: 17px; display: flex; gap: 10px; align-items: baseline; }
+  .ordinal { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .screen header p { margin: 4px 0 6px; color: var(--muted); }
+  .screen header code { color: var(--muted); font-size: 12px; }
+  .panes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; margin-top: 14px; }
+  @media (max-width: 900px) { .panes { grid-template-columns: 1fr; } }
+  figure { margin: 0; }
+  figcaption { display: flex; gap: 8px; align-items: baseline; margin-bottom: 6px; }
+  .stage { font-weight: 600; }
+  .hint { color: var(--muted); font-size: 12px; }
+  img { width: 100%; height: auto; display: block; border: 1px solid var(--line); border-radius: 8px; background: #000; }
+  .empty { margin: 0; padding: 28px 16px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); text-align: center; }
+</style>
+</head>
+<body>
+  <header class="top">
+    <h1>CardGuild UI/UX — 원본 ↔ 변경</h1>
+    <p>화면별 대표 캡쳐입니다. 왼쪽이 개선 전 원본(<code>baseline/</code>), 오른쪽이 개선안 재캡쳐(<code>current/</code>)입니다.
+    <code>npm run ui:capture</code>로 오른쪽만 다시 채우고 이 페이지를 새로고침하세요.</p>
+  </header>
+  <nav>
+      <button type="button" data-target="1440x900" class="active">1440x900</button>
+      <button type="button" data-target="1024x768">1024x768</button>
+  </nav>
+  <main>
+    <article class="viewport" data-viewport="1440x900" hidden>
+    <p class="captured">데스크톱 기준 해상도 · 원본 2026-09-03 11:54 · 변경 없음</p>
+    <section class="screen" id="shot-1440x900-session-lobby">
+      <header>
+        <h3><span class="ordinal">01</span>세션 로비 (진입 화면)</h3>
+        <p>첫 화면. 이름 입력, Create &amp; Host, Join Host가 한 화면에 있고 첫 행동이 무엇인지 안내한다.</p>
+        <code>session-lobby</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/01-session-lobby.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/01-session-lobby.png" alt="원본 세션 로비 (진입 화면)" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-party-builder">
+      <header>
+        <h3><span class="ordinal">02</span>호스트 로비 · 파티 편성</h3>
+        <p>Session ID 공유, seat 목록, 4명 중 1–3명 캐릭터 편성과 Begin Adventure 게이팅.</p>
+        <code>party-builder</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/02-party-builder.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/02-party-builder.png" alt="원본 호스트 로비 · 파티 편성" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-adventure-brief">
+      <header>
+        <h3><span class="ordinal">03</span>Adventure 진행 화면</h3>
+        <p>8단계 진행 레일, 보상 표시, 소유 Collection, 다음 Encounter 브리핑.</p>
+        <code>adventure-brief</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/03-adventure-brief.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/03-adventure-brief.png" alt="원본 Adventure 진행 화면" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-loadout-builder">
+      <header>
+        <h3><span class="ordinal">04</span>Loadout Builder (기본 상태)</h3>
+        <p>장비 슬롯 · Collection · 덱 기여 카드가 한 화면에 있는 편성 화면.</p>
+        <code>loadout-builder</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/04-loadout-builder.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/04-loadout-builder.png" alt="원본 Loadout Builder (기본 상태)" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-loadout-card-picker">
+      <header>
+        <h3><span class="ordinal">05</span>Loadout · 준비 카드 추가</h3>
+        <p>Prepared Cards 슬롯에 넣을 카드 후보 목록. 덱 미리보기와 나란히 놓인다.</p>
+        <code>loadout-card-picker</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/05-loadout-card-picker.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/05-loadout-card-picker.png" alt="원본 Loadout · 준비 카드 추가" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-loadout-preview-diff">
+      <header>
+        <h3><span class="ordinal">06</span>Loadout · 적용 전 변화 미리보기</h3>
+        <p>무기를 비웠을 때 명중/피해가 어떻게 바뀌는지 Apply 전에 diff로 보여주는 상태.</p>
+        <code>loadout-preview-diff</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/06-loadout-preview-diff.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/06-loadout-preview-diff.png" alt="원본 Loadout · 적용 전 변화 미리보기" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-combat-turn">
+      <header>
+        <h3><span class="ordinal">07</span>전투 화면 · 내 턴 시작</h3>
+        <p>canvas 전체가 전장이고 HUD는 그 위 반투명 패널. 액션 pip, 이니셔티브, 핸드 독, 로그.</p>
+        <code>combat-turn</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/07-combat-turn.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/07-combat-turn.png" alt="원본 전투 화면 · 내 턴 시작" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-combat-action-ring">
+      <header>
+        <h3><span class="ordinal">08</span>전투 화면 · 타겟 선택 후 액션 링</h3>
+        <p>칸을 먼저 고르고 그 자리에서 행동을 고르는 target-first 라디얼 메뉴.</p>
+        <code>combat-action-ring</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/08-combat-action-ring.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/08-combat-action-ring.png" alt="원본 전투 화면 · 타겟 선택 후 액션 링" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-reward-choice">
+      <header>
+        <h3><span class="ordinal">09</span>보상 선택 화면</h3>
+        <p>Encounter 승리 후 파티가 공유하는 보상 하나를 고르는 화면.</p>
+        <code>reward-choice</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/09-reward-choice.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/09-reward-choice.png" alt="원본 보상 선택 화면" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-adventure-after-reward">
+      <header>
+        <h3><span class="ordinal">10</span>보상 수령 후 Adventure</h3>
+        <p>미장착 보상 안내와 다음 단계로 진행하는 상태.</p>
+        <code>adventure-after-reward</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/10-adventure-after-reward.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/10-adventure-after-reward.png" alt="원본 보상 수령 후 Adventure" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-adventure-outcome">
+      <header>
+        <h3><span class="ordinal">11</span>Adventure 실패 화면</h3>
+        <p>전투가 끝난 뒤 진행 레일과 다음 행동이 어떻게 갱신되는지 보여주는 상태.</p>
+        <code>adventure-outcome</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1440x900/11-adventure-outcome.png" target="_blank" rel="noreferrer"><img src="baseline/1440x900/11-adventure-outcome.png" alt="원본 Adventure 실패 화면" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-reaction-window">
+      <header>
+        <h3><span class="ordinal">12</span>리액션 창</h3>
+        <p>적의 이동으로 열린 반응 기회. 게임을 멈추고 쓸지 넘길지 묻는 유일한 인터럽트 UI.</p>
+        <code>reaction-window</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <p class="empty">리액션 카드를 준비한 채 인터럽트 패스를 돌렸지만 이 시드의 전투에서는 반응 기회가 열리지 않았습니다.</p>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1440x900-encounter-result">
+      <header>
+        <h3><span class="ordinal">13</span>전투 결과 모달</h3>
+        <p>Encounter가 끝났을 때 승패를 알리고 같은 시드로 다시 시작하게 하는 모달.</p>
+        <code>encounter-result</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <p class="empty">Adventure 흐름에서는 전투가 끝나는 즉시 Adventure 화면으로 넘어가 결과 모달이 뜨지 않습니다. 승패 안내는 보상 화면과 실패 화면이 대신합니다.</p>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+  </article>
+    <article class="viewport" data-viewport="1024x768" hidden>
+    <p class="captured">지원 최소 해상도 · 원본 2026-09-03 11:54 · 변경 없음</p>
+    <section class="screen" id="shot-1024x768-session-lobby">
+      <header>
+        <h3><span class="ordinal">01</span>세션 로비 (진입 화면)</h3>
+        <p>첫 화면. 이름 입력, Create &amp; Host, Join Host가 한 화면에 있고 첫 행동이 무엇인지 안내한다.</p>
+        <code>session-lobby</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/01-session-lobby.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/01-session-lobby.png" alt="원본 세션 로비 (진입 화면)" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-party-builder">
+      <header>
+        <h3><span class="ordinal">02</span>호스트 로비 · 파티 편성</h3>
+        <p>Session ID 공유, seat 목록, 4명 중 1–3명 캐릭터 편성과 Begin Adventure 게이팅.</p>
+        <code>party-builder</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/02-party-builder.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/02-party-builder.png" alt="원본 호스트 로비 · 파티 편성" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-adventure-brief">
+      <header>
+        <h3><span class="ordinal">03</span>Adventure 진행 화면</h3>
+        <p>8단계 진행 레일, 보상 표시, 소유 Collection, 다음 Encounter 브리핑.</p>
+        <code>adventure-brief</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/03-adventure-brief.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/03-adventure-brief.png" alt="원본 Adventure 진행 화면" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-loadout-builder">
+      <header>
+        <h3><span class="ordinal">04</span>Loadout Builder (기본 상태)</h3>
+        <p>장비 슬롯 · Collection · 덱 기여 카드가 한 화면에 있는 편성 화면.</p>
+        <code>loadout-builder</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/04-loadout-builder.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/04-loadout-builder.png" alt="원본 Loadout Builder (기본 상태)" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-loadout-card-picker">
+      <header>
+        <h3><span class="ordinal">05</span>Loadout · 준비 카드 추가</h3>
+        <p>Prepared Cards 슬롯에 넣을 카드 후보 목록. 덱 미리보기와 나란히 놓인다.</p>
+        <code>loadout-card-picker</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/05-loadout-card-picker.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/05-loadout-card-picker.png" alt="원본 Loadout · 준비 카드 추가" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-loadout-preview-diff">
+      <header>
+        <h3><span class="ordinal">06</span>Loadout · 적용 전 변화 미리보기</h3>
+        <p>무기를 비웠을 때 명중/피해가 어떻게 바뀌는지 Apply 전에 diff로 보여주는 상태.</p>
+        <code>loadout-preview-diff</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/06-loadout-preview-diff.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/06-loadout-preview-diff.png" alt="원본 Loadout · 적용 전 변화 미리보기" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-combat-turn">
+      <header>
+        <h3><span class="ordinal">07</span>전투 화면 · 내 턴 시작</h3>
+        <p>canvas 전체가 전장이고 HUD는 그 위 반투명 패널. 액션 pip, 이니셔티브, 핸드 독, 로그.</p>
+        <code>combat-turn</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/07-combat-turn.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/07-combat-turn.png" alt="원본 전투 화면 · 내 턴 시작" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-combat-action-ring">
+      <header>
+        <h3><span class="ordinal">08</span>전투 화면 · 타겟 선택 후 액션 링</h3>
+        <p>칸을 먼저 고르고 그 자리에서 행동을 고르는 target-first 라디얼 메뉴.</p>
+        <code>combat-action-ring</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/08-combat-action-ring.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/08-combat-action-ring.png" alt="원본 전투 화면 · 타겟 선택 후 액션 링" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-reward-choice">
+      <header>
+        <h3><span class="ordinal">09</span>보상 선택 화면</h3>
+        <p>Encounter 승리 후 파티가 공유하는 보상 하나를 고르는 화면.</p>
+        <code>reward-choice</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/09-reward-choice.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/09-reward-choice.png" alt="원본 보상 선택 화면" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-adventure-after-reward">
+      <header>
+        <h3><span class="ordinal">10</span>보상 수령 후 Adventure</h3>
+        <p>미장착 보상 안내와 다음 단계로 진행하는 상태.</p>
+        <code>adventure-after-reward</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <a href="baseline/1024x768/10-adventure-after-reward.png" target="_blank" rel="noreferrer"><img src="baseline/1024x768/10-adventure-after-reward.png" alt="원본 보상 수령 후 Adventure" loading="lazy" /></a>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-reaction-window">
+      <header>
+        <h3><span class="ordinal">11</span>리액션 창</h3>
+        <p>적의 이동으로 열린 반응 기회. 게임을 멈추고 쓸지 넘길지 묻는 유일한 인터럽트 UI.</p>
+        <code>reaction-window</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <p class="empty">1440x900 캡쳐를 참고하세요. 이 해상도에서는 인터럽트 패스를 돌리지 않습니다.</p>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+    <section class="screen" id="shot-1024x768-encounter-result">
+      <header>
+        <h3><span class="ordinal">12</span>전투 결과 모달</h3>
+        <p>Encounter가 끝났을 때 승패를 알리고 같은 시드로 다시 시작하게 하는 모달.</p>
+        <code>encounter-result</code>
+      </header>
+      <div class="panes">
+      <figure class="pane" data-stage="baseline">
+        <figcaption><span class="stage">원본</span><span class="hint">개선 전 현재 UI</span></figcaption>
+        <p class="empty">1440x900 캡쳐를 참고하세요. 이 해상도에서는 인터럽트 패스를 돌리지 않습니다.</p>
+      </figure>
+      <figure class="pane" data-stage="current">
+        <figcaption><span class="stage">변경</span><span class="hint">개선안 재캡쳐</span></figcaption>
+        <p class="empty">아직 변경 캡쳐가 없습니다.</p>
+      </figure>
+      </div>
+    </section>
+  </article>
+  </main>
+<script>
+  const panels = document.querySelectorAll("article.viewport");
+  const buttons = document.querySelectorAll("nav button");
+  function show(target) {
+    panels.forEach((panel) => { panel.hidden = panel.dataset.viewport !== target; });
+    buttons.forEach((button) => { button.classList.toggle("active", button.dataset.target === target); });
+  }
+  buttons.forEach((button) => button.addEventListener("click", () => show(button.dataset.target)));
+  show(buttons[0].dataset.target);
+</script>
+</body>
+</html>

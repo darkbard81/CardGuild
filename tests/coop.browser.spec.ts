@@ -33,8 +33,9 @@ async function createHost(player: BrowserPlayer): Promise<string> {
 }
 
 async function applyThreeCharacterParty(page: Page): Promise<void> {
-  await expect(page.locator(".party-character-card")).toHaveCount(3);
-  await expect(page.locator(".party-character-art")).toHaveCount(3);
+  // Four Characters are selectable; a party still seats at most three of them.
+  await expect(page.locator(".party-character-card")).toHaveCount(4);
+  await expect(page.locator(".party-character-art")).toHaveCount(4);
   await expect(page.locator("#party-slot-1")).toHaveValue("hero.aerin");
   await expect(page.locator("#party-slot-2")).toHaveValue("hero.lyra");
   await expect(page.locator("#party-slot-3")).toHaveValue("hero.brom");
@@ -156,6 +157,7 @@ test("single host prepares three women heroes and controls every changing combat
     await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.aerin"]')).toContainText("Aerin");
     await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.lyra"]')).toContainText("Mobile skirmisher");
     await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.brom"]')).toContainText("Durable guardian");
+    await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.nera"]')).toContainText("Field support");
     await host.page.setViewportSize({ width: 390, height: 844 });
     expect(await host.page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);

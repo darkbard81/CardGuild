@@ -1,6 +1,7 @@
 export {
   actionRangeFeet,
   buildResolvedActionPlan,
+  meetsActionRequirements,
   resolveActionDc,
   resolveActionStatistic,
   turnMapContext,
@@ -32,13 +33,14 @@ export {
   resolveMapPenalty,
   resolveStrike,
   resolveStrikeSource,
-  strikeDamageTotal,
+  damageTotal,
   weaponDamageRoll,
 } from "./offense";
 export type { StrikeResolutionOptions, StrikeSource } from "./offense";
 export {
   ARMOR_CATEGORIES,
   ATTRIBUTE_IDS,
+  PROFICIENCY_RANKS,
   SAVE_ATTRIBUTE,
   SAVE_IDS,
   SKILL_ATTRIBUTE,
@@ -50,6 +52,7 @@ export {
   equippedArmor,
   formatStatisticSources,
   proficiencyBonus,
+  proficiencyRankAtLeast,
   resolveArmorClass,
   resolveClassDC,
   resolveInitiative,

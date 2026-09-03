@@ -43,7 +43,7 @@ port 8787 backend로 proxy합니다.
 ## M5 파티 편성과 캐릭터 제어
 
 - Players와 Party는 서로 다른 모델입니다. 한 세션에는 1–3명의 player seat가 있고,
-  호스트는 3명의 playable character 중 중복 없이 1–3명을 골라 `party.hero-1`부터
+  호스트는 4명의 playable character 중 중복 없이 1–3명을 골라 `party.hero-1`부터
   순서대로 편성합니다. 네트워크 player ID, 영속 PartyMember ID, 전투 actor ID는 분리됩니다.
 - Slot 1은 항상 호스트 소유입니다. 게스트는 편성된 Slot 2/3 중 비어 있는 캐릭터 하나를
   선택하거나 원자적으로 다른 캐릭터로 바꿉니다. 호스트는 온라인 게스트가 선택한
@@ -68,8 +68,9 @@ port 8787 backend로 proxy합니다.
 
 ## 플레이
 
-- `Goblin Trouble`은 Road Ambush → Ruined Gate → Goblin Chief의 linear Adventure입니다.
-- 전투 승리 후 두 Reward 중 하나를 획득하며, `Manage Loadout`에서 장비 slot과 준비
+- `Goblin Trouble`은 Road Ambush에서 Cult Sanctum까지 이어지는 8 Encounter linear Adventure이며,
+  앞의 4개가 tutorial prefix입니다.
+- 여섯 번의 전투 승리 뒤 Reward 선택지(카드 보상 3개, 장비 보상 4개) 중 하나를 획득하며, `Manage Loadout`에서 장비 slot과 준비
   카드를 click/select 방식으로 편성합니다. 장착해도 Collection 수량은 차감되지 않습니다.
 - Builder Preview와 다음 전투는 같은 loadout resolver를 사용합니다. AC/Reflex,
   Class DC, resolved Strike(attack/damage/range/trait), Trait-granted Card,
@@ -106,7 +107,7 @@ PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 
 
 ```text
 src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
-src/content JSON authoring DTO, semantic compiler, canonical fingerprint, v6 loader
+src/content JSON authoring DTO, semantic compiler, canonical fingerprint, schema v8 loader
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
@@ -139,8 +140,9 @@ Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Re
 Playable Character의 Save/Skill/Perception/Initiative는 Level, Attribute modifier,
 Proficiency Rank와 Equipment/Condition/Trait modifier contribution을 입력으로 받는 하나의
 deterministic resolver에서 파생합니다. Creature/Enemy는 같은 resolver 경계에 authored
-fixed statistic을 제공하므로 PC용 16 Skill profile을 강제하지 않습니다. 같은 typed
-bonus/penalty는 가장 큰 값만 적용되고, untyped는 penalty로만 존재하며 모두 누적됩니다.
+fixed statistic을 제공하므로 PC용 16 Skill profile을 강제하지 않습니다. typed
+bonus/penalty는 type마다 가장 큰 bonus와 가장 나쁜 penalty가 각각 적용되고, untyped는
+penalty로만 존재하며 모두 누적됩니다.
 Initiative source는 Perception 또는 Skill로만 선택할 수 있습니다.
 
 Armor Class와 Max HP도 같은 경계에서 파생합니다. Character AC는
@@ -180,16 +182,25 @@ Preview와 실행이 같은 plan을 소비하므로 Preview modifier/DC와 실�
 off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `rollerActorId`를
 따로 보고하므로 대상이 굴리는 Save도 모호하지 않습니다.
 
-콘텐츠의 source of truth는 [`content/m6`](content/m6) JSON이며 pack identity는
-`cardguild.m6@0.9.0`, contract는 schema v8입니다. 기존 [`content/m3`](content/m3)의
-`cardguild.m4@0.6.0` pack은 회귀 fixture로 보존됩니다. Schema와
-작성 규칙은 [`content/README.md`](content/README.md)에 있습니다. Equipment,
-Card, Condition과 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로
-추가할 수 있습니다.
+Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며 pack identity는
+`cardguild.m7`, contract는 schema v8입니다. 현재 authored revision과 fingerprint는
+`content/m7/manifest.json`과 `npm run content:check` 출력이 소유하므로 이 README에 복제하지
+않습니다. Client UI, battle rendering, WebSocket hello와 authoritative server는 모두
+`src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다.
+[`content/m6`](content/m6)의 `cardguild.m6@0.9.0`과 [`content/m3`](content/m3)의
+`cardguild.m4@0.6.0` pack은 규칙 회귀 fixture로 보존되며 production authoring 대상이 아닙니다.
+디렉터리 안내는 [`content/README.md`](content/README.md)에 있습니다.
+
+**신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
+[`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md) 하나에 있습니다** — schema 계약,
+현재 release envelope, asset 절차, 검증 절차가 모두 그 문서의 golden path에 있습니다. 위에서
+소개용으로 적은 수치(Starter 수, Encounter 수, 보상 선택지 수)의 현재 값과 허용 범위도 그 문서
+§1.3 표와 `tools/content/m7-production-policy.ts`가 소유합니다. Equipment, Card, Condition과
+Trait provider는 engine TypeScript를 수정하지 않고 JSON으로 추가할 수 있습니다.
 
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
 `art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
-`art/processed`, 2048² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
+`art/processed`, 4096² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
 layer 및 Equipment/Card icon mapping은 `presentation/m3`에 있습니다. 보드 위 콘텐츠는 절대 픽셀이 아니라
 투영된 셀 폭 대비(`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다. 창 크기가
 달라져도 스탠디가 칸에서 차지하는 비율은 고정이고 카메라 zoom만 크기를 바꿉니다.
@@ -210,7 +221,8 @@ GitHub 이슈 `#7`을 따릅니다.
 ## 검증
 
 ```bash
-npm run content:check # Schema, references, compile, fingerprint
+npm run content:check # 모든 pack의 Schema, references, compile, fingerprint
+npm run content:production-check # 현재 M7 release policy/reachability/1P-3P 구조 coverage
 npm run assets        # raw PNG cleanup -> normalized frames -> atlas/tilemap -> validation
 npm run assets:build  # 위 pipeline 산출물 재생성
 npm run assets:check  # alpha, anchors, 양면 standee, atlas, layered tilemap 검증
@@ -220,12 +232,13 @@ npm run typecheck:server # DOM 없는 server/session/protocol type boundary
 npm run test:network # 실제 random-port HTTP/WebSocket 3-client integration
 npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive smoke
 npm test             # unit + network + Playwright
+npm run playtest     # seeded 자동 플레이(밸런스 조사 도구, gate 아님)
 ```
 
-Vitest는 Content v6 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
-typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 3인 profile과 1–3P spawn,
+Vitest는 Content schema v8 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
+typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
 Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
-deck/stat/context, Adventure 3전/Reward/실패/seed/Combat bridge,
+deck/stat/context, Adventure 8전/Reward/실패/seed/Combat bridge,
 projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
 Reaction lifecycle, replay setup identity/hash, victory/defeat를 검증합니다. Playwright는
@@ -237,6 +250,24 @@ claim race와 authorization, turn/reaction disconnect fallback·reconnect, serve
 newest-wins reconnect와 protocol v1 fail-fast를 검증합니다. Playwright는 별도
 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어, 2P fallback,
 3P 분산 제어와 hash 수렴을 검증하며 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
+
+## UI/UX 리뷰 캡쳐
+
+UI를 고치기 전후를 같은 자리에서 비교하려고, 실제 앱을 solo host로 한 판 돌리면서 화면별
+대표 이미지를 찍어 둡니다. 목업이 아니라 지금 코드가 그리는 화면입니다.
+
+```bash
+npm run ui:capture:baseline # 원본(개선 전) 캡쳐 -> docs/ui-review/baseline/
+npm run ui:capture          # 변경(개선 후) 캡쳐 -> docs/ui-review/current/
+npm run ui:compare          # docs/ui-review/index.html 좌우 비교 페이지만 재생성
+```
+
+세션 로비, 파티 편성, Adventure 진행, Loadout Builder 세 상태, 전투 HUD와 액션 링, 보상
+선택, 실패 화면을 1440x900과 1024x768로 찍습니다. 각 해상도의 `manifest.json`이 화면 ID와
+리뷰 포인트, 그리고 찍지 못한 화면과 그 이유를 함께 남기므로 캡쳐 순서가 바뀌어도 원본과
+변경이 화면 ID로 짝지어집니다. 자세한 사용법은 `docs/ui-review/README.md`에 있습니다.
+캡쳐는 `playwright.capture.config.ts`로만 돌아가고 `npm run test:smoke`는 이 파일을
+실행하지 않으므로, 테스트가 리뷰 자료를 덮어쓰지 않습니다.
 
 ## M5 범위 밖
 

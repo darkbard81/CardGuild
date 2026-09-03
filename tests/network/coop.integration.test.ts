@@ -1,7 +1,7 @@
 import { WebSocket } from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { M6_ADVENTURE_ID, M6_COMPILED_PACK, M6_CONTENT_IDENTITY } from "../../src/content";
+import { PRODUCTION_CONTENT } from "../../src/content";
 import type {
   ClientIntentEnvelope,
   ServerAck,
@@ -32,7 +32,7 @@ class SocketClient {
   public static async connect(
     origin: string,
     credential: SessionCredentialResponse,
-    contentIdentity = M6_CONTENT_IDENTITY,
+    contentIdentity = PRODUCTION_CONTENT.contentIdentity,
     version: 1 | 3 = 3,
   ): Promise<SocketClient> {
     const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
@@ -163,7 +163,7 @@ describe("real WebSocket M5 cooperative session", () => {
     let playerSequence = 0;
     let tokenSequence = 0;
     running = await startCardGuildServer({
-      context: { pack: M6_COMPILED_PACK, adventureId: M6_ADVENTURE_ID },
+      context: { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId },
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
       sources: {
@@ -204,6 +204,10 @@ describe("real WebSocket M5 cooperative session", () => {
     const initial = await client.waitForSnapshot(0, (snapshot) => snapshot.revision === 0);
     expect(initial.controlRevision).toBe(1);
     const host = server.store.get(credential.sessionId) as NonNullable<ReturnType<typeof server.store.get>>;
+    // The hello above carried PRODUCTION_CONTENT.contentIdentity, so reaching a
+    // snapshot at all proves the production client/server pair does not mismatch.
+    expect(host.state.contentIdentity.packId).toBe("cardguild.m7");
+    expect(host.state.contentIdentity).toEqual(PRODUCTION_CONTENT.contentIdentity);
 
     await accepted(client, host, "party", {
       type: "set-party-composition",
@@ -228,6 +232,8 @@ describe("real WebSocket M5 cooperative session", () => {
     }
     await accepted(client, host, "encounter", { type: "start-encounter" });
     expect(Object.keys(host.state.combat?.actors ?? {}).filter((id) => id.startsWith("party.hero-"))).toHaveLength(3);
+    expect(host.state.combat?.contentIdentity.packId).toBe("cardguild.m7");
+    expect(host.state.combat?.contentIdentity).toEqual(PRODUCTION_CONTENT.contentIdentity);
     const actionable = host.state.combat?.pendingReaction?.candidates[0]?.actorId ??
       host.state.combat?.turn.activeActorId;
     expect(actionable && host.control.effectiveControllerByMemberId[actionable]).toBe(credential.playerId);
@@ -518,7 +524,7 @@ describe("real WebSocket M5 cooperative session", () => {
     expect(new Set(snapshots.map((snapshot) => snapshot.gameplayHash)).size).toBe(1);
     expect(snapshots.every((snapshot) => snapshot.state.revision === host.state.revision)).toBe(true);
 
-    const v1 = await SocketClient.connect(server.origin, hostCredential, M6_CONTENT_IDENTITY, 1);
+    const v1 = await SocketClient.connect(server.origin, hostCredential, PRODUCTION_CONTENT.contentIdentity, 1);
     sockets.push(v1);
     const mismatch = await v1.waitFor(
       (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
@@ -610,7 +616,7 @@ describe("real WebSocket M5 cooperative session", () => {
     expect(host.state.lifecycle).toBe("active");
 
     const wrongContent = await SocketClient.connect(server.origin, credential, {
-      ...M6_CONTENT_IDENTITY,
+      ...PRODUCTION_CONTENT.contentIdentity,
       fingerprint: "fnv1a64:wrong",
     });
     sockets.push(wrongContent);
@@ -646,7 +652,7 @@ describe("real WebSocket M5 cooperative session", () => {
   it("closes only a connection whose queued authority handler rejects", async () => {
     const authorityErrors = vi.fn();
     running = await startCardGuildServer({
-      context: { pack: M6_COMPILED_PACK, adventureId: M6_ADVENTURE_ID },
+      context: { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId },
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
       onInternalError: authorityErrors,

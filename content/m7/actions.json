@@ -1,0 +1,837 @@
+[
+  {
+    "id": "step",
+    "name": "Step",
+    "description": "인접한 Open 칸으로 5ft 이동하고 바라볼 방향을 정합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }],
+    "targeting": "tile",
+    "resolution": { "kind": "move", "movementMode": "land", "step": true, "triggersReactions": false }
+  },
+  {
+    "id": "stride",
+    "name": "Stride",
+    "description": "Speed 범위에서 직교 경로로 이동하고 바라볼 방향을 정합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }],
+    "targeting": "tile",
+    "resolution": { "kind": "move", "movementMode": "land", "step": false, "triggersReactions": true }
+  },
+  {
+    "id": "strike",
+    "name": "Strike",
+    "description": "장착 무기의 공격 수치와 피해를 사용하는 기본 공격입니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": { "critical-success": [], "success": [], "failure": [], "critical-failure": [] }
+    }
+  },
+  {
+    "id": "stand",
+    "name": "Stand",
+    "description": "Prone 상태를 제거합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }],
+    "targeting": "self",
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "remove-condition", "owner": "actor", "condition": "prone" }]
+    }
+  },
+  {
+    "id": "escape-grab",
+    "name": "Escape Grab",
+    "description": "Athletics 판정으로 Grabbed 상태를 제거합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "self",
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "athletics" },
+        "dc": { "kind": "fixed", "value": 15 }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "remove-condition", "owner": "actor", "condition": "grabbed" }],
+        "success": [{ "kind": "remove-condition", "owner": "actor", "condition": "grabbed" }],
+        "failure": [],
+        "critical-failure": [{ "kind": "lock-action", "actionId": "escape-grab" }]
+      }
+    }
+  },
+  {
+    "id": "interact-lever",
+    "name": "Interact",
+    "description": "인접한 레버를 작동해 차단된 문을 엽니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "manipulate" }],
+    "targeting": "object",
+    "resolution": { "kind": "direct", "effects": [{ "kind": "interact" }] }
+  },
+  {
+    "id": "raise-shield",
+    "name": "Raise Shield",
+    "description": "다음 자기 턴 시작까지 Shield의 AC 보너스를 얻습니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }],
+    "targeting": "self",
+    "resolution": { "kind": "direct", "effects": [{ "kind": "raise-shield" }] }
+  },
+  {
+    "id": "sustain-spell",
+    "name": "Sustain Spell",
+    "description": "선택한 지속 주문 효과를 다음 턴까지 연장합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }],
+    "targeting": "effect",
+    "resolution": { "kind": "direct", "effects": [{ "kind": "sustain-effect" }] }
+  },
+  {
+    "id": "trip",
+    "name": "Trip",
+    "description": "Halberd의 Athletics 판정으로 대상을 Prone으로 만듭니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }, { "id": "skill" }, { "id": "trip" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "athletics" },
+        "dc": { "kind": "statistic-dc", "owner": "target", "statistic": { "kind": "save", "save": "reflex" } }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "fly",
+    "name": "Fly",
+    "description": "Difficult와 Impassable을 무시하고 Speed만큼 이동합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }, { "id": "fly" }],
+    "targeting": "tile",
+    "resolution": { "kind": "move", "movementMode": "fly", "step": false, "triggersReactions": true }
+  },
+  {
+    "id": "spirit-beacon",
+    "name": "Spirit Beacon",
+    "description": "Sustain할 수 있는 빛의 표식을 자신에게 부착합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "focus" }, { "id": "spell" }],
+    "targeting": "self",
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "create-sustained-effect", "effectName": "Spirit Beacon" }]
+    }
+  },
+  {
+    "id": "spirit-lance",
+    "name": "Spirit Lance",
+    "description": "영적 통찰로 아르카나 지식을 벼려 쏘아 보냅니다. 대상이 Reflex로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "focus" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "reflex" },
+        "dc": {
+          "kind": "statistic-dc",
+          "owner": "actor",
+          "statistic": { "kind": "skill", "skill": "arcana", "attributeOverride": "wis" }
+        }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 4 }, "flatModifier": 0, "damageType": "force" }
+        ],
+        "failure": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "damageType": "force" }
+        ],
+        "critical-failure": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "multiplier": 2, "damageType": "force" },
+          { "kind": "apply-condition", "owner": "target", "condition": "prone" }
+        ]
+      }
+    }
+  },
+  {
+    "id": "reactive-strike",
+    "name": "Reactive Strike",
+    "description": "전방 또는 측면 Reach에서 적이 Move를 시작하면 Strike합니다.",
+    "timing": { "kind": "reaction" },
+    "traits": [{ "id": "attack" }, { "id": "reaction" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": { "critical-success": [], "success": [], "failure": [], "critical-failure": [] }
+    }
+  },
+  {
+    "id": "knockdown",
+    "name": "Knockdown",
+    "description": "강한 공격으로 피해를 주고 성공 시 대상을 Prone으로 만듭니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "vicious-swing",
+    "name": "Vicious Swing",
+    "description": "무기를 크게 휘둘러 추가 damage die를 더합니다. 이 공격은 MAP 두 단계를 진행합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "attack" }, { "id": "flourish" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "requirements": [{ "kind": "weapon-mode", "mode": "melee" }],
+    "mapAttackCount": 2,
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "extraWeaponDice": 1,
+      "outcomes": { "critical-success": [], "success": [], "failure": [], "critical-failure": [] }
+    }
+  },
+  {
+    "id": "intimidating-strike",
+    "name": "Intimidating Strike",
+    "description": "명중한 대상을 위협해 Frightened로 만듭니다. Critical이면 더 크게 겁먹습니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "attack" }, { "id": "emotion" }, { "id": "fear" }, { "id": "mental" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "requirements": [{ "kind": "weapon-mode", "mode": "melee" }],
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 2 }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 1 }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "combat-grab",
+    "name": "Combat Grab",
+    "description": "공격이 명중하면 대상을 붙잡습니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "requirements": [{ "kind": "weapon-mode", "mode": "melee" }],
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "grabbed" }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "grabbed" }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "aimed-shot",
+    "name": "Aimed Shot",
+    "description": "원거리 무기로 조준해 추가 damage die를 더합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "weapon-reach" },
+    "requirements": [{ "kind": "weapon-mode", "mode": "ranged" }],
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "extraWeaponDice": 1,
+      "outcomes": { "critical-success": [], "success": [], "failure": [], "critical-failure": [] }
+    }
+  },
+  {
+    "id": "shield-press",
+    "name": "Shield Press",
+    "description": "방패로 밀어붙이며 무기를 내리칩니다. Critical이면 대상이 넘어집니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 5 },
+    "requirements": [{ "kind": "equipped-slot", "slot": "shield" }],
+    "resolution": {
+      "kind": "strike",
+      "damageMultiplier": 1,
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "prone" }],
+        "success": [],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "grapple",
+    "name": "Grapple",
+    "description": "Athletics로 대상을 붙잡아 Grabbed로 만듭니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }, { "id": "skill" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 5 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "athletics" },
+        "dc": { "kind": "statistic-dc", "owner": "target", "statistic": { "kind": "save", "save": "fortitude" } }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "grabbed" }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "grabbed" }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "demoralize",
+    "name": "Demoralize",
+    "description": "Intimidation으로 기세를 꺾어 Frightened로 만듭니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "emotion" }, { "id": "fear" }, { "id": "mental" }, { "id": "skill" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "intimidation" },
+        "dc": { "kind": "statistic-dc", "owner": "target", "statistic": { "kind": "save", "save": "will" } }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 2 }],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 1 }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "slip-free",
+    "name": "Slip Free",
+    "description": "Acrobatics로 몸을 비틀어 Grabbed 상태를 벗어납니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }, { "id": "skill" }],
+    "targeting": "self",
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "acrobatics" },
+        "dc": { "kind": "fixed", "value": 15 }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "remove-condition", "owner": "actor", "condition": "grabbed" }],
+        "success": [{ "kind": "remove-condition", "owner": "actor", "condition": "grabbed" }],
+        "failure": [],
+        "critical-failure": [{ "kind": "lock-action", "actionId": "slip-free" }]
+      }
+    }
+  },
+  {
+    "id": "battle-medicine",
+    "name": "Battle Medicine",
+    "description": "Medicine으로 전투 중 동료의 상처를 응급 처치합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "manipulate" }, { "id": "healing" }, { "id": "skill" }],
+    "targeting": "ally",
+    "range": { "kind": "feet", "value": 5 },
+    "requirements": [{ "kind": "skill-rank", "skill": "medicine", "minimum": "trained" }],
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "medicine" },
+        "dc": { "kind": "fixed", "value": 15 }
+      },
+      "outcomes": {
+        "critical-success": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 4, "sides": 8 }, "flatModifier": 0 }],
+        "success": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 2, "sides": 8 }, "flatModifier": 0 }],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "frostbite",
+    "name": "Frostbite",
+    "description": "서리를 씌워 냉기 피해를 줍니다. 대상이 Fortitude basic save로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "cantrip" }, { "id": "cold" }, { "id": "concentrate" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 60 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "fortitude" },
+        "dc": {
+          "kind": "statistic-dc",
+          "owner": "actor",
+          "statistic": { "kind": "skill", "skill": "arcana", "attributeOverride": "int" }
+        }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "damageType": "cold", "multiplier": 0.5 }
+        ],
+        "failure": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "damageType": "cold", "multiplier": 1 }
+        ],
+        "critical-failure": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 2, "sides": 4 }, "flatModifier": 0, "damageType": "cold", "multiplier": 2 }
+        ]
+      }
+    }
+  },
+  {
+    "id": "fear-spell",
+    "name": "Fear",
+    "description": "공포를 불어넣습니다. 대상이 Will로 저항하며 실패할수록 크게 겁먹습니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "concentrate" }, { "id": "emotion" }, { "id": "fear" }, { "id": "mental" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "will" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "occultism" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 1 }],
+        "failure": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 2 }],
+        "critical-failure": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 3 }]
+      }
+    }
+  },
+  {
+    "id": "harm",
+    "name": "Harm",
+    "description": "손을 뻗어 공허의 기운으로 생명력을 앗아갑니다. 대상이 Fortitude basic save로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "spell" }, { "id": "void" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 5 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "fortitude" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "religion" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0, "damageType": "void", "multiplier": 0.5 }
+        ],
+        "failure": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0, "damageType": "void", "multiplier": 1 }
+        ],
+        "critical-failure": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0, "damageType": "void", "multiplier": 2 }
+        ]
+      }
+    }
+  },
+  {
+    "id": "daze",
+    "name": "Daze",
+    "description": "정신을 뒤흔들어 정신 피해를 줍니다. 대상이 Will basic save로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "cantrip" }, { "id": "concentrate" }, { "id": "mental" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 60 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "will" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "occultism" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 6 }, "flatModifier": 0, "damageType": "mental", "multiplier": 0.5 }
+        ],
+        "failure": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 6 }, "flatModifier": 0, "damageType": "mental", "multiplier": 1 }
+        ],
+        "critical-failure": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 6 }, "flatModifier": 0, "damageType": "mental", "multiplier": 2 }
+        ]
+      }
+    }
+  },
+  {
+    "id": "iron-presence",
+    "name": "Iron Presence",
+    "description": "수련으로 벼린 존재감으로 압도합니다. Class DC에 대해 대상이 Will로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "concentrate" }, { "id": "emotion" }, { "id": "fear" }, { "id": "mental" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "will" },
+        "dc": { "kind": "class-dc", "owner": "actor" }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 1 }],
+        "failure": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 2 }],
+        "critical-failure": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 3 }]
+      }
+    }
+  },
+  {
+    "id": "telekinetic-projectile",
+    "name": "Telekinetic Projectile",
+    "description": "주변 물체를 염력으로 쏘아 보냅니다. 대상 AC에 대해 판정합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "attack" }, { "id": "cantrip" }, { "id": "concentrate" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "arcana", "attributeOverride": "int" },
+        "dc": { "kind": "armor-class", "owner": "target" }
+      },
+      "outcomes": {
+        "critical-success": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 6 },
+            "flatModifier": 0,
+            "damageType": "bludgeoning",
+            "multiplier": 2
+          }
+        ],
+        "success": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 6 },
+            "flatModifier": 0,
+            "damageType": "bludgeoning"
+          }
+        ],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "ember-lash",
+    "name": "Ember Lash",
+    "description": "불꽃 채찍을 휘둘러 화염 피해를 줍니다. 대상 AC에 대해 판정합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "attack" }, { "id": "cantrip" }, { "id": "concentrate" }, { "id": "fire" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": { "kind": "skill", "skill": "arcana", "attributeOverride": "int" },
+        "dc": { "kind": "armor-class", "owner": "target" }
+      },
+      "outcomes": {
+        "critical-success": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 4 },
+            "flatModifier": 0,
+            "damageType": "fire",
+            "multiplier": 2
+          }
+        ],
+        "success": [
+          { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 4 }, "flatModifier": 0, "damageType": "fire" }
+        ],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "force-barrage",
+    "name": "Force Barrage",
+    "description": "빗나가지 않는 힘의 화살을 날립니다. 판정이 없습니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [
+        { "kind": "damage", "owner": "target", "dice": { "count": 1, "sides": 4 }, "flatModifier": 1, "damageType": "force" }
+      ]
+    }
+  },
+  {
+    "id": "heal",
+    "name": "Heal",
+    "description": "생명의 기운을 흘려 넣어 대상의 HP를 회복시킵니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "healing" }, { "id": "spell" }, { "id": "vitality" }],
+    "targeting": "creature",
+    "range": { "kind": "feet", "value": 5 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0 }]
+    }
+  },
+  {
+    "id": "soothe",
+    "name": "Soothe",
+    "description": "정신을 다독여 동료의 HP를 회복시킵니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "concentrate" }, { "id": "healing" }, { "id": "mental" }, { "id": "spell" }],
+    "targeting": "ally",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 1, "sides": 10 }, "flatModifier": 4 }]
+    }
+  },
+  {
+    "id": "lay-on-hands",
+    "name": "Lay on Hands",
+    "description": "손을 얹어 정해진 양의 생명력을 흘려보냅니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "focus" }, { "id": "healing" }, { "id": "spell" }, { "id": "vitality" }],
+    "targeting": "creature",
+    "range": { "kind": "feet", "value": 5 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 0, "sides": 6 }, "flatModifier": 6 }]
+    }
+  },
+  {
+    "id": "spirit-edge",
+    "name": "Spirit Edge",
+    "description": "동료의 무기에 영적인 날을 씌워 다음 턴까지 공격 판정을 높입니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "concentrate" }, { "id": "spell" }],
+    "targeting": "ally",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "apply-condition", "owner": "target", "condition": "spirit-edge", "value": 1 }]
+    }
+  },
+  {
+    "id": "brace-behind-cover",
+    "name": "Brace Behind Cover",
+    "description": "몸을 낮춰 자세를 잡습니다. 다음 자기 턴이 시작될 때까지 AC가 오릅니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }],
+    "targeting": "self",
+    "resolution": { "kind": "direct", "effects": [{ "kind": "apply-condition", "owner": "actor", "condition": "covered" }] }
+  },
+  {
+    "id": "dueling-parry",
+    "name": "Dueling Parry",
+    "description": "무기로 상대의 공격선을 막습니다. 다음 자기 턴이 시작될 때까지 AC가 오릅니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }],
+    "targeting": "self",
+    "requirements": [{ "kind": "equipped-slot", "slot": "weapon" }],
+    "resolution": { "kind": "direct", "effects": [{ "kind": "apply-condition", "owner": "actor", "condition": "parrying" }] }
+  },
+  {
+    "id": "arcane-ward",
+    "name": "Arcane Ward",
+    "description": "얇은 마력 방벽을 두릅니다. 다음 자기 턴이 시작될 때까지 AC가 오릅니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "cantrip" }, { "id": "concentrate" }, { "id": "spell" }],
+    "targeting": "self",
+    "resolution": { "kind": "direct", "effects": [{ "kind": "apply-condition", "owner": "actor", "condition": "warded" }] }
+  },
+  {
+    "id": "careful-advance",
+    "name": "Careful Advance",
+    "description": "경로를 살피며 이동해 반응 공격을 유발하지 않습니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }],
+    "targeting": "tile",
+    "resolution": { "kind": "move", "movementMode": "land", "step": false, "triggersReactions": false }
+  },
+  {
+    "id": "hover-step",
+    "name": "Hover Step",
+    "description": "떠오른 채 인접한 칸으로 미끄러지듯 옮겨 갑니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "move" }, { "id": "fly" }],
+    "targeting": "tile",
+    "resolution": { "kind": "move", "movementMode": "fly", "step": true, "triggersReactions": false }
+  },
+  {
+    "id": "mend-bone",
+    "name": "Mend Bone",
+    "description": "부서진 아군을 임시로 이어 붙여 HP를 회복시킵니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "healing" }],
+    "targeting": "ally",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 1, "sides": 8 }, "flatModifier": 0 }]
+    }
+  },
+  {
+    "id": "soothing-litany",
+    "name": "Soothing Litany",
+    "description": "의식 구절을 읊어 아군의 상처를 덮습니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "concentrate" }, { "id": "healing" }],
+    "targeting": "ally",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "direct",
+      "effects": [{ "kind": "restore-hp", "owner": "target", "dice": { "count": 1, "sides": 10 }, "flatModifier": 2 }]
+    }
+  },
+  {
+    "id": "terrifying-howl",
+    "name": "Terrifying Howl",
+    "description": "소름 끼치는 포효로 상대를 위축시킵니다. 대상이 Will로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "emotion" }, { "id": "fear" }, { "id": "mental" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "will" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "intimidation" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 1 }],
+        "failure": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 2 }],
+        "critical-failure": [{ "kind": "apply-condition", "owner": "target", "condition": "frightened", "value": 3 }]
+      }
+    }
+  },
+  {
+    "id": "web-spit",
+    "name": "Web Spit",
+    "description": "끈적한 거미줄을 뱉어 대상을 붙잡습니다. 대상이 Reflex로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "attack" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "reflex" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "athletics" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [],
+        "failure": [{ "kind": "apply-condition", "owner": "target", "condition": "grabbed" }],
+        "critical-failure": [{ "kind": "apply-condition", "owner": "target", "condition": "grabbed" }]
+      }
+    }
+  },
+  {
+    "id": "hex-bolt",
+    "name": "Hex Bolt",
+    "description": "주술의 불꽃을 쏘아 보냅니다. 대상이 Reflex basic save로 저항합니다.",
+    "timing": { "kind": "turn", "actions": 2 },
+    "traits": [{ "id": "concentrate" }, { "id": "fire" }, { "id": "spell" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 30 },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "target",
+        "statistic": { "kind": "save", "save": "reflex" },
+        "dc": { "kind": "statistic-dc", "owner": "actor", "statistic": { "kind": "skill", "skill": "occultism" } }
+      },
+      "outcomes": {
+        "critical-success": [],
+        "success": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 6 },
+            "flatModifier": 0,
+            "damageType": "fire",
+            "multiplier": 0.5
+          }
+        ],
+        "failure": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 6 },
+            "flatModifier": 0,
+            "damageType": "fire",
+            "multiplier": 1
+          }
+        ],
+        "critical-failure": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": { "count": 1, "sides": 6 },
+            "flatModifier": 0,
+            "damageType": "fire",
+            "multiplier": 2
+          }
+        ]
+      }
+    }
+  }
+]

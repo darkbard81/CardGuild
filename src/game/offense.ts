@@ -30,6 +30,12 @@ const AGILE_MAP = [0, -4, -8] as const;
 export interface StrikeResolutionOptions {
   /** Attacks already made this turn, before this one. The MAP ladder is derived from it. */
   readonly attacksThisTurn?: number;
+  /**
+   * Extra dice of the weapon's own base die, from an Action such as a heavy two-action
+   * swing. Only the die count grows: the attack modifier and the Attribute damage
+   * contribution are resolved once and never duplicated.
+   */
+  readonly extraWeaponDice?: number;
 }
 
 /**
@@ -180,6 +186,7 @@ export function resolveStrike(
   const source = resolveStrikeSource(actor, context);
   const traits = [...new Set(source.traits.map((trait) => trait.id))].sort();
   const mapPenalty = resolveMapPenalty(options.attacksThisTurn ?? 0, traits);
+  const extraDice = Math.max(0, options.extraWeaponDice ?? 0);
   const penaltySources = mapSources(mapPenalty, traits.includes("agile"));
   const attackStack = resolveModifierStack(actor, { kind: "attack" }, context);
   const damageStack = resolveModifierStack(actor, { kind: "damage" }, context);
@@ -217,7 +224,7 @@ export function resolveStrike(
       mapPenalty,
       rangeFeet: profile.rangeFeet,
       traits,
-      damage: damageStrike(profile.damage.count, profile.damage.sides, profile.damage.damageType, damageSources),
+      damage: damageStrike(profile.damage.count + extraDice, profile.damage.sides, profile.damage.damageType, damageSources),
       sources: attackSources,
     };
   }
@@ -258,7 +265,7 @@ export function resolveStrike(
     mapPenalty,
     rangeFeet: profile.rangeFeet,
     traits,
-    damage: damageStrike(profile.damage.count, profile.damage.sides, profile.damage.damageType, damageSources),
+    damage: damageStrike(profile.damage.count + extraDice, profile.damage.sides, profile.damage.damageType, damageSources),
     sources: attackSources,
   };
 }
@@ -273,11 +280,19 @@ export function weaponDamageRoll(rolledDice: number, flatModifier: number): numb
 }
 
 /**
- * The minimum applies to the normal damage, and only then does a critical or an action's
- * own multiplier double it — a penalised critical deals 2, not 0.
+ * The one place a rolled damage total becomes a number, shared by Strikes and by authored
+ * `damage` effects. The minimum applies to the normal damage first, and only then does a
+ * multiplier scale it — a penalised critical deals 2, not 0.
+ *
+ * Multipliers below 1 exist for PF2e's basic save, where a successful save takes half
+ * damage rounded down (https://2e.aonprd.com/Rules.aspx?ID=2296). Halving rounds down but
+ * never erases damage that was there: scaling positive damage by a positive multiplier
+ * still deals at least 1. Resistance is a later step and may take it to 0; this one never
+ * does. Both rules live here rather than at any call site.
  */
-export function strikeDamageTotal(rolledDice: number, flatModifier: number, multiplier: number): number {
-  return weaponDamageRoll(rolledDice, flatModifier) * multiplier;
+export function damageTotal(rolledDice: number, flatModifier: number, multiplier: number): number {
+  if (multiplier <= 0) return 0;
+  return Math.max(1, Math.floor(weaponDamageRoll(rolledDice, flatModifier) * multiplier));
 }
 
 function damageStrike(

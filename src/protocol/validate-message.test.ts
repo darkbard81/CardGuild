@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { M6_CONTENT_IDENTITY } from "../content";
+import { PRODUCTION_CONTENT } from "../content";
 import { validateClientMessage } from "./validate-message";
 
 describe("protocol v3 structural validation", () => {
@@ -11,7 +11,7 @@ describe("protocol v3 structural validation", () => {
       sessionId: "session-a",
       playerId: "player-a",
       reconnectToken: "secret",
-      contentIdentity: M6_CONTENT_IDENTITY,
+      contentIdentity: PRODUCTION_CONTENT.contentIdentity,
     }).ok).toBe(true);
     expect(validateClientMessage({
       v: 3,
@@ -93,7 +93,7 @@ describe("protocol v3 structural validation", () => {
         sessionId: "session-a",
         playerId: "player-a",
         reconnectToken: "secret",
-        contentIdentity: M6_CONTENT_IDENTITY,
+        contentIdentity: PRODUCTION_CONTENT.contentIdentity,
       },
       {
         v: 3,

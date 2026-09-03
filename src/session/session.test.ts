@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { M6_ADVENTURE_ID, M6_COMPILED_PACK } from "../content";
+import { PRODUCTION_CONTENT } from "../content";
 import { hashCombatState } from "../game";
 import {
   createSessionCoreState,
@@ -18,8 +18,8 @@ import type {
 } from "./types";
 
 const context: SessionAuthorityContext = {
-  pack: M6_COMPILED_PACK,
-  adventureId: M6_ADVENTURE_ID,
+  pack: PRODUCTION_CONTENT.pack,
+  adventureId: PRODUCTION_CONTENT.adventureId,
 };
 const DEFAULT_PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
 

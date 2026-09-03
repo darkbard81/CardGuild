@@ -1,7 +1,7 @@
 import path from "node:path";
 import process from "node:process";
 
-import { M6_ADVENTURE_ID, M6_COMPILED_PACK } from "../content";
+import { PRODUCTION_CONTENT } from "../content/production-content";
 import { createOpaqueId, createReconnectCredential } from "./credentials";
 import { startCardGuildServer } from "./server";
 
@@ -21,8 +21,8 @@ if (adventureSeed !== null && !Number.isInteger(adventureSeed)) {
 
 const running = await startCardGuildServer({
   context: {
-    pack: M6_COMPILED_PACK,
-    adventureId: M6_ADVENTURE_ID,
+    pack: PRODUCTION_CONTENT.pack,
+    adventureId: PRODUCTION_CONTENT.adventureId,
   },
   host,
   port,
