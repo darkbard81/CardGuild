@@ -202,7 +202,7 @@ seed는 1로 고정했습니다. hero reaction window가 열리고 위 정책으
 | 어떤 전투가 보상을 주는지 화면에 없음 | 보상 있는 단계에 금색 핍(`◆`, `aria-label`·`title` 포함). 8개 중 6개가 주므로 텍스트 배지는 소음이라 핍으로 |
 | finale이 다른 전투와 구별되지 않음 | 마지막 단계에 `FINALE` 태그와 테두리. **위치에서 파생**하며 content id를 특별 취급하지 않음 |
 | Collection이 이름을 `·`로 이어 붙인 한 줄이라, 보상 6개가 쌓이면 읽히지 않음 | 아이콘 chip 목록 + 개수 배지. 수량은 2개 이상일 때만 표기 |
-| 장비 보상은 자동 장착되지 않는데 화면이 그 사실을 말하지 않음 | between-encounters에 "미장착 보상 N개 — Manage Loadout에서 장착하거나 준비해야 다음 전투에 반영됩니다". N은 **보상으로 받은 사본만** 셉니다 — collection은 starter 장비까지 담고 있어서 "소유 − 착용"으로 세면 halberd를 greatsword로 바꾼 순간 창고에 남은 halberd가 영영 "대기 중"이 되고, 무기 슬롯이 하나뿐이라 0으로 내려갈 수가 없습니다. 새 state 없이 `createStartingCollection`(authored `starterLoadout`을 읽으므로 재장착에 흔들리지 않음)을 빼서 출처를 복원합니다. 스모크가 starter 방패·부츠를 벗은 뒤 알림이 사라지는 것을 고정합니다 |
+| 장비 보상은 자동 장착되지 않는데 화면이 그 사실을 말하지 않음 | between-encounters에 "미장착 보상 N개 — Manage Loadout에서 장착하거나 준비해야 다음 전투에 반영됩니다". N은 **보상으로 받은 사본만** 셉니다 — collection은 starter 장비까지 담고 있어서 "소유 − 착용"으로 세면 halberd를 greatsword로 바꾼 순간 창고에 남은 halberd가 영영 "대기 중"이 되고, 무기 슬롯이 하나뿐이라 0으로 내려갈 수가 없습니다. 새 state 없이 `createStartingCollection`(authored `starterLoadout`을 읽으므로 재장착에 흔들리지 않음)을 빼서 출처를 복원합니다. 착용 사본은 **starter 기준선에 먼저 귀속**되므로, 이미 착용 중인 물건과 같은 보상은 두 번째 멤버가 들 때까지 알림에 남습니다 — 그때까지는 실제로 한 사본이 놀고 있기 때문입니다. 스모크가 starter 방패·부츠를 벗은 뒤 알림이 사라지는 것을 고정합니다 |
 | 보상 3지선다가 2열 그리드에서 **2 + 고아 1**로 깨짐 | 열 수를 선택지 수에서 받아 한 줄로(`--reward-choice-count`), 1100px 이하에서는 균등하게 세로 배치. 선택지 폭을 `justify-self: stretch`로 통일 — 크기가 다르면 순위처럼 읽힘 |
 | 3열이 되면 이름이 카드 밖으로 넘침 | content 패널 상한을 40rem → 46rem, 이름·종류 칸에 `min-width: 0`과 줄바꿈 허용 |
 

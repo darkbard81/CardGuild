@@ -276,8 +276,16 @@ export class AdventureUi {
    * authored starterLoadout and so does not move when a member re-equips.
    *
    * Counted per copy, not per id: a second copy of a card already prepared elsewhere is still
-   * an unused reward. Where a reward duplicates something the party started with, the carried
-   * copies are attributed to the reward first, so carrying the reward clears the notice.
+   * an unused reward. The `min` is the attribution rule, and it runs the other way round —
+   * carried copies count against the starter baseline first, and only the surplus lands on the
+   * reward copies. So a reward that duplicates gear the party already wears keeps the notice up
+   * until a second member carries a copy, because until then one copy really is spare. The
+   * opposite attribution would read better in that one case and be wrong in the commoner one:
+   * two members who each start with a halberd would hide a third, genuinely unused halberd.
+   *
+   * The shipped M7 rewards never duplicate worn starter gear — m7-tutorial.test.ts's "never
+   * offers a starter a reward it already has equipped" holds that — so this only decides how
+   * the notice behaves if a later pack starts handing out duplicates.
    */
   private unequipped(state: AdventureState): number {
     const started = createStartingCollection(state.party, this.pack);
