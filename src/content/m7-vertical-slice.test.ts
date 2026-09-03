@@ -44,14 +44,17 @@ const ONBOARDING_LENGTH = 4;
 const RESERVE_EQUIPMENT = ["executioner-axe", "brigandine", "bloodied-talisman"] as const;
 
 /**
- * #17's build directions, as the items an Adventure has to actually hand out for the
- * direction to be assemblable. Two are the acceptance floor.
+ * #17's five build directions, copied from docs/m7-equipment-matrix.md §4 and reduced to the
+ * `reward` items only — the baseline gear in those combinations (half-plate, shield,
+ * scale-mail, leather-armor) is already worn, so an Adventure only has to hand out the rest.
+ * docs/m7-equipment-matrix.md stays the source of truth: a direction is never shortened here
+ * to make this file pass. Two assemblable directions are the acceptance floor.
  */
 const BUILD_DIRECTIONS: Readonly<Record<string, readonly string[]>> = {
   "heavy breaker": ["greatsword", "tower-shield"],
-  "dex controller": ["flick-mace", "striders-boots"],
+  "dex controller": ["flick-mace", "scout-leather", "striders-boots"],
   "party support": ["medics-kit"],
-  "defensive duelist": ["dueling-rapier", "buckler"],
+  "defensive duelist": ["dueling-rapier", "buckler", "warding-charm"],
   "spell skirmisher": ["hexers-focus", "throwing-axes"],
 };
 
@@ -112,13 +115,16 @@ describe("production vertical slice", () => {
       expect(`${String(partySize)}P finale=${String(last)}`)
         .toBe(`${String(partySize)}P finale=${String(Math.max(...counts))}`);
       expect(counts.slice(0, -1).every((count) => count < last)).toBe(true);
-      // Past onboarding, no encounter is a single-role problem any more.
+      // Past onboarding, no encounter is one enemy definition repeated. Role is authored in the
+      // design matrix and is not runtime metadata, so this counts distinct definitions and
+      // nothing more — two definitions that share a role still pass. Role mix itself is a
+      // design review over docs/m7-vertical-slice.md.
       for (const encounterId of ADVENTURE.encounterIds.slice(ONBOARDING_LENGTH)) {
-        const kinds = new Set(opposition(encounterId, partySize)).size;
-        expect(`${encounterId}@${String(partySize)}P:${String(kinds >= 2)}`)
+        const distinct = new Set(opposition(encounterId, partySize)).size;
+        expect(`${encounterId}@${String(partySize)}P:${String(distinct >= 2)}`)
           .toBe(`${encounterId}@${String(partySize)}P:true`);
       }
-      // The finale is the only fight that puts three roles on the board at once.
+      // The finale is the only fight that puts three distinct definitions on the board at once.
       expect(new Set(opposition(finale, partySize)).size).toBeGreaterThanOrEqual(3);
     }
   });
@@ -171,7 +177,9 @@ describe("production vertical slice", () => {
       .sort();
     expect(assemblable.length).toBeGreaterThanOrEqual(2);
     // What actually shipped, so a quiet drop shows up as a diff rather than a near miss.
-    expect(assemblable).toEqual(["dex controller", "heavy breaker", "party support", "spell skirmisher"]);
+    // `dex controller` needs scout-leather and `defensive duelist` needs dueling-rapier, and
+    // this run offers neither; three complete directions clears the floor without widening it.
+    expect(assemblable).toEqual(["heavy breaker", "party support", "spell skirmisher"]);
     // The offers have to move more than one slot, or "direction" means nothing.
     const slots = new Set([...offered].map((id) => CONTENT.equipment[id]?.slot));
     expect(slots.size).toBeGreaterThanOrEqual(3);
@@ -263,7 +271,10 @@ describe("production vertical slice", () => {
     }
   });
 
-  it("builds a legal board for every starter at every party size, all the way to the finale", () => {
+  // One representative roster per party size — the first 1, 2 and 3 starters. Per-starter solo
+  // completion is m7-tutorial.test.ts's "completes with every starter, at every party size";
+  // every starter against every party size and build is #21's playtest matrix, not this file's.
+  it("builds a legal board at 1P, 2P and 3P, all the way to the finale", () => {
     for (const partySize of PARTY_SIZES) {
       const roster = STARTERS.slice(0, partySize);
       let state = createAdventureSession(CONTEXT, party(roster), 21);

@@ -41,11 +41,17 @@ Objective는 8개 전부 `defeat-all-enemies` 하나입니다. 새 objective kin
 |---|---:|---:|---:|
 | opener 적 수 (최소) | 1 | 1 | 1 |
 | finale 적 수 (엄격히 최대) | 3 | 4 | 5 |
-| onboarding 이후 최소 role 수 | 2 | 2 | 2 |
-| finale role 수 | 3 | 3 | 3 |
+| onboarding 이후 최소 creature definition 수 | 2 | 2 | 2 |
+| finale creature definition 수 | 3 | 3 | 3 |
 
 세 party size 모두에서 opener가 최소, finale이 **앞의 모든 encounter보다 엄격히 많습니다.**
-onboarding을 지나면 단일 역할 전투가 더 없습니다. 이 네 줄은 회귀 테스트로 고정되어 있습니다.
+onboarding을 지나면 한 종류만 반복하는 전투가 더 없습니다. 이 네 줄은 회귀 테스트로 고정되어
+있습니다.
+
+아래 두 줄은 **role이 아니라 서로 다른 creature definition 수**를 셉니다. role은 runtime
+metadata가 아니라 이 문서의 design matrix에만 있으므로, 같은 role의 서로 다른 creature 둘로
+바뀌어도 테스트는 통과합니다. 실제 role mix(예: `archer-perch` = ranged + support + lackey)는
+아래 표의 design review가 담보하고, 테스트는 "한 종류로만 채워지지 않았다"까지만 고정합니다.
 
 ### 소비된 content
 
@@ -94,18 +100,25 @@ dead choice가 됩니다. #19는 그 제약을 tutorial prefix 안으로 좁히�
 
 ### Build direction
 
-#17의 다섯 방향 중 **네 방향이 실제로 조립 가능**합니다(AC 요구는 2).
+#17의 다섯 방향 중 **세 방향이 실제로 조립 가능**합니다(AC 요구는 2).
 
-| Direction | 필요한 item | 노출 |
-|---|---|---|
-| Heavy breaker | greatsword + tower-shield | ✅ |
-| DEX controller | flick-mace + strider's boots | ✅ |
-| Party support | medic's kit | ✅ |
-| Spell skirmisher | hexer's focus + throwing axes | ✅ |
-| Defensive duelist | dueling-rapier + buckler | ❌ (buckler만) |
+방향의 정의는 `docs/m7-equipment-matrix.md` §4가 source of truth입니다. 아래 "필요한 item"은
+그 조합에서 **`reward` 등급만** 남긴 것으로, baseline 장비(half-plate, shield, scale-mail,
+leather-armor)는 이미 착용 중이라 Adventure가 나눠 줄 필요가 없습니다. 조합을 이쪽에서 줄여
+적지는 않습니다.
 
-세 equipment 보상이 weapon / feet / shield 세 슬롯을 건드리므로 "방향"이 실제로 다른 build를
-만듭니다. 이 목록도 테스트에 그대로 적혀 있어, 조용히 하나가 빠지면 diff로 드러납니다.
+| Direction | matrix 조합 | 나눠 줘야 하는 item | 노출 |
+|---|---|---|---|
+| Heavy breaker | greatsword + tower-shield (+ half-plate) | greatsword + tower-shield | ✅ |
+| Party support | medic's kit + shield + scale-mail | medic's kit | ✅ |
+| Spell skirmisher | hexer's focus + throwing axes + leather-armor | hexer's focus + throwing axes | ✅ |
+| DEX controller | flick-mace + scout-leather + strider's boots | flick-mace + scout-leather + strider's boots | ❌ (`scout-leather` 미노출) |
+| Defensive duelist | dueling-rapier + buckler + warding-charm | dueling-rapier + buckler + warding-charm | ❌ (`dueling-rapier` 미노출) |
+
+AC의 하한이 2이므로 세 방향으로 충분하고, 이를 채우려고 content를 더 넣지 않았습니다.
+`scout-leather`와 `dueling-rapier`는 #20의 노출 확대 대상으로 남습니다. 세 equipment 보상이
+weapon / feet / shield 세 슬롯을 건드리므로 "방향"이 실제로 다른 build를 만듭니다. 이 목록도
+테스트에 그대로 적혀 있어, 조용히 하나가 빠지면 diff로 드러납니다.
 
 ---
 
@@ -189,7 +202,7 @@ seed는 1로 고정했습니다. hero reaction window가 열리고 위 정책으
 | 어떤 전투가 보상을 주는지 화면에 없음 | 보상 있는 단계에 금색 핍(`◆`, `aria-label`·`title` 포함). 8개 중 6개가 주므로 텍스트 배지는 소음이라 핍으로 |
 | finale이 다른 전투와 구별되지 않음 | 마지막 단계에 `FINALE` 태그와 테두리. **위치에서 파생**하며 content id를 특별 취급하지 않음 |
 | Collection이 이름을 `·`로 이어 붙인 한 줄이라, 보상 6개가 쌓이면 읽히지 않음 | 아이콘 chip 목록 + 개수 배지. 수량은 2개 이상일 때만 표기 |
-| 장비 보상은 자동 장착되지 않는데 화면이 그 사실을 말하지 않음 | between-encounters에 "보상 N개 대기 중 — Manage Loadout에서 장착하거나 준비해야 다음 전투에 반영됩니다" |
+| 장비 보상은 자동 장착되지 않는데 화면이 그 사실을 말하지 않음 | between-encounters에 "미장착 보상 N개 — Manage Loadout에서 장착하거나 준비해야 다음 전투에 반영됩니다". N은 **보상으로 받은 사본만** 셉니다 — collection은 starter 장비까지 담고 있어서 "소유 − 착용"으로 세면 halberd를 greatsword로 바꾼 순간 창고에 남은 halberd가 영영 "대기 중"이 되고, 무기 슬롯이 하나뿐이라 0으로 내려갈 수가 없습니다. 새 state 없이 `createStartingCollection`(authored `starterLoadout`을 읽으므로 재장착에 흔들리지 않음)을 빼서 출처를 복원합니다. 스모크가 starter 방패·부츠를 벗은 뒤 알림이 사라지는 것을 고정합니다 |
 | 보상 3지선다가 2열 그리드에서 **2 + 고아 1**로 깨짐 | 열 수를 선택지 수에서 받아 한 줄로(`--reward-choice-count`), 1100px 이하에서는 균등하게 세로 배치. 선택지 폭을 `justify-self: stretch`로 통일 — 크기가 다르면 순위처럼 읽힘 |
 | 3열이 되면 이름이 카드 밖으로 넘침 | content 패널 상한을 40rem → 46rem, 이름·종류 칸에 `min-width: 0`과 줄바꿈 허용 |
 

@@ -278,7 +278,7 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator("#app")).toHaveAttribute("data-adventure-phase", "between-encounters");
   await expect(page.locator("#adventure-collection .collection-chip").filter({ hasText: "Brace Behind Cover" })).toHaveCount(1);
   // An unworn reward is exactly what Manage Loadout is for, so the screen says so.
-  await expect(page.locator(".loadout-nudge")).toContainText("보상 1개 대기 중");
+  await expect(page.locator(".loadout-nudge")).toContainText("미장착 보상 1개");
   // The next encounter names its threats before the party commits to it.
   await expect(page.locator(".encounter-threats")).toContainText("Goblin Spearman");
   await page.getByRole("button", { name: "Manage Loadout" }).click();
@@ -303,6 +303,10 @@ test("carries a reward loadout through the shared resolver into the next encount
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-reward-loadout.png"), fullPage: true });
 
   await page.getByRole("button", { name: "Done" }).click();
+  // The reward card is prepared now, and the only things left sitting in the collection are the
+  // starter shield and boots this loadout just took off. Swapped-out starter gear is not an
+  // unclaimed reward, so the notice is gone rather than stuck at "미장착 보상 2개".
+  await expect(page.locator(".loadout-nudge")).toHaveCount(0);
   await page.getByRole("button", { name: "Enter Encounter" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.spear-line");
   await expect(page.locator("#hero-stats")).toContainText("Reflex DC");

@@ -2,6 +2,7 @@ import type { AdventureState } from "../adventure";
 import type { CompiledContentPack } from "../content";
 import { placementAppliesToPartySize } from "../content";
 import type { AdventureDefinition, RewardGrant } from "../content";
+import { createStartingCollection } from "../loadout";
 import type { AssetCatalog } from "../presentation";
 
 function required<T extends Element>(selector: string): T {
@@ -175,7 +176,7 @@ export class AdventureUi {
       if (waiting > 0) {
         const note = element("p", "loadout-nudge");
         note.append(
-          element("strong", undefined, `보상 ${String(waiting)}개 대기 중`),
+          element("strong", undefined, `미장착 보상 ${String(waiting)}개`),
           element("span", undefined, "Manage Loadout에서 장착하거나 준비해야 다음 전투에 반영됩니다."),
         );
         this.content.append(note);
@@ -266,25 +267,37 @@ export class AdventureUi {
   }
 
   /**
-   * Copies the party owns but is not carrying, which is what Manage Loadout is for. Counted
-   * per copy, not per id: a second copy of a card already prepared elsewhere is still an
-   * unused reward.
+   * Reward copies nobody is carrying, which is what Manage Loadout is for.
+   *
+   * The collection is not a reward log — it opens holding every starter's gear — so a plain
+   * "owned minus carried" count calls a swapped-out starter weapon an unused reward, and a
+   * one-weapon-slot party can never drive that number to zero. Reward provenance is recovered
+   * without new state by subtracting the starting collection, which reads the roster's
+   * authored starterLoadout and so does not move when a member re-equips.
+   *
+   * Counted per copy, not per id: a second copy of a card already prepared elsewhere is still
+   * an unused reward. Where a reward duplicates something the party started with, the carried
+   * copies are attributed to the reward first, so carrying the reward clears the notice.
    */
   private unequipped(state: AdventureState): number {
-    const members = Object.values(state.party.members);
+    const started = createStartingCollection(state.party, this.pack);
     const carried = new Map<string, number>();
     const use = (id: string): void => {
       carried.set(id, (carried.get(id) ?? 0) + 1);
     };
-    for (const member of members) {
+    for (const member of Object.values(state.party.members)) {
       for (const id of Object.values(member.loadout.equipment)) if (id) use(id);
       for (const id of member.loadout.preparedCards) use(id);
     }
-    const spare = ([id, owned]: readonly [string, number]): number => Math.max(0, owned - (carried.get(id) ?? 0));
-    return [
-      ...Object.entries(state.collection.equipment),
-      ...Object.entries(state.collection.cards),
-    ].reduce((total, entry) => total + spare(entry), 0);
+    const count = (
+      owned: Readonly<Record<string, number>>,
+      base: Readonly<Record<string, number>>,
+    ): number => Object.entries(owned).reduce((total, [id, copies]) => {
+      const fromRewards = Math.max(0, copies - (base[id] ?? 0));
+      const unused = Math.max(0, copies - (carried.get(id) ?? 0));
+      return total + Math.min(fromRewards, unused);
+    }, 0);
+    return count(state.collection.equipment, started.equipment) + count(state.collection.cards, started.cards);
   }
 
   private chip(assetId: string | null, name: string, count: number, kind: string): HTMLElement {
