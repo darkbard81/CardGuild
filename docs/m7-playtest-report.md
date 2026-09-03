@@ -317,7 +317,7 @@ npm run test:smoke                 OK  (11 Playwright tests)
 
 M6 회귀 fixture는 generic `content:check`로만 검증되며 M7 volume/reachability 정책과 결합되지
 않습니다. deterministic seed / replay / content identity는 유지됩니다 — 같은 seed는 같은 run을
-만들고(432 run 재현), fingerprint는 `fnv1a64:c984b4bf18da99db`입니다.
+만들고(432 run 재현), fingerprint는 상단과 같은 `fnv1a64:887ee163d92faa57`입니다.
 
 ### Exit criterion — 실제 loadout 변화를 포함한 완주
 
