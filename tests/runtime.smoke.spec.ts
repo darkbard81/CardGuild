@@ -166,8 +166,11 @@ async function winRoadAmbush(page: Page): Promise<void> {
     }
     if (await page.locator("#app").getAttribute("data-screen") !== "combat") break;
     if (await page.locator("#result-modal").isVisible()) break;
+    // A turn that spent all three actions hands itself over, so the button is only
+    // needed for the turns this loop leaves unfinished.
+    const spent = await page.locator("#action-pips .available").count() === 0;
     const revision = await page.locator("#app").getAttribute("data-session-revision");
-    await page.getByRole("button", { name: "End Turn" }).click();
+    if (!spent) await page.getByRole("button", { name: "End Turn" }).click();
     await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "");
   }
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
@@ -395,7 +398,11 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#board-prompt")).toContainText("강조된 적");
   await clickBoardPoint(page, 2.5, 1.5);
   await expect(page.locator("#combat-log")).toContainText("used trip");
-  await expect(page.locator("#action-pips .available")).toHaveCount(0);
+  // The third action leaves a turn with nothing but End Turn in it -- every action in
+  // the pack costs at least one -- so the client sends it rather than making the player
+  // click. The pips are not asserted here: the enemy can answer fast enough that the
+  // board is back on Aerin's next turn before a poll sees them empty.
+  await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");
 
   // The mesh maps the whole board texture onto the projected quad, so the texture has to be
   // exactly its own page. A padded page shrinks the art inside the quad and leaves actors

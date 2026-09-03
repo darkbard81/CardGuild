@@ -122,6 +122,9 @@ export class BattleController {
     this.render(options.history);
   }
 
+  /** Guards against sending a second end-turn while the first is still outstanding. */
+  private autoEndedTurn = false;
+
   private requireElement<T extends Element>(selector: string): T {
     const element = document.querySelector<T>(selector);
     if (!element) throw new Error(`Required element was not found: ${selector}`);
@@ -434,9 +437,27 @@ export class BattleController {
     });
   }
 
-  private endTurn(): void {
-    if (!this.activeHeroId()) return;
-    this.sendIntent({ type: "end-turn" });
+  private endTurn(): boolean {
+    if (!this.activeHeroId()) return false;
+    return this.sendIntent({ type: "end-turn" });
+  }
+
+  /**
+   * A turn with no actions left has nothing but End Turn in it: every action in the
+   * pack costs at least one, and Reactions are resolved by their own window rather
+   * than from the turn. Sending it here saves the click that has no alternative.
+   *
+   * The flag clears as soon as a turn with actions is seen, so a new turn always ends
+   * itself again, and a rejected intent is retried on the next snapshot instead of
+   * leaving the player stuck with a turn the client thinks it already ended.
+   */
+  private endSpentTurn(): void {
+    if (this.state.turn.actionsRemaining > 0) {
+      this.autoEndedTurn = false;
+      return;
+    }
+    if (this.autoEndedTurn || !this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
+    this.autoEndedTurn = this.endTurn();
   }
 
   private resolveReaction(use: boolean): void {
@@ -448,15 +469,17 @@ export class BattleController {
       : { type: "pass-reaction", triggerId: pending.triggerId });
   }
 
-  private sendIntent(intent: SessionIntent): void {
+  /** Reports whether the intent was taken, so a caller can retry on the next snapshot. */
+  private sendIntent(intent: SessionIntent): boolean {
     if (!this.onIntent(intent)) {
       this.prompt = "서버 응답을 기다리는 중입니다.";
       this.render();
-      return;
+      return false;
     }
     this.goIdle();
     this.prompt = "서버가 행동을 판정하는 중입니다.";
     this.render();
+    return true;
   }
 
   private restart(): void {
@@ -485,7 +508,10 @@ export class BattleController {
         : this.activeHeroId()
           ? PROMPT_IDLE
           : `${state.actors[state.turn.activeActorId]?.name ?? "다른 플레이어"}의 턴입니다.`;
+    // Render first so the action that spent the last pip is animated and logged before
+    // the turn is handed over.
     this.render(events);
+    this.endSpentTurn();
   }
 
   public destroy(): void {

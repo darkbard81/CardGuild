@@ -292,8 +292,10 @@ async function winRoadAmbush(page: Page, album: ScreenAlbum, interrupts: Interru
     }
     if (await page.locator("#app").getAttribute("data-screen") !== "combat") break;
     if (await captureResult(page, album, interrupts)) break;
+    // A fully spent turn ends itself, so only an unfinished one needs the button.
+    const spent = await page.locator("#action-pips .available").count() === 0;
     const revision = await page.locator("#app").getAttribute("data-session-revision");
-    await page.getByRole("button", { name: "End Turn" }).click();
+    if (!spent) await page.getByRole("button", { name: "End Turn" }).click();
     await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "");
   }
 }
