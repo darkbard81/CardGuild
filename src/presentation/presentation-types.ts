@@ -15,6 +15,17 @@ export interface PresentationAssetDefinition {
   readonly displayWidth?: number;
   readonly displayHeight?: number;
   readonly footprint?: { readonly width: number; readonly height: number };
+  /**
+   * Where the drawing sits inside its frame, as fractions of the frame. Measured by the
+   * asset build so a portrait can frame the top of the art instead of the top of the
+   * canvas — a low, wide creature leaves that empty.
+   */
+  readonly ink?: {
+    readonly top: number;
+    readonly left: number;
+    readonly width: number;
+    readonly height: number;
+  };
 }
 
 export interface ActorVisualDefinition {

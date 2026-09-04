@@ -15,6 +15,13 @@ import type {
 } from "./presentation-types";
 import { validatePresentationTilemaps } from "./tilemap";
 
+/**
+ * How much of the drawing's height the portrait square takes. Measured against every
+ * actor in the pack: 0.3 frames the head for anything that stands upright and the front
+ * of anything that does not, while a larger share drifts down onto the chest.
+ */
+const PORTRAIT_INK_FRACTION = 0.3;
+
 export class AssetCatalog {
   private readonly textures = new Map<PresentationAssetId, Texture>();
   private initialized = false;
@@ -93,6 +100,30 @@ export class AssetCatalog {
       backgroundImage: `url("${this.manifest.atlas.imagePath}")`,
       backgroundPosition: `${-frame.x * scaleX}px ${-frame.y * scaleY}px`,
       backgroundSize: `${this.manifest.atlas.width * scaleX}px ${this.manifest.atlas.height * scaleY}px`,
+      width: `${size}px`,
+      height: `${size}px`,
+    };
+  }
+
+  /**
+   * A square crop of the top of the drawing — a face for anything that stands upright,
+   * and the front of anything that does not. Framed from the measured ink box, so a
+   * creature whose art leaves the top of its canvas empty is not shown as an empty box.
+   */
+  public domPortraitStyle(id: PresentationAssetId, size: number): DomAtlasStyle {
+    const frame = this.atlasMap.frames[id]?.frame;
+    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
+    if (!Number.isFinite(size) || size <= 0) throw new Error("DOM portrait size must be positive.");
+    const ink = this.asset(id).ink;
+    const side = Math.min(frame.w, ink ? frame.h * ink.height * PORTRAIT_INK_FRACTION : frame.h);
+    const top = ink ? frame.h * ink.top : 0;
+    const centerX = ink ? frame.w * (ink.left + ink.width / 2) : frame.w / 2;
+    const scale = size / side;
+    return {
+      backgroundImage: `url("${this.manifest.atlas.imagePath}")`,
+      backgroundPosition:
+        `${-(frame.x + centerX - side / 2) * scale}px ${-(frame.y + top) * scale}px`,
+      backgroundSize: `${this.manifest.atlas.width * scale}px ${this.manifest.atlas.height * scale}px`,
       width: `${size}px`,
       height: `${size}px`,
     };

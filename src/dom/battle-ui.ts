@@ -83,8 +83,12 @@ const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
   fly: "Fly",
 };
 
-/** Tall enough that the square portrait window crops to head and shoulders. */
-const PORTRAIT_ART_HEIGHT = 190;
+/**
+ * Portrait window sizes in pixels. The crop itself comes from the measured ink box in the
+ * asset manifest, so it lands on the drawing whatever shape the creature is.
+ */
+const HERO_PORTRAIT_SIZE = 50;
+const INITIATIVE_PORTRAIT_SIZE = 34;
 
 /** The grid has room for three columns, the sheet has room for the whole word. */
 const SAVE_LABELS: Readonly<Record<SaveId, string>> = {
@@ -239,15 +243,26 @@ export class BattleUi {
     this.renderResult(state);
   }
 
+  /**
+   * Faces, not names: the order is read at a glance mid-turn, and the same standee is
+   * what the player is looking at on the board. The name rides along for screen readers
+   * and as the tooltip, so nothing that needs the text loses it.
+   */
   private renderInitiative(state: CombatState): void {
     this.initiative.replaceChildren();
     for (const actorId of state.turn.initiativeOrder) {
       const actor = state.actors[actorId];
       if (!actor) continue;
-      const item = element("li", actor.id === state.turn.activeActorId ? "active" : undefined);
-      item.dataset.actorId = actor.id;
-      item.textContent = actor.name;
+      const item = element("li", "initiative-chip");
+      if (actor.id === state.turn.activeActorId) item.classList.add("active");
       if (actor.defeated) item.classList.add("defeated");
+      item.dataset.actorId = actor.id;
+      item.dataset.team = actor.team;
+      item.title = actor.name;
+      const portrait = element("span", "initiative-portrait");
+      portrait.setAttribute("aria-hidden", "true");
+      this.paintPortrait(portrait, actor, INITIATIVE_PORTRAIT_SIZE);
+      item.append(portrait, element("span", "sr-only", actor.name));
       this.initiative.append(item);
     }
   }
@@ -283,21 +298,23 @@ export class BattleUi {
     this.applyHeroDetailsState();
   }
 
-  /** A bust crop of the same standee the board draws, so the card names a face. */
+  /** A bust crop of the same standee the board draws, so a panel can name a face. */
+  private paintPortrait(window: HTMLElement, actor: ActorState, size: number): void {
+    window.replaceChildren();
+    const visual = this.catalog.manifest.actorVisuals[actor.definitionId];
+    if (!visual) {
+      window.classList.add("missing");
+      window.textContent = actor.name.slice(0, 1);
+      return;
+    }
+    window.classList.remove("missing");
+    Object.assign(window.style, this.catalog.domPortraitStyle(visual.front, size));
+  }
+
   private renderPortrait(hero: ActorState): void {
     if (this.portraitDefinitionId === hero.definitionId) return;
     this.portraitDefinitionId = hero.definitionId;
-    this.heroPortrait.replaceChildren();
-    const visual = this.catalog.manifest.actorVisuals[hero.definitionId];
-    if (!visual) {
-      this.heroPortrait.classList.add("missing");
-      this.heroPortrait.textContent = hero.name.slice(0, 1);
-      return;
-    }
-    this.heroPortrait.classList.remove("missing");
-    const art = element("span", "hero-portrait-art");
-    Object.assign(art.style, this.catalog.domAtlasPortraitStyle(visual.front, PORTRAIT_ART_HEIGHT));
-    this.heroPortrait.append(art);
+    this.paintPortrait(this.heroPortrait, hero, HERO_PORTRAIT_SIZE);
   }
 
   private renderHeroDetails(hero: ActorState): void {

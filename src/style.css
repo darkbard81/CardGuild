@@ -158,25 +158,20 @@ button {
   align-items: center;
 }
 
-/* A square window onto the same standee the board draws, cropped to the face. */
+/*
+ * A square crop of the same standee the board draws. Size and offset are set inline from
+ * the manifest's measured ink box, so the rules here only dress the window.
+ */
 .hero-portrait {
-  position: relative;
   overflow: hidden;
-  width: 3.1rem;
-  height: 3.1rem;
   border: 1px solid var(--line);
   border-radius: 0.5rem;
-  background: #12100c;
-}
-
-.hero-portrait-art {
-  position: absolute;
-  top: -0.15rem;
-  left: 50%;
-  transform: translateX(-50%);
+  background-color: #12100c;
 }
 
 .hero-portrait.missing {
+  width: 3.1rem;
+  height: 3.1rem;
   display: grid;
   place-items: center;
   color: var(--gold);
@@ -442,29 +437,33 @@ button {
   list-style: none;
 }
 
-.initiative-list li {
-  max-width: 7rem;
-  overflow: hidden;
-  padding: 0.3rem 0.55rem;
+/* Faces read faster than names when the order matters mid-turn. */
+.initiative-chip {
+  display: grid;
+  padding: 2px;
   border: 1px solid #3d3a30;
-  border-radius: 999px;
-  color: var(--muted);
+  border-radius: 0.45rem;
   background: rgb(17 20 20 / 85%);
-  font-size: 0.72rem;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
 
-.initiative-list li.active {
-  border-color: var(--gold);
-  color: #1a1308;
-  background: var(--gold-bright);
-  font-weight: 800;
+.initiative-portrait {
+  overflow: hidden;
+  border-radius: 0.3rem;
+  background-color: #12100c;
 }
 
-.initiative-list li.defeated {
-  opacity: 0.4;
-  text-decoration: line-through;
+.initiative-chip[data-team="enemies"] {
+  border-color: #6a3a33;
+}
+
+.initiative-chip.active {
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 0 2px rgb(255 218 121 / 35%);
+}
+
+.initiative-chip.defeated {
+  opacity: 0.35;
+  filter: grayscale(1);
 }
 
 /* Contextual inspector + log (right column) */

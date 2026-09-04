@@ -74,6 +74,9 @@ interface CleanFrame {
   readonly box: PixelBox;
 }
 
+/** Alpha at or below this is background, not drawing. */
+const INK_ALPHA_FLOOR = 16;
+
 interface ProcessedAsset {
   readonly source: SourcePlan;
   readonly frame: FramePlan;
@@ -464,7 +467,47 @@ async function buildAtlas(root: string, plan: GenerationPlan, assets: readonly P
   process.stdout.write(`Packed ${assets.length} sprites -> ${path.relative(root, atlasImagePath)}\n`);
 }
 
+/**
+ * Where the drawing actually sits inside its frame, as fractions of the frame. A standee
+ * is normalised to stand on the anchor, but a low, wide creature leaves the top of its
+ * canvas empty, so a portrait cannot assume the art starts at the top edge. Measured here
+ * once rather than guessed at by every consumer.
+ */
+async function measureInk(file: string): Promise<{
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+} | null> {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let top = info.height;
+  let bottom = -1;
+  let left = info.width;
+  let right = -1;
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      if ((data[(y * info.width + x) * info.channels + 3] ?? 0) <= INK_ALPHA_FLOOR) continue;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+      if (x < left) left = x;
+      if (x > right) right = x;
+    }
+  }
+  if (bottom < 0 || right < 0) return null;
+  const round = (value: number): number => Number(value.toFixed(4));
+  return {
+    top: round(top / info.height),
+    left: round(left / info.width),
+    width: round((right + 1 - left) / info.width),
+    height: round((bottom + 1 - top) / info.height),
+  };
+}
+
 async function buildManifest(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
+  // Only actors get portraits, and scanning every frame's pixels would cost the build.
+  const ink = new Map(await Promise.all(assets
+    .filter((asset) => asset.frame.kind === "actor")
+    .map(async (asset) => [asset.frame.assetId, await measureInk(asset.file)] as const)));
   const definitions = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
     frame: asset.frame.assetId,
     kind: asset.frame.kind,
@@ -472,6 +515,7 @@ async function buildManifest(root: string, plan: GenerationPlan, assets: readonl
     ...(asset.frame.displaySize.width === undefined ? {} : { displayWidth: asset.frame.displaySize.width }),
     ...(asset.frame.displaySize.height === undefined ? {} : { displayHeight: asset.frame.displaySize.height }),
     ...(asset.frame.footprint === undefined ? {} : { footprint: asset.frame.footprint }),
+    ...(ink.get(asset.frame.assetId) ? { ink: ink.get(asset.frame.assetId) } : {}),
   }]));
   const actorVisuals: Record<string, Record<string, string>> = {};
   for (const source of plan.sources) {
