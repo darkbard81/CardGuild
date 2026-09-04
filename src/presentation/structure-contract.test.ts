@@ -145,6 +145,9 @@ describe("tile-bound structure contract", () => {
     expect(() => assertPointPropFramePlan({ ...plan, footprint: { width: 128, height: 128 } }))
       .toThrow(/declare it as a tile-structure source/);
     expect(() => assertPointPropFramePlan({ ...plan, displaySize: {} })).toThrow(/must author the height/);
+    // A width on a height-driven prop is a declaration the runtime never reads.
+    expect(() => assertPointPropFramePlan({ ...plan, displaySize: { width: 96, height: 92 } }))
+      .toThrow(/a width is never read/);
   });
 
   it("insists walls and gates are validated as structures", () => {

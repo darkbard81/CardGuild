@@ -123,6 +123,11 @@ export function assertPointPropFramePlan(frame: FramePlanShape): void {
   if (frame.displaySize.height === undefined) {
     throw new Error(`${frame.assetId} is a point prop and must author the height it is drawn at.`);
   }
+  // The runtime draws a point prop height-first, so a width here would be read by nobody.
+  // Refusing it keeps the plan from stating something that quietly does not happen.
+  if (frame.displaySize.width !== undefined) {
+    throw new Error(`${frame.assetId} is a point prop: its height drives it, so a width is never read.`);
+  }
 }
 
 /**
