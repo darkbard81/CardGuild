@@ -17,7 +17,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -561,7 +561,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -881,7 +881,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -1425,7 +1425,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -1969,7 +1969,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -2129,7 +2129,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -2241,7 +2241,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -2785,7 +2785,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -3049,7 +3049,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -3369,7 +3369,7 @@
           "object.wall",
           "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {

@@ -2,9 +2,12 @@ import { type Application, Container, Graphics, RenderTexture, Sprite, type Text
 
 import type { CombatState, GridPosition, TileState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
-import { tilemapAssetAt } from "../../presentation";
+import { isTileStructure, spriteSizing, tilemapAssetAt } from "../../presentation";
 import type { BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
+
+/** Point props with no authored height fall back to this. */
+const DEFAULT_PROP_HEIGHT = 96;
 
 export interface SortableVisual {
   readonly display: Container;
@@ -14,6 +17,8 @@ export interface SortableVisual {
   readonly stableId: string;
   /** Held at a constant screen size while the board scales, e.g. an HP badge. */
   readonly screenSpace?: Container;
+  /** A tile-bound structure: drawn one terrain cell wide, whatever its height. */
+  readonly cellBound?: boolean;
 }
 
 function traits(tile: TileState): ReadonlySet<string> {
@@ -106,16 +111,39 @@ export class TerrainRenderer {
     return visuals;
   }
 
+  /**
+   * Two sizing policies, chosen by what the asset declares rather than by what it is
+   * called. A tile-bound structure — a wall, a gate — owns one terrain cell, so it is
+   * drawn one cell wide and its height follows the art it was drawn at. A point prop
+   * stands on a cell without claiming it, so it keeps its authored height.
+   *
+   * Neither says anything about movement, Fly or line of sight: those come from the
+   * tile's traits through the game rules, never from a texture.
+   */
   private prop(assetId: string, position: GridPosition, stableId: string, layerPriority: number): SortableVisual {
     const asset = this.catalog.asset(assetId);
     const display = new Container({ label: stableId });
     const sprite = new Sprite(this.catalog.texture(assetId));
     sprite.anchor.set(asset.anchor.x, asset.anchor.y);
-    sprite.height = asset.displayHeight ?? 96;
-    sprite.scale.x = sprite.scale.y;
+    const cellBound = isTileStructure(asset);
+    const sizing = spriteSizing(asset, DEFAULT_PROP_HEIGHT);
+    if (sizing.axis === "width") {
+      sprite.width = sizing.value;
+      sprite.scale.y = sprite.scale.x;
+    } else {
+      sprite.height = sizing.value;
+      sprite.scale.x = sprite.scale.y;
+    }
     sprite.eventMode = "none";
     display.addChild(sprite);
-    return { display, position, footRowOffset: this.config.propFootRowOffset, layerPriority, stableId };
+    return {
+      display,
+      position,
+      footRowOffset: this.config.propFootRowOffset,
+      layerPriority,
+      stableId,
+      cellBound,
+    };
   }
 
   /**

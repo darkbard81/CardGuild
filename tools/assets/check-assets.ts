@@ -3,6 +3,14 @@ import path from "node:path";
 
 import sharp from "sharp";
 
+import {
+  assertGatePair,
+  assertPointPropContract,
+  assertStructureContract,
+  isTileStructure,
+  type StructureFrame,
+} from "../../src/presentation/structure-contract";
+
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
 
 interface Point {
@@ -29,6 +37,7 @@ interface AssetManifest {
   };
   readonly assets: Readonly<Record<string, AssetEntry>>;
   readonly actorVisuals: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  readonly objectVisuals: Readonly<Record<string, string>>;
   readonly equipmentVisuals: Readonly<Record<string, string>>;
   readonly cardVisuals: Readonly<Record<string, string>>;
 }
@@ -89,19 +98,55 @@ function assertAtlasFrame(id: string, frame: AtlasFrame, atlas: AtlasData): void
   assertUnitPoint(id, frame.anchor);
 }
 
-async function assertCleanAlpha(id: string, filePath: string, kind: AssetEntry["kind"]): Promise<void> {
+/** Bounding box of the drawing inside a processed frame. */
+function inkBox(data: Buffer, info: { width: number; height: number; channels: number }): {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+} | null {
+  let top = info.height;
+  let bottom = -1;
+  let left = info.width;
+  let right = -1;
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      if ((data[(y * info.width + x) * info.channels + 3] ?? 0) === 0) continue;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+      if (x < left) left = x;
+      if (x > right) right = x;
+    }
+  }
+  if (bottom < 0 || right < 0) return null;
+  return { left, top, width: right + 1 - left, height: bottom + 1 - top };
+}
+
+async function frameInk(filePath: string): Promise<StructureFrame> {
+  const { data, info } = await sharp(filePath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  return { canvas: { width: info.width, height: info.height }, ink: inkBox(data, info) };
+}
+
+async function assertCleanAlpha(
+  id: string,
+  filePath: string,
+  kind: AssetEntry["kind"],
+  structure = false,
+): Promise<void> {
   const image = sharp(filePath, { failOn: "error" });
   const metadata = await image.metadata();
   if (metadata.format !== "png" || !metadata.width || !metadata.height || !metadata.hasAlpha) {
     throw new Error(`Processed asset "${id}" must be a readable straight-alpha PNG.`);
   }
   const { data, info } = await image.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  const cornerOffsets = [
-    3,
-    (info.width - 1) * 4 + 3,
+  const topCorners = [3, (info.width - 1) * 4 + 3];
+  const bottomCorners = [
     (info.height - 1) * info.width * 4 + 3,
     (info.height * info.width - 1) * 4 + 3,
   ];
+  // A tile-bound structure spans its canvas and stands on the bottom edge, so its bottom
+  // corners are the drawing itself. Everything else must have four empty corners.
+  const cornerOffsets = structure ? topCorners : [...topCorners, ...bottomCorners];
   if ((kind === "actor" || kind === "object" || kind === "ui") && cornerOffsets.some((offset) => (data[offset] ?? 255) !== 0)) {
     throw new Error(`Processed asset "${id}" has background pixels in a canvas corner.`);
   }
@@ -207,6 +252,7 @@ async function main(): Promise<void> {
     throw new Error("Presentation manifest atlas dimensions do not match its image.");
   }
 
+  const structures = new Map<string, StructureFrame>();
   const ids = Object.keys(manifest.assets).sort();
   if (JSON.stringify(ids) !== JSON.stringify(Object.keys(sources).sort())) {
     throw new Error("Asset source IDs and manifest asset IDs must match exactly.");
@@ -228,10 +274,25 @@ async function main(): Promise<void> {
     if (asset.displayWidth !== undefined && asset.displayWidth <= 0) throw new Error(`Asset "${id}" displayWidth must be positive.`);
     if (asset.displayHeight !== undefined && asset.displayHeight <= 0) throw new Error(`Asset "${id}" displayHeight must be positive.`);
     if (asset.footprint && (asset.footprint.width !== 128 || asset.footprint.height !== 128)) {
-      throw new Error(`Terrain asset "${id}" must declare the 128x128 square footprint.`);
+      throw new Error(`Cell-bound asset "${id}" must declare the 128x128 square footprint.`);
     }
-    await assertCleanAlpha(id, path.join(root, source), asset.kind);
+    await assertCleanAlpha(id, path.join(root, source), asset.kind, isTileStructure(asset));
+    if (asset.kind === "object") {
+      if (isTileStructure(asset)) {
+        const measured = await frameInk(path.join(root, source));
+        assertStructureContract(id, asset, measured);
+        structures.set(id, measured);
+      } else {
+        assertPointPropContract(id, asset);
+      }
+    }
   }
+
+  // A gate is one structure in two states, so swapping the texture must not move or
+  // resize anything: same canvas, same bounds, same contact line.
+  const closed = structures.get(manifest.objectVisuals.gateClosed ?? "");
+  const open = structures.get(manifest.objectVisuals.gateOpen ?? "");
+  if (closed && open) assertGatePair(closed, open);
 
   for (const [definitionId, visual] of Object.entries(manifest.actorVisuals)) {
     for (const side of ["front", "back"]) {

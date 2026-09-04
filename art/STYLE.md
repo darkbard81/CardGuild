@@ -11,6 +11,22 @@ Every generated battle asset prompt must reference this file.
 - Props use normalized anchor `(0.5, 1)`. Character source sheets contain one front and one back full-body view, both with the same feet line and normalized anchor `(0.5, 1)`.
 - Perspective, isometric diamonds, 3D scene renders, floor-aligned character art, and baked camera convergence are forbidden in source assets.
 
+## Point Props and Tile-Bound Structures
+
+Two kinds of object stand on the board and they are produced differently.
+
+- **Point Prop** — a crate, a lever, a chest, a barrel. It stands *on* a cell without claiming it. Authored at the height it should read at; the runtime draws it height-first and lets the width follow.
+- **Tile-Bound Structure** — a wall, a gate, and later a fence or barricade. It *is* the cell it stands on. Produced on a 256px-wide canvas with the drawing spanning that width edge to edge and sitting on the bottom edge, so the runtime can draw it exactly one terrain cell (128px) wide and let the height follow the art.
+
+Structure rules:
+
+- Nominal width is always one terrain cell. Low and high variants differ in silhouette height, never in width.
+- Height is authored per structure. A structure canvas is 256 wide and as tall as that structure needs.
+- Structures never rotate. There are no N/E/S/W variants.
+- The bottom edge is the contact line with the tile; anchor `(0.5, 1)`.
+- Nothing about the picture decides gameplay. Visual height is not elevation, cover, or an obstruction value: movement, Fly and line of sight come from the tile's traits alone. A low wall and a high wall are the same rule with different art.
+- A gate is one structure in two states. The open state is generated from the accepted closed gate and keeps the same canvas, frame, posts, baseline and overall bounds — only the door changes.
+
 ## Character rendering
 
 - Character style: 2D high detailed Japanese anime style.
@@ -47,6 +63,7 @@ Every generated battle asset prompt must reference this file.
 - Terrain, overlays, props, actors, and effects remain separate production assets and runtime layers.
 - Terrain types share the same exact square canvas and edge alignment.
 - Props are generated one per image with a clear bottom-center contact point.
+- Structures are generated one per image, one terrain cell wide, with the drawing touching the left, right and bottom edges of its frame.
 - Each actor source contains exactly two non-overlapping views in this order: front, back.
 - Actor and prop sprites remain upright and must never be children of the perspective floor mesh.
 

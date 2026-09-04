@@ -812,7 +812,8 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 | Card | UI icon | `ui-icon` + `presentation.cardVisuals` 매핑 |
 | Equipment | UI icon | `ui-icon` + `presentation.equipmentVisuals` 매핑 |
 | 새 terrain trait | 정사각 top-down terrain master | `square-terrain` + `presentation.terrainVisuals` |
-| 새 map object | grounded prop | `grounded-object` + `presentation.objectVisuals` |
+| 새 point prop (상자·레버·통) | 한 칸 위에 서는 소품 | `grounded-object` + `presentation.objectVisuals` |
+| 새 tile-bound structure (벽·문) | 한 칸을 통째로 차지하는 구조물 | `tile-structure` + `presentation.objectVisuals` |
 
 **source 해상도와 출력 canvas는 다릅니다.** source PNG는 크게 그리고(현재 actor sheet 관례는
 1024×1536, front|back 2칸), plan의 `grid: {rows, cols}`가 그 장을 프레임으로 자르며,
@@ -835,7 +836,7 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 | 층 | 무엇을 강제하는가 | 소유자 |
 |---|---|---|
 | **plan 검증** (`assets:build` 시작 시) | plan version 3, 배경 `transparent`, atlas 크기 2의 거듭제곱·padding 1–2, `frames.length == rows × cols`, assetId 유일, anchor `0..1`, **`two-sided-actor`의 side 순서가 정확히 `front → back`**, `definitionId` 존재, **모든 prompt가 `art/STYLE.md`를 참조** | `validatePlan()` in `tools/assets/build-assets.ts` |
-| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조 | `tools/assets/check-assets.ts` |
+| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조, **structure 계약(§11.4)과 gate 짝 일치** | `tools/assets/check-assets.ts` |
 | **convention** (기계가 잡지 않음) | prop·actor anchor `(0.5, 1)`(발밑 접점), UI·terrain anchor `(0.5, 0.5)`, 좌우 동일 feet line·동일 정체성, 투영·팔레트·조명 기준 | `art/STYLE.md` |
 
 마지막 층이 위험합니다 — actor anchor를 `(0.5, 0.4)`로 적으면 범위 검사(0..1)는 통과하고
@@ -865,6 +866,78 @@ WebP atlas와 `public/assets/m3-atlas.{webp,json}` 생성, `presentation/m3/asse
 `assets:check`가 보는 것: atlas가 정사각·2의 거듭제곱인지, frame 기하와 anchor가 manifest와
 atlas에서 일치하는지, 알파가 깨끗한지(모서리 배경·마젠타 잔여), actor 256×384 / UI 256×256
 캔버스, 양면 actor visual, tilemap 레이어 길이와 팔레트 참조, 그리고 §11.2의 정확 일치.
+
+### 11.4 Tile-Bound Structure (벽·문) 만들기
+
+벽과 문은 **한 칸을 차지하는 구조물**이고, 상자·레버 같은 point prop과 규격이 다릅니다.
+point prop은 authored height로 그려지고 폭이 따라오지만, structure는 **폭이 정확히 한 칸**이고
+높이가 그림을 따라옵니다. 낮은 벽과 높은 벽은 실루엣만 다르고 폭은 같습니다.
+
+```jsonc
+{ "input": "art/source/objects/wall.png", "mode": "tile-structure",
+  "grid": { "rows": 1, "cols": 1 },
+  "canvas": { "width": 256, "height": 112 },          // 폭은 항상 256, 높이는 구조물마다
+  "frames": [ { "assetId": "object.wall", "kind": "object",
+                "anchor": { "x": 0.5, "y": 1 },
+                "displaySize": { "width": 128 },       // runtime 폭 = terrain cell 1칸
+                "footprint": { "width": 128, "height": 128 } } ],
+  "prompt": "Reference art/STYLE.md, ..." }
+```
+
+`displaySize.height`를 적으면 `assets:check`가 거부합니다 — 높이는 그림이 정합니다.
+
+#### prompt recipe
+
+```text
+2D high detailed Japanese anime style
+fixed front-facing upright tile-bound structure
+exactly one terrain-cell wide
+drawing touches the left and right edges of the frame
+clear horizontal bottom contact baseline on the bottom edge
+transparent background
+no ground plane, no baked floor shadow
+no perspective, no isometric diamond, no camera convergence
+upper-left key light
+crisp thick dark outline, narrow light paper border
+readable silhouette
+no character, no text, no UI
+```
+
+변형은 실루엣 높이로만 표현합니다.
+
+```text
+low wall   -> broad one-cell-width silhouette, intentionally low elevation
+high wall  -> same one-cell-width silhouette, clearly taller elevation
+gate       -> one-cell-wide fixed gate frame, posts inside the structure width
+```
+
+**gate open은 새로 그리지 않습니다.** 승인된 closed gate를 reference로 주고 frame·posts·
+baseline·canvas·bounds를 그대로 두게 한 뒤 문짝 상태만 바꿉니다. `assets:check`가 두 상태의
+canvas와 ink 경계가 같은지 봅니다.
+
+#### QC 체크리스트
+
+- [ ] 배경 투명, 바닥·그림자·투시 baked 없음
+- [ ] 그림이 프레임 좌우 끝에 닿고 아래 끝에 서 있음
+- [ ] anchor `(0.5, 1)`, `displayWidth` 128, `footprint` 128×128, `displayHeight` 없음
+- [ ] 낮은/높은 변형은 높이로만 구분
+- [ ] gate open/closed의 bounds·baseline 동일
+- [ ] `npm run assets`
+- [ ] 1024×768 전투 화면에서 near/far row 모두 칸 폭과 정렬 (`data-structure-fit` 비율 1.0)
+
+#### 작업 순서
+
+```text
+1. gameplay trait는 Scenario author가 §8에서 따로 고릅니다 (blocked / gate / impassable)
+2. art/source/objects/... source 생성
+3. generation-plan에 tile-structure frame 등록
+4. npm run assets
+5. 전투 화면에서 정렬 확인
+```
+
+**asset 생성과 gameplay 의미 부여는 같은 단계가 아닙니다.** 구조물 그림은 통행 가능 여부를
+정하지 않습니다 — `blocked`는 land·fly 모두 막고, `impassable`은 land만 막으며 fly는 기존
+resolver대로 지나갑니다. 벽을 높게 그려도 규칙은 그대로입니다.
 
 ---
 

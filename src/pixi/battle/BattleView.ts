@@ -523,6 +523,20 @@ export class BattleView {
     this.app.canvas.dataset.boardCorners = JSON.stringify(
       this.projection.corners.map((point) => ({ x: Number(point.x.toFixed(2)), y: Number(point.y.toFixed(2)) })),
     );
+    // A structure has to measure exactly one cell at any row and any zoom; the ratio is
+    // the only way a test can see that from outside.
+    this.app.canvas.dataset.structureFit = JSON.stringify(
+      this.visuals
+        .filter((visual) => visual.cellBound)
+        .map((visual) => {
+          const row = visual.currentPosition.y + visual.footRowOffset;
+          const cell = this.projection.getProjectedCellWidth(row);
+          return {
+            id: visual.stableId,
+            ratio: cell > 0 ? Number((visual.display.width / cell).toFixed(3)) : 0,
+          };
+        }),
+    );
     this.app.canvas.dataset.actorFeet = JSON.stringify(
       [...this.actorVisuals.entries()].map(([id, visual]) => ({
         id,

@@ -83,31 +83,48 @@
       "source": "art/source/objects/wall.png",
       "output": "art/processed/objects/wall.png",
       "sourceBox": {
-        "left": 182,
-        "top": 286,
-        "width": 1194,
-        "height": 482
+        "left": 0,
+        "top": 127,
+        "width": 2172,
+        "height": 597
       },
       "sourceIndex": 0,
       "flipX": false,
-      "processingScale": 0.289447,
+      "processingScale": 0.117864,
       "anchor": {
         "x": 0.5,
         "y": 1
       }
     },
-    "object.crate": {
-      "source": "art/source/objects/crate.png",
-      "output": "art/processed/objects/crate.png",
+    "object.wall.high": {
+      "source": "art/source/objects/wall-high.png",
+      "output": "art/processed/objects/wall-high.png",
       "sourceBox": {
-        "left": 167,
-        "top": 124,
-        "width": 922,
-        "height": 995
+        "left": 0,
+        "top": 42,
+        "width": 1254,
+        "height": 1212
       },
       "sourceIndex": 0,
       "flipX": false,
-      "processingScale": 0.231558,
+      "processingScale": 0.204147,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "object.chest": {
+      "source": "art/source/objects/chest.png",
+      "output": "art/processed/objects/chest.png",
+      "sourceBox": {
+        "left": 237,
+        "top": 147,
+        "width": 1056,
+        "height": 731
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.218182,
       "anchor": {
         "x": 0.5,
         "y": 1
@@ -134,14 +151,14 @@
       "source": "art/source/objects/gate-closed.png",
       "output": "art/processed/objects/gate-closed.png",
       "sourceBox": {
-        "left": 6,
-        "top": 93,
-        "width": 1013,
-        "height": 1336
+        "left": 0,
+        "top": 4,
+        "width": 1080,
+        "height": 1453
       },
       "sourceIndex": 0,
       "flipX": false,
-      "processingScale": 0.172455,
+      "processingScale": 0.237037,
       "anchor": {
         "x": 0.5,
         "y": 1
@@ -151,14 +168,14 @@
       "source": "art/source/objects/gate-open.png",
       "output": "art/processed/objects/gate-open.png",
       "sourceBox": {
-        "left": 7,
-        "top": 94,
-        "width": 1010,
-        "height": 1331
+        "left": 0,
+        "top": 7,
+        "width": 1080,
+        "height": 1448
       },
       "sourceIndex": 0,
       "flipX": false,
-      "processingScale": 0.173103,
+      "processingScale": 0.237037,
       "anchor": {
         "x": 0.5,
         "y": 1

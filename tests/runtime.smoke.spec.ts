@@ -332,6 +332,22 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator("#hero-details")).toContainText("Reflex DC");
   await expect(page.locator("#hero-details")).toContainText("15");
 
+  // The spear corridor is walled, and a wall belongs to exactly one square: its drawn
+  // width has to equal that square's projected width wherever it stands and however far
+  // the camera is zoomed in. The rows differ, so this also pins near against far.
+  const structureFit = async (): Promise<Array<{ id: string; ratio: number }>> =>
+    JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-structure-fit") ?? "[]");
+  const walls = await structureFit();
+  expect(walls.length).toBe(4);
+  for (const wall of walls) expect(wall.ratio).toBeCloseTo(1, 1);
+  expect(new Set(walls.map((wall) => wall.id)).size).toBe(4);
+  await page.mouse.move(400, 400);
+  await page.mouse.wheel(0, -240);
+  await page.waitForTimeout(300);
+  const zoomedWalls = await structureFit();
+  expect(zoomedWalls.length).toBe(4);
+  for (const wall of zoomedWalls) expect(wall.ratio).toBeCloseTo(1, 1);
+
   const nextMap = { width: 7, height: 4 };
   const hero = projectCorners(await boardCorners(page), nextMap, 0.5, 1.5);
   await page.locator("#pixi-canvas").click({ position: hero });
@@ -529,8 +545,9 @@ test.describe("touch camera", () => {
       await touch("touchMove", [left, right]);
     }
     await touch("touchEnd", []);
+    // The camera lays out on the next frame, so measure once it has settled.
+    await expect.poll(async () => (await quad()).width).toBeGreaterThan(start.width * 1.2);
     const zoomed = await quad();
-    expect(zoomed.width).toBeGreaterThan(start.width * 1.2);
 
     left = { x: 520, y: 380, id: 1 };
     right = { x: 640, y: 460, id: 2 };
@@ -541,9 +558,9 @@ test.describe("touch camera", () => {
       await touch("touchMove", [left, right]);
     }
     await touch("touchEnd", []);
+    await expect.poll(async () => (await quad()).centerX).toBeLessThan(zoomed.centerX - 50);
     const panned = await quad();
     // Fingers travelling together move the board without changing how big it is.
-    expect(panned.centerX).toBeLessThan(zoomed.centerX - 50);
     expect(panned.width).toBeCloseTo(zoomed.width, 0);
     // Lifting out of a gesture is not a pick, so no radial menu opens behind it.
     await expect(page.locator("#ring-root")).toBeHidden();

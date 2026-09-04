@@ -71,10 +71,27 @@
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 108
+      "displayWidth": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
     },
-    "object.crate": {
-      "frame": "object.crate",
+    "object.wall.high": {
+      "frame": "object.wall.high",
+      "kind": "object",
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayWidth": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "object.chest": {
+      "frame": "object.chest",
       "kind": "object",
       "anchor": {
         "x": 0.5,
@@ -98,7 +115,11 @@
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 156
+      "displayWidth": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
     },
     "object.gate.open": {
       "frame": "object.gate.open",
@@ -107,7 +128,11 @@
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 156
+      "displayWidth": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
     },
     "actor.hero.aerin.front": {
       "frame": "actor.hero.aerin.front",
@@ -1439,7 +1464,8 @@
   },
   "objectVisuals": {
     "wall": "object.wall",
-    "crate": "object.crate",
+    "wallHigh": "object.wall.high",
+    "chest": "object.chest",
     "lever": "object.lever",
     "gateClosed": "object.gate.closed",
     "gateOpen": "object.gate.open"

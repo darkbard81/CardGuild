@@ -53,7 +53,7 @@ export interface PresentationAssetManifest {
   };
   readonly objectVisuals: {
     readonly wall: PresentationAssetId;
-    readonly crate: PresentationAssetId;
+    readonly chest: PresentationAssetId;
     readonly lever: PresentationAssetId;
     readonly gateClosed: PresentationAssetId;
     readonly gateOpen: PresentationAssetId;

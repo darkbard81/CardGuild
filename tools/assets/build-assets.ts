@@ -6,7 +6,19 @@ import sharp, { type OverlayOptions } from "sharp";
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
 
 type AssetKind = "actor" | "terrain" | "object" | "ui";
-type SourceMode = "square-terrain" | "web-overlay" | "grounded-object" | "two-sided-actor" | "ui-icon";
+/**
+ * `tile-structure` is a wall, a gate or anything else that belongs to one terrain cell:
+ * it is normalised width-first so the drawing spans the canvas exactly, and the runtime
+ * draws it one cell wide. A `grounded-object` is a point prop standing on a cell — a
+ * chest, a lever — and stays height-driven.
+ */
+type SourceMode =
+  | "square-terrain"
+  | "web-overlay"
+  | "grounded-object"
+  | "tile-structure"
+  | "two-sided-actor"
+  | "ui-icon";
 
 interface Point {
   readonly x: number;
@@ -54,6 +66,15 @@ interface GenerationPlan {
   readonly presentation: {
     readonly terrainVisuals: Readonly<Record<string, string>>;
     readonly objectVisuals: Readonly<Record<string, string>>;
+    /**
+     * Dressing that no gameplay trait asks for — a chest in an empty corner. It lives in
+     * the plan rather than in this file so a scenario id never has to appear in code.
+     */
+    readonly scenery?: readonly {
+      readonly scenarioId: string;
+      readonly visual: string;
+      readonly cells: readonly (readonly [number, number])[];
+    }[];
     readonly equipmentVisuals: Readonly<Record<string, string>>;
     readonly cardVisuals: Readonly<Record<string, string>>;
   };
@@ -332,6 +353,7 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
     : Math.min(...frames.map((frame) => Math.min(safeWidth / frame.box.width, safeHeight / frame.box.height)));
   const outputs: ProcessedAsset[] = [];
 
+  const structure = source.mode === "tile-structure";
   for (const frame of frames) {
     const sourcePixels = source.mode === "web-overlay" ? webPixels(frame.pixels) : frame.pixels;
     const sourceBox = visibleBox(sourcePixels, frame.width, frame.height) ?? frame.box;
@@ -340,7 +362,7 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
     if (frame.plan.flipX) cropPipeline.flop();
     const cropped = await cropPipeline.png().toBuffer();
     let result: Buffer;
-    let processingScale = sharedScale;
+    let processingScale: number;
     if (source.mode === "square-terrain" || source.mode === "web-overlay") {
       result = await sharp(cropped)
         .resize(source.canvas.width, source.canvas.height, { fit: "fill" })
@@ -348,8 +370,13 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
         .toBuffer();
       processingScale = Math.min(source.canvas.width / sourceBox.width, source.canvas.height / sourceBox.height);
     } else {
-      const scaledWidth = Math.max(1, Math.round(frame.box.width * sharedScale));
-      const scaledHeight = Math.max(1, Math.round(frame.box.height * sharedScale));
+      // A structure is measured by its width: the drawing spans the canvas edge to edge so
+      // that one cell of runtime width is the whole structure, and its height follows the
+      // aspect the art was drawn at rather than a number chosen per asset.
+      const scale = structure ? source.canvas.width / sourceBox.width : sharedScale;
+      const scaledWidth = structure ? source.canvas.width : Math.max(1, Math.round(frame.box.width * scale));
+      const scaledHeight = Math.max(1, Math.round((structure ? sourceBox.height : frame.box.height) * scale));
+      processingScale = scale;
       const scaled = await sharp(cropped)
         .resize(scaledWidth, scaledHeight, { fit: "fill" })
         .png()
@@ -361,7 +388,9 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
         ? Math.round((source.canvas.height - scaledHeight) / 2)
         : Math.round(frame.plan.anchor.y * source.canvas.height - scaledHeight);
       if (left < 0 || top < 0 || left + scaledWidth > source.canvas.width || top + scaledHeight > source.canvas.height) {
-        throw new Error(`${frame.plan.assetId} does not fit its normalized canvas.`);
+        throw new Error(structure
+          ? `${frame.plan.assetId} is ${scaledHeight}px tall at one cell wide, taller than its ${source.canvas.height}px canvas.`
+          : `${frame.plan.assetId} does not fit its normalized canvas.`);
       }
       const composites: OverlayOptions[] = [{ input: scaled, left, top }];
       result = await sharp({
@@ -559,13 +588,13 @@ function semanticType(traits: ReadonlySet<string>): string {
   return "open";
 }
 
-async function buildTilemaps(root: string): Promise<void> {
+async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> {
   // Tilemaps follow the pack the game actually ships (#12), so every production Scenario
   // gets one. The legacy fixture path was left behind when the runtime moved.
   const scenarios: readonly ScenarioSource[] = Object.values(PRODUCTION_CONTENT.pack.scenarioSources);
   const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm"];
   const transitionPalette = ["transition.web"];
-  const objectPalette = ["object.wall", "object.gate.closed", "object.lever", "object.crate"];
+  const objectPalette = ["object.wall", "object.gate.closed", "object.lever", "object.chest"];
   const maps: Record<string, unknown> = {};
   for (const scenario of scenarios) {
     const { width, height } = scenario.map;
@@ -603,10 +632,18 @@ async function buildTilemaps(root: string): Promise<void> {
       if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 2;
       objectIds[index] = object.id;
     }
-    if (scenario.id === "encounter.ruined-gate") {
-      for (const [x, y] of [[2, 2], [2, 3]] as const) {
+    for (const dressing of plan.presentation.scenery ?? []) {
+      if (dressing.scenarioId !== scenario.id) continue;
+      const assetId = plan.presentation.objectVisuals[dressing.visual];
+      const paletteIndex = assetId === undefined ? -1 : objectPalette.indexOf(assetId);
+      if (paletteIndex < 0) throw new Error(`Scenery visual "${dressing.visual}" is not a placeable object.`);
+      for (const [x, y] of dressing.cells) {
+        if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+          throw new Error(`Scenery for ${scenario.id} sits outside ${width}x${height}.`);
+        }
         const index = y * width + x;
-        if (objects[index] === -1) objects[index] = 3;
+        // Dressing never covers something the scenario itself put there.
+        if (objects[index] === -1) objects[index] = paletteIndex;
       }
     }
     if (tileIds.some((id) => id === null)) throw new Error(`${scenario.id} does not define every tile.`);
@@ -658,7 +695,7 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     "object.gate.closed",
     "object.gate.open",
     "object.lever",
-    "object.crate",
+    "object.chest",
     "actor.hero.aerin.front",
     "actor.goblin-skirmisher.front",
     "actor.goblin-brute.front",
@@ -761,7 +798,7 @@ async function main(): Promise<void> {
   const assets = groups.flat();
   await buildAtlas(root, plan, assets);
   await buildManifest(root, plan, assets);
-  await buildTilemaps(root);
+  await buildTilemaps(root, plan);
   await writePipelineMetadata(root, plan, assets);
   await buildQcPreviews(root, assets);
   process.stdout.write(`Assets built: ${assets.length} frames from ${plan.sources.length} generated sources\n`);

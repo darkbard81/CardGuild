@@ -13,8 +13,8 @@ describe("M3 presentation tilemaps", () => {
     expect(tilemapAssetAt(map, "transitions", at(5, 3))).toBe("transition.web");
     expect(tilemapAssetAt(map, "objects", at(4, 3))).toBe("object.gate.closed");
     expect(tilemapAssetAt(map, "objects", at(1, 2))).toBe("object.lever");
-    expect(tilemapAssetAt(map, "objects", at(2, 2))).toBe("object.crate");
-    expect(tilemapAssetAt(map, "objects", at(2, 3))).toBe("object.crate");
+    expect(tilemapAssetAt(map, "objects", at(2, 2))).toBe("object.chest");
+    expect(tilemapAssetAt(map, "objects", at(2, 3))).toBe("object.chest");
     expect(tilemapAssetAt(map, "transitions", at(0, 0))).toBeNull();
   });
 

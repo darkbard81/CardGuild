@@ -39,7 +39,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon stone floor Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon stone floor Board Tile. 1:1ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/terrain/rubble.png",
@@ -70,7 +70,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square cracked rubble floor Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square cracked rubble floor Board Tile. 1:1ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/terrain/chasm.png",
@@ -101,7 +101,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon chasm Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon chasm Board Tile. 1:1ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/terrain/web-overlay.png",
@@ -132,18 +132,18 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square spider web floor overlay Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square spider web floor overlay Board Tile. 1:1ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/objects/wall.png",
-      "mode": "grounded-object",
+      "mode": "tile-structure",
       "grid": {
         "rows": 1,
         "cols": 1
       },
       "canvas": {
-        "width": 384,
-        "height": 256
+        "width": 256,
+        "height": 70
       },
       "frames": [
         {
@@ -154,14 +154,48 @@
             "y": 1
           },
           "displaySize": {
-            "height": 108
+            "width": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style dungeon stone wall Object Standee. 3:2ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md. 2D high detailed Japanese anime style dungeon stone wall segment. Fixed front-facing upright tile-bound structure, exactly one terrain-cell wide, the drawing touches the left and right edges of the frame and stands on a clear horizontal bottom contact baseline at the bottom edge. Broad low wall: intentionally low elevation, roughly a third as tall as it is wide, with visible masonry courses and a capstone line. Transparent background, no ground plane, no baked floor shadow, no perspective, no isometric diamond, no camera convergence. Upper-left key light, crisp thick dark outline, narrow light paper border, readable silhouette. No character, no text, no UI."
     },
     {
-      "input": "art/source/objects/crate.png",
+      "input": "art/source/objects/wall-high.png",
+      "mode": "tile-structure",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 247
+      },
+      "frames": [
+        {
+          "assetId": "object.wall.high",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "width": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. 2D high detailed Japanese anime style dungeon stone wall segment. Fixed front-facing upright tile-bound structure, exactly one terrain-cell wide, the drawing touches the left and right edges of the frame and stands on a clear horizontal bottom contact baseline at the bottom edge. High wall: the same one-cell width and the same masonry language as the low wall, but clearly taller elevation, roughly as tall as it is wide. Transparent background, no ground plane, no baked floor shadow, no perspective, no isometric diamond, no camera convergence. Upper-left key light, crisp thick dark outline, narrow light paper border, readable silhouette. No character, no text, no UI."
+    },
+    {
+      "input": "art/source/objects/chest.png",
       "mode": "grounded-object",
       "grid": {
         "rows": 1,
@@ -173,7 +207,7 @@
       },
       "frames": [
         {
-          "assetId": "object.crate",
+          "assetId": "object.chest",
           "kind": "object",
           "anchor": {
             "x": 0.5,
@@ -184,7 +218,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style wooden crate Object Standee. 1:1ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md. 2D high detailed Japanese anime style banded wooden dungeon chest. Upright point prop standing on one terrain cell, not filling it: A closed chest with a domed iron-banded lid and a front lock plate, wider than it is tall. Clear bottom-centre contact point, transparent background, no ground plane, no baked floor shadow, no perspective, no isometric diamond. Upper-left key light, crisp thick dark outline, narrow light paper border, readable silhouette. No character, no text, no UI."
     },
     {
       "input": "art/source/objects/lever.png",
@@ -210,18 +244,18 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style dungeon lever Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md. 2D high detailed Japanese anime style dungeon wall lever on a stone base. Upright point prop standing on one terrain cell, not filling it: A stone base with an iron lever arm angled up, taller than it is wide. Clear bottom-centre contact point, transparent background, no ground plane, no baked floor shadow, no perspective, no isometric diamond. Upper-left key light, crisp thick dark outline, narrow light paper border, readable silhouette. No character, no text, no UI."
     },
     {
       "input": "art/source/objects/gate-closed.png",
-      "mode": "grounded-object",
+      "mode": "tile-structure",
       "grid": {
         "rows": 1,
         "cols": 1
       },
       "canvas": {
         "width": 256,
-        "height": 256
+        "height": 344
       },
       "frames": [
         {
@@ -232,22 +266,26 @@
             "y": 1
           },
           "displaySize": {
-            "height": 156
+            "width": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d high detailed Japanese anime style closed dungeon gate Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md. 2D high detailed Japanese anime style closed dungeon gate. Fixed front-facing upright tile-bound structure, exactly one terrain-cell wide, the drawing touches the left and right edges of the frame and stands on a clear horizontal bottom contact baseline at the bottom edge. One-cell-wide fixed gate frame with the posts and lintel inside the structure width, clearly readable closed leaves, roughly one and a third times as tall as it is wide. Transparent background, no ground plane, no baked floor shadow, no perspective, no isometric diamond, no camera convergence. Upper-left key light, crisp thick dark outline, narrow light paper border, readable silhouette. No character, no text, no UI."
     },
     {
       "input": "art/source/objects/gate-open.png",
-      "mode": "grounded-object",
+      "mode": "tile-structure",
       "grid": {
         "rows": 1,
         "cols": 1
       },
       "canvas": {
         "width": 256,
-        "height": 256
+        "height": 344
       },
       "frames": [
         {
@@ -258,11 +296,15 @@
             "y": 1
           },
           "displaySize": {
-            "height": 156
+            "width": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and the accepted closed gate. 2d high detailed Japanese anime style open dungeon gate Object Standee. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and the accepted closed gate at art/source/objects/gate-closed.png. Same structure in its open state: identical frame, posts, lintel, baseline, canvas and overall bounds, with only the leaves swung open to show the passage through. Fixed front-facing upright tile-bound structure, exactly one terrain-cell wide, the drawing touches the left and right edges of the frame and stands on the bottom edge. Transparent background, no ground plane, no baked floor shadow, no perspective, no isometric diamond, no camera convergence. Upper-left key light, crisp thick dark outline, narrow light paper border. No character, no text, no UI."
     },
     {
       "input": "art/source/actors/aerin-front-back.png",
@@ -302,7 +344,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md, documents/Template.png, and documents/view_modify.png. 2D high detailed Japanese anime style elf maid Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md, documents/Template.png, and documents/view_modify.png. 2D high detailed Japanese anime style elf maid Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/lyra-front-back.png",
@@ -342,7 +384,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female mobile adventurer Lyra with Boots of Fly Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female mobile adventurer Lyra with Boots of Fly Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/brom-front-back.png",
@@ -382,7 +424,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female durable guardian Brom with heavy armor and shield Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female durable guardian Brom with heavy armor and shield Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/nera-front-back.png",
@@ -422,7 +464,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style field tactician and battlefield medic Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style field tactician and battlefield medic Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/goblin-skirmisher-front-back.png",
@@ -462,7 +504,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin skirmisher Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin skirmisher Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/goblin-brute-front-back.png",
@@ -502,7 +544,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin brute Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin brute Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/goblin-chief-front-back.png",
@@ -542,7 +584,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin chief Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin chief Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/ui/equipment-icons.png",
@@ -696,7 +738,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style skeleton rabble undead minion Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style skeleton rabble undead minion Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/skeleton-guard-front-back.png",
@@ -736,7 +778,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style armored skeleton guard with a halberd Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style armored skeleton guard with a halberd Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/skeleton-archer-front-back.png",
@@ -776,7 +818,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style hooded skeleton archer with a bone longbow Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style hooded skeleton archer with a bone longbow Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/bone-hulk-front-back.png",
@@ -816,7 +858,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style massive fused bone hulk brute with a bone maul Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style massive fused bone hulk brute with a bone maul Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/bone-priest-front-back.png",
@@ -856,7 +898,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style robed undead bone priest caster Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style robed undead bone priest caster Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/wolf-yearling-front-back.png",
@@ -896,7 +938,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style young grey dungeon wolf Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style young grey dungeon wolf Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/dire-wolf-front-back.png",
@@ -936,7 +978,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style large scarred alpha dire wolf Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style large scarred alpha dire wolf Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/cave-spider-front-back.png",
@@ -976,7 +1018,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style small quick cave spider Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style small quick cave spider Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/giant-spider-front-back.png",
@@ -1016,7 +1058,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style large armoured hunting giant spider Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style large armoured hunting giant spider Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/cult-initiate-front-back.png",
@@ -1056,7 +1098,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style hooded cult initiate with a ritual knife Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style hooded cult initiate with a ritual knife Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/cult-firebrand-front-back.png",
@@ -1096,7 +1138,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style robed cult firebrand fire caster Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style robed cult firebrand fire caster Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/cult-hierophant-front-back.png",
@@ -1136,7 +1178,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style ornate cult hierophant leader with a ritual staff Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style ornate cult hierophant leader with a ritual staff Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/goblin-lackey-front-back.png",
@@ -1176,7 +1218,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style small cowering goblin lackey with a rusty dagger Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style small cowering goblin lackey with a rusty dagger Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/goblin-spearman-front-back.png",
@@ -1216,7 +1258,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin spearman in patched leather with a long spear Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style goblin spearman in patched leather with a long spear Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/actors/goblin-slinger-front-back.png",
@@ -1256,7 +1298,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style lean goblin slinger whirling a leather sling Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
+      "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2D high detailed Japanese anime style lean goblin slinger whirling a leather sling Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
     },
     {
       "input": "art/source/ui/equipment-icons-2.png",
@@ -1899,7 +1941,8 @@
     },
     "objectVisuals": {
       "wall": "object.wall",
-      "crate": "object.crate",
+      "wallHigh": "object.wall.high",
+      "chest": "object.chest",
       "lever": "object.lever",
       "gateClosed": "object.gate.closed",
       "gateOpen": "object.gate.open"
@@ -1964,6 +2007,22 @@
       "card.arcane-ward": "ui.card.arcane-ward",
       "card.careful-advance": "ui.card.careful-advance",
       "card.hover-step": "ui.card.hover-step"
-    }
+    },
+    "scenery": [
+      {
+        "scenarioId": "encounter.ruined-gate",
+        "visual": "chest",
+        "cells": [
+          [
+            2,
+            2
+          ],
+          [
+            2,
+            3
+          ]
+        ]
+      }
+    ]
   }
 }
