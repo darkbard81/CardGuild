@@ -4,6 +4,10 @@ import path from "node:path";
 import sharp, { type OverlayOptions } from "sharp";
 
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
+import {
+  assertPointPropFramePlan,
+  assertStructureFramePlan,
+} from "../../src/presentation/structure-contract";
 
 type AssetKind = "actor" | "terrain" | "object" | "ui";
 /**
@@ -182,6 +186,30 @@ function validatePlan(plan: GenerationPlan): void {
         throw new Error(`${source.input} must contain front then back.`);
       }
       if (!source.definitionId) throw new Error(`${source.input} is missing definitionId.`);
+    }
+    // The mode a source declares is what decides how it is processed, so it has to be
+    // what decides the frame contract too. Without this a `tile-structure` could be
+    // normalized width-first and still reach the manifest looking like a point prop,
+    // and every downstream structure check would quietly skip it.
+    if (source.mode === "tile-structure") {
+      for (const frame of source.frames) assertStructureFramePlan(frame, source.canvas.width);
+    }
+    if (source.mode === "grounded-object") {
+      for (const frame of source.frames) assertPointPropFramePlan(frame);
+    }
+  }
+  assertSceneryTargets(plan);
+}
+
+/** A scenery entry that names a scenario nobody ships would just vanish at build time. */
+function assertSceneryTargets(plan: GenerationPlan): void {
+  const scenarioIds = new Set(Object.keys(PRODUCTION_CONTENT.pack.scenarioSources));
+  for (const dressing of plan.presentation.scenery ?? []) {
+    if (!scenarioIds.has(dressing.scenarioId)) {
+      throw new Error(`Scenery targets unknown scenario "${dressing.scenarioId}".`);
+    }
+    if (plan.presentation.objectVisuals[dressing.visual] === undefined) {
+      throw new Error(`Scenery visual "${dressing.visual}" is not an object visual.`);
     }
   }
 }

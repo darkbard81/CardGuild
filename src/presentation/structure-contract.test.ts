@@ -4,7 +4,11 @@ import type { PresentationAssetDefinition } from "./presentation-types";
 import {
   assertGatePair,
   assertPointPropContract,
+  assertPointPropFramePlan,
+  assertRequiredStructures,
   assertStructureContract,
+  assertStructureFramePlan,
+  type FramePlanShape,
   isTileStructure,
   spriteSizing,
   type StructureFrame,
@@ -107,5 +111,55 @@ describe("tile-bound structure contract", () => {
     expect(spriteSizing(WALL, 96)).toEqual({ axis: "width", value: 128 });
     expect(spriteSizing(CHEST, 96)).toEqual({ axis: "height", value: 92 });
     expect(spriteSizing({ ...CHEST, displayHeight: undefined }, 96)).toEqual({ axis: "height", value: 96 });
+  });
+
+  it("holds the generation plan to the mode it declares", () => {
+    // The source mode decides how a frame is normalized, so it has to decide the frame's
+    // shape too. Otherwise a structure reaches the manifest looking like a point prop and
+    // every structure check downstream skips it without a word.
+    const plan: FramePlanShape = {
+      assetId: "object.wall",
+      kind: "object",
+      anchor: { x: 0.5, y: 1 },
+      displaySize: { width: 128 },
+      footprint: { width: 128, height: 128 },
+    };
+    expect(() => assertStructureFramePlan(plan, 256)).not.toThrow();
+    expect(() => assertStructureFramePlan({ ...plan, footprint: undefined }, 256)).toThrow(/one 128x128 cell/);
+    expect(() => assertStructureFramePlan({ ...plan, displaySize: { width: 128, height: 108 } }, 256))
+      .toThrow(/must not author a height/);
+    expect(() => assertStructureFramePlan({ ...plan, displaySize: {} }, 256)).toThrow(/128px display width/);
+    expect(() => assertStructureFramePlan({ ...plan, anchor: { x: 0.5, y: 0.5 } }, 256)).toThrow(/bottom-centre anchor/);
+    expect(() => assertStructureFramePlan({ ...plan, kind: "terrain" }, 256)).toThrow(/must be an object/);
+    expect(() => assertStructureFramePlan(plan, 384)).toThrow(/256px canvas width/);
+  });
+
+  it("keeps a point prop source from claiming a cell", () => {
+    const plan: FramePlanShape = {
+      assetId: "object.chest",
+      kind: "object",
+      anchor: { x: 0.5, y: 1 },
+      displaySize: { height: 92 },
+    };
+    expect(() => assertPointPropFramePlan(plan)).not.toThrow();
+    expect(() => assertPointPropFramePlan({ ...plan, footprint: { width: 128, height: 128 } }))
+      .toThrow(/declare it as a tile-structure source/);
+    expect(() => assertPointPropFramePlan({ ...plan, displaySize: {} })).toThrow(/must author the height/);
+  });
+
+  it("insists walls and gates are validated as structures", () => {
+    const visuals = {
+      wall: "object.wall",
+      gateClosed: "object.gate.closed",
+      gateOpen: "object.gate.open",
+      chest: "object.chest",
+    };
+    const validated = new Set(["object.wall", "object.gate.closed", "object.gate.open"]);
+    expect(() => assertRequiredStructures(visuals, validated)).not.toThrow();
+    // A wall that fell out of the structure path must fail, not pass as a point prop.
+    expect(() => assertRequiredStructures(visuals, new Set(["object.gate.closed", "object.gate.open"])))
+      .toThrow(/"wall" must be a tile-bound structure/);
+    expect(() => assertRequiredStructures({ ...visuals, gateOpen: "" }, validated))
+      .toThrow(/"gateOpen" is missing/);
   });
 });

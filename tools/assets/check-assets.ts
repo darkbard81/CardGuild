@@ -6,6 +6,7 @@ import sharp from "sharp";
 import {
   assertGatePair,
   assertPointPropContract,
+  assertRequiredStructures,
   assertStructureContract,
   isTileStructure,
   type StructureFrame,
@@ -288,11 +289,17 @@ async function main(): Promise<void> {
     }
   }
 
+  // These three are structures by definition, so say it here rather than inferring it
+  // from whatever the manifest happens to declare. Without this a wall that lost its
+  // footprint would be checked as a point prop and every structure rule would be skipped.
+  assertRequiredStructures(manifest.objectVisuals, new Set(structures.keys()));
+
   // A gate is one structure in two states, so swapping the texture must not move or
   // resize anything: same canvas, same bounds, same contact line.
   const closed = structures.get(manifest.objectVisuals.gateClosed ?? "");
   const open = structures.get(manifest.objectVisuals.gateOpen ?? "");
-  if (closed && open) assertGatePair(closed, open);
+  if (!closed || !open) throw new Error("Both gate states must be validated structures.");
+  assertGatePair(closed, open);
 
   for (const [definitionId, visual] of Object.entries(manifest.actorVisuals)) {
     for (const side of ["front", "back"]) {

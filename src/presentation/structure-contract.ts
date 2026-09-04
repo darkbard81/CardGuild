@@ -82,6 +82,68 @@ export function assertGatePair(closed: StructureFrame, open: StructureFrame): vo
   }
 }
 
+/**
+ * The plan-side half of the same contract. The source mode a generation plan declares is
+ * what decides how a frame is normalized, so it has to decide the frame's shape too:
+ * otherwise a structure could be processed width-first and still reach the manifest
+ * looking like a point prop, and every check downstream would skip it.
+ */
+export interface FramePlanShape {
+  readonly assetId: string;
+  readonly kind: string;
+  readonly anchor: { readonly x: number; readonly y: number };
+  readonly displaySize: { readonly width?: number; readonly height?: number };
+  readonly footprint?: { readonly width: number; readonly height: number };
+}
+
+export function assertStructureFramePlan(frame: FramePlanShape, canvasWidth: number): void {
+  if (canvasWidth !== STRUCTURE_SOURCE_WIDTH) {
+    throw new Error(`${frame.assetId} is a structure and must use a ${STRUCTURE_SOURCE_WIDTH}px canvas width.`);
+  }
+  if (frame.kind !== "object") throw new Error(`${frame.assetId} is a structure and must be an object.`);
+  if (frame.anchor.x !== 0.5 || frame.anchor.y !== 1) {
+    throw new Error(`${frame.assetId} is a structure and must sit on a bottom-centre anchor.`);
+  }
+  if (frame.displaySize.width !== STRUCTURE_RUNTIME_WIDTH) {
+    throw new Error(`${frame.assetId} is a structure and must declare a ${STRUCTURE_RUNTIME_WIDTH}px display width.`);
+  }
+  if (frame.displaySize.height !== undefined) {
+    throw new Error(`${frame.assetId} is a structure: its width drives it, so it must not author a height.`);
+  }
+  if (frame.footprint?.width !== STRUCTURE_RUNTIME_WIDTH || frame.footprint.height !== STRUCTURE_RUNTIME_WIDTH) {
+    throw new Error(`${frame.assetId} is a structure and must claim one ${STRUCTURE_RUNTIME_WIDTH}x${STRUCTURE_RUNTIME_WIDTH} cell.`);
+  }
+}
+
+export function assertPointPropFramePlan(frame: FramePlanShape): void {
+  if (frame.kind !== "object") throw new Error(`${frame.assetId} is a point prop and must be an object.`);
+  if (frame.footprint !== undefined) {
+    throw new Error(`${frame.assetId} claims a cell: declare it as a tile-structure source instead.`);
+  }
+  if (frame.displaySize.height === undefined) {
+    throw new Error(`${frame.assetId} is a point prop and must author the height it is drawn at.`);
+  }
+}
+
+/**
+ * Walls and gates are structures by definition. Saying so here means a wall that lost its
+ * footprint fails loudly instead of being waved through as a point prop.
+ */
+export const REQUIRED_STRUCTURE_VISUALS = ["wall", "gateClosed", "gateOpen"] as const;
+
+export function assertRequiredStructures(
+  objectVisuals: Readonly<Record<string, string>>,
+  validated: ReadonlySet<string>,
+): void {
+  for (const key of REQUIRED_STRUCTURE_VISUALS) {
+    const id = objectVisuals[key];
+    if (!id) throw new Error(`Object visual "${key}" is missing.`);
+    if (!validated.has(id)) {
+      throw new Error(`Object visual "${key}" must be a tile-bound structure, and "${id}" is not.`);
+    }
+  }
+}
+
 export type SpriteSizing =
   | { readonly axis: "width"; readonly value: number }
   | { readonly axis: "height"; readonly value: number };
