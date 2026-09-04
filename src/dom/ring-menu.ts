@@ -43,6 +43,17 @@ export class RingMenu {
   private readonly connectors = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   private readonly abortController = new AbortController();
   private open = false;
+  /**
+   * A finger cannot hover, so a touch player would fire an action without ever seeing
+   * its odds. The first tap on an option only arms it — and the detail panel fills —
+   * and the second tap on the same option runs it. A mouse is unaffected: hovering has
+   * already armed the option under the cursor, so its click still runs on the first
+   * press. Tracked here rather than from the selection state because iOS synthesises a
+   * mouseover on the same tap that produces the click.
+   */
+  private armedOptionId: string | null = null;
+  /** A touch-armed option keeps the detail panel; the synthetic mouseleave must not clear it. */
+  private armedByTouch = false;
 
   public constructor(
     private readonly root: HTMLElement,
@@ -75,6 +86,9 @@ export class RingMenu {
   }
 
   public show(anchor: RingAnchor, title: string, options: readonly RingMenuOption[]): void {
+    this.arm(null);
+    // The menu is named after whatever the player picked on the board.
+    this.menu.setAttribute("aria-label", title);
     this.menu.replaceChildren();
     while (this.connectors.firstChild) this.connectors.firstChild.remove();
     this.hub.textContent = title;
@@ -102,6 +116,8 @@ export class RingMenu {
   }
 
   public hide(): void {
+    this.armedOptionId = null;
+
     if (!this.open) return;
     this.open = false;
     this.root.hidden = true;
@@ -115,6 +131,24 @@ export class RingMenu {
     this.connectors.remove();
     this.menu.remove();
     this.hub.remove();
+  }
+
+  /**
+   * Tapping an option makes the browser send mouseenter and then, as the finger lifts,
+   * mouseleave. Letting that clear the detail would undo the whole point of the first tap.
+   */
+  private clearHover(optionId: string): void {
+    if (this.armedByTouch && this.armedOptionId === optionId) return;
+    this.handlers.onHover(null);
+  }
+
+  /** Marks which option a second tap would run, so touch has hover's visual cue. */
+  private arm(optionId: string | null): void {
+    this.armedOptionId = optionId;
+    if (optionId === null) this.armedByTouch = false;
+    for (const option of this.menu.querySelectorAll<HTMLElement>(".ring-option")) {
+      option.classList.toggle("armed", option.dataset.optionId === optionId);
+    }
   }
 
   private optionButton(option: RingMenuOption, x: number, y: number): HTMLButtonElement {
@@ -133,11 +167,29 @@ export class RingMenu {
     cost.className = "ring-cost";
     cost.textContent = option.cost;
     button.append(label, cost);
-    button.addEventListener("click", () => this.handlers.onSelect(option.id));
+    button.addEventListener("pointerdown", (event) => {
+      if (event.pointerType !== "mouse") return;
+      this.armedByTouch = false;
+      this.arm(option.id);
+    });
+    button.addEventListener("click", () => {
+      if (this.armedOptionId !== option.id) {
+        this.armedByTouch = true;
+        this.arm(option.id);
+        this.handlers.onHover(option.id);
+        return;
+      }
+      this.handlers.onSelect(option.id);
+    });
     button.addEventListener("mouseenter", () => this.handlers.onHover(option.id));
-    button.addEventListener("focus", () => this.handlers.onHover(option.id));
-    button.addEventListener("mouseleave", () => this.handlers.onHover(null));
-    button.addEventListener("blur", () => this.handlers.onHover(null));
+    // The menu focuses its first option when it opens; that must not overwrite the detail
+    // panel, which is showing what the player just picked on the board. Only a focus the
+    // player drove — keyboard, not the programmatic one — counts as pointing at an option.
+    button.addEventListener("focus", () => {
+      if (button.matches(":focus-visible")) this.handlers.onHover(option.id);
+    });
+    button.addEventListener("mouseleave", () => this.clearHover(option.id));
+    button.addEventListener("blur", () => this.clearHover(option.id));
     return button;
   }
 

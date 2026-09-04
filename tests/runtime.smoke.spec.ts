@@ -358,6 +358,18 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(new Set(webpResponses).size).toBe(1);
   expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
 
+  // Target-first input only works if the player can see where they may go before they
+  // click. The overlay is Graphics, so the canvas reports what it drew.
+  const bands = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-move-bands") ?? "{}") as Record<string, number>;
+  expect(bands.step).toBeGreaterThan(0);
+  expect(bands.stride).toBeGreaterThan(0);
+  // Road Ambush has no impassable ground, so Fly reaches nothing Stride cannot and earns
+  // no squares of its own.
+  expect(bands.fly).toBeUndefined();
+  await expect(page.locator("#move-legend")).toBeVisible();
+  await expect(page.locator("#move-legend")).toContainText("Step");
+  await expect(page.locator("#move-legend")).toContainText("Stride");
+
   const initialHash = await page.locator("#app").getAttribute("data-state-hash");
   const target = await boardPoint(page, 1.5, 1.5);
   const canvasBox = await page.locator("#pixi-canvas").boundingBox();
@@ -367,6 +379,9 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await pickRingAction(page, 1.5, 1.5, "step");
   await expect(page.locator("#ring-root")).toBeHidden();
   await expect(page.locator("#board-prompt")).toContainText("바라볼 방향");
+  // A locked-in destination is the one square that matters now, so the reach clears.
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-move-bands", "{}");
+  await expect(page.locator("#move-legend")).toBeHidden();
   await clickBoardPoint(page, 1.5, 1.7);
 
   // Facing changed, and the card reports it on the sheet rather than in the summary.
@@ -375,7 +390,11 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await openHeroDetails(page);
   await expect(page.locator("#hero-details")).toContainText("south");
   await expect(page.locator("#action-pips .available")).toHaveCount(2);
-  await expect(page.locator("#combat-log")).toContainText("now faces south");
+  // One line per action: what was used and everything it did. The cost and the rolls fold
+  // underneath it.
+  await expect(page.locator("#combat-log .log-line").first())
+    .toContainText("used Step — moved 1 square by land · now facing south");
+  await expect(page.locator("#combat-log .log-detail").first()).toContainText("Cost 1 action");
   await expect(page.locator("#app")).not.toHaveAttribute("data-state-hash", initialHash ?? "");
   await page.waitForTimeout(500);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
@@ -390,14 +409,24 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await page.keyboard.press("Escape");
   await expect(page.locator("#ring-root")).toBeHidden();
   await pickRingAction(page, 2.5, 1.5, "strike");
-  await expect(page.locator("#combat-log")).toContainText("used strike");
+  // The log names the action, not its id.
+  await expect(page.locator("#combat-log")).toContainText("used Strike");
   await expect(page.locator("#action-pips .available")).toHaveCount(1);
+
+  // A beat keeps its rolls folded away until asked. A tap opens it and it stays open with
+  // the pointer nowhere near it, which is the only way in on a tablet.
+  const foldedBeat = page.locator("#combat-log .log-line-expandable").first();
+  const foldedDetail = page.locator("#combat-log .log-detail").first();
+  await expect(foldedDetail).toBeHidden();
+  await foldedBeat.click();
+  await page.mouse.move(0, 0);
+  await expect(foldedDetail).toBeVisible();
 
   // Card-first path: choose the card, then one of the targets it highlights.
   await page.locator('#hand-cards .tactical-card[data-action-id="trip"]:not([disabled])').first().click();
   await expect(page.locator("#board-prompt")).toContainText("강조된 적");
   await clickBoardPoint(page, 2.5, 1.5);
-  await expect(page.locator("#combat-log")).toContainText("used trip");
+  await expect(page.locator("#combat-log")).toContainText("used Trip");
   // The third action leaves a turn with nothing but End Turn in it -- every action in
   // the pack costs at least one -- so the client sends it rather than making the player
   // click. The pips are not asserted here: the enemy can answer fast enough that the

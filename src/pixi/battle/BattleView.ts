@@ -22,11 +22,25 @@ import { ObjectRenderer } from "./ObjectRenderer";
 import { facingPolygon, pointInPolygon, TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
 import { TerrainRenderer, type SortableVisual } from "./TerrainRenderer";
 
+/**
+ * Which movement reaches a square. Bands are ordered cheapest first: a square Step can
+ * reach is a Step square even though Stride reaches it too.
+ */
+export type MoveBand = "step" | "stride" | "fly";
+
+export interface MoveBandTile {
+  readonly position: GridPosition;
+  readonly band: MoveBand;
+  readonly costFeet: number;
+}
+
 export interface BoardHighlights {
   readonly tiles: readonly GridPosition[];
   readonly actorIds: readonly string[];
   readonly objectIds: readonly string[];
   readonly facingPosition: GridPosition | null;
+  /** Where this actor could move, drawn under the target highlights as ambient information. */
+  readonly moveBands: readonly MoveBandTile[];
 }
 
 export type BoardPick =
@@ -119,12 +133,15 @@ export class BattleView {
   };
   private readonly pointerUpHandler = (event: PointerEvent): void => {
     if (this.panPointer?.id === event.pointerId) this.panPointer = null;
+    // A finger leaves its last hover behind: no later move will take the pointer off the
+    // square, so the board would keep a square lit under a hand that is long gone.
+    if (event.pointerType !== "mouse") this.setHover(null);
   };
   private resizeFrame: number | null = null;
   private panPointer: { readonly id: number; readonly x: number; readonly y: number } | null = null;
   private state: CombatState | null = null;
   private boardKey = "";
-  private currentHighlights: BoardHighlights = { tiles: [], actorIds: [], objectIds: [], facingPosition: null };
+  private currentHighlights: BoardHighlights = { tiles: [], actorIds: [], objectIds: [], facingPosition: null, moveBands: [] };
   private hoverPosition: GridPosition | null = null;
   private safeArea: BoardSafeArea = ZERO_BOARD_SAFE_AREA;
   private boardMesh: PerspectiveMesh | null = null;
@@ -160,6 +177,7 @@ export class BattleView {
     this.app.canvas.addEventListener("pointerdown", this.pointerDownHandler);
     this.app.canvas.addEventListener("pointermove", this.pointerMoveHandler);
     this.app.canvas.addEventListener("pointerup", this.pointerUpHandler);
+    this.app.canvas.addEventListener("pointercancel", this.pointerUpHandler);
     this.resizeObserver = new ResizeObserver(() => {
       if (this.resizeFrame !== null) window.cancelAnimationFrame(this.resizeFrame);
       this.resizeFrame = window.requestAnimationFrame(() => {
@@ -297,6 +315,13 @@ export class BattleView {
 
   private renderOverlay(): void {
     clearLayer(this.boardOverlayLayer);
+    // The bands are Graphics, so a test can only see them through what the canvas reports.
+    this.app.canvas.dataset.moveBands = JSON.stringify(
+      this.currentHighlights.moveBands.reduce<Record<string, number>>((counts, tile) => {
+        counts[tile.band] = (counts[tile.band] ?? 0) + 1;
+        return counts;
+      }, {}),
+    );
     if (!this.state) return;
     this.tacticalRenderer.render(
       this.state,
@@ -465,6 +490,7 @@ export class BattleView {
     this.app.canvas.removeEventListener("pointerdown", this.pointerDownHandler);
     this.app.canvas.removeEventListener("pointermove", this.pointerMoveHandler);
     this.app.canvas.removeEventListener("pointerup", this.pointerUpHandler);
+    this.app.canvas.removeEventListener("pointercancel", this.pointerUpHandler);
     if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
     // Draw once with the mesh still on stage so its bind group actually rebuilds against
     // the empty texture; the board texture is freed below and a stale binding to it warns.

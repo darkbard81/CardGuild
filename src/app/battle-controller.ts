@@ -27,7 +27,8 @@ import { actionCost, BattleUi } from "../dom/battle-ui";
 import { measureHudSafeArea } from "../dom/hud-safe-area";
 import { RingMenu, type RingMenuOption } from "../dom/ring-menu";
 import type { AssetCatalog } from "../presentation";
-import { BattleView, type BoardHighlights, type BoardPick, type ScreenPoint } from "../pixi/BattleView";
+import { BattleView, type BoardHighlights, type BoardPick, type MoveBandTile, type ScreenPoint } from "../pixi/BattleView";
+import { MOVE_BAND_ORDER, moveBandOf, moveBandsFor, moveBandTilesFor } from "./move-bands";
 import type { Application } from "pixi.js";
 
 const PROMPT_IDLE = "보드에서 적·칸·오브젝트를 클릭해 행동을 고르세요.";
@@ -119,11 +120,13 @@ export class BattleController {
       onHover: (optionId) => this.handleRingHover(optionId),
       onDismiss: () => this.dismissRing(),
     });
+    this.refreshMoveBands();
     this.render(options.history);
   }
 
   /** Guards against sending a second end-turn while the first is still outstanding. */
   private autoEndedTurn = false;
+  private moveBands: readonly MoveBandTile[] = [];
 
   private requireElement<T extends Element>(selector: string): T {
     const element = document.querySelector<T>(selector);
@@ -161,11 +164,47 @@ export class BattleController {
     return listLegalTargets(this.state, this.heroId(), action.source, this.definition.content);
   }
 
+  /**
+   * Recomputed once per snapshot rather than per render: the reach only changes when the
+   * board does, but a hover re-renders.
+   */
+  private refreshMoveBands(): void {
+    const heroId = this.activeHeroId();
+    this.moveBands = heroId && !this.state.pendingReaction && !this.state.outcome
+      ? moveBandsFor(this.state, heroId, this.definition.content)
+      : [];
+  }
+
+  /** Idle shows every movement; choosing one narrows the board to that movement's reach. */
+  private visibleMoveBands(): readonly MoveBandTile[] {
+    const interaction = this.interaction;
+    const heroId = this.activeHeroId();
+    if (!heroId || this.moveBands.length === 0) return [];
+    switch (interaction.kind) {
+      case "idle":
+        return this.moveBands;
+      case "facing":
+        return [];
+      case "card":
+      case "ring": {
+        const chosen = interaction.kind === "card" ? interaction.action : hoveredRingEntry(interaction)?.action;
+        if (!chosen || !moveBandOf(chosen, this.definition.content)) return [];
+        return moveBandTilesFor(this.state, heroId, this.definition.content, chosen);
+      }
+    }
+  }
+
   private highlights(): BoardHighlights {
     const interaction = this.interaction;
     // The facing step has committed to a destination: only that square stays lit.
     if (interaction.kind === "facing") {
-      return { tiles: [interaction.position], actorIds: [], objectIds: [], facingPosition: interaction.position };
+      return {
+        tiles: [interaction.position],
+        actorIds: [],
+        objectIds: [],
+        facingPosition: interaction.position,
+        moveBands: [],
+      };
     }
     const hovered = hoveredRingEntry(interaction);
     const targets = hovered
@@ -180,6 +219,7 @@ export class BattleController {
       actorIds: targets.flatMap((target) => (target.kind === "actor" ? [target.actorId] : [])),
       objectIds: targets.flatMap((target) => (target.kind === "object" ? [target.objectId] : [])),
       facingPosition: null,
+      moveBands: this.visibleMoveBands(),
     };
   }
 
@@ -203,9 +243,12 @@ export class BattleController {
     const app = this.requireElement<HTMLElement>("#app");
     app.dataset.viewerMemberId = this.presentedActorId;
     app.dataset.controlledActorIds = [...this.controlledActorIds].sort().join(",");
-    this.view.render(this.state, this.highlights(), events);
+    const highlights = this.highlights();
+    this.view.render(this.state, highlights, events);
     this.ui.render(this.state, this.history, {
       selectedAction: interactionAction(this.interaction),
+      // Legend order follows the bands themselves: cheapest movement first.
+      moveBands: MOVE_BAND_ORDER.filter((band) => highlights.moveBands.some((tile) => tile.band === band)),
       prompt: this.prompt,
       stateHash,
       controlledActorId: this.presentedActorId,
@@ -224,6 +267,18 @@ export class BattleController {
     if (action) {
       this.ui.renderActionDetail(action, this.previewFor(action, null));
       return;
+    }
+    // A ring that is open but has nothing chosen yet should describe what it opened on.
+    // Pointing at the board is a hover on a mouse and nothing at all on a touch screen,
+    // so this is the only reading a finger gets.
+    const interaction = this.interaction;
+    if (interaction.kind === "ring") {
+      const target = Object.values(this.state.actors)
+        .find((actor) => samePosition(actor.position, interaction.position));
+      if (target) {
+        this.ui.renderActorDetail(target);
+        return;
+      }
     }
     const hoveredActor = this.hoverCell
       ? Object.values(this.state.actors).find(
@@ -497,6 +552,7 @@ export class BattleController {
     this.controlledActorIds = new Set(controlledActorIds);
     this.syncPresentedActor();
     this.history = replaceHistory ? [...events] : [...this.history, ...events];
+    this.refreshMoveBands();
     this.goIdle();
     const pendingOwner = state.pendingReaction?.candidates[0]?.actorId;
     this.prompt = state.pendingReaction

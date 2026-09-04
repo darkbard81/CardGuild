@@ -69,6 +69,15 @@ button {
   min-height: var(--min-height);
   overflow: hidden;
   background: radial-gradient(circle at 50% 42%, #24302e 0, #10171b 54%, #080b0d 100%);
+  /*
+   * The board is a tap surface on iPad, not a document: without this a tap on a square
+   * double-taps to zoom, a drag scrolls the page and a long press starts a selection.
+   */
+  overscroll-behavior: contain;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .pixi-root {
@@ -193,7 +202,9 @@ button {
 
 .hero-details-toggle {
   align-self: start;
-  padding: 0.22rem 0.5rem;
+  /* Big enough to hit with a thumb on a tablet, which the bare text was not. */
+  min-height: 2.3rem;
+  padding: 0.22rem 0.6rem;
   border: 1px solid var(--line);
   border-radius: 0.4rem;
   background: rgb(255 255 255 / 4%);
@@ -532,21 +543,128 @@ button {
   background: rgb(12 15 16 / 70%);
 }
 
-.combat-log li {
-  padding: 0.4rem 0.5rem;
+.combat-log .log-entry {
   border-bottom: 1px solid rgb(44 44 40 / 80%);
   color: #b9b6a9;
   font-size: 0.7rem;
   line-height: 1.35;
 }
 
-.combat-log li:first-child {
+.combat-log .log-entry:first-child {
   color: #f0dfb2;
 }
 
-/* Prompt toast above the hand */
-.board-prompt {
+.log-line {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0.4rem 0.5rem;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.log-line-expandable {
+  cursor: pointer;
+}
+
+/* The mechanism behind a beat: the rolls, the action cost, the steps taken. */
+.log-detail {
+  display: none;
+  margin: 0;
+  padding: 0 0.5rem 0.4rem 1.1rem;
+  border-left: 2px solid rgb(217 173 85 / 45%);
+  color: #8f8c80;
+  font-size: 0.66rem;
+  list-style: none;
+}
+
+.log-entry.open .log-detail {
+  display: block;
+}
+
+@media (hover: hover) {
+  .log-entry:hover .log-detail {
+    display: block;
+  }
+}
+
+.log-line-expandable::after {
+  content: " ▸";
+  color: rgb(217 173 85 / 70%);
+}
+
+.log-entry.open .log-line-expandable::after {
+  content: " ▾";
+}
+
+.log-line-expandable:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px rgb(255 218 121 / 45%);
+}
+
+/* Prompt toast above the hand, with the move-range legend riding above it */
+.board-prompt-dock {
   grid-area: prompt;
+  /*
+   * Hugs its content like the bare pill used to: a full-width box here would be measured
+   * as a gutter and push the board out of its own row. The legend rides beside the prompt
+   * rather than above it for the same reason — a second row would raise the bottom gutter
+   * and squeeze the board at the 1024x768 minimum.
+   */
+  justify-self: center;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  pointer-events: none;
+}
+
+.move-legend {
+  display: flex;
+  gap: 0.7rem;
+  margin: 0;
+  padding: 0.28rem 0.7rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgb(13 17 20 / 78%);
+  backdrop-filter: blur(6px);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+}
+
+.move-legend-item {
+  display: flex;
+  gap: 0.32rem;
+  align-items: center;
+  color: #d5cdb8;
+}
+
+/*
+ * These three colours are the DOM half of the board's move bands. The canvas half is
+ * BAND_STYLE in src/pixi/battle/TacticalOverlayRenderer.ts — change both together.
+ */
+.move-legend-dot {
+  width: 0.62rem;
+  height: 0.62rem;
+  border: 1px solid rgb(255 255 255 / 45%);
+  border-radius: 50%;
+}
+
+.move-legend-dot[data-band="step"] {
+  background: #6ee7c8;
+}
+
+.move-legend-dot[data-band="stride"] {
+  background: #3f8fd8;
+}
+
+.move-legend-dot[data-band="fly"] {
+  background: #8b6ede;
+}
+
+.board-prompt {
   justify-self: center;
   max-width: 32rem;
   margin: 0;
@@ -560,6 +678,17 @@ button {
   font-size: 0.79rem;
   text-align: center;
   pointer-events: none;
+}
+
+/* Everything clickable on the battle screen answers Tab the same way. */
+.tactical-card:focus-visible,
+.end-turn-button:focus-visible,
+.primary-button:focus-visible,
+.secondary-button:focus-visible,
+.hero-details-toggle:focus-visible {
+  outline: none;
+  border-color: var(--gold-bright);
+  box-shadow: 0 0 0 2px rgb(255 218 121 / 45%);
 }
 
 /* Hand dock */
@@ -688,11 +817,19 @@ button {
   font-weight: 700;
 }
 
-.tactical-card:hover:not(:disabled),
 .tactical-card.selected {
   border-color: var(--gold-bright);
   box-shadow: 0 0 0 2px rgb(255 218 121 / 22%);
   transform: translateY(-2px);
+}
+
+/* A finger cannot hover, and a tap would leave the state stuck on as if selected. */
+@media (hover: hover) {
+  .tactical-card:hover:not(:disabled) {
+    border-color: var(--gold-bright);
+    box-shadow: 0 0 0 2px rgb(255 218 121 / 22%);
+    transform: translateY(-2px);
+  }
 }
 
 .tactical-card:disabled {
@@ -786,12 +923,22 @@ button {
   font-weight: 900;
 }
 
-.ring-option:hover,
-.ring-option:focus-visible {
+/* `armed` is the touch half of hover: the first tap shows the option's odds. */
+.ring-option:focus-visible,
+.ring-option.armed {
   border-color: var(--gold-bright);
   background: linear-gradient(#57492f, #2c2720);
   outline: none;
   box-shadow: 0 0 0 2px rgb(255 218 121 / 30%), 0 0.5rem 1.1rem rgb(0 0 0 / 55%);
+}
+
+@media (hover: hover) {
+  .ring-option:hover {
+    border-color: var(--gold-bright);
+    background: linear-gradient(#57492f, #2c2720);
+    outline: none;
+    box-shadow: 0 0 0 2px rgb(255 218 121 / 30%), 0 0.5rem 1.1rem rgb(0 0 0 / 55%);
+  }
 }
 
 .ring-connector {
@@ -2008,7 +2155,11 @@ button {
 
 @media (prefers-reduced-motion: reduce) {
   .tactical-card,
-  .ring-option {
+  .ring-option,
+  .end-turn-button,
+  .primary-button,
+  .secondary-button,
+  .hero-details-toggle {
     transition: none;
   }
 }

@@ -20,7 +20,9 @@ import type {
   SaveId,
   ScenarioDefinition,
 } from "../game";
+import { buildCombatLog, type CombatLogEntry } from "./combat-log";
 import type { AssetCatalog } from "../presentation";
+import type { MoveBand } from "../pixi/BattleView";
 
 export interface BattleUiHandlers {
   readonly onCard: (action: LegalAction) => void;
@@ -33,6 +35,8 @@ export interface BattleUiHandlers {
 
 export interface BattleUiPresentation {
   readonly selectedAction: LegalAction | null;
+  /** Which move bands the board is showing, so the legend can name their colours. */
+  readonly moveBands: readonly MoveBand[];
   readonly prompt: string;
   readonly stateHash: string;
   readonly controlledActorId: string;
@@ -71,6 +75,13 @@ function strikeLabel(strike: ResolvedStrikeProfile): string {
   const { count, sides, flatModifier } = strike.damage;
   return `${strike.weaponName} ${signed(strike.attackModifier)} · ${count}d${sides}${signed(flatModifier)}`;
 }
+
+/** Rule terms, so they match the action names in the ring menu and the hand. */
+const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
+  step: "Step",
+  stride: "Stride",
+  fly: "Fly",
+};
 
 /** Tall enough that the square portrait window crops to head and shoulders. */
 const PORTRAIT_ART_HEIGHT = 190;
@@ -114,7 +125,7 @@ function conditionLine(actor: ActorState): HTMLElement {
   return element(
     "p",
     conditions.length ? "condition-line" : "condition-line empty",
-    conditions.length ? conditions.join(" · ") : "No conditions",
+    conditions.length ? conditions.join(" · ") : "상태 이상 없음",
   );
 }
 
@@ -124,69 +135,6 @@ function percentage(value: number | undefined): string {
 
 function actorName(state: CombatState, actorId: string): string {
   return state.actors[actorId]?.name ?? actorId;
-}
-
-function formatEvent(state: CombatState, event: CombatEvent): string | null {
-  switch (event.type) {
-    case "COMBAT_STARTED":
-      return `Encounter started · seed ${event.seed}`;
-    case "INITIATIVE_ROLLED":
-      return `${actorName(state, event.actorId)} initiative ${event.roll} + ${event.modifier} = ${event.total}`;
-    case "TURN_STARTED":
-      return `Round ${event.round} · ${actorName(state, event.actorId)} turn`;
-    case "TURN_ENDED":
-      return `${actorName(state, event.actorId)} ended the turn.`;
-    case "ACTION_SPENT":
-      return `${actorName(state, event.actorId)} used ${event.actionId} (${event.remaining} actions left).`;
-    case "CARD_PLAYED":
-      return `${actorName(state, event.actorId)} played a tactical card.`;
-    case "ACTOR_MOVED":
-      return `${actorName(state, event.actorId)} moved ${event.path.length} squares by ${event.movementMode}.`;
-    case "FACING_CHANGED":
-      return `${actorName(state, event.actorId)} now faces ${event.facing}.`;
-    case "CHECK_ROLLED":
-      return `${event.label}: d20 ${event.roll} + ${event.modifier} vs DC ${event.dc} → ${event.degree}.`;
-    case "DAMAGE_DEALT":
-      return `${actorName(state, event.targetActorId)} took ${event.amount} ${event.damageType} damage (${event.remainingHp} HP).`;
-    case "HP_RESTORED":
-      return `${actorName(state, event.targetActorId)} recovered ${event.amount} HP (${event.remainingHp} HP).`;
-    case "CONDITION_APPLIED":
-      return event.value === undefined
-        ? `${actorName(state, event.actorId)} gained ${event.condition}.`
-        : `${actorName(state, event.actorId)} gained ${event.condition} ${event.value}.`;
-    case "CONDITION_VALUE_CHANGED":
-      return `${actorName(state, event.actorId)} is now ${event.condition} ${event.value}.`;
-    case "CONDITION_REMOVED":
-      return `${actorName(state, event.actorId)} removed ${event.condition}.`;
-    case "ACTION_LOCKED":
-      return `${actorName(state, event.actorId)} cannot use ${event.actionId} again this turn.`;
-    case "SHIELD_RAISED":
-      return `${actorName(state, event.actorId)} raised a shield (AC +${event.bonus}).`;
-    case "EFFECT_CREATED":
-      return `${actorName(state, event.actorId)} created ${event.name}.`;
-    case "EFFECT_SUSTAINED":
-      return `${actorName(state, event.actorId)} sustained an effect.`;
-    case "EFFECT_EXPIRED":
-      return `${actorName(state, event.actorId)} let an effect expire.`;
-    case "OBJECT_INTERACTED":
-      return `${actorName(state, event.actorId)} operated ${event.objectId}.`;
-    case "TERRAIN_CHANGED":
-      return `${event.tileId} changed to ${event.traits.join(", ")}.`;
-    case "CARD_DRAWN":
-      return null;
-    case "DISCARD_RESHUFFLED":
-      return `${actorName(state, event.actorId)} reshuffled the discard pile.`;
-    case "REACTION_OPENED":
-      return `Reaction window opened against ${actorName(state, event.sourceActorId)}.`;
-    case "REACTION_USED":
-      return `${actorName(state, event.actorId)} used ${event.actionId}.`;
-    case "REACTION_PASSED":
-      return `${actorName(state, event.actorId)} passed the reaction.`;
-    case "ACTOR_DEFEATED":
-      return `${actorName(state, event.actorId)} was defeated.`;
-    case "COMBAT_ENDED":
-      return `Combat ended: ${event.outcome}.`;
-  }
 }
 
 export class BattleUi {
@@ -209,6 +157,9 @@ export class BattleUi {
   private readonly discardCount = required<HTMLElement>("#discard-count");
   private readonly handCards = required<HTMLElement>("#hand-cards");
   private readonly boardPrompt = required<HTMLElement>("#board-prompt");
+  private readonly moveLegend = required<HTMLElement>("#move-legend");
+  /** The last history array rendered, so an unrelated re-render leaves the log alone. */
+  private lastHistory: readonly CombatEvent[] | null = null;
   private readonly reactionModal = required<HTMLElement>("#reaction-modal");
   private readonly reactionDescription = required<HTMLElement>("#reaction-description");
   private readonly reactionUse = required<HTMLButtonElement>("#reaction-use");
@@ -265,6 +216,7 @@ export class BattleUi {
     this.round.textContent = String(state.round);
     this.heroHeading.textContent = hero.name;
     this.boardPrompt.textContent = presentation.prompt;
+    this.renderMoveLegend(presentation.moveBands);
 
     this.renderInitiative(state);
     this.renderHeroCard(hero);
@@ -391,6 +343,18 @@ export class BattleUi {
     return [...hpBlock(actor), stats, conditionLine(actor)];
   }
 
+  /** Colour alone does not say what a band means, so it is named while it is on screen. */
+  private renderMoveLegend(bands: readonly MoveBand[]): void {
+    this.moveLegend.hidden = bands.length === 0;
+    this.moveLegend.replaceChildren(...bands.map((band) => {
+      const item = element("span", "move-legend-item");
+      const dot = element("span", "move-legend-dot");
+      dot.dataset.band = band;
+      item.append(dot, element("span", undefined, MOVE_BAND_LABELS[band]));
+      return item;
+    }));
+  }
+
   private renderPips(remaining: number): void {
     this.actionPips.replaceChildren();
     for (let index = 0; index < 3; index += 1) {
@@ -508,13 +472,38 @@ export class BattleUi {
     if (actor.defeated) this.selectedDetail.append(element("p", "detail-warning", "Defeated"));
   }
 
+  /**
+   * One line per action — what was used and what it did — with the arithmetic folded
+   * away. A turn used to cost the player ten flat lines to read.
+   */
   private renderLog(state: CombatState, history: readonly CombatEvent[]): void {
+    // The controller hands over the same array until new events arrive, so an unrelated
+    // re-render (a card picked, a ring dismissed) must not rebuild and re-announce it.
+    if (history === this.lastHistory) return;
+    this.lastHistory = history;
     this.combatLog.replaceChildren();
-    const messages = history.flatMap((event) => {
-      const message = formatEvent(state, event);
-      return message ? [message] : [];
+    const entries = buildCombatLog(history, (actorId) => actorName(state, actorId), this.content);
+    for (const entry of entries.slice(-40).reverse()) this.combatLog.append(this.logEntry(entry));
+  }
+
+  private logEntry(entry: CombatLogEntry): HTMLElement {
+    const item = element("li", "log-entry");
+    if (entry.details.length === 0) {
+      item.append(element("p", "log-line", entry.summary));
+      return item;
+    }
+    const line = element("button", "log-line log-line-expandable", entry.summary);
+    line.type = "button";
+    line.setAttribute("aria-expanded", "false");
+    const detail = element("ul", "log-detail");
+    for (const message of entry.details) detail.append(element("li", undefined, message));
+    // Hover opens it on a mouse (CSS); a tap is the only way in on a tablet.
+    line.addEventListener("click", () => {
+      const open = item.classList.toggle("open");
+      line.setAttribute("aria-expanded", String(open));
     });
-    for (const message of messages.slice(-40).reverse()) this.combatLog.append(element("li", undefined, message));
+    item.append(line, detail);
+    return item;
   }
 
   private renderReaction(state: CombatState, controlledActorId: string): void {

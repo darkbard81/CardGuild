@@ -89,7 +89,10 @@
             </section>
           </aside>
 
-          <p id="board-prompt" class="board-prompt" data-hud-gutter="bottom" aria-live="polite">행동을 선택하세요.</p>
+          <div class="board-prompt-dock" data-hud-gutter="bottom">
+            <p id="move-legend" class="move-legend" aria-label="이동 범위 색 안내" hidden></p>
+            <p id="board-prompt" class="board-prompt" aria-live="polite">행동을 선택하세요.</p>
+          </div>
 
           <footer class="hand-dock" data-hud-gutter="bottom">
             <div id="hand-cards" class="hand-cards"></div>
