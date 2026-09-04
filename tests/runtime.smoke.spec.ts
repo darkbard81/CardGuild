@@ -479,6 +479,60 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-perspective-board.png"), fullPage: true });
 });
 
+/**
+ * A tablet has no wheel and no middle button, so two fingers have to reach the same
+ * camera. Chromium only accepts real multi-touch through the DevTools protocol.
+ */
+test.describe("touch camera", () => {
+  test.use({ hasTouch: true, viewport: { width: 1180, height: 820 } });
+
+  test("pinches to zoom and drags with two fingers the way the wheel and drag do", async ({ page }) => {
+    await openBattle(page);
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: string, points: readonly { x: number; y: number; id: number }[]): Promise<unknown> =>
+      cdp.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: points.map((point) => ({ ...point, radiusX: 12, radiusY: 12, force: 1 })),
+      });
+    const quad = async (): Promise<{ width: number; centerX: number }> => {
+      const corners = await boardCorners(page);
+      return {
+        width: Math.max(...corners.map((corner) => corner.x)) - Math.min(...corners.map((corner) => corner.x)),
+        centerX: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
+      };
+    };
+
+    const start = await quad();
+    let left = { x: 520, y: 380, id: 1 };
+    let right = { x: 620, y: 440, id: 2 };
+    await touch("touchStart", [left, right]);
+    for (let step = 0; step < 8; step += 1) {
+      left = { ...left, x: left.x - 12, y: left.y - 8 };
+      right = { ...right, x: right.x + 12, y: right.y + 8 };
+      await touch("touchMove", [left, right]);
+    }
+    await touch("touchEnd", []);
+    const zoomed = await quad();
+    expect(zoomed.width).toBeGreaterThan(start.width * 1.2);
+
+    left = { x: 520, y: 380, id: 1 };
+    right = { x: 640, y: 460, id: 2 };
+    await touch("touchStart", [left, right]);
+    for (let step = 0; step < 8; step += 1) {
+      left = { ...left, x: left.x - 14 };
+      right = { ...right, x: right.x - 14 };
+      await touch("touchMove", [left, right]);
+    }
+    await touch("touchEnd", []);
+    const panned = await quad();
+    // Fingers travelling together move the board without changing how big it is.
+    expect(panned.centerX).toBeLessThan(zoomed.centerX - 50);
+    expect(panned.width).toBeCloseTo(zoomed.width, 0);
+    // Lifting out of a gesture is not a pick, so no radial menu opens behind it.
+    await expect(page.locator("#ring-root")).toBeHidden();
+  });
+});
+
 test("fits the 1024x768 minimum and independently resizes the battlefield camera", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
   await openBattle(page);

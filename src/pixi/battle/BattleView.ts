@@ -70,6 +70,9 @@ interface PositionedVisual extends SortableVisual {
   currentPosition: { x: number; y: number };
 }
 
+/** Below this the two points are effectively one and the ratio is noise. */
+const MIN_PINCH_SPREAD = 24;
+
 function clearLayer(layer: Container): void {
   for (const child of layer.removeChildren()) child.destroy({ children: true });
 }
@@ -119,6 +122,16 @@ export class BattleView {
     this.layoutScene();
   };
   private readonly pointerDownHandler = (event: PointerEvent): void => {
+    if (event.pointerType !== "mouse") {
+      this.touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      // A fresh touch after a gesture is a real tap again.
+      if (this.touchPoints.size === 1) this.gestureBlocksTap = false;
+      if (this.touchPoints.size === 2) {
+        this.gesture = this.readGesture();
+        this.setHover(null);
+      }
+      return;
+    }
     if (event.button === 1 || (event.button === 0 && event.altKey)) {
       this.panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
       this.app.canvas.setPointerCapture(event.pointerId);
@@ -126,6 +139,12 @@ export class BattleView {
     }
   };
   private readonly pointerMoveHandler = (event: PointerEvent): void => {
+    if (event.pointerType !== "mouse") {
+      if (!this.touchPoints.has(event.pointerId)) return;
+      this.touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      this.applyTouchGesture();
+      return;
+    }
     if (!this.panPointer || this.panPointer.id !== event.pointerId) return;
     this.camera.panBy(event.clientX - this.panPointer.x, event.clientY - this.panPointer.y, this.boardFrame());
     this.panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
@@ -133,12 +152,20 @@ export class BattleView {
   };
   private readonly pointerUpHandler = (event: PointerEvent): void => {
     if (this.panPointer?.id === event.pointerId) this.panPointer = null;
-    // A finger leaves its last hover behind: no later move will take the pointer off the
-    // square, so the board would keep a square lit under a hand that is long gone.
-    if (event.pointerType !== "mouse") this.setHover(null);
+    if (event.pointerType !== "mouse") {
+      this.touchPoints.delete(event.pointerId);
+      if (this.touchPoints.size < 2) this.gesture = null;
+      // A finger leaves its last hover behind: no later move will take the pointer off the
+      // square, so the board would keep a square lit under a hand that is long gone.
+      this.setHover(null);
+    }
   };
   private resizeFrame: number | null = null;
   private panPointer: { readonly id: number; readonly x: number; readonly y: number } | null = null;
+  /** Live touch points, so two of them can drive the camera the way a wheel does. */
+  private readonly touchPoints = new Map<number, { x: number; y: number }>();
+  private gesture: { readonly x: number; readonly y: number; readonly spread: number } | null = null;
+  private gestureBlocksTap = false;
   private state: CombatState | null = null;
   private boardKey = "";
   private currentHighlights: BoardHighlights = { tiles: [], actorIds: [], objectIds: [], facingPosition: null, moveBands: [] };
@@ -415,8 +442,41 @@ export class BattleView {
     return position;
   }
 
+  /** Midpoint and spread of the two live touch points, in client coordinates. */
+  private readGesture(): { x: number; y: number; spread: number } | null {
+    const [first, second] = [...this.touchPoints.values()];
+    if (!first || !second) return null;
+    return {
+      x: (first.x + second.x) / 2,
+      y: (first.y + second.y) / 2,
+      spread: Math.hypot(second.x - first.x, second.y - first.y),
+    };
+  }
+
+  /**
+   * Two fingers do on a tablet what the wheel and the middle-button drag do on a desk:
+   * moving them together pans, spreading or pinching them zooms about the point between
+   * them. Both feed the same camera, so the board stays inside the HUD safe area either way.
+   */
+  private applyTouchGesture(): void {
+    const previous = this.gesture;
+    const next = this.readGesture();
+    if (!previous || !next) return;
+    this.gesture = next;
+    this.gestureBlocksTap = true;
+    const frame = this.boardFrame();
+    this.camera.panBy(next.x - previous.x, next.y - previous.y, frame);
+    if (previous.spread > MIN_PINCH_SPREAD && next.spread > MIN_PINCH_SPREAD) {
+      const bounds = this.app.canvas.getBoundingClientRect();
+      this.camera.zoomBy(next.spread / previous.spread, next.x - bounds.left, next.y - bounds.top, frame);
+    }
+    this.layoutScene();
+  }
+
   private handlePointerTap(event: FederatedPointerEvent): void {
     if (!this.state || this.panPointer) return;
+    // The lift that ends a pinch is not a pick.
+    if (this.gestureBlocksTap) return;
     const point = new Point(event.global.x, event.global.y);
     const facingPosition = this.currentHighlights.facingPosition;
     if (facingPosition) {
