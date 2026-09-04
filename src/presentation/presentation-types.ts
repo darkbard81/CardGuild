@@ -79,6 +79,13 @@ export interface DomAtlasStyle {
   readonly height: string;
 }
 
+/** The same frame expressed in percentages, so it scales with whatever element holds it. */
+export interface DomAtlasFillStyle {
+  readonly backgroundImage: string;
+  readonly backgroundPosition: string;
+  readonly backgroundSize: string;
+}
+
 export function groundSemantic(traits: readonly TraitInstance[]): "open" | "difficult" | "impassable" {
   if (traits.some((trait) => trait.id === "impassable")) return "impassable";
   if (traits.some((trait) => trait.id === "difficult")) return "difficult";

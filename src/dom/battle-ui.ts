@@ -88,6 +88,12 @@ const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
  * asset manifest, so it lands on the drawing whatever shape the creature is.
  */
 const HERO_PORTRAIT_SIZE = 50;
+
+/** Past this a name needs the smaller type to stay on one line beside its cost. */
+const LONG_CARD_NAME = 12;
+
+/** Long enough not to fire on a tap that means "pick this card". */
+const LONG_PRESS_MS = 380;
 const INITIATIVE_PORTRAIT_SIZE = 34;
 
 /** The grid has room for three columns, the sheet has room for the whole word. */
@@ -162,8 +168,11 @@ export class BattleUi {
   private readonly handCards = required<HTMLElement>("#hand-cards");
   private readonly boardPrompt = required<HTMLElement>("#board-prompt");
   private readonly moveLegend = required<HTMLElement>("#move-legend");
+  private readonly cardDetail = required<HTMLElement>("#card-detail");
   /** The last history array rendered, so an unrelated re-render leaves the log alone. */
   private lastHistory: readonly CombatEvent[] | null = null;
+  private longPressTimer: number | null = null;
+  private longPressFired = false;
   private readonly reactionModal = required<HTMLElement>("#reaction-modal");
   private readonly reactionDescription = required<HTMLElement>("#reaction-description");
   private readonly reactionUse = required<HTMLButtonElement>("#reaction-use");
@@ -185,6 +194,13 @@ export class BattleUi {
   ) {
     this.resultAction.textContent = "Return to Adventure";
     const listenerOptions = { signal: this.abortController.signal };
+    // Anything that is not the card being pressed puts its detail away again.
+    document.addEventListener("pointerdown", (event) => {
+      if (!(event.target instanceof Node) || !this.handCards.contains(event.target)) this.hideCardDetail();
+    }, listenerOptions);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") this.hideCardDetail();
+    }, listenerOptions);
     this.heroDetailsToggle.addEventListener("click", () => {
       this.heroDetailsOpen = !this.heroDetailsOpen;
       this.applyHeroDetailsState();
@@ -196,6 +212,7 @@ export class BattleUi {
   }
 
   public destroy(): void {
+    this.hideCardDetail();
     this.abortController.abort();
     this.reactionModal.hidden = true;
     this.resultModal.hidden = true;
@@ -387,6 +404,7 @@ export class BattleUi {
     state: CombatState,
     actorId: string,
   ): void {
+    this.hideCardDetail();
     this.handCards.replaceChildren();
     if (actions.length === 0) {
       this.handCards.append(element("p", "empty-message", "손패가 비었습니다."));
@@ -419,22 +437,88 @@ export class BattleUi {
     if (selected?.source.id === action.source.id) button.classList.add("selected");
     button.title = action.reason ?? action.description;
 
-    const top = element("span", "card-top");
-    top.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
+    const title = element("span", action.name.length > LONG_CARD_NAME ? "card-title long" : "card-title");
+    title.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
     const visual = card ? this.catalog.cardVisual(card.definitionId) : null;
-    const icon = element("span", visual ? "tactical-card-icon" : "tactical-card-icon missing");
-    icon.setAttribute("aria-hidden", "true");
-    if (visual) Object.assign(icon.style, this.catalog.domAtlasStyle(visual, 32));
-    button.append(
-      top,
-      icon,
-      element("span", "card-description", action.description),
-      element("span", "card-source", action.sourceLabel ?? "Character"),
-    );
-    button.addEventListener("click", () => this.handlers.onCard(action));
+    const art = element("span", visual ? "card-art" : "card-art missing");
+    art.setAttribute("aria-hidden", "true");
+    if (visual) {
+      const image = element("span", "card-art-image");
+      // Percentage-placed, so the picture takes whatever room the frame has.
+      Object.assign(image.style, this.catalog.domAtlasFillStyle(visual));
+      art.append(image);
+    } else {
+      art.textContent = action.name.slice(0, 1);
+    }
+    button.append(title, art);
+    button.addEventListener("click", () => {
+      // The press that opened the detail is not the press that plays the card.
+      if (this.longPressFired) {
+        this.longPressFired = false;
+        return;
+      }
+      this.handlers.onCard(action);
+    });
+    button.addEventListener("pointerdown", () => this.startLongPress(button, action, card));
+    for (const type of ["pointerup", "pointerleave", "pointercancel"] as const) {
+      button.addEventListener(type, () => this.cancelLongPress());
+    }
     button.addEventListener("mouseenter", () => this.handlers.onCardHover(action));
     button.addEventListener("mouseleave", () => this.handlers.onCardHover(null));
     return button;
+  }
+
+  /**
+   * The card face carries a name, a cost and a picture — enough to pick from. The words
+   * behind it are a press away, which is what a finger has instead of a hover.
+   */
+  private startLongPress(
+    button: HTMLElement,
+    action: LegalAction,
+    card: CombatState["cardZones"][string]["hand"][number] | undefined,
+  ): void {
+    this.cancelLongPress();
+    this.longPressTimer = window.setTimeout(() => {
+      this.longPressTimer = null;
+      this.longPressFired = true;
+      this.showCardDetail(button, action, card);
+    }, LONG_PRESS_MS);
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer === null) return;
+    window.clearTimeout(this.longPressTimer);
+    this.longPressTimer = null;
+  }
+
+  private showCardDetail(
+    button: HTMLElement,
+    action: LegalAction,
+    card: CombatState["cardZones"][string]["hand"][number] | undefined,
+  ): void {
+    const heading = element("div", "detail-heading");
+    heading.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
+    this.cardDetail.replaceChildren(
+      heading,
+      element("p", undefined, action.description),
+      element("p", "detail-traits", action.traits.join(" · ")),
+      element("p", "detail-source", `Source: ${action.sourceLabel ?? card?.source.kind ?? "Character"}`),
+    );
+    if (action.reason) this.cardDetail.append(element("p", "detail-warning", action.reason));
+    this.cardDetail.hidden = false;
+    const stage = button.closest(".combat-stage")?.getBoundingClientRect();
+    const anchor = button.getBoundingClientRect();
+    if (!stage) return;
+    // Above the card it belongs to, kept inside the stage on both sides.
+    const half = this.cardDetail.offsetWidth / 2;
+    const centre = anchor.left + anchor.width / 2 - stage.left;
+    this.cardDetail.style.left = `${Math.min(Math.max(centre, half + 8), stage.width - half - 8)}px`;
+    this.cardDetail.style.bottom = `${stage.bottom - anchor.top + 10}px`;
+  }
+
+  public hideCardDetail(): void {
+    this.cancelLongPress();
+    this.cardDetail.hidden = true;
   }
 
   public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null): void {

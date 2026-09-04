@@ -5,6 +5,7 @@ import manifestJson from "../../presentation/m3/asset-manifest.json";
 import tilemapsJson from "../../presentation/m3/tilemaps.json";
 import type {
   ActorVisualDefinition,
+  DomAtlasFillStyle,
   DomAtlasStyle,
   PresentationAssetDefinition,
   PresentationAssetId,
@@ -126,6 +127,25 @@ export class AssetCatalog {
       backgroundSize: `${this.manifest.atlas.width * scale}px ${this.manifest.atlas.height * scale}px`,
       width: `${size}px`,
       height: `${size}px`,
+    };
+  }
+
+  /**
+   * One atlas frame as a background that scales with its element, so a card can hand its
+   * picture whatever room it has instead of the picture fixing the room. The frame is
+   * placed by percentage, which is what makes a sprite sheet resize cleanly.
+   */
+  public domAtlasFillStyle(id: PresentationAssetId): DomAtlasFillStyle {
+    const frame = this.atlasMap.frames[id]?.frame;
+    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
+    const atlas = this.manifest.atlas;
+    const spanX = atlas.width - frame.w;
+    const spanY = atlas.height - frame.h;
+    return {
+      backgroundImage: `url("${atlas.imagePath}")`,
+      backgroundPosition:
+        `${spanX <= 0 ? 0 : (frame.x / spanX) * 100}% ${spanY <= 0 ? 0 : (frame.y / spanY) * 100}%`,
+      backgroundSize: `${(atlas.width / frame.w) * 100}% ${(atlas.height / frame.h) * 100}%`,
     };
   }
 

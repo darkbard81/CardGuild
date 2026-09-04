@@ -422,6 +422,23 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await page.mouse.move(0, 0);
   await expect(foldedDetail).toBeVisible();
 
+  // The card face carries a name, a cost and a picture. The words behind it are a press
+  // away, which is what a finger has instead of a hover.
+  const tripCard = page.locator('#hand-cards .tactical-card[data-action-id="trip"]').first();
+  await expect(tripCard.locator(".card-art")).toBeVisible();
+  await expect(page.locator("#card-detail")).toBeHidden();
+  const tripBox = await tripCard.boundingBox();
+  if (!tripBox) throw new Error("The Trip card has no bounding box.");
+  await page.mouse.move(tripBox.x + tripBox.width / 2, tripBox.y + tripBox.height / 2);
+  await page.mouse.down();
+  await expect(page.locator("#card-detail")).toBeVisible();
+  await expect(page.locator("#card-detail")).toContainText("Prone");
+  await page.mouse.up();
+  // Reading a card is not playing it.
+  await expect(tripCard).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#card-detail")).toBeHidden();
+
   // Card-first path: choose the card, then one of the targets it highlights.
   await page.locator('#hand-cards .tactical-card[data-action-id="trip"]:not([disabled])').first().click();
   await expect(page.locator("#board-prompt")).toContainText("강조된 적");
