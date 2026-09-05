@@ -1,11 +1,11 @@
 import type { PresentationAssetDefinition } from "./presentation-types";
 
 /**
- * A tile-bound structure is an object that owns one terrain cell — a wall, a gate. It
+ * A tile-bound structure is an object that owns one terrain cell — a gate. It
  * says so by declaring a footprint, which is what lets the runtime size it without ever
- * asking which asset it is. Height is deliberately free: a low wall and a high wall
- * differ in silhouette, and neither difference means anything to the rules. Movement,
- * Fly and line of sight come from the tile's traits, never from a texture.
+ * asking which asset it is. Height is deliberately free: two structures may differ in
+ * silhouette, and that difference means nothing to the rules. Movement, Fly and line of
+ * sight come from the tile's traits, never from a texture.
  */
 export const STRUCTURE_RUNTIME_WIDTH = 128;
 
@@ -131,10 +131,12 @@ export function assertPointPropFramePlan(frame: FramePlanShape): void {
 }
 
 /**
- * Walls and gates are structures by definition. Saying so here means a wall that lost its
- * footprint fails loudly instead of being waved through as a point prop.
+ * A gate is a structure by definition: one cell, two states. Saying so here means a gate
+ * that lost its footprint fails loudly instead of being waved through as a point prop.
+ * A wall is not on this list — it is a square terrain tile, drawn into the board texture
+ * with the floor rather than standing on it.
  */
-export const REQUIRED_STRUCTURE_VISUALS = ["wall", "gateClosed", "gateOpen"] as const;
+export const REQUIRED_STRUCTURE_VISUALS = ["gateClosed", "gateOpen"] as const;
 
 export function assertRequiredStructures(
   objectVisuals: Readonly<Record<string, string>>,

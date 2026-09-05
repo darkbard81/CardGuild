@@ -11,7 +11,7 @@ import {
 
 type AssetKind = "actor" | "terrain" | "object" | "ui";
 /**
- * `tile-structure` is a wall, a gate or anything else that belongs to one terrain cell:
+ * `tile-structure` is a gate or anything else that belongs to one terrain cell:
  * it is normalised width-first so the drawing spans the canvas exactly, and the runtime
  * draws it one cell wide. A `grounded-object` is a point prop standing on a cell — a
  * chest, a lever — and stays height-driven.
@@ -622,7 +622,8 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
   const scenarios: readonly ScenarioSource[] = Object.values(PRODUCTION_CONTENT.pack.scenarioSources);
   const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm"];
   const transitionPalette = ["transition.web"];
-  const objectPalette = ["object.wall", "object.gate.closed", "object.lever", "object.chest"];
+  // A blocked tile is wall surface on the board texture (#27), so it places no object.
+  const objectPalette = ["object.gate.closed", "object.lever", "object.chest"];
   const maps: Record<string, unknown> = {};
   for (const scenario of scenarios) {
     const { width, height } = scenario.map;
@@ -645,8 +646,7 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
       const traits = traitSet(tile);
       ground[index] = traits.has("impassable") ? 2 : traits.has("difficult") ? 1 : 0;
       if (traits.has("web")) transitions[index] = 0;
-      if (traits.has("gate") || traits.has("gate-open")) objects[index] = 1;
-      else if (traits.has("blocked")) objects[index] = 0;
+      if (traits.has("gate") || traits.has("gate-open")) objects[index] = 0;
       tileIds[index] = tile.id;
       objectIds[index] = (objects[index] ?? -1) >= 0 ? tile.id : null;
       types[index] = semanticType(traits);
@@ -657,7 +657,7 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
     for (const object of scenario.map.objects) {
       const index = object.position.y * width + object.position.x;
       if (index < 0 || index >= length) throw new Error(`${scenario.id} object ${object.id} is outside the map.`);
-      if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 2;
+      if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 1;
       objectIds[index] = object.id;
     }
     for (const dressing of plan.presentation.scenery ?? []) {
@@ -719,7 +719,7 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     "terrain.rubble",
     "terrain.chasm",
     "transition.web",
-    "object.wall",
+    "terrain.wall-block",
     "object.gate.closed",
     "object.gate.open",
     "object.lever",

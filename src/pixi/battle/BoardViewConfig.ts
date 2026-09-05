@@ -10,6 +10,17 @@ export interface BoardSafeArea {
   readonly bottom: number;
 }
 
+/**
+ * How the outline around a wall region is stroked. It lives here, with the rest of the
+ * board's presentation, because nothing about it is a rule: the same wall blocks
+ * movement and sight whether the line is thick, thin or absent.
+ */
+export interface WallBoundaryStyle {
+  readonly color: number;
+  readonly width: number;
+  readonly alpha: number;
+}
+
 export interface BoardViewConfig {
   readonly topYRatio: number;
   readonly bottomYRatio: number;
@@ -30,6 +41,8 @@ export interface BoardViewConfig {
   readonly actorFootRowOffset: number;
   readonly propFootRowOffset: number;
   readonly boardTextureCellSize: number;
+  /** Drawn over the square grid, so a wall region reads ahead of the ordinary cell lines. */
+  readonly wallBoundary: WallBoundaryStyle;
 }
 
 /** Used until the HUD has been laid out and measured. */
@@ -55,6 +68,7 @@ export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
   actorFootRowOffset: 0.8,
   propFootRowOffset: 0.88,
   boardTextureCellSize: 128,
+  wallBoundary: { color: 0xaaa38f, width: 7, alpha: 0.9 },
 });
 
 /** Everything the camera needs to frame one board inside the current canvas. */

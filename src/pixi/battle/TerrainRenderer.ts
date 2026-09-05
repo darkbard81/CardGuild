@@ -5,6 +5,7 @@ import type { AssetCatalog } from "../../presentation";
 import { isTileStructure, spriteSizing, tilemapAssetAt } from "../../presentation";
 import type { BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
+import { collectWallBoundarySegments, isWallTile, wallBoundaryLine, type WallBoundarySegment } from "./WallBoundary";
 
 /** Point props with no authored height fall back to this. */
 const DEFAULT_PROP_HEIGHT = 96;
@@ -27,12 +28,17 @@ function traits(tile: TileState): ReadonlySet<string> {
 
 export class TerrainRenderer {
   private boardTexture: Texture | null = null;
+  private wallSummary = "";
 
   public constructor(
     private readonly app: Application,
     private readonly catalog: AssetCatalog,
     private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
   ) {}
+
+  private tilesByCell(state: CombatState): ReadonlyMap<string, TileState> {
+    return new Map(Object.values(state.map.tiles).map((tile) => [`${tile.position.x},${tile.position.y}`, tile]));
+  }
 
   public renderBoard(state: CombatState): Texture {
     const tilemap = this.catalog.tilemap(state.scenarioId);
@@ -53,6 +59,8 @@ export class TerrainRenderer {
       this.boardTexture = RenderTexture.create({ width, height, resolution: 1, antialias: false });
     }
     const composition = new Container({ label: "board-texture-composition" });
+    const stateTiles = this.tilesByCell(state);
+    const walls: GridPosition[] = [];
     for (let row = 0; row < tilemap.height; row += 1) {
       for (let col = 0; col < tilemap.width; col += 1) {
         const index = row * tilemap.width + col;
@@ -72,7 +80,20 @@ export class TerrainRenderer {
           overlay.setSize(cell, cell);
           composition.addChild(overlay);
         }
+        const tile = stateTiles.get(`${col},${row}`);
+        if (tile && isWallTile(traits(tile))) walls.push(tile.position);
       }
+    }
+    // A wall is terrain, not a standee: it covers its own square on the same plane as the
+    // floor, at the same size, so neighbouring walls already share one continuous surface
+    // and nothing drifts against the board when the camera moves.
+    const wallVisual = this.catalog.manifest.terrainVisuals.blocked;
+    for (const position of walls) {
+      const block = new Sprite(this.catalog.texture(wallVisual));
+      block.anchor.set(0, 0);
+      block.position.set(position.x * cell, position.y * cell);
+      block.setSize(cell, cell);
+      composition.addChild(block);
     }
     const grid = new Graphics({ label: "square-grid" });
     for (let col = 0; col <= tilemap.width; col += 1) {
@@ -83,14 +104,33 @@ export class TerrainRenderer {
     }
     grid.stroke({ width: 3, color: 0x171713, alpha: 0.78 });
     composition.addChild(grid);
+    const segments = collectWallBoundarySegments(walls);
+    this.wallSummary = `${walls.length}/${segments.length}`;
+    composition.addChild(this.wallBoundary(segments, cell));
     this.app.renderer.render({ container: composition, target: this.boardTexture, clear: true });
     composition.destroy({ children: true });
     return this.boardTexture;
   }
 
+  /**
+   * One stroke around the whole wall region and none along the seams inside it, drawn
+   * over the square grid so the wall edge reads ahead of the ordinary cell lines. Square
+   * caps let two perpendicular edges close their corner without a corner asset.
+   */
+  private wallBoundary(segments: readonly WallBoundarySegment[], cell: number): Graphics {
+    const boundary = new Graphics({ label: "wall-boundary" });
+    for (const segment of segments) {
+      const line = wallBoundaryLine(segment, cell);
+      boundary.moveTo(line.x1, line.y1).lineTo(line.x2, line.y2);
+    }
+    const { width, color, alpha } = this.config.wallBoundary;
+    boundary.stroke({ width, color, alpha, cap: "square" });
+    return boundary;
+  }
+
   public renderProps(state: CombatState): readonly SortableVisual[] {
     const tilemap = this.catalog.tilemap(state.scenarioId);
-    const stateTiles = new Map(Object.values(state.map.tiles).map((tile) => [`${tile.position.x},${tile.position.y}`, tile]));
+    const stateTiles = this.tilesByCell(state);
     const visuals: SortableVisual[] = [];
     for (let row = 0; row < tilemap.height; row += 1) {
       for (let col = 0; col < tilemap.width; col += 1) {
@@ -101,9 +141,10 @@ export class TerrainRenderer {
         let assetId: string | null = mapped;
         const tileTraits = traits(tile);
         if (mapped === this.catalog.manifest.objectVisuals.lever) assetId = null;
+        // A blocked tile has no prop of its own: it is wall surface on the board texture.
         if (tileTraits.has("gate-open")) assetId = this.catalog.manifest.objectVisuals.gateOpen;
         else if (tileTraits.has("gate")) assetId = this.catalog.manifest.objectVisuals.gateClosed;
-        else if (tileTraits.has("blocked")) assetId = this.catalog.manifest.objectVisuals.wall;
+        else if (tileTraits.has("blocked")) assetId = null;
         if (!assetId) continue;
         visuals.push(this.prop(assetId, tile.position, tile.id, 10));
       }
@@ -144,6 +185,15 @@ export class TerrainRenderer {
       stableId,
       cellBound,
     };
+  }
+
+  /**
+   * Wall cells against exposed edges, as `cells/segments`. Adjacency is the whole point
+   * of the boundary, and it is invisible from outside once it has been rasterised into
+   * the board texture, so the counts are published for a test to read.
+   */
+  public get wallRegionFit(): string {
+    return this.wallSummary;
   }
 
   /**

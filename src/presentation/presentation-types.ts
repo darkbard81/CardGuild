@@ -49,10 +49,10 @@ export interface PresentationAssetManifest {
     readonly difficult: PresentationAssetId;
     readonly impassable: PresentationAssetId;
     readonly web: PresentationAssetId;
+    /** Wall surface. A wall is a square terrain tile like any other, not a standee. */
     readonly blocked: PresentationAssetId;
   };
   readonly objectVisuals: {
-    readonly wall: PresentationAssetId;
     readonly chest: PresentationAssetId;
     readonly lever: PresentationAssetId;
     readonly gateClosed: PresentationAssetId;

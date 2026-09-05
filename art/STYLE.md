@@ -16,16 +16,29 @@ Every generated battle asset prompt must reference this file.
 Two kinds of object stand on the board and they are produced differently.
 
 - **Point Prop** — a crate, a lever, a chest, a barrel. It stands *on* a cell without claiming it. Authored at the height it should read at; the runtime draws it height-first and lets the width follow.
-- **Tile-Bound Structure** — a wall, a gate, and later a fence or barricade. It *is* the cell it stands on. Produced on a 256px-wide canvas with the drawing spanning that width edge to edge and sitting on the bottom edge, so the runtime can draw it exactly one terrain cell (128px) wide and let the height follow the art.
+- **Tile-Bound Structure** — a gate, and later a fence or barricade. It *is* the cell it stands on. Produced on a 256px-wide canvas with the drawing spanning that width edge to edge and sitting on the bottom edge, so the runtime can draw it exactly one terrain cell (128px) wide and let the height follow the art.
+
+A wall is neither. It is a square terrain master like the floors — see below.
 
 Structure rules:
 
-- Nominal width is always one terrain cell. Low and high variants differ in silhouette height, never in width.
+- Nominal width is always one terrain cell. Variants differ in silhouette height, never in width.
 - Height is authored per structure. A structure canvas is 256 wide and as tall as that structure needs.
 - Structures never rotate. There are no N/E/S/W variants.
 - The bottom edge is the contact line with the tile; anchor `(0.5, 1)`.
-- Nothing about the picture decides gameplay. Visual height is not elevation, cover, or an obstruction value: movement, Fly and line of sight come from the tile's traits alone. A low wall and a high wall are the same rule with different art.
+- Nothing about the picture decides gameplay. Visual height is not elevation, cover, or an obstruction value: movement, Fly and line of sight come from the tile's traits alone.
 - A gate is one structure in two states. The open state is generated from the accepted closed gate and keeps the same canvas, frame, posts, baseline and overall bounds — only the door changes.
+
+## Walls
+
+A wall is terrain, not a standee. One `square-terrain` master on the same 256x256 canvas as
+the floors, drawn full bleed: the stone fills the square edge to edge with no drawn outline,
+no frame and no transparent margin, so two blocked cells side by side read as one surface.
+
+- No direction-specific wall art, no convex/concave corner variants, no autotile atlas.
+- Nothing in the picture marks where the wall ends. The runtime strokes the outline itself,
+  only where a blocked cell meets something that is not a wall.
+- Read it against the floor at a glance: heavier masonry, colder and darker values.
 
 ## Character rendering
 

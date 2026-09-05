@@ -332,21 +332,20 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator("#hero-details")).toContainText("Reflex DC");
   await expect(page.locator("#hero-details")).toContainText("15");
 
-  // The spear corridor is walled, and a wall belongs to exactly one square: its drawn
-  // width has to equal that square's projected width wherever it stands and however far
-  // the camera is zoomed in. The rows differ, so this also pins near against far.
+  // The spear corridor is walled by four separate blocked squares. A wall is terrain now,
+  // painted into the board texture rather than standing on it, so it raises no upright
+  // structure and nothing about it can drift when the camera moves. Four lone cells means
+  // four exposed edges each: no seam is ever shared, so all sixteen are drawn.
+  const canvas = page.locator("#pixi-canvas");
   const structureFit = async (): Promise<Array<{ id: string; ratio: number }>> =>
-    JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-structure-fit") ?? "[]");
-  const walls = await structureFit();
-  expect(walls.length).toBe(4);
-  for (const wall of walls) expect(wall.ratio).toBeCloseTo(1, 1);
-  expect(new Set(walls.map((wall) => wall.id)).size).toBe(4);
+    JSON.parse(await canvas.getAttribute("data-structure-fit") ?? "[]");
+  expect(await structureFit()).toEqual([]);
+  await expect(canvas).toHaveAttribute("data-wall-region-fit", "4/16");
   await page.mouse.move(400, 400);
   await page.mouse.wheel(0, -240);
   await page.waitForTimeout(300);
-  const zoomedWalls = await structureFit();
-  expect(zoomedWalls.length).toBe(4);
-  for (const wall of zoomedWalls) expect(wall.ratio).toBeCloseTo(1, 1);
+  expect(await structureFit()).toEqual([]);
+  await expect(canvas).toHaveAttribute("data-wall-region-fit", "4/16");
 
   const nextMap = { width: 7, height: 4 };
   const hero = projectCorners(await boardCorners(page), nextMap, 0.5, 1.5);

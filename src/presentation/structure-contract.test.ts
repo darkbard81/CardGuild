@@ -150,19 +150,20 @@ describe("tile-bound structure contract", () => {
       .toThrow(/a width is never read/);
   });
 
-  it("insists walls and gates are validated as structures", () => {
+  it("insists both gate states are validated as structures", () => {
     const visuals = {
-      wall: "object.wall",
       gateClosed: "object.gate.closed",
       gateOpen: "object.gate.open",
       chest: "object.chest",
     };
-    const validated = new Set(["object.wall", "object.gate.closed", "object.gate.open"]);
+    const validated = new Set(["object.gate.closed", "object.gate.open"]);
     expect(() => assertRequiredStructures(visuals, validated)).not.toThrow();
-    // A wall that fell out of the structure path must fail, not pass as a point prop.
-    expect(() => assertRequiredStructures(visuals, new Set(["object.gate.closed", "object.gate.open"])))
-      .toThrow(/"wall" must be a tile-bound structure/);
+    // A gate that fell out of the structure path must fail, not pass as a point prop.
+    expect(() => assertRequiredStructures(visuals, new Set(["object.gate.closed"])))
+      .toThrow(/"gateOpen" must be a tile-bound structure/);
     expect(() => assertRequiredStructures({ ...visuals, gateOpen: "" }, validated))
       .toThrow(/"gateOpen" is missing/);
+    // A wall is terrain now, so it is not on the list even when it is nowhere to be seen.
+    expect(() => assertRequiredStructures({ ...visuals, wall: "object.wall" }, validated)).not.toThrow();
   });
 });

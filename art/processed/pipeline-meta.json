@@ -62,6 +62,23 @@
         "y": 0.5
       }
     },
+    "terrain.wall-block": {
+      "source": "art/source/terrain/wall-block.png",
+      "output": "art/processed/terrain/wall-block.png",
+      "sourceBox": {
+        "left": 0,
+        "top": 0,
+        "width": 1024,
+        "height": 1024
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.25,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
     "transition.web": {
       "source": "art/source/terrain/web-overlay.png",
       "output": "art/processed/terrain/web.png",
@@ -77,40 +94,6 @@
       "anchor": {
         "x": 0.5,
         "y": 0.5
-      }
-    },
-    "object.wall": {
-      "source": "art/source/objects/wall.png",
-      "output": "art/processed/objects/wall.png",
-      "sourceBox": {
-        "left": 0,
-        "top": 127,
-        "width": 2172,
-        "height": 597
-      },
-      "sourceIndex": 0,
-      "flipX": false,
-      "processingScale": 0.117864,
-      "anchor": {
-        "x": 0.5,
-        "y": 1
-      }
-    },
-    "object.wall.high": {
-      "source": "art/source/objects/wall-high.png",
-      "output": "art/processed/objects/wall-high.png",
-      "sourceBox": {
-        "left": 0,
-        "top": 42,
-        "width": 1254,
-        "height": 1212
-      },
-      "sourceIndex": 0,
-      "flipX": false,
-      "processingScale": 0.204147,
-      "anchor": {
-        "x": 0.5,
-        "y": 1
       }
     },
     "object.chest": {
