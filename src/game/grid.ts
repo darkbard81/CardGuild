@@ -41,12 +41,25 @@ export function movementCost(tile: TileState, mode: MovementMode): number | null
   return 5;
 }
 
-function isOccupied(
+// Occupancy permissions are independent of terrain and movement cost.
+function canTraverse(
+  actors: Readonly<Record<string, ActorState>>,
+  position: GridPosition,
+  actorId: string,
+): boolean {
+  const team = actors[actorId]?.team;
+  return !Object.values(actors).some(
+    (actor) =>
+      actor.id !== actorId && !actor.defeated && actor.team !== team && samePosition(actor.position, position),
+  );
+}
+
+function canStop(
   actors: Readonly<Record<string, ActorState>>,
   position: GridPosition,
   ignoredActorId: string,
 ): boolean {
-  return Object.values(actors).some(
+  return !Object.values(actors).some(
     (actor) =>
       actor.id !== ignoredActorId && !actor.defeated && samePosition(actor.position, position),
   );
@@ -83,7 +96,7 @@ export function findReachableTiles(
         x: current.position.x + direction.x,
         y: current.position.y + direction.y,
       };
-      if (!isInsideMap(map, position) || isOccupied(actors, position, actorId)) continue;
+      if (!isInsideMap(map, position) || !canTraverse(actors, position, actorId)) continue;
       const tile = getTile(map, position);
       if (!tile) continue;
       const stepCost = movementCost(tile, mode);
@@ -103,7 +116,9 @@ export function findReachableTiles(
   }
 
   visited.delete(positionKey(from));
-  return visited;
+  // Keep allied squares in the search so paths can pass through them, but only
+  // expose legal destinations to targeting, execution, and continuation checks.
+  return new Map([...visited].filter(([, node]) => canStop(actors, node.position, actorId)));
 }
 
 export function findPath(

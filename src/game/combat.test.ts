@@ -181,6 +181,92 @@ function openTwoReactions(
   ).state;
 }
 
+describe("movement occupancy integration", () => {
+  function movementState(): CombatState {
+    const scenario = heroFirstScenario({
+      hero: { position: { x: 1, y: 1 }, speedFeet: 10 },
+      "goblin-skirmisher": { position: { x: 8, y: 5 } },
+      "goblin-brute": { position: { x: 8, y: 6 } },
+    });
+    const hero = scenario.actors.find((actor) => actor.id === "hero") as ActorSetup;
+    const state = createM0Combat({
+      ...scenario,
+      actors: [...scenario.actors, withInitiative({ ...hero, id: "ally", position: { x: 2, y: 1 } }, -101)],
+    }, 44).state;
+    const zones = state.cardZones.hero as NonNullable<typeof state.cardZones.hero>;
+    const fly = allCards(state, "hero").find((card) => card.definitionId === "card.fly") as CardInstance;
+    return {
+      ...state,
+      cardZones: {
+        ...state.cardZones,
+        hero: {
+          hand: [fly, ...zones.hand.filter((card) => card.id !== fly.id)],
+          drawPile: zones.drawPile.filter((card) => card.id !== fly.id),
+          discardPile: zones.discardPile.filter((card) => card.id !== fly.id),
+        },
+      },
+    };
+  }
+
+  function moveSource(state: CombatState, actionId: "step" | "stride" | "fly"): ActionSource {
+    if (actionId !== "fly") return { kind: "basic", id: actionId };
+    const fly = state.cardZones.hero?.hand.find((card) => card.definitionId === "card.fly") as CardInstance;
+    return { kind: "card", id: fly.id };
+  }
+
+  it.each(["stride", "fly"] as const)("offers and executes %s through an ally to an empty destination", (actionId) => {
+    const state = movementState();
+    const source = moveSource(state, actionId);
+    const destination = { x: 3, y: 1 };
+    const target = { kind: "tile" as const, position: destination, facing: "east" as const };
+
+    expect(listLegalTargets(state, "hero", source, M0_CONTENT))
+      .toContainEqual({ kind: "tile", position: destination, costFeet: 10 });
+    expect(validateActionIntent(state, "hero", source, target, M0_CONTENT).legal).toBe(true);
+    const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+    expect(result.accepted).toBe(true);
+    expect(result.state.actors.hero?.position).toEqual(destination);
+    expect(result.state.actors.ally?.position).toEqual({ x: 2, y: 1 });
+    expect(result.state.turn.actionsRemaining).toBe(state.turn.actionsRemaining - 1);
+    expect(result.events).toContainEqual({
+      type: "ACTOR_MOVED",
+      actorId: "hero",
+      path: [{ x: 2, y: 1 }, destination],
+      movementMode: actionId === "fly" ? "fly" : "land",
+    });
+  });
+
+  it.each(["step", "stride", "fly"] as const)("excludes allied destinations and rejects a direct %s command", (actionId) => {
+    const state = movementState();
+    const source = moveSource(state, actionId);
+    const target = { kind: "tile" as const, position: { x: 2, y: 1 }, facing: "east" as const };
+
+    expect(listLegalTargets(state, "hero", source, M0_CONTENT))
+      .not.toContainEqual(expect.objectContaining({ kind: "tile", position: target.position }));
+    expect(validateActionIntent(state, "hero", source, target, M0_CONTENT).legal).toBe(false);
+    const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+    expect(result.accepted).toBe(false);
+    expect(result.state).toBe(state);
+    expect(result.events).toEqual([]);
+  });
+
+  it.each(["stride", "fly"] as const)("rejects %s through an enemy within a two-square movement budget", (actionId) => {
+    const initial = movementState();
+    const ally = initial.actors.ally as NonNullable<typeof initial.actors[string]>;
+    const state: CombatState = { ...initial, actors: { ...initial.actors, ally: { ...ally, team: "enemies" } } };
+    const source = moveSource(state, actionId);
+    for (const position of [{ x: 2, y: 1 }, { x: 3, y: 1 }]) {
+      const target = { kind: "tile" as const, position, facing: "east" as const };
+      expect(listLegalTargets(state, "hero", source, M0_CONTENT))
+        .not.toContainEqual(expect.objectContaining({ kind: "tile", position }));
+      const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+      expect(result.accepted).toBe(false);
+      expect(result.state).toBe(state);
+      expect(result.events).toEqual([]);
+    }
+  });
+});
+
 describe("M0 combat core", () => {
   it("builds an equipment-provenance deck and repeats the same initial hash", () => {
     const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
@@ -737,6 +823,59 @@ describe("M0 combat core", () => {
     }, M0_CONTENT);
     expect(skipped.state.pendingReaction).toBeNull();
     expect(skipped.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
+  });
+
+  it.each([false, true])("resumes through an ally present before or after the reaction opens (arrives later: %s)", (arrivesLater) => {
+    const initial = twoReactionState();
+    const brute = initial.actors["goblin-brute"] as NonNullable<typeof initial.actors[string]>;
+    const ally = { ...brute, position: { x: 3, y: 1 } };
+    const prepared: CombatState = arrivesLater
+      ? initial
+      : { ...initial, actors: { ...initial.actors, [ally.id]: ally } };
+    const opened = openTwoReactions(prepared, { x: 3, y: 2 });
+    let state: CombatState = arrivesLater
+      ? { ...opened, actors: { ...opened.actors, [ally.id]: ally } }
+      : opened;
+    const pending = state.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    expect(pending.continuation.path).toEqual([ally.position, { x: 3, y: 2 }]);
+    expect(validateMoveContinuation(state, pending.continuation, M0_CONTENT).legal).toBe(true);
+
+    for (const candidate of pending.candidates) {
+      const result = dispatchCombatCommand(state, {
+        type: "pass-reaction",
+        id: `ally-path-pass-${candidate.actorId}`,
+        sequence: state.sequence + 1,
+        actorId: candidate.actorId,
+        triggerId: pending.triggerId,
+      }, M0_CONTENT);
+      expect(result.accepted).toBe(true);
+      state = result.state;
+    }
+    expect(state.pendingReaction).toBeNull();
+    expect(state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 2 });
+    expect(state.actors[ally.id]?.position).toEqual(ally.position);
+  });
+
+  it("cancels a reaction continuation when an enemy enters its path", () => {
+    const opened = openTwoReactions(twoReactionState(), { x: 3, y: 2 });
+    const blocker = opened.actors["hero-2"] as NonNullable<typeof opened.actors[string]>;
+    const state: CombatState = {
+      ...opened,
+      actors: { ...opened.actors, [blocker.id]: { ...blocker, position: { x: 3, y: 1 } } },
+    };
+    const pending = state.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
+    expect(validateMoveContinuation(state, pending.continuation, M0_CONTENT).legal).toBe(false);
+    const result = dispatchCombatCommand(state, {
+      type: "pass-reaction",
+      id: "enemy-path-pass",
+      sequence: state.sequence + 1,
+      actorId: pending.candidates[0]?.actorId as string,
+      triggerId: pending.triggerId,
+    }, M0_CONTENT);
+    expect(result.accepted).toBe(true);
+    expect(result.state.pendingReaction).toBeNull();
+    expect(result.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
+    expect(result.events.some((event) => event.type === "ACTOR_MOVED")).toBe(false);
   });
 
   it("cancels a reaction continuation when its destination becomes occupied or its original path changes", () => {

@@ -10,7 +10,7 @@
   "scripts": {
     "dev": "npm run content:check && npm run assets:check && vite",
     "dev:server": "tsx watch src/server/main.ts",
-    "dev:coop": "tsx tools/dev-coop.ts",
+    "dev:coop": "CARDGUILD_ADVENTURE_SEED=1 tsx tools/dev-coop.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "npm run content:check && npm run assets && tsc --noEmit && vite build",
     "build:server": "esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-server/main.js --external:ws",
