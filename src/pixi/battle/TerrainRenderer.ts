@@ -5,11 +5,18 @@ import type { AssetCatalog } from "../../presentation";
 import { pointPropHeight, tilemapAssetAt } from "../../presentation";
 import type { BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
-import { gateAxis, gateMark, type GateState } from "./GateMark";
+import { gateAxis, gateTextureRotation } from "./GateOrientation";
 import { collectSolidBoundarySegments, isSolidTile, solidBoundaryLine, type SolidBoundarySegment } from "./SolidBoundary";
 
 /** Point props with no authored height fall back to this. */
 const DEFAULT_PROP_HEIGHT = 96;
+
+/** One square's own state, and whether that state is a gate and therefore turns. */
+interface TileSurface {
+  readonly position: GridPosition;
+  readonly assetId: string;
+  readonly gate: boolean;
+}
 
 export interface SortableVisual {
   readonly display: Container;
@@ -25,28 +32,29 @@ function traits(tile: TileState): ReadonlySet<string> {
 }
 
 /**
- * Which surface a tile's own state puts on the board, if any. A wall is the state of the
- * square it occupies rather than something standing on it, so it is terrain. A shut gate
- * is a wall square with a door drawn on it and an open one is ordinary ground, so
- * neither has a picture of its own — see `gateStateOf`.
+ * Which surface a tile's own state puts on the board, if any. A wall and a gate are both
+ * the state of the square they occupy rather than something standing on it, so both are
+ * terrain: the gate's two states are two authored tiles, and swapping them is all
+ * "opening a gate" means to the board. Ordinary ground says nothing here and keeps its
+ * floor.
+ *
+ * The traits are read in the order the rules resolve them — an open gate is no longer
+ * blocked, so it must be asked about first — and nothing here decides anything: the
+ * lever moved the traits long before a texture was chosen.
  */
 export function tileStateVisual(
   tileTraits: ReadonlySet<string>,
   terrainVisuals: AssetCatalog["manifest"]["terrainVisuals"],
 ): string | null {
-  return tileTraits.has("blocked") ? terrainVisuals.blocked : null;
+  if (tileTraits.has("gate-open")) return terrainVisuals.gateOpen;
+  if (tileTraits.has("gate")) return terrainVisuals.gateClosed;
+  if (tileTraits.has("blocked")) return terrainVisuals.blocked;
+  return null;
 }
 
-/**
- * Whether this square has a gate on it, and which way it stands. The traits are read in
- * the order the rules resolve them — a lever removes `blocked`/`gate` and adds
- * `open`/`gate-open` — so opening a gate is nothing but the next render drawing the
- * other mark. Nothing here decides anything.
- */
-export function gateStateOf(tileTraits: ReadonlySet<string>): GateState | null {
-  if (tileTraits.has("gate-open")) return "open";
-  if (tileTraits.has("gate")) return "closed";
-  return null;
+/** A gate's picture is drawn for one wall direction; every other tile has no up. */
+export function isGateTile(tileTraits: ReadonlySet<string>): boolean {
+  return tileTraits.has("gate") || tileTraits.has("gate-open");
 }
 
 export class TerrainRenderer {
@@ -83,9 +91,8 @@ export class TerrainRenderer {
     }
     const composition = new Container({ label: "board-texture-composition" });
     const stateTiles = this.tilesByCell(state);
-    const surfaces: { readonly position: GridPosition; readonly assetId: string }[] = [];
+    const surfaces: TileSurface[] = [];
     const solid: GridPosition[] = [];
-    const gates: { readonly position: GridPosition; readonly state: GateState }[] = [];
     for (let row = 0; row < tilemap.height; row += 1) {
       for (let col = 0; col < tilemap.width; col += 1) {
         const index = row * tilemap.width + col;
@@ -109,20 +116,26 @@ export class TerrainRenderer {
         if (!tile) continue;
         const tileTraits = traits(tile);
         const stateVisual = tileStateVisual(tileTraits, this.catalog.manifest.terrainVisuals);
-        if (stateVisual) surfaces.push({ position: tile.position, assetId: stateVisual });
+        if (stateVisual) surfaces.push({ position: tile.position, assetId: stateVisual, gate: isGateTile(tileTraits) });
         if (isSolidTile(tileTraits)) solid.push(tile.position);
-        const gate = gateStateOf(tileTraits);
-        if (gate) gates.push({ position: tile.position, state: gate });
       }
     }
     // A wall or a gate is terrain, not a standee: it covers its own square on the same
     // plane as the floor, at the same size, so neighbours already share one continuous
     // surface and nothing drifts against the board when the camera moves.
+    const solidKeys = new Set(solid.map((position) => `${position.x},${position.y}`));
     for (const surface of surfaces) {
       const block = new Sprite(this.catalog.texture(surface.assetId));
-      block.anchor.set(0, 0);
-      block.position.set(surface.position.x * cell, surface.position.y * cell);
+      // Centred, because a gate turns: its picture is authored for one wall direction and
+      // laid on its side for the other rather than drawn twice.
+      block.anchor.set(0.5, 0.5);
+      block.position.set((surface.position.x + 0.5) * cell, (surface.position.y + 0.5) * cell);
       block.setSize(cell, cell);
+      if (surface.gate) {
+        block.rotation = gateTextureRotation(
+          gateAxis(surface.position, (x, y) => solidKeys.has(`${x},${y}`)),
+        );
+      }
       composition.addChild(block);
     }
     const grid = new Graphics({ label: "square-grid" });
@@ -136,47 +149,10 @@ export class TerrainRenderer {
     composition.addChild(grid);
     const segments = collectSolidBoundarySegments(solid);
     this.solidSummary = `${solid.length}/${segments.length}`;
-    composition.addChild(this.gateMarks(gates, solid, cell));
     composition.addChild(this.solidBoundary(segments, cell));
     this.app.renderer.render({ container: composition, target: this.boardTexture, clear: true });
     composition.destroy({ children: true });
     return this.boardTexture;
-  }
-
-  /**
-   * Doors, drawn rather than authored. A shut gate is the wall tile with a timber door
-   * across the way through; an open one is bare ground with the two leaves folded back
-   * against the jambs. Which way round it stands comes from the barrier around it, so
-   * one piece of code covers a gate in any wall and no gate ever needs its own picture.
-   */
-  private gateMarks(
-    gates: readonly { readonly position: GridPosition; readonly state: GateState }[],
-    solid: readonly GridPosition[],
-    cell: number,
-  ): Graphics {
-    const marks = new Graphics({ label: "gate-marks" });
-    if (gates.length === 0) return marks;
-    const solidKeys = new Set(solid.map((position) => `${position.x},${position.y}`));
-    const isSolid = (x: number, y: number): boolean => solidKeys.has(`${x},${y}`);
-    const style = this.config.gateMark;
-    for (const gate of gates) {
-      const mark = gateMark(gate.position, gateAxis(gate.position, isSolid), gate.state, cell);
-      if (mark.door) {
-        marks.rect(mark.door.x, mark.door.y, mark.door.width, mark.door.height)
-          .fill({ color: style.timber, alpha: style.timberAlpha })
-          .stroke({ width: style.ironWidth, color: style.iron, alpha: style.ironAlpha });
-      }
-      for (const leaf of mark.leaves) {
-        marks.rect(leaf.x, leaf.y, leaf.width, leaf.height)
-          .fill({ color: style.timber, alpha: style.timberAlpha })
-          .stroke({ width: style.ironWidth, color: style.iron, alpha: style.ironAlpha });
-      }
-      for (const band of mark.bands) {
-        marks.moveTo(band.x1, band.y1).lineTo(band.x2, band.y2)
-          .stroke({ width: style.ironWidth, color: style.iron, alpha: style.ironAlpha });
-      }
-    }
-    return marks;
   }
 
   /**

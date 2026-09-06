@@ -3,6 +3,8 @@
   "terrain.rubble": "art/processed/terrain/rubble.png",
   "terrain.chasm": "art/processed/terrain/chasm.png",
   "terrain.wall-block": "art/processed/terrain/wall-block.png",
+  "terrain.gate.closed": "art/processed/terrain/gate-closed.png",
+  "terrain.gate.open": "art/processed/terrain/gate-open.png",
   "transition.web": "art/processed/terrain/web.png",
   "object.chest": "art/processed/objects/chest.png",
   "object.lever": "art/processed/objects/lever.png",

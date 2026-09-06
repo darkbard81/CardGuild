@@ -35,19 +35,6 @@ export interface StandeeBaseStyle {
   readonly strokeWidth: number;
 }
 
-/**
- * A gate is drawn, not authored: the wall tile it sits on carries a timber door across
- * the way through, and an open one folds the leaves back against the jambs. Keeping the
- * colours here means a new gate anywhere on any map costs no new art.
- */
-export interface GateMarkStyle {
-  readonly timber: number;
-  readonly timberAlpha: number;
-  readonly iron: number;
-  readonly ironAlpha: number;
-  readonly ironWidth: number;
-}
-
 export interface BoardViewConfig {
   /**
    * The board plane's fixed turn, applied before the squash. A quarter turn puts the
@@ -72,7 +59,6 @@ export interface BoardViewConfig {
   readonly boardFitMargin: number;
   /** Drawn over the square grid, so a barrier reads ahead of the ordinary cell lines. */
   readonly solidBoundary: SolidBoundaryStyle;
-  readonly gateMark: GateMarkStyle;
   readonly standeeBase: StandeeBaseStyle;
 }
 
@@ -95,7 +81,6 @@ export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
   boardFitMargin: 0.94,
   boardTextureCellSize: 128,
   solidBoundary: { color: 0xaaa38f, width: 7, alpha: 0.9 },
-  gateMark: { timber: 0x6c452b, timberAlpha: 1, iron: 0x1b1714, ironAlpha: 0.95, ironWidth: 5 },
   standeeBase: {
     radius: 42,
     fill: 0x120f0c,

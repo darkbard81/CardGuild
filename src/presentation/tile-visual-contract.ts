@@ -1,13 +1,13 @@
 import type { PresentationAssetDefinition } from "./presentation-types";
 
 /**
- * A board tile visual is the state of one square: the floors and the wall. They all use
- * one contract — a top-down square drawn at twice the runtime size — because they are
- * all composited into the board texture the same way.
+ * A board tile visual is the state of one square: the floors, the wall, and a gate in
+ * each of its two states. They all use one contract — a top-down square drawn at twice
+ * the runtime size — because they are all composited into the board texture the same
+ * way, and because a shut gate has to line up with the wall it is set into to the pixel.
  *
  * There is no second, upright category any more. Anything that is the tile is a tile
- * visual; anything standing on it is a point prop. A gate needs neither: it is a door
- * drawn onto the wall square it sits in, so it costs no asset at all.
+ * visual; anything standing on it is a point prop.
  */
 export const TILE_RUNTIME_SIZE = 128;
 
@@ -41,10 +41,19 @@ export function assertTileVisualContract(
 }
 
 /**
- * Every surface a square can be composited with has to have a picture. A gate is not on
- * this list because it has none: it is drawn over one of these.
+ * Every state a tile can be drawn in has to have a picture, including both halves of the
+ * gate pair: a gate that lost its open state would open into nothing at the moment a
+ * lever is pulled, which is the one moment nobody is looking at the manifest.
  */
-export const REQUIRED_TILE_VISUALS = ["open", "difficult", "impassable", "web", "blocked"] as const;
+export const REQUIRED_TILE_VISUALS = [
+  "open",
+  "difficult",
+  "impassable",
+  "web",
+  "blocked",
+  "gateClosed",
+  "gateOpen",
+] as const;
 
 export function assertRequiredTileVisuals(
   terrainVisuals: Readonly<Record<string, string>>,

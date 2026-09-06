@@ -64,6 +64,34 @@
         "height": 128
       }
     },
+    "terrain.gate.closed": {
+      "frame": "terrain.gate.closed",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.gate.open": {
+      "frame": "terrain.gate.open",
+      "kind": "terrain",
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
     "transition.web": {
       "frame": "transition.web",
       "kind": "terrain",
@@ -1422,7 +1450,9 @@
     "difficult": "terrain.rubble",
     "impassable": "terrain.chasm",
     "web": "transition.web",
-    "blocked": "terrain.wall-block"
+    "blocked": "terrain.wall-block",
+    "gateClosed": "terrain.gate.closed",
+    "gateOpen": "terrain.gate.open"
   },
   "objectVisuals": {
     "chest": "object.chest",

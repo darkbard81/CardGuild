@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { gateStateOf, tileStateVisual } from "./TerrainRenderer";
+import { isGateTile, tileStateVisual } from "./TerrainRenderer";
 
 const VISUALS = {
   open: "terrain.stone-floor",
@@ -8,10 +8,12 @@ const VISUALS = {
   impassable: "terrain.chasm",
   web: "transition.web",
   blocked: "terrain.wall-block",
+  gateClosed: "terrain.gate.closed",
+  gateOpen: "terrain.gate.open",
 };
 
 const surfaceOf = (...traits: readonly string[]): string | null => tileStateVisual(new Set(traits), VISUALS);
-const gateOf = (...traits: readonly string[]): string | null => gateStateOf(new Set(traits));
+const gateAt = (...traits: readonly string[]): boolean => isGateTile(new Set(traits));
 
 describe("tile state surface", () => {
   it("leaves ordinary ground to its floor", () => {
@@ -26,26 +28,30 @@ describe("tile state surface", () => {
     expect(surfaceOf("blocked")).toBe(VISUALS.blocked);
   });
 
-  it("gives a shut gate the wall's own surface, with the door drawn on top", () => {
-    // A gate has no texture of its own. Shut, it is a wall square; open, it is whatever
-    // ground was already there. The door is Graphics either way, so a gate anywhere on
-    // any map costs no art.
-    expect(surfaceOf("blocked", "gate")).toBe(VISUALS.blocked);
-    expect(surfaceOf("open", "gate-open")).toBeNull();
+  it("gives a gate its own picture in both states, ahead of the wall", () => {
+    // A shut gate is blocked too, so the gate has to be asked about first or the wall
+    // would pave over the door.
+    expect(surfaceOf("blocked", "gate")).toBe(VISUALS.gateClosed);
+    // An open gate is no longer blocked, and never shows the closed picture.
+    expect(surfaceOf("open", "gate-open")).toBe(VISUALS.gateOpen);
+    expect(surfaceOf("open", "gate-open")).not.toBe(VISUALS.gateClosed);
+  });
+
+  it("opens a gate by nothing more than the traits the rules already moved", () => {
+    // The lever removes blocked + gate and adds open + gate-open. That is the whole of
+    // "the gate opens" as far as the board is concerned: one different tile picture.
+    expect(surfaceOf("blocked", "gate")).not.toBe(surfaceOf("open", "gate-open"));
   });
 });
 
-describe("gate state", () => {
-  it("reads the traits the lever already moved", () => {
-    expect(gateOf("blocked", "gate")).toBe("closed");
-    expect(gateOf("open", "gate-open")).toBe("open");
-    expect(gateOf("blocked")).toBeNull();
-    expect(gateOf()).toBeNull();
-  });
-
-  it("prefers the open trait, because an open gate is no longer blocked", () => {
-    // The rules drop blocked/gate and add open/gate-open together, but reading the open
-    // state first means a half-applied set can never draw a shut door on a passable tile.
-    expect(gateOf("gate", "gate-open")).toBe("open");
+describe("which tiles turn", () => {
+  it("marks both gate states, and nothing else", () => {
+    // Only a gate's picture is drawn for a particular wall direction, so only a gate is
+    // ever rotated. A wall or a floor has no up.
+    expect(gateAt("blocked", "gate")).toBe(true);
+    expect(gateAt("open", "gate-open")).toBe(true);
+    expect(gateAt("blocked")).toBe(false);
+    expect(gateAt()).toBe(false);
+    expect(gateAt("difficult", "web")).toBe(false);
   });
 });

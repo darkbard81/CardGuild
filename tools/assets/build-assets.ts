@@ -708,6 +708,8 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     "terrain.chasm",
     "transition.web",
     "terrain.wall-block",
+    "terrain.gate.closed",
+    "terrain.gate.open",
     "object.lever",
     "object.chest",
     "actor.hero.aerin.front",

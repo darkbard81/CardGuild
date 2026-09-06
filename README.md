@@ -221,15 +221,16 @@ screen = Translate(origin) x UniformScale(s) x ScaleY(0.5) x Rotate(+45°) x boa
 직교 사각 격자입니다.
 
 무엇이 board plane에 속하는지는 한 가지 질문이 정합니다 — **그 그림이 칸 자체의 상태인가,
-칸 위에 놓인 물건인가.** 바닥·difficult·chasm·web·벽은 칸의 상태이므로 같은 규격의 정사각
-terrain tile로 board texture에 합성되고, 레버·상자 같은 point prop과 액터만 upright plane에
-섭니다. 그 사이의 중간 범주는 없습니다.
+칸 위에 놓인 물건인가.** 바닥·difficult·chasm·web·벽·gate(닫힘/열림)는 칸의 상태이므로 전부
+같은 규격의 정사각 terrain tile로 board texture에 합성되고, 레버·상자 같은 point prop과
+액터만 upright plane에 섭니다. 그 사이의 중간 범주는 없습니다.
 
-Gate는 아예 asset이 아닙니다. 닫힌 gate는 wall tile 위에, 열린 gate는 원래 바닥 위에 Pixi가
-문을 그립니다. 방향은 주변 `blocked` 이웃 수로 정하므로 방향별 그림이 필요 없고, 여는 것은
-tile trait이 바뀌는 것뿐입니다 — 다음 `render(state)`가 다른 mark를 그립니다. 외곽선도
-`blocked` 하나를 기준으로 하므로 닫힌 gate는 벽과 한 덩어리로 이어지고, 열리면 solid
-region에서 빠지면서 개구부 외곽선이 저절로 생깁니다.
+Gate의 문짝·문틀·재질은 authored image가 담당하고 Pixi는 그것을 배치할 뿐입니다. 방향이
+다른 벽에는 **같은 texture를 90° 회전**해 쓰므로 방향별 asset을 만들지 않습니다(축은 주변
+`blocked` 이웃 수로 결정). 여는 것은 tile trait이 바뀌는 것뿐이고, 다음 `render(state)`가
+`gate-open → gate → blocked` 순으로 표면을 골라 새 board texture를 만듭니다. Pixi
+`Graphics`의 몫은 외곽선 하나뿐입니다 — 기준이 `blocked`이므로 닫힌 gate는 벽과 한 덩어리로
+이어지고, 열리면 solid region에서 빠지면서 개구부 외곽선이 저절로 생깁니다.
 
 Standee는 board plane의 자식이 아닙니다. 위치만 projection에서 받아 칸 중심에 서고,
 몸은 화면에 대해 항상 upright이며 회전도 Y squash도 받지 않습니다. 원근이 없으므로 같은
