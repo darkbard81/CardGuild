@@ -54,27 +54,52 @@ describe("BattleCamera", () => {
 
   it("gives a dense map the zoom range a sparse one already has by default", () => {
     const camera = new BattleCamera();
-    // A 3x3 map fits with diamonds wider than the target, so only the headroom floor applies.
-    expect(project(camera, frame(3, 3)).getCellDiamondWidth()).toBeGreaterThan(DEFAULT_BOARD_VIEW_CONFIG.maxCellWidth);
+    // A 3x3 map is already the close-up, so only the headroom floor applies.
     expect(camera.maxZoom(frame(3, 3))).toBeCloseTo(DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom, 6);
-    // A 9x7 map fits with small diamonds, so it may zoom much further in.
+    // A 9x7 map is much further from it, so it may zoom much further in.
     expect(camera.maxZoom(frame(9, 7))).toBeGreaterThan(camera.maxZoom(frame(3, 3)));
   });
 
-  it("zooms in until a cell diamond reaches the target width, on any map", () => {
+  it("zooms in until the close-up's squares fill the frame, on any map", () => {
+    const cells = DEFAULT_BOARD_VIEW_CONFIG.closeUpCells;
     for (const [columns, rows] of [[9, 7], [3, 9], [9, 3]] as const) {
       const camera = new BattleCamera();
       const board = frame(columns, rows);
       camera.zoomBy(1000, board.viewportWidth / 2, board.viewportHeight / 2, board);
-      expect(project(camera, board).getCellDiamondWidth()).toBeCloseTo(DEFAULT_BOARD_VIEW_CONFIG.maxCellWidth, 6);
+      // Fully zoomed in, one cell is as wide as the fitted cell of a board that is
+      // nothing but the close-up: three squares fill the frame, whatever the map.
+      const closeUp = new BattleCamera();
+      const closeUpBoard = frame(cells, cells);
+      expect(project(camera, board).getCellDiamondWidth())
+        .toBeCloseTo(project(closeUp, closeUpBoard).getCellDiamondWidth(), 6);
     }
-    // A map whose fitted diamonds are already close to the target still keeps the
-    // headroom floor, so it overshoots rather than losing its zoom.
-    const camera = new BattleCamera();
-    const board = frame(5, 3);
-    camera.zoomBy(1000, board.viewportWidth / 2, board.viewportHeight / 2, board);
-    expect(camera.scale).toBeCloseTo(DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom, 6);
-    expect(project(camera, board).getCellDiamondWidth()).toBeGreaterThan(DEFAULT_BOARD_VIEW_CONFIG.maxCellWidth);
+  });
+
+  it("means the same close-up on a small window and a large one", () => {
+    // A pixel target stops binding once the window is big enough and pins a different
+    // number of squares on every monitor. A framing does not.
+    const zoomed = (viewportWidth: number, viewportHeight: number): number => {
+      const camera = new BattleCamera();
+      const board: BoardFrame = { ...frame(9, 7), viewportWidth, viewportHeight };
+      camera.zoomBy(1000, viewportWidth / 2, viewportHeight / 2, board);
+      const cells = DEFAULT_BOARD_VIEW_CONFIG.closeUpCells;
+      const closeUp: BoardFrame = { ...frame(cells, cells), viewportWidth, viewportHeight };
+      return project(camera, board).getCellDiamondWidth()
+        / project(new BattleCamera(), closeUp).getCellDiamondWidth();
+    };
+    expect(zoomed(1024, 768)).toBeCloseTo(1, 6);
+    expect(zoomed(1280, 800)).toBeCloseTo(1, 6);
+    expect(zoomed(1920, 1080)).toBeCloseTo(1, 6);
+  });
+
+  it("keeps the wheel alive on a map already smaller than the close-up", () => {
+    // Framing a 3x3 map on a 3x3 close-up is zoom 1, which would leave nothing to zoom.
+    for (const [columns, rows] of [[3, 3], [2, 2], [5, 3]] as const) {
+      const camera = new BattleCamera();
+      const board = frame(columns, rows);
+      camera.zoomBy(1000, board.viewportWidth / 2, board.viewportHeight / 2, board);
+      expect(camera.scale).toBeGreaterThanOrEqual(DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom);
+    }
   });
 
   it("never zooms out past the fitted board", () => {
@@ -118,15 +143,35 @@ describe("BattleCamera", () => {
     expect(near.y).toBeCloseTo(SAFE_AREA.top, 6);
   });
 
-  it("re-clamps a zoom the canvas has outgrown", () => {
+  it("keeps the zoom range when the canvas resizes, and re-clamps the pan", () => {
     const camera = new BattleCamera();
     const small = frame(9);
     camera.zoomBy(1000, small.viewportWidth / 2, small.viewportHeight / 2, small);
     const zoomed = camera.scale;
-    // Widening the canvas fits wider diamonds, so the ceiling drops under the live zoom.
+    // Both ends of the range are framings of the same board, so resizing changes how many
+    // pixels a square gets but not how far the player may zoom. A resize used to move the
+    // ceiling under the live zoom; now there is nothing for it to move.
     const wide: BoardFrame = { ...small, viewportWidth: 2400 };
-    expect(camera.maxZoom(wide)).toBeLessThan(zoomed);
+    expect(camera.maxZoom(wide)).toBeCloseTo(camera.maxZoom(small), 9);
     camera.clamp(wide);
-    expect(camera.scale).toBeCloseTo(camera.maxZoom(wide), 6);
+    expect(camera.scale).toBeCloseTo(zoomed, 9);
+    // The pan is still clamped against the new canvas, which is what resize is for.
+    camera.panBy(9000, 0, wide);
+    expect(center(camera, wide).x).toBeCloseTo(wide.viewportWidth - SAFE_AREA.right, 6);
+  });
+
+  it("counts the zoom range in squares, not pixels", () => {
+    // Every board is the same 2:1 shape once turned and squashed, so the whole map and
+    // the close-up always fit on the same axis and the ratio between them is exactly the
+    // ratio of their sizes in squares. That is why the range does not move with the window.
+    const cells = DEFAULT_BOARD_VIEW_CONFIG.closeUpCells;
+    for (const [columns, rows] of [[9, 7], [7, 4], [3, 9], [12, 12]] as const) {
+      const expected = (columns + rows) / (Math.min(columns, cells) + Math.min(rows, cells));
+      const zoom = Math.max(expected, DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom);
+      for (const [viewportWidth, viewportHeight] of [[1024, 768], [1280, 800], [1920, 1080]] as const) {
+        const board: BoardFrame = { ...frame(columns, rows), viewportWidth, viewportHeight };
+        expect(new BattleCamera().maxZoom(board)).toBeCloseTo(zoom, 9);
+      }
+    }
   });
 });

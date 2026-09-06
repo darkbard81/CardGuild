@@ -1,14 +1,15 @@
 import type { BoardPlacement } from "./BoardProjection";
 import type { BoardFrame, BoardViewConfig } from "./BoardViewConfig";
-import { boardFitScale, boardSafeBox, cellDiamondWidth, DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
+import { boardFitScale, boardSafeBox, closeUpFrame, DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 
 /**
  * Zoom is expressed against the fitted board rather than as a bare multiplier: 1 always
  * shows the whole map inside the HUD safe area, and the ceiling is whatever it takes to
- * grow a cell diamond to `maxCellWidth`. A dense 9x7 map therefore reaches the same
- * close-up as a 3x3 one instead of both sharing a fixed 1.5x that means different
- * things. A map already fitted with cells at or past the target keeps `minZoomHeadroom`
- * of zoom anyway, so the wheel is never dead.
+ * fill that same area with `closeUpCells` squares. Both ends are therefore framings
+ * rather than sizes — "the whole map" and "three squares" — so a dense 9x7 map reaches
+ * the same close-up as a sparse one, and the same close-up on a laptop as on a large
+ * display. A map already smaller than the close-up keeps `minZoomHeadroom` of zoom
+ * anyway, so the wheel is never dead.
  *
  * The turn and the squash belong to the board plane, not to the camera: all this decides
  * is where the plane's centre sits and how large it is drawn.
@@ -27,11 +28,18 @@ export class BattleCamera {
     this.panY = 0;
   }
 
-  /** Zoom needed to grow a fitted cell diamond to `maxCellWidth`, never below the headroom floor. */
+  /**
+   * Zoom needed to fill the frame with the close-up's squares, never below the headroom
+   * floor. Both scales come from the same fit, so this is the ratio between framing the
+   * whole map and framing a corner of it. Every board is the same 2:1 shape once turned
+   * and squashed, so the two always fit on the same axis and the ratio comes out as their
+   * sizes in squares — which is why the range does not move when the window does.
+   */
   public maxZoom(frame: BoardFrame): number {
-    const fitted = cellDiamondWidth(this.config) * boardFitScale(frame, this.config);
+    const fitted = boardFitScale(frame, this.config);
     if (fitted <= 0) return this.config.minZoomHeadroom;
-    return Math.max(this.config.maxCellWidth / fitted, this.config.minZoomHeadroom);
+    const closeUp = boardFitScale(closeUpFrame(frame, this.config), this.config);
+    return Math.max(closeUp / fitted, this.config.minZoomHeadroom);
   }
 
   public panBy(screenX: number, screenY: number, frame: BoardFrame): void {

@@ -50,8 +50,13 @@ export interface BoardViewConfig {
    * every window size and only the camera zoom changes it.
    */
   readonly referenceCellWidth: number;
-  /** Diamond width the camera zooms in towards, so "fully zoomed" means the same on every map. */
-  readonly maxCellWidth: number;
+  /**
+   * How many squares across the board fills the frame at full zoom. Expressed in squares
+   * rather than pixels so "fully zoomed" means the same thing on every map *and* on every
+   * monitor: a pixel target is a different number of squares on a laptop than on a large
+   * display, and stops binding at all once the window is big enough.
+   */
+  readonly closeUpCells: number;
   /** Zoom-in always available, even on a map whose fitted squares are already large. */
   readonly minZoomHeadroom: number;
   readonly boardTextureCellSize: number;
@@ -76,7 +81,7 @@ export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
   boardRotationRadians: Math.PI / 4,
   boardSquashY: 0.5,
   referenceCellWidth: 128,
-  maxCellWidth: 220,
+  closeUpCells: 3,
   minZoomHeadroom: 1.5,
   boardFitMargin: 0.94,
   boardTextureCellSize: 128,
@@ -141,6 +146,19 @@ export function cellDiamondWidth(config: BoardViewConfig): number {
   const cosine = Math.abs(Math.cos(config.boardRotationRadians));
   const sine = Math.abs(Math.sin(config.boardRotationRadians));
   return config.boardTextureCellSize * (cosine + sine);
+}
+
+/**
+ * The frame a fully zoomed-in camera fills: the middle `closeUpCells` squares of the
+ * board, or the whole board when it is smaller than that. Clamping matters — a map
+ * already smaller than the close-up would otherwise ask to be zoomed *out*.
+ */
+export function closeUpFrame(frame: BoardFrame, config: BoardViewConfig): BoardFrame {
+  return {
+    ...frame,
+    columns: Math.min(frame.columns, config.closeUpCells),
+    rows: Math.min(frame.rows, config.closeUpCells),
+  };
 }
 
 /** Uniform scale at which the whole board just fits inside the safe area. */
