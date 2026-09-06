@@ -950,7 +950,10 @@ canvas와 ink 경계가 같은지 봅니다.
 - [ ] anchor `(0.5, 1)`, `displayWidth` 128, `footprint` 128×128, `displayHeight` 없음
 - [ ] gate open/closed의 bounds·baseline 동일
 - [ ] `npm run assets`
-- [ ] 1024×768 전투 화면에서 near/far row 모두 칸 폭과 정렬 (`data-structure-fit` 비율 1.0)
+- [ ] 1024×768 전투 화면에서 보드 어디에 서 있든 한 칸 폭과 정렬 (`data-structure-fit` 비율 1.0).
+      기준 폭은 **board plane의 128px × board uniform scale**이고, 화면상 diamond 좌우
+      span(√2배)이 아닙니다 — structure는 칸 위에 서는 upright 오브젝트지 diamond를
+      덮는 뚜껑이 아닙니다
 
 #### 작업 순서
 

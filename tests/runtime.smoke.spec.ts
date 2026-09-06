@@ -499,8 +499,8 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   // board is back on Aerin's next turn before a poll sees them empty.
   await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");
 
-  // The mesh maps the whole board texture onto the projected quad, so the texture has to be
-  // exactly its own page. A padded page shrinks the art inside the quad and leaves actors
+  // The board sprite draws the whole texture as the board plane, so the texture has to be
+  // exactly its own page. A padded page shrinks the art inside the plane and leaves actors
   // standing off the drawn board.
   const textureFit = await page.locator("#pixi-canvas").getAttribute("data-board-texture-fit");
   expect(textureFit).toMatch(/^(\d+x\d+)\/\1$/);
@@ -542,7 +542,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(boardCentre.y).toBeLessThan(canvasBox.height);
 
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-perspective-board.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-affine-board.png"), fullPage: true });
 });
 
 /**
@@ -693,15 +693,17 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   await openBattle(page);
   const canvasBox = await page.locator("#pixi-canvas").boundingBox();
   if (!canvasBox) throw new Error("Pixi canvas does not have a bounding box.");
-  const actorFeet = async (id: string): Promise<{ x: number; y: number }> => {
-    const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
+  type ActorLayout = { id: string; x: number; y: number; left: number; right: number; top: number; bottom: number };
+  const actorFeet = async (id: string): Promise<ActorLayout> => {
+    const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as ActorLayout[];
     const actor = feet.find((entry) => entry.id === id);
     if (!actor) throw new Error(`${id} has not published its layout.`);
     return actor;
   };
 
-  // "Visible" means inside the gutters the HUD reserved, not merely on the canvas: a
-  // standee behind a panel is exactly what the camera is supposed to fetch back.
+  // "Visible" means the whole standee inside the gutters the HUD reserved, not merely a
+  // contact point on the canvas: a body whose head and HP badge are behind a panel is
+  // exactly what the camera is supposed to fetch back.
   const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
     { left: number; top: number; right: number; bottom: number };
   expect(safe.right).toBeGreaterThan(0);
@@ -718,9 +720,13 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   await page.locator("#end-turn").click();
   await page.waitForTimeout(600);
   const goblin = await actorFeet("goblin-lackey");
+  // Every edge of the standee, so a head or an HP badge left under the HUD still fails.
+  expect(goblin.left).toBeGreaterThan(safe.left);
+  expect(goblin.right).toBeLessThan(canvasBox.width - safe.right);
+  expect(goblin.top).toBeGreaterThan(safe.top);
+  expect(goblin.bottom).toBeLessThan(canvasBox.height - safe.bottom);
+  // The contact point comes back with it, and is not the thing that was checked.
   expect(goblin.x).toBeGreaterThan(safe.left);
   expect(goblin.x).toBeLessThan(canvasBox.width - safe.right);
-  expect(goblin.y).toBeGreaterThan(safe.top);
-  expect(goblin.y).toBeLessThan(canvasBox.height - safe.bottom);
   expect(runtimeErrors).toEqual([]);
 });

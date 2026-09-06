@@ -287,20 +287,24 @@ export class BattleView {
   }
 
   /**
-   * Pans the minimum distance that brings an actor back inside the safe area. At fit
-   * zoom the whole board is already visible, so this is a no-op and the board does not
-   * jump around at the start of every turn.
+   * Pans the minimum distance that brings a whole standee back inside the safe area. The
+   * feet are not enough: a standee is taller than its cell and carries an HP badge above
+   * its head, so an actor whose contact point has just cleared the HUD can still be a
+   * body with no face on it. At fit zoom everything is already visible, so this is a
+   * no-op and the board does not jump around at the start of every turn.
    */
   public ensureActorVisible(actorId: string): void {
-    const actor = this.state?.actors[actorId];
-    if (!actor) return;
-    const point = this.projection.gridToScreen(actor.position.x + 0.5, actor.position.y + 0.5);
+    const visual = this.actorVisuals.get(actorId);
+    if (!visual) return;
+    const bounds = visual.display.getBounds();
     const left = this.safeArea.left + FOCUS_MARGIN;
     const right = this.app.screen.width - this.safeArea.right - FOCUS_MARGIN;
     const top = this.safeArea.top + FOCUS_MARGIN;
     const bottom = this.app.screen.height - this.safeArea.bottom - FOCUS_MARGIN;
-    const dx = point.x < left ? left - point.x : point.x > right ? right - point.x : 0;
-    const dy = point.y < top ? top - point.y : point.y > bottom ? bottom - point.y : 0;
+    // A standee too tall for the gap gets its head, which is where the badge and the
+    // face are; the feet stand on a square the player can already see the shape of.
+    const dx = bounds.left < left ? left - bounds.left : bounds.right > right ? right - bounds.right : 0;
+    const dy = bounds.top < top ? top - bounds.top : bounds.bottom > bottom ? bottom - bounds.bottom : 0;
     if (dx === 0 && dy === 0) return;
     this.camera.panBy(dx, dy, this.boardFrame());
     this.layoutScene();
@@ -552,13 +556,22 @@ export class BattleView {
         })),
     );
     this.app.canvas.dataset.actorFeet = JSON.stringify(
-      [...this.actorVisuals.entries()].map(([id, visual]) => ({
-        id,
-        x: Number(visual.display.x.toFixed(2)),
-        y: Number(visual.display.y.toFixed(2)),
-        scale: Number(visual.display.scale.x.toFixed(4)),
-        zIndex: visual.display.zIndex,
-      })),
+      [...this.actorVisuals.entries()].map(([id, visual]) => {
+        // The contact point is where the actor stands; the bounds are what the player has
+        // to be able to see, and the two are far apart on a standee.
+        const bounds = visual.display.getBounds();
+        return {
+          id,
+          x: Number(visual.display.x.toFixed(2)),
+          y: Number(visual.display.y.toFixed(2)),
+          scale: Number(visual.display.scale.x.toFixed(4)),
+          zIndex: visual.display.zIndex,
+          top: Number(bounds.top.toFixed(2)),
+          bottom: Number(bounds.bottom.toFixed(2)),
+          left: Number(bounds.left.toFixed(2)),
+          right: Number(bounds.right.toFixed(2)),
+        };
+      }),
     );
     // The standee plane's contract, which is invisible from outside once it is drawn: a
     // body is upright and unsquashed whatever the board does under it, only its own

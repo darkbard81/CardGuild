@@ -52,7 +52,7 @@ export class TerrainRenderer {
       // Exactly the board's own size. A pooled texture is rounded up to a power of two and
       // handed back with a smaller frame over a larger source, and that pairing is shared
       // between encounters — a 5x3 board asks for 640x384 and gets a 1024x512 source the
-      // previous encounter also used. Sizing the target to the board keeps the mesh's
+      // previous encounter also used. Sizing the target to the board keeps the sprite's
       // texture and the projection's cells describing the same rectangle, and costs less
       // memory than the padded page it replaces.
       this.boardTexture = RenderTexture.create({ width, height, resolution: 1, antialias: false });
@@ -196,8 +196,8 @@ export class TerrainRenderer {
 
   /**
    * The board texture's own size against the size of the page it lives on, as `WxH/WxH`.
-   * The mesh maps the whole page onto the projected quad, so the two must stay equal;
-   * a padded page is the shape this renderer regressed into and is worth pinning.
+   * The board sprite draws the whole page as the board plane, so the two must stay
+   * equal; a padded page is the shape this renderer regressed into and is worth pinning.
    */
   public get boardTextureFit(): string {
     const texture = this.boardTexture;

@@ -7,6 +7,14 @@ import type { PresentationAssetDefinition } from "./presentation-types";
  * silhouette, and that difference means nothing to the rules. Movement, Fly and line of
  * sight come from the tile's traits, never from a texture.
  */
+/**
+ * One cell wide, measured on the board plane rather than on the screen. A structure is
+ * drawn upright at the board's uniform scale, so it covers 128 board pixels — the same
+ * 128 a terrain tile occupies before the board is turned and squashed. The cell's
+ * left-to-right span on screen is wider than that (the turn spreads it by root two), and
+ * a structure deliberately does not stretch to fill it: it is an object standing on the
+ * square, sized like every other standee, not a lid over the diamond.
+ */
 export const STRUCTURE_RUNTIME_WIDTH = 128;
 
 /** Canonical production width: one runtime cell drawn at 2x. */
