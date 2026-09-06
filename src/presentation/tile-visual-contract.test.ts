@@ -8,8 +8,8 @@ import {
 import type { PresentationAssetDefinition } from "./presentation-types";
 
 const CANVAS = { width: TILE_SOURCE_SIZE, height: TILE_SOURCE_SIZE };
-const GATE: PresentationAssetDefinition = {
-  frame: "terrain.gate.closed",
+const WALL: PresentationAssetDefinition = {
+  frame: "terrain.wall-block",
   kind: "terrain",
   anchor: { x: 0.5, y: 0.5 },
   displayWidth: 128,
@@ -19,37 +19,38 @@ const GATE: PresentationAssetDefinition = {
 
 describe("tile visual contract", () => {
   it("accepts a square terrain tile and names the first thing wrong with anything else", () => {
-    expect(() => assertTileVisualContract("terrain.gate.closed", GATE, CANVAS)).not.toThrow();
-    // A gate used to be an upright object on a bottom-centre anchor. Both are now refused.
-    expect(() => assertTileVisualContract("x", { ...GATE, kind: "object" }, CANVAS)).toThrow(/must be terrain/);
-    expect(() => assertTileVisualContract("x", { ...GATE, anchor: { x: 0.5, y: 1 } }, CANVAS))
+    expect(() => assertTileVisualContract("terrain.wall-block", WALL, CANVAS)).not.toThrow();
+    // A tile visual used to have an upright cousin on a bottom-centre anchor. Both refused.
+    expect(() => assertTileVisualContract("x", { ...WALL, kind: "object" }, CANVAS)).toThrow(/must be terrain/);
+    expect(() => assertTileVisualContract("x", { ...WALL, anchor: { x: 0.5, y: 1 } }, CANVAS))
       .toThrow(/centred anchor/);
-    expect(() => assertTileVisualContract("x", { ...GATE, displayHeight: undefined }, CANVAS))
+    expect(() => assertTileVisualContract("x", { ...WALL, displayHeight: undefined }, CANVAS))
       .toThrow(/drawn 128x128/);
-    expect(() => assertTileVisualContract("x", { ...GATE, footprint: undefined }, CANVAS))
+    expect(() => assertTileVisualContract("x", { ...WALL, footprint: undefined }, CANVAS))
       .toThrow(/must claim one 128x128 cell/);
-    // A gate's two states share the wall's alignment, so a tall canvas is a real bug.
-    expect(() => assertTileVisualContract("x", GATE, { width: 256, height: 344 }))
+    // A tile has to be square: a tall canvas would stretch across the cell it fills.
+    expect(() => assertTileVisualContract("x", WALL, { width: 256, height: 344 }))
       .toThrow(/256px square canvas/);
   });
 
-  it("insists every tile state has a picture, both halves of the gate included", () => {
+  it("insists every surface a square can be composited with has a picture", () => {
     const visuals = {
       open: "terrain.stone-floor",
       difficult: "terrain.rubble",
       impassable: "terrain.chasm",
       web: "transition.web",
       blocked: "terrain.wall-block",
-      gateClosed: "terrain.gate.closed",
-      gateOpen: "terrain.gate.open",
     };
     const validated = new Set(Object.values(visuals));
     expect(() => assertRequiredTileVisuals(visuals, validated)).not.toThrow();
-    expect(() => assertRequiredTileVisuals({ ...visuals, gateOpen: "" }, validated))
-      .toThrow(/"gateOpen" is missing/);
-    // A gate state that fell out of the terrain path must fail, not be waved through.
-    validated.delete("terrain.gate.open");
+    expect(() => assertRequiredTileVisuals({ ...visuals, blocked: "" }, validated))
+      .toThrow(/"blocked" is missing/);
+    // A surface that fell out of the terrain path must fail, not be waved through.
+    validated.delete("terrain.wall-block");
     expect(() => assertRequiredTileVisuals(visuals, validated))
-      .toThrow(/"gateOpen" must be a board tile visual/);
+      .toThrow(/"blocked" must be a board tile visual/);
+    // A gate is drawn on top of one of these, so it is not required to be one.
+    expect(() => assertRequiredTileVisuals({ ...visuals, gateClosed: "" }, validated.add("terrain.wall-block")))
+      .not.toThrow();
   });
 });

@@ -813,7 +813,8 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 | Equipment | UI icon | `ui-icon` + `presentation.equipmentVisuals` 매핑 |
 | 새 terrain trait | 정사각 top-down terrain master | `square-terrain` + `presentation.terrainVisuals` |
 | 새 point prop (상자·레버·통) | 한 칸 위에 서는 소품 | `grounded-object` + `presentation.objectVisuals` |
-| 벽 (`blocked`) / 문 (`gate`) | 그 칸 자체의 상태. 바닥과 같은 정사각 terrain master | `square-terrain` + `presentation.terrainVisuals` |
+| 벽 (`blocked`) | 그 칸 자체의 상태. 바닥과 같은 정사각 terrain master | `square-terrain` + `presentation.terrainVisuals` |
+| 문 (`gate`) | **asset 없음.** 벽 tile 위에 Pixi가 문을 그립니다 | 없음 (`BoardViewConfig.gateMark`) |
 
 **source 해상도와 출력 canvas는 다릅니다.** source PNG는 크게 그리고(현재 actor sheet 관례는
 1024×1536, front|back 2칸), plan의 `grid: {rows, cols}`가 그 장을 프레임으로 자르며,
@@ -916,53 +917,47 @@ gate는 벽과 하나의 contour로 이어지고, 열리는 순간 region에서 
 생깁니다. 선 색·두께·알파는 `BoardViewConfig.solidBoundary` 한 곳에 있고 gameplay data에는
 없습니다.
 
-### 11.5 Gate — 한 칸의 두 상태
+### 11.5 Gate는 asset이 아닙니다
 
-Gate는 같은 칸의 state pair이므로 **같은 규격의 square terrain 두 장**입니다.
-
-```jsonc
-{ "input": "art/source/terrain/gate-closed.png", "mode": "square-terrain",
-  "grid": { "rows": 1, "cols": 1 },
-  "canvas": { "width": 256, "height": 256 },
-  "frames": [ { "assetId": "terrain.gate.closed", "kind": "terrain",
-                "anchor": { "x": 0.5, "y": 0.5 },
-                "displaySize": { "width": 128, "height": 128 },
-                "footprint": { "width": 128, "height": 128 } } ],
-  "prompt": "Reference art/STYLE.md, ..." }
-```
-
-`terrain.gate.open`도 같은 형태로 등록하고 `presentation.terrainVisuals`의
-`gateClosed`/`gateOpen`에 매핑합니다. `objectVisuals`에는 point prop만 남습니다.
-
-#### prompt recipe
+Gate는 그림을 만들지 않습니다. 닫힌 gate는 **평범한 wall tile 위에 Pixi가 문을 그린 것**이고,
+열린 gate는 **원래 바닥 위에 문짝이 접혀 있는 표시**일 뿐입니다.
 
 ```text
-exact orthographic top-down square terrain tile
-1:1 ratio, full bleed, every pixel opaque
-no drawn outline, no frame, no transparent margin
-wall runs vertically through the tile:
-  top and bottom edges are masonry jambs running off the edge
-  left and right edges are the passage, open
-closed -> heavy timber double door fills and blocks the passage
-open   -> same jambs in the same places, floor runs through, leaves folded back
-upper-left key light, no baked floor shadow
-no perspective, no isometric diamond, no camera convergence
-no character, no text, no UI
+closed gate  = terrain.wall-block + gate mark (문짝 + 철대 + 이음매)
+open gate    = 기존 ground        + gate mark (양쪽 jamb에 접힌 문짝)
 ```
 
-**open은 closed와 같은 자리에 jamb를 두는 것이 계약입니다.** 두 장을 바꿔 끼웠을 때 문짝만
-달라져야 하고 석재 위치·크기가 흔들리면 안 됩니다.
+그래서 이런 것들이 필요 없습니다.
+
+```text
+gate texture / gate state pair
+gate 방향별 asset (N/S/E/W)
+gate corner piece
+terrainVisuals의 gate 항목
+```
+
+방향은 `gateAxis()`가 **주변 solid 이웃 수**로 정합니다 (`src/pixi/battle/GateMark.ts`).
+
+```text
+N/S 쪽 이웃이 더 많다 -> 세로 벽 / 좌우 통로
+E/W 쪽 이웃이 더 많다 -> 가로 벽 / 상하 통로
+동수(교차로·홀로 선 gate) -> north-south 고정 fallback
+```
+
+덕분에 어느 방향 벽에 gate를 놓아도 90° 틀어질 수 없고, 새 gate를 추가하는 데 아트 비용이
+들지 않습니다. 색·두께는 `BoardViewConfig.gateMark` 한 곳에 있습니다.
+
+Gate 상태 전환도 그대로입니다 — Lever가 trait을 바꾸면 다음 `render(state)`가 다른 mark를
+그립니다. gate 전용 prop state도, sprite mutation도, 전환 애니메이션 시스템도 없습니다.
 
 #### QC 체크리스트
 
-- [ ] 1:1 정사각 source, full bleed, 전 픽셀 불투명, 투명 여백 없음
-- [ ] `kind: terrain`, `mode: square-terrain`, anchor `(0.5, 0.5)`
-- [ ] `displaySize` 128×128, `footprint` 128×128, processed canvas 256×256
-- [ ] closed/open의 jamb 위치·크기 동일, 통로는 좌우로 열림
-- [ ] 투시·isometric diamond를 source에 굽지 않음 (보드가 런타임에 45°/0.5로 눕힙니다)
+- [ ] gate용 source asset을 만들지 않았음
+- [ ] `terrainVisuals`에 gate 항목이 없음
+- [ ] `encounter.ruined-gate`에서 닫힌 gate가 벽과 하나의 contour로 이어짐
+- [ ] Lever를 당기면 같은 자리에서 열린 표시로 바뀌고 개구부 외곽선이 생김
+- [ ] 가로 벽에 gate를 놓아도 문이 통로를 가로지름 (`gateAxis()` 단위 테스트)
 - [ ] `npm run assets`
-- [ ] `encounter.ruined-gate` 전투 화면에서 닫힌 gate가 벽과 하나로 이어지고, Lever를 당기면
-      같은 자리에서 열린 그림으로 바뀌며 개구부 외곽선이 생김
 
 #### 작업 순서
 

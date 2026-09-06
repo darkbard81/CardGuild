@@ -19,14 +19,16 @@ standing on a square that would still be there without it?**
 
 | Category | Examples | Plane | Production |
 |---|---|---|---|
-| **Board Tile Visual** | floor, difficult ground, chasm, web, wall, gate closed, gate open | board — takes the board's turn and squash | `square-terrain`, 256x256, anchor `(0.5, 0.5)`, drawn 128x128 |
+| **Board Tile Visual** | floor, difficult ground, chasm, web, wall | board — takes the board's turn and squash | `square-terrain`, 256x256, anchor `(0.5, 0.5)`, drawn 128x128 |
 | **Point Prop** | lever, chest, crate, barrel | upright — shares only a contact point | `grounded-object`, authored height, anchor `(0.5, 1)` |
 | **Actor Standee** | characters, creatures | upright | `two-sided-actor`, front and back |
 
-There is no fourth, in-between category. A wall and a gate are the state of their square,
-so they are tile visuals; a lever bolted to that same wall is a thing on a square, so it
-is a point prop. Nothing about which category a picture falls into decides gameplay:
-movement, Fly and line of sight come from the tile's traits alone.
+There is no fourth, in-between category. A wall is the state of its square, so it is a
+tile visual; a lever bolted to that same wall is a thing on a square, so it is a point
+prop. Nothing about which category a picture falls into decides gameplay: movement, Fly
+and line of sight come from the tile's traits alone.
+
+A gate is in no category at all, because it is not a picture: see below.
 
 ### Board Tile Visuals
 
@@ -38,10 +40,19 @@ and no transparent margin, so two of them side by side read as one continuous su
 - Nothing in the picture marks where the surface ends. The runtime strokes the outline
   itself, only where a blocked square meets something that is not blocked.
 - A wall reads against the floor at a glance: heavier masonry, colder and darker values.
-- A gate is one square in two states. Both are drawn on the same canvas with the jambs in
-  the same place at the same size, so swapping them moves nothing but the door. The wall a
-  gate is set into runs top to bottom, so the two masonry jambs sit on the top and bottom
-  edges and the passage opens off the left and right edges.
+
+### Gates are drawn, not authored
+
+A gate has no art. A shut one is the ordinary wall tile with a timber door drawn across
+the way through by Pixi; an open one is whatever ground was already there, with the two
+leaves drawn folded back against the jambs.
+
+- Do not author a gate texture, a gate state pair, or gate corner pieces.
+- Which way the gate stands comes from the barrier around it — the runtime counts its
+  blocked neighbours — so one gate covers a wall running any direction and no gate can
+  ever be drawn a quarter turn out.
+- The timber and iron colours live in `BoardViewConfig.gateMark`, with the rest of the
+  board's presentation tuning.
 
 ### Point Props
 

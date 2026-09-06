@@ -135,68 +135,6 @@
       "prompt": "Reference art/STYLE.md and documents/view_modify.png. 2d top-down square dungeon stone wall block Board Tile: the solid mass of a wall seen from directly above, in the same square terrain format as the floor tiles. 1:1ratio full bleed, \ud0c0\uc77c \uc804\uccb4\ub97c \ub3cc\ubcbd\uba74\uc73c\ub85c \ucc44\uc6b0\uace0 \uc678\uacfd\uc120\uc740 \uadf8\ub9ac\uc9c0 \uc54a\ub294\ub2e4. \ubc29\ud5a5\uc131 \uc5c6\ub294 \uc11d\uc7ac \ud328\ud134\ub9cc, \ubaa8\uc11c\ub9ac \uc5f0\uacb0 \ud615\ud0dc \uc5c6\uc74c."
     },
     {
-      "input": "art/source/terrain/gate-closed.png",
-      "mode": "square-terrain",
-      "grid": {
-        "rows": 1,
-        "cols": 1
-      },
-      "canvas": {
-        "width": 256,
-        "height": 256
-      },
-      "frames": [
-        {
-          "assetId": "terrain.gate.closed",
-          "kind": "terrain",
-          "anchor": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "displaySize": {
-            "width": 128,
-            "height": 128
-          },
-          "footprint": {
-            "width": 128,
-            "height": 128
-          }
-        }
-      ],
-      "prompt": "Reference art/STYLE.md and art/processed/terrain/wall-block.png. 2d top-down square dungeon gateway Board Tile, wall-block\uc640 \uac19\uc740 1:1 full bleed \uaddc\uaca9. \ubcbd\uc740 \uc774\ubbf8\uc9c0 \uc548\uc5d0\uc11c \uc138\ub85c\ub85c \ub2ec\ub9ac\ubbc0\ub85c \uc0c1\ud558 \ubaa8\uc11c\ub9ac\ub9cc \uc11d\uc7ac jamb\uc774\uace0 \uc88c\uc6b0 \ubaa8\uc11c\ub9ac\ub294 \ud1b5\ub85c\ub85c \uc5f4\ub824 \uc788\ub2e4. \ud22c\uc0ac\u00b7\uc678\uacfd\uc120\u00b7\ud22c\uba85 \uc5ec\ubc31 \uc5c6\uc74c. Closed state: \ubb34\uac70\uc6b4 \ubaa9\uc7ac \uc30d\ubb38\uc774 \ud1b5\ub85c\ub97c \uc644\uc804\ud788 \ub9c9\uace0 \uc788\ub2e4."
-    },
-    {
-      "input": "art/source/terrain/gate-open.png",
-      "mode": "square-terrain",
-      "grid": {
-        "rows": 1,
-        "cols": 1
-      },
-      "canvas": {
-        "width": 256,
-        "height": 256
-      },
-      "frames": [
-        {
-          "assetId": "terrain.gate.open",
-          "kind": "terrain",
-          "anchor": {
-            "x": 0.5,
-            "y": 0.5
-          },
-          "displaySize": {
-            "width": 128,
-            "height": 128
-          },
-          "footprint": {
-            "width": 128,
-            "height": 128
-          }
-        }
-      ],
-      "prompt": "Reference art/STYLE.md and art/processed/terrain/wall-block.png. 2d top-down square dungeon gateway Board Tile, wall-block\uc640 \uac19\uc740 1:1 full bleed \uaddc\uaca9. \ubcbd\uc740 \uc774\ubbf8\uc9c0 \uc548\uc5d0\uc11c \uc138\ub85c\ub85c \ub2ec\ub9ac\ubbc0\ub85c \uc0c1\ud558 \ubaa8\uc11c\ub9ac\ub9cc \uc11d\uc7ac jamb\uc774\uace0 \uc88c\uc6b0 \ubaa8\uc11c\ub9ac\ub294 \ud1b5\ub85c\ub85c \uc5f4\ub824 \uc788\ub2e4. \ud22c\uc0ac\u00b7\uc678\uacfd\uc120\u00b7\ud22c\uba85 \uc5ec\ubc31 \uc5c6\uc74c. Open state: closed\uc640 \ub3d9\uc77c\ud55c jamb \uc704\uce58\u00b7\ud06c\uae30, \uac00\uc6b4\ub370\ub294 \ubc14\ub2e5\uc774 \ub4dc\ub7ec\ub098\uace0 \ubb38\uc9dd\uc740 jamb \uc548\ucabd\uc5d0 \uc811\ud600 \uc788\ub2e4."
-    },
-    {
       "input": "art/source/terrain/web-overlay.png",
       "mode": "web-overlay",
       "grid": {
@@ -1910,9 +1848,7 @@
       "difficult": "terrain.rubble",
       "impassable": "terrain.chasm",
       "web": "transition.web",
-      "blocked": "terrain.wall-block",
-      "gateClosed": "terrain.gate.closed",
-      "gateOpen": "terrain.gate.open"
+      "blocked": "terrain.wall-block"
     },
     "objectVisuals": {
       "chest": "object.chest",

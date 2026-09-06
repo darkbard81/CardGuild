@@ -45,9 +45,10 @@ export interface PresentationAssetManifest {
   readonly assets: Readonly<Record<PresentationAssetId, PresentationAssetDefinition>>;
   readonly actorVisuals: Readonly<Record<ActorDefinitionId, ActorVisualDefinition>>;
   /**
-   * What a tile's own state looks like. The last three are surfaces a square can be in
-   * rather than things standing on it — a wall, and a gate in each of its two states —
-   * so they are square terrain tiles like the floors, not standees.
+   * What a tile's own state looks like. `blocked` is a surface a square can be in rather
+   * than a thing standing on it, so a wall is a square terrain tile like the floors, not
+   * a standee. A gate needs no entry: it is a wall square with a door drawn on it, or an
+   * open square with the leaves drawn folded back.
    */
   readonly terrainVisuals: {
     readonly open: PresentationAssetId;
@@ -55,8 +56,6 @@ export interface PresentationAssetManifest {
     readonly impassable: PresentationAssetId;
     readonly web: PresentationAssetId;
     readonly blocked: PresentationAssetId;
-    readonly gateClosed: PresentationAssetId;
-    readonly gateOpen: PresentationAssetId;
   };
   /** Point props: things standing on a tile that the tile would still be there without. */
   readonly objectVisuals: {
