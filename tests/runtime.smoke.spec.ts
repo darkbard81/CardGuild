@@ -1,5 +1,8 @@
 import { expect, type Page, test } from "@playwright/test";
 
+/** Mirrors `FOCUS_MARGIN` in src/pixi/battle/BattleView.ts: the gap the camera aims for. */
+const FOCUS_MARGIN = 48;
+
 const ROAD_MAP = { width: 3, height: 3 };
 type Corner = { readonly x: number; readonly y: number };
 
@@ -687,6 +690,68 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-responsive.png"), fullPage: true });
 });
 
+/**
+ * A home-screen web app owns the whole screen, and an iPad mini is 744pt on its short
+ * side — under both of the layout's minimums. The board has to stay on the screen anyway.
+ */
+test.describe("iPad mini", () => {
+  for (const [name, width, height] of [["portrait", 744, 1133], ["landscape", 1133, 744]] as const) {
+    test(`keeps the whole board on screen in ${name}`, async ({ page }) => {
+      const runtimeErrors = captureRuntimeErrors(page);
+      await page.setViewportSize({ width, height });
+      await openBattle(page);
+      await page.waitForTimeout(400);
+
+      // Nothing hangs off the bottom or the side: the page is exactly the screen.
+      const overflow = await page.evaluate(() => ({
+        horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        vertical: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+      }));
+      expect(overflow.horizontal).toBeLessThanOrEqual(0);
+      expect(overflow.vertical).toBeLessThanOrEqual(0);
+
+      const canvas = await page.locator("#pixi-canvas").boundingBox();
+      if (!canvas) throw new Error("Pixi canvas does not have a bounding box.");
+      expect(canvas.x).toBeGreaterThanOrEqual(0);
+      expect(canvas.y).toBeGreaterThanOrEqual(0);
+      expect(canvas.x + canvas.width).toBeLessThanOrEqual(width + 0.5);
+      expect(canvas.y + canvas.height).toBeLessThanOrEqual(height + 0.5);
+
+      // And the board inside it is fitted to the gutters the HUD actually reserved,
+      // which is what a rotation used to leave half applied.
+      const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
+        { left: number; top: number; right: number; bottom: number };
+      const corners = await boardCorners(page);
+      expect(Math.min(...corners.map((corner) => corner.y))).toBeGreaterThanOrEqual(safe.top - 0.5);
+      expect(Math.max(...corners.map((corner) => corner.y))).toBeLessThanOrEqual(canvas.height - safe.bottom + 0.5);
+      expect(Math.min(...corners.map((corner) => corner.x))).toBeGreaterThanOrEqual(safe.left - 0.5);
+      expect(Math.max(...corners.map((corner) => corner.x))).toBeLessThanOrEqual(canvas.width - safe.right + 0.5);
+      expect(runtimeErrors).toEqual([]);
+    });
+  }
+
+  test("re-fits the board after a rotation instead of leaving it half applied", async ({ page }) => {
+    const runtimeErrors = captureRuntimeErrors(page);
+    await page.setViewportSize({ width: 744, height: 1133 });
+    await openBattle(page);
+    await page.waitForTimeout(400);
+    await page.setViewportSize({ width: 1133, height: 744 });
+    await page.waitForTimeout(400);
+
+    const canvas = await page.locator("#pixi-canvas").boundingBox();
+    if (!canvas) throw new Error("Pixi canvas does not have a bounding box.");
+    expect(canvas.y + canvas.height).toBeLessThanOrEqual(744.5);
+    const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
+      { left: number; top: number; right: number; bottom: number };
+    const corners = await boardCorners(page);
+    // The old failure put the top edge inside the gutters and the bottom one under the
+    // screen, so both ends are checked against the same measurement.
+    expect(Math.min(...corners.map((corner) => corner.y))).toBeGreaterThanOrEqual(safe.top - 0.5);
+    expect(Math.max(...corners.map((corner) => corner.y))).toBeLessThanOrEqual(canvas.height - safe.bottom + 0.5);
+    expect(runtimeErrors).toEqual([]);
+  });
+});
+
 test("pans an off-screen actor back into view when its turn starts", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
   await openBattle(page);
@@ -723,7 +788,13 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   expect(goblin.left).toBeGreaterThan(safe.left);
   expect(goblin.right).toBeLessThan(canvasBox.width - safe.right);
   expect(goblin.top).toBeGreaterThan(safe.top);
-  expect(goblin.bottom).toBeLessThan(canvasBox.height - safe.bottom);
+  // Fully zoomed in, a standee can be taller than the window the camera aims for. It
+  // promises the head in that case — the badge and the face — and only promises all four
+  // edges to one that fits.
+  const focusWindow = canvasBox.height - safe.top - safe.bottom - 2 * FOCUS_MARGIN;
+  if (goblin.bottom - goblin.top <= focusWindow) {
+    expect(goblin.bottom).toBeLessThan(canvasBox.height - safe.bottom);
+  }
   // The contact point comes back with it, and is not the thing that was checked.
   expect(goblin.x).toBeGreaterThan(safe.left);
   expect(goblin.x).toBeLessThan(canvasBox.width - safe.right);

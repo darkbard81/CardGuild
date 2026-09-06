@@ -35,7 +35,12 @@ body,
 }
 
 body {
-  min-height: var(--min-height);
+  /*
+   * A floor, not a promise to overflow the device: an iPad mini is 744pt on its short
+   * side, under both floors, and forcing the page past the viewport pushed its bottom
+   * edge off the screen.
+   */
+  min-height: min(var(--min-height), 100dvh);
   background:
     radial-gradient(circle at 50% -20%, #3a3020 0, transparent 35rem),
     #090c0f;
@@ -57,16 +62,33 @@ button {
 
 .app-shell {
   display: block;
-  min-height: 100vh;
+  /* dvh, not vh: on iOS `vh` is the viewport with the browser chrome hidden, which is
+     taller than what is actually on screen, and the bottom of the page falls off it. */
+  min-height: 100dvh;
 }
 
-/* Battlefield stage: the canvas fills it and every HUD element floats above. */
+/*
+ * Battlefield stage: the canvas fills it and every HUD element floats above.
+ *
+ * Pinned to the whole screen rather than sized in flow, with the parts the system keeps
+ * for itself — the status bar, the home indicator — taken as padding. Both children below
+ * are absolutely positioned, so `inset: 0` lands them on this element's padding box and
+ * the safe rectangle is the only box either of them ever sees.
+ *
+ * The insets are measured here instead of being left to the browser because a home-screen
+ * web app owns the whole screen: WebKit keeps the previous orientation's origin for a
+ * moment after a rotation, and a layout waiting on that origin stays shifted down by a
+ * status bar's height. `env()` does not wait. On a device whose safe area does not change
+ * with rotation the values simply stay the same and nothing here behaves differently.
+ */
 .combat-stage {
-  position: relative;
-  width: 100%;
-  height: 100dvh;
-  min-width: var(--min-width);
-  min-height: var(--min-height);
+  position: fixed;
+  inset: 0;
+  padding:
+    env(safe-area-inset-top, 0px)
+    env(safe-area-inset-right, 0px)
+    env(safe-area-inset-bottom, 0px)
+    env(safe-area-inset-left, 0px);
   overflow: hidden;
   background: radial-gradient(circle at 50% 42%, #24302e 0, #10171b 54%, #080b0d 100%);
   /*
@@ -1049,7 +1071,7 @@ button {
 /* Host-invited session lobby */
 .session-screen {
   display: grid;
-  min-height: 100vh;
+  min-height: 100dvh;
   padding: clamp(1rem, 5vw, 5rem);
   place-items: center;
   overflow-x: hidden;
