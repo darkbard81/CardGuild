@@ -540,20 +540,9 @@ export class BattleView {
     // and an actor outside it is the thing `ensureActorVisible` exists to pan back.
     this.app.canvas.dataset.safeArea = JSON.stringify(this.safeArea);
     this.app.canvas.dataset.boardTextureFit = this.terrainRenderer.boardTextureFit;
-    this.app.canvas.dataset.wallRegionFit = this.terrainRenderer.wallRegionFit;
+    this.app.canvas.dataset.solidRegionFit = this.terrainRenderer.solidRegionFit;
     this.app.canvas.dataset.boardCorners = JSON.stringify(
       this.projection.corners.map((point) => ({ x: Number(point.x.toFixed(2)), y: Number(point.y.toFixed(2)) })),
-    );
-    // A structure has to measure exactly one cell wherever it stands and however far the
-    // camera is zoomed; the ratio is the only way a test can see that from outside.
-    const cell = this.projection.getContentScale() * this.config.referenceCellWidth;
-    this.app.canvas.dataset.structureFit = JSON.stringify(
-      this.visuals
-        .filter((visual) => visual.cellBound)
-        .map((visual) => ({
-          id: visual.stableId,
-          ratio: cell > 0 ? Number((visual.display.width / cell).toFixed(3)) : 0,
-        })),
     );
     this.app.canvas.dataset.actorFeet = JSON.stringify(
       [...this.actorVisuals.entries()].map(([id, visual]) => {

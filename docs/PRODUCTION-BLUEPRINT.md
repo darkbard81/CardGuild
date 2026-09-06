@@ -813,8 +813,7 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 | Equipment | UI icon | `ui-icon` + `presentation.equipmentVisuals` 매핑 |
 | 새 terrain trait | 정사각 top-down terrain master | `square-terrain` + `presentation.terrainVisuals` |
 | 새 point prop (상자·레버·통) | 한 칸 위에 서는 소품 | `grounded-object` + `presentation.objectVisuals` |
-| 새 tile-bound structure (문) | 한 칸을 통째로 차지하는 구조물 | `tile-structure` + `presentation.objectVisuals` |
-| 벽 (`blocked`) | 바닥과 같은 정사각 terrain master 1장 | `square-terrain` + `presentation.terrainVisuals.blocked` |
+| 벽 (`blocked`) / 문 (`gate`) | 그 칸 자체의 상태. 바닥과 같은 정사각 terrain master | `square-terrain` + `presentation.terrainVisuals` |
 
 **source 해상도와 출력 canvas는 다릅니다.** source PNG는 크게 그리고(현재 actor sheet 관례는
 1024×1536, front|back 2칸), plan의 `grid: {rows, cols}`가 그 장을 프레임으로 자르며,
@@ -837,7 +836,7 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 | 층 | 무엇을 강제하는가 | 소유자 |
 |---|---|---|
 | **plan 검증** (`assets:build` 시작 시) | plan version 3, 배경 `transparent`, atlas 크기 2의 거듭제곱·padding 1–2, `frames.length == rows × cols`, assetId 유일, anchor `0..1`, **`two-sided-actor`의 side 순서가 정확히 `front → back`**, `definitionId` 존재, **모든 prompt가 `art/STYLE.md`를 참조** | `validatePlan()` in `tools/assets/build-assets.ts` |
-| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조, **structure 계약(§11.5)과 gate 짝 일치** | `tools/assets/check-assets.ts` |
+| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain 256×256 정사각·footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조, **tile visual 계약(§11.4)과 gate state pair 존재** | `tools/assets/check-assets.ts` |
 | **convention** (기계가 잡지 않음) | prop·actor anchor `(0.5, 1)`(발밑 접점), UI·terrain anchor `(0.5, 0.5)`, 좌우 동일 feet line·동일 정체성, 투영·팔레트·조명 기준 | `art/STYLE.md` |
 
 마지막 층이 위험합니다 — actor anchor를 `(0.5, 0.4)`로 적으면 범위 검사(0..1)는 통과하고
@@ -868,11 +867,20 @@ WebP atlas와 `public/assets/m3-atlas.{webp,json}` 생성, `presentation/m3/asse
 atlas에서 일치하는지, 알파가 깨끗한지(모서리 배경·마젠타 잔여), actor 256×384 / UI 256×256
 캔버스, 양면 actor visual, tilemap 레이어 길이와 팔레트 참조, 그리고 §11.2의 정확 일치.
 
-### 11.4 벽 (`blocked`) 은 terrain 입니다
+### 11.4 벽과 문은 terrain 입니다
 
-벽은 서 있는 구조물이 아니라 **바닥과 똑같은 정사각 terrain tile 한 장**입니다. 방향별 벽
-그림도, corner/edge asset도, autotile atlas도 만들지 않습니다. 여러 칸이 하나의 덩어리처럼
-읽히는 것은 **PixiJS `Graphics`가 그리는 외곽선**이 하는 일입니다.
+**한 칸 자체의 상태**인 그림은 전부 board tile visual이고, **칸 위에 놓인 물건**만 upright
+point prop입니다. 그 사이의 "tile-bound structure" 같은 중간 범주는 없습니다.
+
+```text
+Board Tile Visual  floor / difficult / chasm / web / wall / gate.closed / gate.open
+Point Prop         lever / chest / crate / barrel
+Actor Standee      character / creature
+```
+
+벽도 문도 서 있는 구조물이 아니라 **바닥과 똑같은 정사각 terrain tile 한 장**입니다.
+방향별 그림도, corner/edge asset도, autotile atlas도 만들지 않습니다. 여러 칸이 하나의
+덩어리처럼 읽히는 것은 **PixiJS `Graphics`가 그리는 외곽선**이 하는 일입니다.
 
 ```jsonc
 { "input": "art/source/terrain/wall-block.png", "mode": "square-terrain",
@@ -885,89 +893,92 @@ atlas에서 일치하는지, 알파가 깨끗한지(모서리 배경·마젠타 
   "prompt": "Reference art/STYLE.md, ..." }
 ```
 
-그림에는 **외곽선·모서리 형태·방향 단서를 굽지 않습니다.** 한 칸짜리 벽 재질만 full bleed로
+그림에는 **외곽선·모서리 형태·방향 단서를 굽지 않습니다.** 한 칸짜리 재질만 full bleed로
 채우고, 옆 칸에 같은 그림이 놓였을 때 이어져 보이게 합니다.
 
-`TerrainRenderer.renderBoard()`가 `blocked && !gate && !gate-open` 칸에 이 tile을 board
-RenderTexture로 합성하고, 그 위에 `collectWallBoundarySegments()`가 고른 **노출된 N/E/S/W
-edge에만** stroke을 얹습니다 (`src/pixi/battle/WallBoundary.ts`). 벽끼리 맞닿은 seam에는
-선이 생기지 않으므로 single·line·rectangle·L 어떤 배치든 tile 변형 없이 표현됩니다. 선 색·
-두께·알파는 `BoardViewConfig.wallBoundary` 한 곳에 있고 gameplay data에는 없습니다.
+`TerrainRenderer.renderBoard()`가 각 칸의 gameplay trait을 읽어 그 칸의 최종 표면을
+고릅니다.
 
-`gate`는 아래 §11.5의 structure 규격을 그대로 유지합니다 — 벽이 terrain이 되었다고 문까지
-바뀌지 않습니다.
+```text
+gate-open  -> terrainVisuals.gateOpen
+gate       -> terrainVisuals.gateClosed
+blocked    -> terrainVisuals.blocked
+그 외       -> ground만
+```
 
-### 11.5 Tile-Bound Structure (문) 만들기
+열린 gate는 더 이상 `blocked`가 아니므로 순서가 곧 우선순위입니다. Lever가 trait을 바꾸면
+다음 `render(state)`가 새 board texture를 만들고 그림도 함께 바뀝니다 — gate 전용 prop
+state나 sprite mutation은 없습니다.
 
-문은 **한 칸을 차지하는 구조물**이고, 상자·레버 같은 point prop과 규격이 다릅니다.
-point prop은 authored height로 그려지고 폭이 따라오지만, structure는 **폭이 정확히 한 칸**이고
-높이가 그림을 따라옵니다.
+그 위에 `collectSolidBoundarySegments()`가 고른 **노출된 N/E/S/W edge에만** stroke을
+얹습니다 (`src/pixi/battle/SolidBoundary.ts`). 경계의 기준은 `blocked` 하나이므로 닫힌
+gate는 벽과 하나의 contour로 이어지고, 열리는 순간 region에서 빠져 개구부 외곽선이 저절로
+생깁니다. 선 색·두께·알파는 `BoardViewConfig.solidBoundary` 한 곳에 있고 gameplay data에는
+없습니다.
+
+### 11.5 Gate — 한 칸의 두 상태
+
+Gate는 같은 칸의 state pair이므로 **같은 규격의 square terrain 두 장**입니다.
 
 ```jsonc
-{ "input": "art/source/objects/gate-closed.png", "mode": "tile-structure",
+{ "input": "art/source/terrain/gate-closed.png", "mode": "square-terrain",
   "grid": { "rows": 1, "cols": 1 },
-  "canvas": { "width": 256, "height": 112 },          // 폭은 항상 256, 높이는 구조물마다
-  "frames": [ { "assetId": "object.gate.closed", "kind": "object",
-                "anchor": { "x": 0.5, "y": 1 },
-                "displaySize": { "width": 128 },       // runtime 폭 = terrain cell 1칸
+  "canvas": { "width": 256, "height": 256 },
+  "frames": [ { "assetId": "terrain.gate.closed", "kind": "terrain",
+                "anchor": { "x": 0.5, "y": 0.5 },
+                "displaySize": { "width": 128, "height": 128 },
                 "footprint": { "width": 128, "height": 128 } } ],
   "prompt": "Reference art/STYLE.md, ..." }
 ```
 
-`displaySize.height`를 적으면 `assets:check`가 거부합니다 — 높이는 그림이 정합니다.
+`terrain.gate.open`도 같은 형태로 등록하고 `presentation.terrainVisuals`의
+`gateClosed`/`gateOpen`에 매핑합니다. `objectVisuals`에는 point prop만 남습니다.
 
 #### prompt recipe
 
 ```text
-2D high detailed Japanese anime style
-fixed front-facing upright tile-bound structure
-exactly one terrain-cell wide
-drawing touches the left and right edges of the frame
-clear horizontal bottom contact baseline on the bottom edge
-transparent background
-no ground plane, no baked floor shadow
+exact orthographic top-down square terrain tile
+1:1 ratio, full bleed, every pixel opaque
+no drawn outline, no frame, no transparent margin
+wall runs vertically through the tile:
+  top and bottom edges are masonry jambs running off the edge
+  left and right edges are the passage, open
+closed -> heavy timber double door fills and blocks the passage
+open   -> same jambs in the same places, floor runs through, leaves folded back
+upper-left key light, no baked floor shadow
 no perspective, no isometric diamond, no camera convergence
-upper-left key light
-crisp thick dark outline, narrow light paper border
-readable silhouette
 no character, no text, no UI
 ```
 
-변형은 실루엣 높이로만 표현합니다.
-
-```text
-gate       -> one-cell-wide fixed gate frame, posts inside the structure width
-```
-
-**gate open은 새로 그리지 않습니다.** 승인된 closed gate를 reference로 주고 frame·posts·
-baseline·canvas·bounds를 그대로 두게 한 뒤 문짝 상태만 바꿉니다. `assets:check`가 두 상태의
-canvas와 ink 경계가 같은지 봅니다.
+**open은 closed와 같은 자리에 jamb를 두는 것이 계약입니다.** 두 장을 바꿔 끼웠을 때 문짝만
+달라져야 하고 석재 위치·크기가 흔들리면 안 됩니다.
 
 #### QC 체크리스트
 
-- [ ] 배경 투명, 바닥·그림자·투시 baked 없음
-- [ ] 그림이 프레임 좌우 끝에 닿고 아래 끝에 서 있음
-- [ ] anchor `(0.5, 1)`, `displayWidth` 128, `footprint` 128×128, `displayHeight` 없음
-- [ ] gate open/closed의 bounds·baseline 동일
+- [ ] 1:1 정사각 source, full bleed, 전 픽셀 불투명, 투명 여백 없음
+- [ ] `kind: terrain`, `mode: square-terrain`, anchor `(0.5, 0.5)`
+- [ ] `displaySize` 128×128, `footprint` 128×128, processed canvas 256×256
+- [ ] closed/open의 jamb 위치·크기 동일, 통로는 좌우로 열림
+- [ ] 투시·isometric diamond를 source에 굽지 않음 (보드가 런타임에 45°/0.5로 눕힙니다)
 - [ ] `npm run assets`
-- [ ] 1024×768 전투 화면에서 보드 어디에 서 있든 한 칸 폭과 정렬 (`data-structure-fit` 비율 1.0).
-      기준 폭은 **board plane의 128px × board uniform scale**이고, 화면상 diamond 좌우
-      span(√2배)이 아닙니다 — structure는 칸 위에 서는 upright 오브젝트지 diamond를
-      덮는 뚜껑이 아닙니다
+- [ ] `encounter.ruined-gate` 전투 화면에서 닫힌 gate가 벽과 하나로 이어지고, Lever를 당기면
+      같은 자리에서 열린 그림으로 바뀌며 개구부 외곽선이 생김
 
 #### 작업 순서
 
 ```text
-1. gameplay trait는 Scenario author가 §8에서 따로 고릅니다 (gate / impassable)
-2. art/source/objects/... source 생성
-3. generation-plan에 tile-structure frame 등록
+1. gameplay trait는 Scenario author가 §8에서 따로 고릅니다 (blocked / gate / impassable)
+2. 그 칸 자체의 상태면 art/source/terrain/... , 칸 위의 물건이면 art/source/objects/...
+3. generation-plan에 square-terrain 또는 grounded-object frame 등록
 4. npm run assets
 5. 전투 화면에서 정렬 확인
 ```
 
-**asset 생성과 gameplay 의미 부여는 같은 단계가 아닙니다.** 구조물 그림도 벽 texture도 통행
+**asset 생성과 gameplay 의미 부여는 같은 단계가 아닙니다.** tile 그림도 prop 그림도 통행
 가능 여부를 정하지 않습니다 — `blocked`는 land·fly 모두 막고, `impassable`은 land만 막으며
-fly는 기존 resolver대로 지나갑니다. 벽 외곽선을 굵게 그려도 규칙은 그대로입니다.
+fly는 기존 resolver대로 지나갑니다. Gate가 `kind: terrain`이 되었다고 gameplay에서 Gate가
+사라지는 것도 아닙니다: gameplay Gate는 tile trait, presentation Gate는 그 trait에 대응하는
+board 그림이며 interaction legality는 계속 gameplay state가 소유합니다.
 
 ---
 

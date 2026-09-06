@@ -4,23 +4,20 @@ import path from "node:path";
 import sharp, { type OverlayOptions } from "sharp";
 
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
-import {
-  assertPointPropFramePlan,
-  assertStructureFramePlan,
-} from "../../src/presentation/structure-contract";
+import { assertPointPropFramePlan } from "../../src/presentation/point-prop-contract";
 
 type AssetKind = "actor" | "terrain" | "object" | "ui";
 /**
- * `tile-structure` is a gate or anything else that belongs to one terrain cell:
- * it is normalised width-first so the drawing spans the canvas exactly, and the runtime
- * draws it one cell wide. A `grounded-object` is a point prop standing on a cell — a
- * chest, a lever — and stays height-driven.
+ * `square-terrain` is anything that *is* a tile — a floor, a wall, a gate in one of its
+ * two states — normalised to the square the board texture composites. A
+ * `grounded-object` is a point prop standing *on* a cell — a chest, a lever — and stays
+ * height-driven. There is no third, upright-structure mode: a thing that occupies the
+ * whole square is that square's picture.
  */
 type SourceMode =
   | "square-terrain"
   | "web-overlay"
   | "grounded-object"
-  | "tile-structure"
   | "two-sided-actor"
   | "ui-icon";
 
@@ -188,12 +185,9 @@ function validatePlan(plan: GenerationPlan): void {
       if (!source.definitionId) throw new Error(`${source.input} is missing definitionId.`);
     }
     // The mode a source declares is what decides how it is processed, so it has to be
-    // what decides the frame contract too. Without this a `tile-structure` could be
-    // normalized width-first and still reach the manifest looking like a point prop,
-    // and every downstream structure check would quietly skip it.
-    if (source.mode === "tile-structure") {
-      for (const frame of source.frames) assertStructureFramePlan(frame, source.canvas.width);
-    }
+    // what decides the frame contract too. Without this a prop could be normalized one
+    // way and still reach the manifest looking like the other kind, and every downstream
+    // check would quietly skip it.
     if (source.mode === "grounded-object") {
       for (const frame of source.frames) assertPointPropFramePlan(frame);
     }
@@ -381,7 +375,6 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
     : Math.min(...frames.map((frame) => Math.min(safeWidth / frame.box.width, safeHeight / frame.box.height)));
   const outputs: ProcessedAsset[] = [];
 
-  const structure = source.mode === "tile-structure";
   for (const frame of frames) {
     const sourcePixels = source.mode === "web-overlay" ? webPixels(frame.pixels) : frame.pixels;
     const sourceBox = visibleBox(sourcePixels, frame.width, frame.height) ?? frame.box;
@@ -398,12 +391,9 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
         .toBuffer();
       processingScale = Math.min(source.canvas.width / sourceBox.width, source.canvas.height / sourceBox.height);
     } else {
-      // A structure is measured by its width: the drawing spans the canvas edge to edge so
-      // that one cell of runtime width is the whole structure, and its height follows the
-      // aspect the art was drawn at rather than a number chosen per asset.
-      const scale = structure ? source.canvas.width / sourceBox.width : sharedScale;
-      const scaledWidth = structure ? source.canvas.width : Math.max(1, Math.round(frame.box.width * scale));
-      const scaledHeight = Math.max(1, Math.round((structure ? sourceBox.height : frame.box.height) * scale));
+      const scale = sharedScale;
+      const scaledWidth = Math.max(1, Math.round(frame.box.width * scale));
+      const scaledHeight = Math.max(1, Math.round(frame.box.height * scale));
       processingScale = scale;
       const scaled = await sharp(cropped)
         .resize(scaledWidth, scaledHeight, { fit: "fill" })
@@ -416,9 +406,7 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
         ? Math.round((source.canvas.height - scaledHeight) / 2)
         : Math.round(frame.plan.anchor.y * source.canvas.height - scaledHeight);
       if (left < 0 || top < 0 || left + scaledWidth > source.canvas.width || top + scaledHeight > source.canvas.height) {
-        throw new Error(structure
-          ? `${frame.plan.assetId} is ${scaledHeight}px tall at one cell wide, taller than its ${source.canvas.height}px canvas.`
-          : `${frame.plan.assetId} does not fit its normalized canvas.`);
+        throw new Error(`${frame.plan.assetId} does not fit its normalized canvas.`);
       }
       const composites: OverlayOptions[] = [{ input: scaled, left, top }];
       result = await sharp({
@@ -622,8 +610,9 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
   const scenarios: readonly ScenarioSource[] = Object.values(PRODUCTION_CONTENT.pack.scenarioSources);
   const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm"];
   const transitionPalette = ["transition.web"];
-  // A blocked tile is wall surface on the board texture (#27), so it places no object.
-  const objectPalette = ["object.gate.closed", "object.lever", "object.chest"];
+  // Point props only. A wall or a gate is the tile's own state, drawn as board surface
+  // from the tile's traits at runtime, so neither takes a slot on the object layer.
+  const objectPalette = ["object.lever", "object.chest"];
   const maps: Record<string, unknown> = {};
   for (const scenario of scenarios) {
     const { width, height } = scenario.map;
@@ -646,7 +635,6 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
       const traits = traitSet(tile);
       ground[index] = traits.has("impassable") ? 2 : traits.has("difficult") ? 1 : 0;
       if (traits.has("web")) transitions[index] = 0;
-      if (traits.has("gate") || traits.has("gate-open")) objects[index] = 0;
       tileIds[index] = tile.id;
       objectIds[index] = (objects[index] ?? -1) >= 0 ? tile.id : null;
       types[index] = semanticType(traits);
@@ -657,7 +645,7 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
     for (const object of scenario.map.objects) {
       const index = object.position.y * width + object.position.x;
       if (index < 0 || index >= length) throw new Error(`${scenario.id} object ${object.id} is outside the map.`);
-      if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 1;
+      if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 0;
       objectIds[index] = object.id;
     }
     for (const dressing of plan.presentation.scenery ?? []) {
@@ -720,8 +708,8 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     "terrain.chasm",
     "transition.web",
     "terrain.wall-block",
-    "object.gate.closed",
-    "object.gate.open",
+    "terrain.gate.closed",
+    "terrain.gate.open",
     "object.lever",
     "object.chest",
     "actor.hero.aerin.front",

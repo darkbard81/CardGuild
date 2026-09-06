@@ -2,10 +2,10 @@ import { type Application, Container, Graphics, RenderTexture, Sprite, type Text
 
 import type { CombatState, GridPosition, TileState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
-import { isTileStructure, spriteSizing, tilemapAssetAt } from "../../presentation";
+import { pointPropHeight, tilemapAssetAt } from "../../presentation";
 import type { BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
-import { collectWallBoundarySegments, isWallTile, wallBoundaryLine, type WallBoundarySegment } from "./WallBoundary";
+import { collectSolidBoundarySegments, isSolidTile, solidBoundaryLine, type SolidBoundarySegment } from "./SolidBoundary";
 
 /** Point props with no authored height fall back to this. */
 const DEFAULT_PROP_HEIGHT = 96;
@@ -17,17 +17,35 @@ export interface SortableVisual {
   readonly stableId: string;
   /** Held at a constant screen size while the board scales, e.g. an HP badge. */
   readonly screenSpace?: Container;
-  /** A tile-bound structure: drawn one terrain cell wide, whatever its height. */
-  readonly cellBound?: boolean;
 }
 
 function traits(tile: TileState): ReadonlySet<string> {
   return new Set(tile.traits.map((trait) => trait.id));
 }
 
+/**
+ * Which surface a tile's own state puts on the board, if any. A wall and a gate are both
+ * the state of the square they occupy rather than something standing on it, so both are
+ * terrain: the gate's two states are two tiles, and swapping them is all "opening a
+ * gate" means to the board. Ordinary ground says nothing here and keeps its floor.
+ *
+ * The traits are read in the order the rules resolve them — an open gate is no longer
+ * blocked, so it must be asked about first — and nothing here decides anything: the
+ * lever moved the traits long before a texture was chosen.
+ */
+export function tileStateVisual(
+  tileTraits: ReadonlySet<string>,
+  terrainVisuals: AssetCatalog["manifest"]["terrainVisuals"],
+): string | null {
+  if (tileTraits.has("gate-open")) return terrainVisuals.gateOpen;
+  if (tileTraits.has("gate")) return terrainVisuals.gateClosed;
+  if (tileTraits.has("blocked")) return terrainVisuals.blocked;
+  return null;
+}
+
 export class TerrainRenderer {
   private boardTexture: Texture | null = null;
-  private wallSummary = "";
+  private solidSummary = "";
 
   public constructor(
     private readonly app: Application,
@@ -59,7 +77,8 @@ export class TerrainRenderer {
     }
     const composition = new Container({ label: "board-texture-composition" });
     const stateTiles = this.tilesByCell(state);
-    const walls: GridPosition[] = [];
+    const surfaces: { readonly position: GridPosition; readonly assetId: string }[] = [];
+    const solid: GridPosition[] = [];
     for (let row = 0; row < tilemap.height; row += 1) {
       for (let col = 0; col < tilemap.width; col += 1) {
         const index = row * tilemap.width + col;
@@ -80,17 +99,20 @@ export class TerrainRenderer {
           composition.addChild(overlay);
         }
         const tile = stateTiles.get(`${col},${row}`);
-        if (tile && isWallTile(traits(tile))) walls.push(tile.position);
+        if (!tile) continue;
+        const tileTraits = traits(tile);
+        const stateVisual = tileStateVisual(tileTraits, this.catalog.manifest.terrainVisuals);
+        if (stateVisual) surfaces.push({ position: tile.position, assetId: stateVisual });
+        if (isSolidTile(tileTraits)) solid.push(tile.position);
       }
     }
-    // A wall is terrain, not a standee: it covers its own square on the same plane as the
-    // floor, at the same size, so neighbouring walls already share one continuous surface
-    // and nothing drifts against the board when the camera moves.
-    const wallVisual = this.catalog.manifest.terrainVisuals.blocked;
-    for (const position of walls) {
-      const block = new Sprite(this.catalog.texture(wallVisual));
+    // A wall or a gate is terrain, not a standee: it covers its own square on the same
+    // plane as the floor, at the same size, so neighbours already share one continuous
+    // surface and nothing drifts against the board when the camera moves.
+    for (const surface of surfaces) {
+      const block = new Sprite(this.catalog.texture(surface.assetId));
       block.anchor.set(0, 0);
-      block.position.set(position.x * cell, position.y * cell);
+      block.position.set(surface.position.x * cell, surface.position.y * cell);
       block.setSize(cell, cell);
       composition.addChild(block);
     }
@@ -103,26 +125,26 @@ export class TerrainRenderer {
     }
     grid.stroke({ width: 3, color: 0x171713, alpha: 0.78 });
     composition.addChild(grid);
-    const segments = collectWallBoundarySegments(walls);
-    this.wallSummary = `${walls.length}/${segments.length}`;
-    composition.addChild(this.wallBoundary(segments, cell));
+    const segments = collectSolidBoundarySegments(solid);
+    this.solidSummary = `${solid.length}/${segments.length}`;
+    composition.addChild(this.solidBoundary(segments, cell));
     this.app.renderer.render({ container: composition, target: this.boardTexture, clear: true });
     composition.destroy({ children: true });
     return this.boardTexture;
   }
 
   /**
-   * One stroke around the whole wall region and none along the seams inside it, drawn
-   * over the square grid so the wall edge reads ahead of the ordinary cell lines. Square
-   * caps let two perpendicular edges close their corner without a corner asset.
+   * One stroke around the whole solid region and none along the seams inside it, drawn
+   * over the square grid so the barrier's edge reads ahead of the ordinary cell lines.
+   * Square caps let two perpendicular edges close their corner without a corner asset.
    */
-  private wallBoundary(segments: readonly WallBoundarySegment[], cell: number): Graphics {
-    const boundary = new Graphics({ label: "wall-boundary" });
+  private solidBoundary(segments: readonly SolidBoundarySegment[], cell: number): Graphics {
+    const boundary = new Graphics({ label: "solid-boundary" });
     for (const segment of segments) {
-      const line = wallBoundaryLine(segment, cell);
+      const line = solidBoundaryLine(segment, cell);
       boundary.moveTo(line.x1, line.y1).lineTo(line.x2, line.y2);
     }
-    const { width, color, alpha } = this.config.wallBoundary;
+    const { width, color, alpha } = this.config.solidBoundary;
     boundary.stroke({ width, color, alpha, cap: "square" });
     return boundary;
   }
@@ -136,15 +158,10 @@ export class TerrainRenderer {
         const index = row * tilemap.width + col;
         const tile = stateTiles.get(`${col},${row}`);
         if (!tile) continue;
-        const mapped = tilemapAssetAt(tilemap, "objects", index);
-        let assetId: string | null = mapped;
-        const tileTraits = traits(tile);
-        if (mapped === this.catalog.manifest.objectVisuals.lever) assetId = null;
-        // A blocked tile has no prop of its own: it is wall surface on the board texture.
-        if (tileTraits.has("gate-open")) assetId = this.catalog.manifest.objectVisuals.gateOpen;
-        else if (tileTraits.has("gate")) assetId = this.catalog.manifest.objectVisuals.gateClosed;
-        else if (tileTraits.has("blocked")) assetId = null;
-        if (!assetId) continue;
+        // Scenery only. A lever is a real map object and ObjectRenderer owns it; a wall
+        // or a gate is the tile's own state and was drawn into the board texture.
+        const assetId = tilemapAssetAt(tilemap, "objects", index);
+        if (!assetId || assetId === this.catalog.manifest.objectVisuals.lever) continue;
         visuals.push(this.prop(assetId, tile.position, tile.id, 10));
       }
     }
@@ -152,46 +169,32 @@ export class TerrainRenderer {
   }
 
   /**
-   * Two sizing policies, chosen by what the asset declares rather than by what it is
-   * called. A tile-bound structure — a wall, a gate — owns one terrain cell, so it is
-   * drawn one cell wide and its height follows the art it was drawn at. A point prop
-   * stands on a cell without claiming it, so it keeps its authored height.
-   *
-   * Neither says anything about movement, Fly or line of sight: those come from the
-   * tile's traits through the game rules, never from a texture.
+   * One sizing policy, because there is only one kind of thing on this plane now: a
+   * point prop stands on a cell without being it, so it keeps the height it was authored
+   * at and lets the width follow. Nothing about it says anything about movement, Fly or
+   * line of sight — those come from the tile's traits through the rules, never from a
+   * texture.
    */
   private prop(assetId: string, position: GridPosition, stableId: string, layerPriority: number): SortableVisual {
     const asset = this.catalog.asset(assetId);
     const display = new Container({ label: stableId });
     const sprite = new Sprite(this.catalog.texture(assetId));
     sprite.anchor.set(asset.anchor.x, asset.anchor.y);
-    const cellBound = isTileStructure(asset);
-    const sizing = spriteSizing(asset, DEFAULT_PROP_HEIGHT);
-    if (sizing.axis === "width") {
-      sprite.width = sizing.value;
-      sprite.scale.y = sprite.scale.x;
-    } else {
-      sprite.height = sizing.value;
-      sprite.scale.x = sprite.scale.y;
-    }
+    sprite.height = pointPropHeight(asset, DEFAULT_PROP_HEIGHT);
+    sprite.scale.x = sprite.scale.y;
     sprite.eventMode = "none";
     display.addChild(sprite);
-    return {
-      display,
-      position,
-      layerPriority,
-      stableId,
-      cellBound,
-    };
+    return { display, position, layerPriority, stableId };
   }
 
   /**
-   * Wall cells against exposed edges, as `cells/segments`. Adjacency is the whole point
+   * Solid cells against exposed edges, as `cells/segments`. Adjacency is the whole point
    * of the boundary, and it is invisible from outside once it has been rasterised into
-   * the board texture, so the counts are published for a test to read.
+   * the board texture, so the counts are published for a test to read. A gate opening
+   * drops out of the region and both numbers move.
    */
-  public get wallRegionFit(): string {
-    return this.wallSummary;
+  public get solidRegionFit(): string {
+    return this.solidSummary;
   }
 
   /**

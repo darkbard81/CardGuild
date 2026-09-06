@@ -8,37 +8,48 @@ Every generated battle asset prompt must reference this file.
 - Terrain masters are exact top-down 1:1 squares on a 256x256 production canvas.
 - The runtime composes terrain into one 128px-per-cell board texture, including its square grid lines, then draws that texture on a fixed affine plane with PixiJS: a quarter turn, then a 0.5 vertical squash. Every cell is the same 2:1 diamond; there is no perspective and no near/far size change.
 - Props and characters are upright paper standees. Only their bottom-center contact point is projected onto the board, at the centre of the cell they stand on.
+- Anything that *is* a square — floor, wall, gate — is a terrain master and belongs to the board plane instead.
 - Props use normalized anchor `(0.5, 1)`. Character source sheets contain one front and one back full-body view, both with the same feet line and normalized anchor `(0.5, 1)`.
 - Perspective, isometric diamonds, 3D scene renders, floor-aligned character art, and baked camera convergence are forbidden in source assets.
 
-## Point Props and Tile-Bound Structures
+## What kind of asset is this?
 
-Two kinds of object stand on the board and they are produced differently.
+One question decides it: **is the picture the state of the square itself, or a thing
+standing on a square that would still be there without it?**
 
-- **Point Prop** — a crate, a lever, a chest, a barrel. It stands *on* a cell without claiming it. Authored at the height it should read at; the runtime draws it height-first and lets the width follow.
-- **Tile-Bound Structure** — a gate, and later a fence or barricade. It *is* the cell it stands on. Produced on a 256px-wide canvas with the drawing spanning that width edge to edge and sitting on the bottom edge, so the runtime can draw it exactly one terrain cell (128 board pixels) wide and let the height follow the art. That width is measured on the board plane, not on the screen: the structure stands upright at the board's own scale and does not stretch to cover the cell's wider on-screen diamond.
+| Category | Examples | Plane | Production |
+|---|---|---|---|
+| **Board Tile Visual** | floor, difficult ground, chasm, web, wall, gate closed, gate open | board — takes the board's turn and squash | `square-terrain`, 256x256, anchor `(0.5, 0.5)`, drawn 128x128 |
+| **Point Prop** | lever, chest, crate, barrel | upright — shares only a contact point | `grounded-object`, authored height, anchor `(0.5, 1)` |
+| **Actor Standee** | characters, creatures | upright | `two-sided-actor`, front and back |
 
-A wall is neither. It is a square terrain master like the floors — see below.
+There is no fourth, in-between category. A wall and a gate are the state of their square,
+so they are tile visuals; a lever bolted to that same wall is a thing on a square, so it
+is a point prop. Nothing about which category a picture falls into decides gameplay:
+movement, Fly and line of sight come from the tile's traits alone.
 
-Structure rules:
+### Board Tile Visuals
 
-- Nominal width is always one terrain cell of the board plane. Variants differ in silhouette height, never in width.
-- Height is authored per structure. A structure canvas is 256 wide and as tall as that structure needs.
-- Structures never rotate. There are no N/E/S/W variants.
-- The bottom edge is the contact line with the tile; anchor `(0.5, 1)`.
-- Nothing about the picture decides gameplay. Visual height is not elevation, cover, or an obstruction value: movement, Fly and line of sight come from the tile's traits alone.
-- A gate is one structure in two states. The open state is generated from the accepted closed gate and keeps the same canvas, frame, posts, baseline and overall bounds — only the door changes.
+One `square-terrain` master per state, all on the same 256x256 canvas as the floors,
+drawn full bleed: the art fills the square edge to edge with no drawn outline, no frame
+and no transparent margin, so two of them side by side read as one continuous surface.
 
-## Walls
+- No direction-specific art, no convex/concave corner variants, no autotile atlas.
+- Nothing in the picture marks where the surface ends. The runtime strokes the outline
+  itself, only where a blocked square meets something that is not blocked.
+- A wall reads against the floor at a glance: heavier masonry, colder and darker values.
+- A gate is one square in two states. Both are drawn on the same canvas with the jambs in
+  the same place at the same size, so swapping them moves nothing but the door. The wall a
+  gate is set into runs top to bottom, so the two masonry jambs sit on the top and bottom
+  edges and the passage opens off the left and right edges.
 
-A wall is terrain, not a standee. One `square-terrain` master on the same 256x256 canvas as
-the floors, drawn full bleed: the stone fills the square edge to edge with no drawn outline,
-no frame and no transparent margin, so two blocked cells side by side read as one surface.
+### Point Props
 
-- No direction-specific wall art, no convex/concave corner variants, no autotile atlas.
-- Nothing in the picture marks where the wall ends. The runtime strokes the outline itself,
-  only where a blocked cell meets something that is not a wall.
-- Read it against the floor at a glance: heavier masonry, colder and darker values.
+- Authored at the height it should read at; the runtime draws it height-first and lets the
+  width follow. Anchor `(0.5, 1)`, the bottom-centre contact point.
+- Generated one per image with a clear contact point and a transparent background.
+- It stands on a cell without claiming it, so it never declares a footprint. Anything that
+  wants one is asking to be a tile visual and has to be authored as one.
 
 ## Character rendering
 
@@ -74,9 +85,8 @@ no frame and no transparent margin, so two blocked cells side by side read as on
 ## Identity and separation rules
 
 - Terrain, overlays, props, actors, and effects remain separate production assets and runtime layers.
-- Terrain types share the same exact square canvas and edge alignment.
+- Terrain types share the same exact square canvas and edge alignment, gate states included.
 - Props are generated one per image with a clear bottom-center contact point.
-- Structures are generated one per image, one terrain cell wide, with the drawing touching the left, right and bottom edges of its frame.
 - Each actor source contains exactly two non-overlapping views in this order: front, back.
 - Actor and prop sprites remain upright and must never be children of the board plane. They share only the contact point the projection gives them; the turn and the squash stop at the floor.
 

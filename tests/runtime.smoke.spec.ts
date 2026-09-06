@@ -344,20 +344,19 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator("#hero-details")).toContainText("Reflex DC");
   await expect(page.locator("#hero-details")).toContainText("15");
 
-  // The spear corridor is walled by four separate blocked squares. A wall is terrain now,
+  // The spear corridor is walled by four separate blocked squares. A wall is terrain,
   // painted into the board texture rather than standing on it, so it raises no upright
-  // structure and nothing about it can drift when the camera moves. Four lone cells means
-  // four exposed edges each: no seam is ever shared, so all sixteen are drawn.
+  // visual at all and nothing about it can drift when the camera moves. Four lone cells
+  // means four exposed edges each: no seam is ever shared, so all sixteen are drawn.
   const canvas = page.locator("#pixi-canvas");
-  const structureFit = async (): Promise<Array<{ id: string; ratio: number }>> =>
-    JSON.parse(await canvas.getAttribute("data-structure-fit") ?? "[]");
-  expect(await structureFit()).toEqual([]);
-  await expect(canvas).toHaveAttribute("data-wall-region-fit", "4/16");
+  await expect(canvas).toHaveAttribute("data-solid-region-fit", "4/16");
+  // Walls and gates left the upright plane entirely, and with them the measurement that
+  // only existed to check their width.
+  expect(await canvas.getAttribute("data-structure-fit")).toBeNull();
   await page.mouse.move(400, 400);
   await page.mouse.wheel(0, -240);
   await page.waitForTimeout(300);
-  expect(await structureFit()).toEqual([]);
-  await expect(canvas).toHaveAttribute("data-wall-region-fit", "4/16");
+  await expect(canvas).toHaveAttribute("data-solid-region-fit", "4/16");
 
   const nextMap = { width: 7, height: 4 };
   const hero = projectCorners(await boardCorners(page), nextMap, 0.5, 1.5);

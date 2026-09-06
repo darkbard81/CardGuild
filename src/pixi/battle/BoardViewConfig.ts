@@ -11,11 +11,11 @@ export interface BoardSafeArea {
 }
 
 /**
- * How the outline around a wall region is stroked. It lives here, with the rest of the
- * board's presentation, because nothing about it is a rule: the same wall blocks
- * movement and sight whether the line is thick, thin or absent.
+ * How the outline around a solid region — walls and shut gates together — is stroked. It
+ * lives here, with the rest of the board's presentation, because nothing about it is a
+ * rule: the same wall blocks movement and sight whether the line is thick, thin or absent.
  */
-export interface WallBoundaryStyle {
+export interface SolidBoundaryStyle {
   readonly color: number;
   readonly width: number;
   readonly alpha: number;
@@ -57,7 +57,8 @@ export interface BoardViewConfig {
   readonly boardTextureCellSize: number;
   /** Share of the safe area a fitted board fills, so it never sits flush against the HUD. */
   readonly boardFitMargin: number;
-  readonly wallBoundary: WallBoundaryStyle;
+  /** Drawn over the square grid, so a barrier reads ahead of the ordinary cell lines. */
+  readonly solidBoundary: SolidBoundaryStyle;
   readonly standeeBase: StandeeBaseStyle;
 }
 
@@ -79,7 +80,7 @@ export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
   minZoomHeadroom: 1.5,
   boardFitMargin: 0.94,
   boardTextureCellSize: 128,
-  wallBoundary: { color: 0xaaa38f, width: 7, alpha: 0.9 },
+  solidBoundary: { color: 0xaaa38f, width: 7, alpha: 0.9 },
   standeeBase: {
     radius: 42,
     fill: 0x120f0c,

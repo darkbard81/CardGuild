@@ -87,14 +87,14 @@ describe("BoardProjection", () => {
     expect(board.getCellDiamondWidth()).toBeCloseTo(CELL * Math.SQRT2 * PLACEMENT.scale / 2, 9);
   });
 
-  it("keeps an upright standee's cell narrower than the diamond it stands on", () => {
-    // A structure is authored one cell wide and drawn upright at the board's own scale,
-    // so it covers 128 board pixels. The cell's screen span is wider than that, by
-    // exactly the turn: a structure is an object standing on the square, not a lid over
-    // the diamond. Pinned here so neither number can drift into the other.
+  it("keeps a cell of board plane narrower than the diamond it is drawn as", () => {
+    // Upright content is authored against the cell as the board plane measures it — 128
+    // board pixels at the board's own scale. The same cell's left-to-right span on
+    // screen is wider than that, by exactly the turn. Two different measures of "one
+    // cell", pinned together here so neither can drift into the other.
     const board = projection();
-    const uprightCell = board.getContentScale() * DEFAULT_BOARD_VIEW_CONFIG.referenceCellWidth;
-    expect(board.getCellDiamondWidth()).toBeCloseTo(uprightCell * Math.SQRT2, 9);
+    const planeCell = board.getContentScale() * DEFAULT_BOARD_VIEW_CONFIG.referenceCellWidth;
+    expect(board.getCellDiamondWidth()).toBeCloseTo(planeCell * Math.SQRT2, 9);
   });
 
   it("centres the board on the placement origin, whatever its shape", () => {

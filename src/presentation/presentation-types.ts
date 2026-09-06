@@ -44,19 +44,24 @@ export interface PresentationAssetManifest {
   };
   readonly assets: Readonly<Record<PresentationAssetId, PresentationAssetDefinition>>;
   readonly actorVisuals: Readonly<Record<ActorDefinitionId, ActorVisualDefinition>>;
+  /**
+   * What a tile's own state looks like. The last three are surfaces a square can be in
+   * rather than things standing on it — a wall, and a gate in each of its two states —
+   * so they are square terrain tiles like the floors, not standees.
+   */
   readonly terrainVisuals: {
     readonly open: PresentationAssetId;
     readonly difficult: PresentationAssetId;
     readonly impassable: PresentationAssetId;
     readonly web: PresentationAssetId;
-    /** Wall surface. A wall is a square terrain tile like any other, not a standee. */
     readonly blocked: PresentationAssetId;
+    readonly gateClosed: PresentationAssetId;
+    readonly gateOpen: PresentationAssetId;
   };
+  /** Point props: things standing on a tile that the tile would still be there without. */
   readonly objectVisuals: {
     readonly chest: PresentationAssetId;
     readonly lever: PresentationAssetId;
-    readonly gateClosed: PresentationAssetId;
-    readonly gateOpen: PresentationAssetId;
   };
   readonly equipmentVisuals: Readonly<Record<string, PresentationAssetId>>;
   readonly cardVisuals: Readonly<Record<string, PresentationAssetId>>;

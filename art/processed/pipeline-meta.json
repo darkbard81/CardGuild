@@ -79,6 +79,40 @@
         "y": 0.5
       }
     },
+    "terrain.gate.closed": {
+      "source": "art/source/terrain/gate-closed.png",
+      "output": "art/processed/terrain/gate-closed.png",
+      "sourceBox": {
+        "left": 0,
+        "top": 0,
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.204147,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "terrain.gate.open": {
+      "source": "art/source/terrain/gate-open.png",
+      "output": "art/processed/terrain/gate-open.png",
+      "sourceBox": {
+        "left": 0,
+        "top": 0,
+        "width": 1254,
+        "height": 1254
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.204147,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
     "transition.web": {
       "source": "art/source/terrain/web-overlay.png",
       "output": "art/processed/terrain/web.png",
@@ -125,40 +159,6 @@
       "sourceIndex": 0,
       "flipX": false,
       "processingScale": 0.152583,
-      "anchor": {
-        "x": 0.5,
-        "y": 1
-      }
-    },
-    "object.gate.closed": {
-      "source": "art/source/objects/gate-closed.png",
-      "output": "art/processed/objects/gate-closed.png",
-      "sourceBox": {
-        "left": 0,
-        "top": 4,
-        "width": 1080,
-        "height": 1453
-      },
-      "sourceIndex": 0,
-      "flipX": false,
-      "processingScale": 0.237037,
-      "anchor": {
-        "x": 0.5,
-        "y": 1
-      }
-    },
-    "object.gate.open": {
-      "source": "art/source/objects/gate-open.png",
-      "output": "art/processed/objects/gate-open.png",
-      "sourceBox": {
-        "left": 0,
-        "top": 7,
-        "width": 1080,
-        "height": 1448
-      },
-      "sourceIndex": 0,
-      "flipX": false,
-      "processingScale": 0.237037,
       "anchor": {
         "x": 0.5,
         "y": 1
