@@ -126,14 +126,20 @@ export interface StandeeFacing {
 }
 
 /**
- * Four facings out of the two drawings that exist. North turns its back; south faces the
- * player. East and west share the front pose, and west is its mirror — the front art was
- * authored leaning towards the board's east side, so that is the side it keeps.
+ * Four facings out of the two drawings that exist, paired by which way they point on the
+ * turned board. A quarter turn puts north up-right and west up-left, so both face away
+ * from the player and take the back drawing; east runs down-right and south down-left,
+ * so both face towards the player and take the front. Within each pair the second is the
+ * first seen in a mirror, which is what carries the pose to the other side of the screen.
+ *
+ *   north -> back            west  -> back mirrored
+ *   east  -> front           south -> front mirrored
  *
  * Only the body is ever mirrored. A base, an HP badge or any text above a standee is
  * screen furniture and reads the same way whichever way the character looks.
  */
 export function facingStandee(visual: ActorVisualDefinition, direction: Direction): StandeeFacing {
   if (direction === "north") return { assetId: visual.back, flipX: false };
-  return { assetId: visual.front, flipX: direction === "west" };
+  if (direction === "west") return { assetId: visual.back, flipX: true };
+  return { assetId: visual.front, flipX: direction === "south" };
 }

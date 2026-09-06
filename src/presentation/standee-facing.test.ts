@@ -5,18 +5,19 @@ import { facingStandee } from "./presentation-types";
 const AERIN = { front: "actor.hero.aerin.front", back: "actor.hero.aerin.back" };
 
 describe("standee facing", () => {
-  it("turns its back only for north", () => {
-    expect(facingStandee(AERIN, "north")).toEqual({ assetId: AERIN.back, flipX: false });
-    for (const direction of ["south", "east", "west"] as const) {
-      expect(facingStandee(AERIN, direction).assetId).toBe(AERIN.front);
-    }
+  it("turns its back for the two directions that lead away from the player", () => {
+    // A quarter turn puts north up-right and west up-left: both walk away, so both show
+    // the back. East and south come down the screen towards the player.
+    expect(facingStandee(AERIN, "north").assetId).toBe(AERIN.back);
+    expect(facingStandee(AERIN, "west").assetId).toBe(AERIN.back);
+    expect(facingStandee(AERIN, "east").assetId).toBe(AERIN.front);
+    expect(facingStandee(AERIN, "south").assetId).toBe(AERIN.front);
   });
 
-  it("mirrors west and leaves the authored east pose alone", () => {
-    expect(facingStandee(AERIN, "east").flipX).toBe(false);
-    expect(facingStandee(AERIN, "west").flipX).toBe(true);
-    // South is the pose the art was drawn as, so it is never mirrored either.
-    expect(facingStandee(AERIN, "south").flipX).toBe(false);
-    expect(facingStandee(AERIN, "north").flipX).toBe(false);
+  it("mirrors the second of each pair and leaves the authored pose alone", () => {
+    expect(facingStandee(AERIN, "north")).toEqual({ assetId: AERIN.back, flipX: false });
+    expect(facingStandee(AERIN, "west")).toEqual({ assetId: AERIN.back, flipX: true });
+    expect(facingStandee(AERIN, "east")).toEqual({ assetId: AERIN.front, flipX: false });
+    expect(facingStandee(AERIN, "south")).toEqual({ assetId: AERIN.front, flipX: true });
   });
 });

@@ -227,9 +227,16 @@ graphic 하나뿐이고(`scaleY = boardSquashY`), HP 뱃지는 역스케일해 �
 크기를 유지합니다. 보드 위 콘텐츠는 절대 픽셀이 아니라 보드 자체의 uniform scale 대비
 (`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다.
 
-캐릭터는 front/back 양면 paper standee입니다. north는 back, south/east는 front,
-west는 front를 좌우 반전해 씁니다 — 반전은 몸에만 적용하고 base·HP 뱃지·텍스트는
-그대로 둡니다.
+캐릭터는 front/back 양면 paper standee입니다. 45° 회전 때문에 north는 화면 우상,
+west는 좌상으로 멀어지고 east는 우하, south는 좌하로 다가오므로, 방향은 화면에서
+등지는 쌍과 마주보는 쌍으로 묶입니다.
+
+```text
+north -> back            west  -> back를 좌우 반전
+east  -> front           south -> front를 좌우 반전
+```
+
+반전은 몸에만 적용하고 base·HP 뱃지·텍스트는 그대로 둡니다.
 
 카메라 zoom은 배율이 아니라 셀 크기로 정의됩니다. zoom 1은 항상 "맵 전체가 안전영역에
 들어오는" 상태이고, 상한은 셀 diamond 폭이 `maxCellWidth`(220px)가 될 때까지입니다.
