@@ -1,7 +1,7 @@
 /**
- * Pixels reserved for the floating HUD on each edge of the canvas. The board quad is
- * projected inside this rectangle so no square ever sits under an overlay panel. The
- * values are measured from the live HUD elements, never mirrored from style.css.
+ * Pixels reserved for the floating HUD on each edge of the canvas. The board is fitted
+ * inside this rectangle so no square ever sits under an overlay panel. The values are
+ * measured from the live HUD elements, never mirrored from style.css.
  */
 export interface BoardSafeArea {
   readonly left: number;
@@ -21,28 +21,44 @@ export interface WallBoundaryStyle {
   readonly alpha: number;
 }
 
+/**
+ * The marker a standee stands on. It is drawn screen-aligned and squashed by the same
+ * factor as the board, so it reads as lying flat on the plane while the body above it
+ * stays upright. Authored against `referenceCellWidth`, like every other standee size.
+ */
+export interface StandeeBaseStyle {
+  readonly radius: number;
+  readonly fill: number;
+  readonly fillAlpha: number;
+  readonly stroke: number;
+  readonly strokeAlpha: number;
+  readonly strokeWidth: number;
+}
+
 export interface BoardViewConfig {
-  readonly topYRatio: number;
-  readonly bottomYRatio: number;
-  readonly topWidthRatio: number;
-  readonly bottomWidthRatio: number;
-  readonly meshVerticesX: number;
-  readonly meshVerticesY: number;
   /**
-   * Cell width the art is authored against. Board content is scaled by the projected
-   * cell width over this value, so a standee keeps the same share of its square at
+   * The board plane's fixed turn, applied before the squash. A quarter turn puts the
+   * grid's two axes on the screen diagonals; nothing about the camera changes it at
+   * runtime, and nothing in the rules can see it.
+   */
+  readonly boardRotationRadians: number;
+  /** Screen-space vertical squash applied after the turn, which is what makes a cell a 2:1 diamond. */
+  readonly boardSquashY: number;
+  /**
+   * Cell width the art is authored against. Board content is scaled by the board's own
+   * uniform scale over this value, so a standee keeps the same share of its square at
    * every window size and only the camera zoom changes it.
    */
   readonly referenceCellWidth: number;
-  /** Square width the camera zooms in towards, so "fully zoomed" means the same on every map. */
+  /** Diamond width the camera zooms in towards, so "fully zoomed" means the same on every map. */
   readonly maxCellWidth: number;
   /** Zoom-in always available, even on a map whose fitted squares are already large. */
   readonly minZoomHeadroom: number;
-  readonly actorFootRowOffset: number;
-  readonly propFootRowOffset: number;
   readonly boardTextureCellSize: number;
-  /** Drawn over the square grid, so a wall region reads ahead of the ordinary cell lines. */
+  /** Share of the safe area a fitted board fills, so it never sits flush against the HUD. */
+  readonly boardFitMargin: number;
   readonly wallBoundary: WallBoundaryStyle;
+  readonly standeeBase: StandeeBaseStyle;
 }
 
 /** Used until the HUD has been laid out and measured. */
@@ -56,19 +72,22 @@ export const ZERO_BOARD_SAFE_AREA: BoardSafeArea = Object.freeze({
 const MIN_BOARD_EXTENT = 240;
 
 export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
-  topYRatio: 0.06,
-  bottomYRatio: 0.97,
-  topWidthRatio: 0.76,
-  bottomWidthRatio: 0.96,
-  meshVerticesX: 20,
-  meshVerticesY: 20,
+  boardRotationRadians: Math.PI / 4,
+  boardSquashY: 0.5,
   referenceCellWidth: 128,
   maxCellWidth: 220,
   minZoomHeadroom: 1.5,
-  actorFootRowOffset: 0.8,
-  propFootRowOffset: 0.88,
+  boardFitMargin: 0.94,
   boardTextureCellSize: 128,
   wallBoundary: { color: 0xaaa38f, width: 7, alpha: 0.9 },
+  standeeBase: {
+    radius: 42,
+    fill: 0x120f0c,
+    fillAlpha: 0.38,
+    stroke: 0xd8c79f,
+    strokeAlpha: 0.42,
+    strokeWidth: 2,
+  },
 });
 
 /** Everything the camera needs to frame one board inside the current canvas. */
@@ -76,32 +95,59 @@ export interface BoardFrame {
   readonly viewportWidth: number;
   readonly viewportHeight: number;
   readonly columns: number;
+  readonly rows: number;
   readonly safeArea: BoardSafeArea;
 }
 
-export function baseBoardCorners(
-  viewportWidth: number,
-  viewportHeight: number,
-  config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
-  safeArea: BoardSafeArea = ZERO_BOARD_SAFE_AREA,
-): readonly [
-  { readonly x: number; readonly y: number },
-  { readonly x: number; readonly y: number },
-  { readonly x: number; readonly y: number },
-  { readonly x: number; readonly y: number },
-] {
-  const { left, top, right, bottom } = safeArea;
-  const areaWidth = Math.max(MIN_BOARD_EXTENT, viewportWidth - left - right);
-  const areaHeight = Math.max(MIN_BOARD_EXTENT, viewportHeight - top - bottom);
-  const centerX = left + areaWidth / 2;
-  const topHalf = areaWidth * config.topWidthRatio / 2;
-  const bottomHalf = areaWidth * config.bottomWidthRatio / 2;
-  const topY = top + areaHeight * config.topYRatio;
-  const bottomY = top + areaHeight * config.bottomYRatio;
-  return [
-    { x: centerX - topHalf, y: topY },
-    { x: centerX + topHalf, y: topY },
-    { x: centerX + bottomHalf, y: bottomY },
-    { x: centerX - bottomHalf, y: bottomY },
-  ];
+export interface BoardArea {
+  readonly left: number;
+  readonly top: number;
+  readonly width: number;
+  readonly height: number;
+  readonly centerX: number;
+  readonly centerY: number;
+}
+
+/** The rectangle left over once the HUD has taken its gutters. */
+export function boardSafeBox(frame: BoardFrame): BoardArea {
+  const { left, top, right, bottom } = frame.safeArea;
+  const width = Math.max(MIN_BOARD_EXTENT, frame.viewportWidth - left - right);
+  const height = Math.max(MIN_BOARD_EXTENT, frame.viewportHeight - top - bottom);
+  return { left, top, width, height, centerX: left + width / 2, centerY: top + height / 2 };
+}
+
+/**
+ * Screen size of the whole board at scale 1. The turn spreads a `columns x rows`
+ * rectangle across both screen axes — which is why the fit has to know the rows and not
+ * only the columns — and the squash then halves the height.
+ */
+export function boardPlaneExtent(
+  frame: BoardFrame,
+  config: BoardViewConfig,
+): { readonly width: number; readonly height: number } {
+  const cosine = Math.abs(Math.cos(config.boardRotationRadians));
+  const sine = Math.abs(Math.sin(config.boardRotationRadians));
+  const boardWidth = Math.max(1, frame.columns) * config.boardTextureCellSize;
+  const boardHeight = Math.max(1, frame.rows) * config.boardTextureCellSize;
+  return {
+    width: boardWidth * cosine + boardHeight * sine,
+    height: (boardWidth * sine + boardHeight * cosine) * config.boardSquashY,
+  };
+}
+
+/** Screen width of one cell's left-to-right diagonal at scale 1. */
+export function cellDiamondWidth(config: BoardViewConfig): number {
+  const cosine = Math.abs(Math.cos(config.boardRotationRadians));
+  const sine = Math.abs(Math.sin(config.boardRotationRadians));
+  return config.boardTextureCellSize * (cosine + sine);
+}
+
+/** Uniform scale at which the whole board just fits inside the safe area. */
+export function boardFitScale(frame: BoardFrame, config: BoardViewConfig): number {
+  const area = boardSafeBox(frame);
+  const extent = boardPlaneExtent(frame, config);
+  return Math.min(
+    (area.width * config.boardFitMargin) / extent.width,
+    (area.height * config.boardFitMargin) / extent.height,
+  );
 }

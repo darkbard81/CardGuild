@@ -1,73 +1,109 @@
-import { Point } from "pixi.js";
 import { describe, expect, it } from "vitest";
 
-import { BoardProjection } from "./BoardProjection";
+import { BoardProjection, type BoardPlacement } from "./BoardProjection";
+import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 
-const corners = [
-  new Point(140, 90),
-  new Point(860, 90),
-  new Point(950, 720),
-  new Point(50, 720),
-] as const;
+const PLACEMENT: BoardPlacement = { originX: 640, originY: 400, scale: 0.75 };
+const CELL = DEFAULT_BOARD_VIEW_CONFIG.boardTextureCellSize;
+
+function projection(columns = 10, rows = 8, placement: BoardPlacement = PLACEMENT): BoardProjection {
+  const board = new BoardProjection();
+  board.update(columns, rows, placement);
+  return board;
+}
 
 describe("BoardProjection", () => {
-  it("round-trips a 10x8 square grid through one projective homography", () => {
-    const projection = new BoardProjection();
-    projection.update(10, 8, corners);
-    for (const [col, row] of [[0, 0], [10, 8], [4.5, 3.25], [9.99, 7.99]] as const) {
-      const screen = projection.gridToScreen(col, row);
-      const grid = projection.screenToGrid(screen.x, screen.y);
-      expect(grid.x).toBeCloseTo(col, 6);
-      expect(grid.y).toBeCloseTo(row, 6);
+  it("round-trips fractional grid coordinates through the affine projection", () => {
+    const board = projection();
+    for (const [col, row] of [[0, 0], [10, 8], [4.5, 3.25], [9.99, 7.99], [-2, 11]] as const) {
+      const screen = board.gridToScreen(col, row);
+      const grid = board.screenToGrid(screen.x, screen.y);
+      expect(grid.x).toBeCloseTo(col, 9);
+      expect(grid.y).toBeCloseTo(row, 9);
     }
   });
 
-  it("aligns first and last row corners exactly", () => {
-    const projection = new BoardProjection();
-    projection.update(10, 8, corners);
-    expect(projection.gridToScreen(0, 0)).toEqual(corners[0]);
-    expect(projection.gridToScreen(10, 0)).toEqual(corners[1]);
-    expect(projection.gridToScreen(10, 8)).toEqual(corners[2]);
-    expect(projection.gridToScreen(0, 8)).toEqual(corners[3]);
-    expect(projection.getCellCorners(9, 7)[2]).toEqual(corners[2]);
+  it("still round-trips after the camera has panned, zoomed and the canvas resized", () => {
+    const board = projection();
+    for (const placement of [
+      { originX: 200, originY: 120, scale: 0.3 },
+      { originX: 1440, originY: 900, scale: 2.4 },
+      { originX: -80, originY: 640, scale: 1 },
+    ]) {
+      board.update(10, 8, placement);
+      const screen = board.gridToScreen(2.25, 6.5);
+      const grid = board.screenToGrid(screen.x, screen.y);
+      expect(grid.x).toBeCloseTo(2.25, 9);
+      expect(grid.y).toBeCloseTo(6.5, 9);
+    }
   });
 
-  it("scales board content with its projected cell instead of absolute pixels", () => {
-    const projection = new BoardProjection();
-    projection.update(10, 8, corners);
-    expect(projection.getProjectedCellWidth(8)).toBeGreaterThan(projection.getProjectedCellWidth(0));
-    expect(projection.getCellScale(0)).toBeLessThan(projection.getCellScale(8));
-    expect(projection.getCellScale(8)).toBeCloseTo(projection.getProjectedCellWidth(8) / 128, 6);
-
-    // A standee keeps the same share of its square when the viewport shrinks: halving
-    // the board halves the content scale rather than leaving sprites oversized.
-    const near = projection.getCellScale(8);
-    const halved = corners.map((point) => new Point(point.x / 2, point.y / 2)) as [Point, Point, Point, Point];
-    projection.update(10, 8, halved);
-    expect(projection.getCellScale(8)).toBeCloseTo(near / 2, 6);
+  it("puts one grid step on the diagonals: +X is (+u, +u/2) and +Y is (-u, +u/2)", () => {
+    const board = projection();
+    const unit = CELL * PLACEMENT.scale / Math.SQRT2;
+    const origin = board.gridToScreen(3, 4);
+    const alongX = board.gridToScreen(4, 4);
+    const alongY = board.gridToScreen(3, 5);
+    expect(alongX.x - origin.x).toBeCloseTo(unit, 9);
+    expect(alongX.y - origin.y).toBeCloseTo(unit / 2, 9);
+    expect(alongY.x - origin.x).toBeCloseTo(-unit, 9);
+    expect(alongY.y - origin.y).toBeCloseTo(unit / 2, 9);
   });
 
-  it("rebuilds its inverse after resize or camera corner changes", () => {
-    const projection = new BoardProjection();
-    projection.update(10, 8, corners);
-    const resized = corners.map((point) => new Point(point.x * 0.6 + 20, point.y * 0.75 + 12)) as [Point, Point, Point, Point];
-    projection.update(10, 8, resized);
-    const point = projection.gridToScreen(2.25, 6.5);
-    const grid = projection.screenToGrid(point.x, point.y);
-    expect(grid.x).toBeCloseTo(2.25, 6);
-    expect(grid.y).toBeCloseTo(6.5, 6);
+  it("draws every cell as the same 2:1 diamond, near edge and far edge alike", () => {
+    const board = projection();
+    const size = (col: number, row: number): { width: number; height: number } => {
+      const corners = board.getCellCorners(col, row);
+      const xs = corners.map((corner) => corner.x);
+      const ys = corners.map((corner) => corner.y);
+      return { width: Math.max(...xs) - Math.min(...xs), height: Math.max(...ys) - Math.min(...ys) };
+    };
+    const first = size(0, 0);
+    expect(first.width).toBeCloseTo(board.getCellDiamondWidth(), 9);
+    expect(first.width / first.height).toBeCloseTo(2, 9);
+    // The corners, the middle and the opposite edge are all the same size: no convergence.
+    for (const [col, row] of [[9, 0], [0, 7], [9, 7], [4, 3]] as const) {
+      const other = size(col, row);
+      expect(other.width).toBeCloseTo(first.width, 9);
+      expect(other.height).toBeCloseTo(first.height, 9);
+    }
   });
 
-  it.each([[3, 3], [9, 7], [5, 3]] as const)("keeps the active %ix%i scenario dimensions aligned", (columns, rows) => {
-    const projection = new BoardProjection();
-    projection.update(columns, rows, corners);
-    const farCell = projection.getCellCorners(0, 0);
-    const nearCell = projection.getCellCorners(columns - 1, rows - 1);
-    expect(farCell[0]).toEqual(corners[0]);
-    expect(nearCell[2]).toEqual(corners[2]);
-    const center = projection.gridToScreen(columns / 2, rows / 2);
-    const roundTrip = projection.screenToGrid(center.x, center.y);
-    expect(roundTrip.x).toBeCloseTo(columns / 2, 6);
-    expect(roundTrip.y).toBeCloseTo(rows / 2, 6);
+  it("keeps opposite board edges parallel", () => {
+    const board = projection();
+    const [top, right, bottom, left] = board.corners;
+    const edge = (from: { x: number; y: number }, to: { x: number; y: number }): number =>
+      Math.atan2(to.y - from.y, to.x - from.x);
+    expect(edge(top, right)).toBeCloseTo(edge(left, bottom), 9);
+    expect(edge(top, left)).toBeCloseTo(edge(right, bottom), 9);
+  });
+
+  it("scales content by the board's own scale, whatever row it stands on", () => {
+    const board = projection();
+    expect(board.getContentScale()).toBeCloseTo(PLACEMENT.scale, 9);
+    // Halving the board halves the content scale rather than leaving sprites oversized.
+    board.update(10, 8, { ...PLACEMENT, scale: PLACEMENT.scale / 2 });
+    expect(board.getContentScale()).toBeCloseTo(PLACEMENT.scale / 2, 9);
+    expect(board.getCellDiamondWidth()).toBeCloseTo(CELL * Math.SQRT2 * PLACEMENT.scale / 2, 9);
+  });
+
+  it("centres the board on the placement origin, whatever its shape", () => {
+    for (const [columns, rows] of [[3, 3], [9, 7], [5, 3], [3, 9], [9, 3]] as const) {
+      const board = projection(columns, rows);
+      const corners = board.corners;
+      const centerX = corners.reduce((total, corner) => total + corner.x, 0) / corners.length;
+      const centerY = corners.reduce((total, corner) => total + corner.y, 0) / corners.length;
+      expect(centerX).toBeCloseTo(PLACEMENT.originX, 9);
+      expect(centerY).toBeCloseTo(PLACEMENT.originY, 9);
+      const middle = board.screenToGrid(PLACEMENT.originX, PLACEMENT.originY);
+      expect(middle.x).toBeCloseTo(columns / 2, 9);
+      expect(middle.y).toBeCloseTo(rows / 2, 9);
+    }
+  });
+
+  it("refuses a placement nothing can be drawn at", () => {
+    const board = new BoardProjection();
+    expect(() => board.update(0, 8, PLACEMENT)).toThrow(/dimensions must be positive/);
+    expect(() => board.update(10, 8, { ...PLACEMENT, scale: 0 })).toThrow(/scale must be positive/);
   });
 });

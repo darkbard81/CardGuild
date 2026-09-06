@@ -119,6 +119,21 @@ export interface PresentationTilemapPack {
   readonly maps: Readonly<Record<string, PresentationTilemap>>;
 }
 
-export function facingAsset(visual: ActorVisualDefinition, direction: Direction): PresentationAssetId {
-  return direction === "north" ? visual.back : visual.front;
+/** Which drawing a standee shows, and whether it is mirrored to get there. */
+export interface StandeeFacing {
+  readonly assetId: PresentationAssetId;
+  readonly flipX: boolean;
+}
+
+/**
+ * Four facings out of the two drawings that exist. North turns its back; south faces the
+ * player. East and west share the front pose, and west is its mirror — the front art was
+ * authored leaning towards the board's east side, so that is the side it keeps.
+ *
+ * Only the body is ever mirrored. A base, an HP badge or any text above a standee is
+ * screen furniture and reads the same way whichever way the character looks.
+ */
+export function facingStandee(visual: ActorVisualDefinition, direction: Direction): StandeeFacing {
+  if (direction === "north") return { assetId: visual.back, flipX: false };
+  return { assetId: visual.front, flipX: direction === "west" };
 }

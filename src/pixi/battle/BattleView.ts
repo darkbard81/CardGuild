@@ -3,10 +3,10 @@ import {
   Container,
   type FederatedPointerEvent,
   Graphics,
-  PerspectiveMesh,
   Point,
   Rectangle,
   RenderLayer,
+  Sprite,
   type Ticker,
   Texture,
 } from "pixi.js";
@@ -91,6 +91,19 @@ function lerp(left: number, right: number, progress: number): number {
 export class BattleView {
   private readonly scene = new Container({ label: "BattleScene" });
   private readonly boardFloorLayer = new Container({ label: "boardFloorLayer" });
+  /**
+   * The board plane, split so the transform order is written down rather than left to a
+   * single container's composition rules:
+   *
+   *   camera root (origin + uniform scale) > squash root (scaleY) > turn root (rotation)
+   *
+   * The turn happens first and the squash acts on its result, which is what makes a
+   * square cell a 2:1 diamond instead of a rotated rectangle. Only the board is in here;
+   * standees are laid out against the same projection but stay upright on their own layer.
+   */
+  private readonly boardCameraRoot = new Container({ label: "boardCameraRoot" });
+  private readonly boardSquashRoot = new Container({ label: "boardSquashRoot" });
+  private readonly boardTurnRoot = new Container({ label: "boardTurnRoot" });
   private readonly boardOverlayLayer = new Container({ label: "boardOverlayLayer" });
   private readonly propLayer = new Container({ label: "propLayer" });
   private readonly actorLayer = new Container({ label: "actorLayer" });
@@ -171,7 +184,7 @@ export class BattleView {
   private currentHighlights: BoardHighlights = { tiles: [], actorIds: [], objectIds: [], facingPosition: null, moveBands: [] };
   private hoverPosition: GridPosition | null = null;
   private safeArea: BoardSafeArea = ZERO_BOARD_SAFE_AREA;
-  private boardMesh: PerspectiveMesh | null = null;
+  private boardSprite: Sprite | null = null;
   private visuals: PositionedVisual[] = [];
   private actorVisuals = new Map<string, PositionedVisual>();
 
@@ -184,8 +197,13 @@ export class BattleView {
     this.projection = new BoardProjection(config);
     this.camera = new BattleCamera(config);
     this.terrainRenderer = new TerrainRenderer(app, catalog, config);
-    this.objectRenderer = new ObjectRenderer(catalog, config);
+    this.objectRenderer = new ObjectRenderer(catalog);
     this.actorRenderer = new ActorRenderer(catalog, config);
+    this.boardTurnRoot.rotation = config.boardRotationRadians;
+    this.boardSquashRoot.scale.set(1, config.boardSquashY);
+    this.boardSquashRoot.addChild(this.boardTurnRoot);
+    this.boardCameraRoot.addChild(this.boardSquashRoot);
+    this.boardFloorLayer.addChild(this.boardCameraRoot);
     this.scene.addChild(
       this.boardFloorLayer,
       this.boardOverlayLayer,
@@ -235,26 +253,21 @@ export class BattleView {
     }
 
     this.depthRenderLayer.detachAll();
-    if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
-    for (const layer of [this.boardFloorLayer, this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
+    // The board texture is destroyed and rebuilt when the map changes size, so let go of
+    // it before asking for the new one rather than leaving a sprite bound to a dead page.
+    if (this.boardSprite) this.boardSprite.texture = Texture.EMPTY;
+    for (const layer of [this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
-    const corners = this.camera.corners(this.boardFrame());
-    this.projection.update(state.map.width, state.map.height, corners);
-    this.boardMesh = new PerspectiveMesh({
-      texture: boardTexture,
-      verticesX: this.config.meshVerticesX,
-      verticesY: this.config.meshVerticesY,
-      x0: corners[0].x,
-      y0: corners[0].y,
-      x1: corners[1].x,
-      y1: corners[1].y,
-      x2: corners[2].x,
-      y2: corners[2].y,
-      x3: corners[3].x,
-      y3: corners[3].y,
-    });
-    this.boardMesh.eventMode = "none";
-    this.boardFloorLayer.addChild(this.boardMesh);
+    if (!this.boardSprite) {
+      this.boardSprite = new Sprite({ label: "boardPlane" });
+      this.boardSprite.anchor.set(0.5, 0.5);
+      this.boardSprite.eventMode = "none";
+      this.boardTurnRoot.addChild(this.boardSprite);
+    }
+    this.boardSprite.texture = boardTexture;
+    // Place the plane before anything is laid out against it, so the first frame of a new
+    // encounter reads the projection it will actually be drawn with.
+    this.projection.update(state.map.width, state.map.height, this.camera.placement(this.boardFrame()));
 
     const props = [...this.terrainRenderer.renderProps(state), ...this.objectRenderer.render(state)];
     const actors = this.actorRenderer.render(state);
@@ -281,7 +294,7 @@ export class BattleView {
   public ensureActorVisible(actorId: string): void {
     const actor = this.state?.actors[actorId];
     if (!actor) return;
-    const point = this.projection.gridToScreen(actor.position.x + 0.5, actor.position.y + this.config.actorFootRowOffset);
+    const point = this.projection.gridToScreen(actor.position.x + 0.5, actor.position.y + 0.5);
     const left = this.safeArea.left + FOCUS_MARGIN;
     const right = this.app.screen.width - this.safeArea.right - FOCUS_MARGIN;
     const top = this.safeArea.top + FOCUS_MARGIN;
@@ -298,6 +311,7 @@ export class BattleView {
       viewportWidth: this.app.screen.width,
       viewportHeight: this.app.screen.height,
       columns: this.state?.map.width ?? 1,
+      rows: this.state?.map.height ?? 1,
       safeArea: this.safeArea,
     };
   }
@@ -311,28 +325,26 @@ export class BattleView {
     return positioned;
   }
 
+  /**
+   * A standee's contact point is the centre of its cell, and its size is the board's own
+   * uniform scale. There is no row term in either: in a fixed affine projection a
+   * character on the far edge is drawn exactly as large as one on the near edge.
+   */
   private placeVisual(visual: PositionedVisual): void {
-    const row = visual.currentPosition.y + visual.footRowOffset;
-    const foot = this.projection.gridToScreen(visual.currentPosition.x + 0.5, row);
-    visual.display.position.copyFrom(foot);
-    // Content is sized against the projected cell, so its share of a square is fixed
-    // at every window size; the camera zoom already lives in the projected width.
-    const scale = this.projection.getCellScale(row);
+    const contact = this.projection.gridToScreen(visual.currentPosition.x + 0.5, visual.currentPosition.y + 0.5);
+    visual.display.position.copyFrom(contact);
+    const scale = this.projection.getContentScale();
     visual.display.scale.set(scale);
     if (visual.screenSpace) visual.screenSpace.scale.set(scale > 0 ? 1 / scale : 1);
-    visual.display.zIndex = Math.round(foot.y * 100) + visual.layerPriority;
+    visual.display.zIndex = Math.round(contact.y * 100) + visual.layerPriority;
   }
 
   private layoutScene(): void {
     if (!this.state || this.app.screen.width <= 0 || this.app.screen.height <= 0) return;
-    const corners = this.camera.corners(this.boardFrame());
-    this.projection.update(this.state.map.width, this.state.map.height, corners);
-    this.boardMesh?.setCorners(
-      corners[0].x, corners[0].y,
-      corners[1].x, corners[1].y,
-      corners[2].x, corners[2].y,
-      corners[3].x, corners[3].y,
-    );
+    const placement = this.camera.placement(this.boardFrame());
+    this.projection.update(this.state.map.width, this.state.map.height, placement);
+    this.boardCameraRoot.position.set(placement.originX, placement.originY);
+    this.boardCameraRoot.scale.set(placement.scale);
     for (const visual of this.visuals) this.placeVisual(visual);
     this.depthRenderLayer.sortRenderLayerChildren();
     this.renderOverlay();
@@ -519,24 +531,25 @@ export class BattleView {
   }
 
   private publishLayout(): void {
+    this.app.canvas.dataset.boardProjection = `affine-${String(Math.round((this.config.boardRotationRadians * 180) / Math.PI))}-${String(this.config.boardSquashY)}`;
+    // The gutters the HUD measured for itself: the board is fitted inside this rectangle
+    // and an actor outside it is the thing `ensureActorVisible` exists to pan back.
+    this.app.canvas.dataset.safeArea = JSON.stringify(this.safeArea);
     this.app.canvas.dataset.boardTextureFit = this.terrainRenderer.boardTextureFit;
     this.app.canvas.dataset.wallRegionFit = this.terrainRenderer.wallRegionFit;
     this.app.canvas.dataset.boardCorners = JSON.stringify(
       this.projection.corners.map((point) => ({ x: Number(point.x.toFixed(2)), y: Number(point.y.toFixed(2)) })),
     );
-    // A structure has to measure exactly one cell at any row and any zoom; the ratio is
-    // the only way a test can see that from outside.
+    // A structure has to measure exactly one cell wherever it stands and however far the
+    // camera is zoomed; the ratio is the only way a test can see that from outside.
+    const cell = this.projection.getContentScale() * this.config.referenceCellWidth;
     this.app.canvas.dataset.structureFit = JSON.stringify(
       this.visuals
         .filter((visual) => visual.cellBound)
-        .map((visual) => {
-          const row = visual.currentPosition.y + visual.footRowOffset;
-          const cell = this.projection.getProjectedCellWidth(row);
-          return {
-            id: visual.stableId,
-            ratio: cell > 0 ? Number((visual.display.width / cell).toFixed(3)) : 0,
-          };
-        }),
+        .map((visual) => ({
+          id: visual.stableId,
+          ratio: cell > 0 ? Number((visual.display.width / cell).toFixed(3)) : 0,
+        })),
     );
     this.app.canvas.dataset.actorFeet = JSON.stringify(
       [...this.actorVisuals.entries()].map(([id, visual]) => ({
@@ -546,6 +559,24 @@ export class BattleView {
         scale: Number(visual.display.scale.x.toFixed(4)),
         zIndex: visual.display.zIndex,
       })),
+    );
+    // The standee plane's contract, which is invisible from outside once it is drawn: a
+    // body is upright and unsquashed whatever the board does under it, only its own
+    // mirror flips it, and the base is the one part that lies down on the plane.
+    this.app.canvas.dataset.standeePlane = JSON.stringify(
+      [...this.actorVisuals.entries()].map(([id, visual]) => {
+        const body = visual.display.getChildByLabel("standee-body");
+        const base = visual.display.getChildByLabel("standee-base");
+        const badge = visual.screenSpace;
+        return {
+          id,
+          bodyFlip: body ? Math.sign(body.scale.x) : 0,
+          bodyAspect: body ? Number((body.scale.y / Math.abs(body.scale.x)).toFixed(4)) : 0,
+          bodyRotation: body ? Number(body.rotation.toFixed(4)) : 0,
+          baseSquash: base ? Number(base.scale.y.toFixed(4)) : 0,
+          badgeFlip: badge ? Math.sign(badge.scale.x) : 0,
+        };
+      }),
     );
     this.app.canvas.dataset.depthOrder = [...this.visuals]
       .sort((left, right) => left.display.zIndex - right.display.zIndex || left.stableId.localeCompare(right.stableId))
@@ -566,8 +597,8 @@ export class BattleView {
     this.app.canvas.removeEventListener("pointermove", this.pointerMoveHandler);
     this.app.canvas.removeEventListener("pointerup", this.pointerUpHandler);
     this.app.canvas.removeEventListener("pointercancel", this.pointerUpHandler);
-    if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
-    // Draw once with the mesh still on stage so its bind group actually rebuilds against
+    if (this.boardSprite) this.boardSprite.texture = Texture.EMPTY;
+    // Draw once with the board still on stage so its bind group actually rebuilds against
     // the empty texture; the board texture is freed below and a stale binding to it warns.
     this.app.renderer.render({ container: this.app.stage, clear: true });
     this.scene.removeFromParent();

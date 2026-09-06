@@ -31,21 +31,24 @@ type ShotEntry = {
 
 type Corner = { readonly x: number; readonly y: number };
 
+/**
+ * The board is a fixed affine projection, so its published corners — grid (0,0), (w,0),
+ * (w,h) and (0,h) — form a parallelogram and a grid coordinate is a bilinear blend of
+ * them, with no perspective divide.
+ */
 function projectCorners(
   corners: readonly [Corner, Corner, Corner, Corner],
   gridX: number,
   gridY: number,
 ): { readonly x: number; readonly y: number } {
-  const [topLeft, topRight, bottomRight, bottomLeft] = corners;
-  const topWidth = topRight.x - topLeft.x;
-  const bottomWidth = bottomRight.x - bottomLeft.x;
-  const ratio = topWidth / bottomWidth;
+  const [origin, alongX, far, alongY] = corners;
   const u = gridX / ROAD_MAP.width;
   const v = gridY / ROAD_MAP.height;
-  const denominator = 1 + (ratio - 1) * v;
+  const blend = (a: number, b: number, c: number, d: number): number =>
+    a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v;
   return {
-    x: (topWidth * u + (ratio * bottomLeft.x - topLeft.x) * v + topLeft.x) / denominator,
-    y: ((ratio * bottomRight.y - topLeft.y) * v + topLeft.y) / denominator,
+    x: blend(origin.x, alongX.x, far.x, alongY.x),
+    y: blend(origin.y, alongX.y, far.y, alongY.y),
   };
 }
 

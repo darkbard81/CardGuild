@@ -3,23 +3,36 @@ import { expect, type Page, test } from "@playwright/test";
 const ROAD_MAP = { width: 3, height: 3 };
 type Corner = { readonly x: number; readonly y: number };
 
+/**
+ * The board is one fixed affine projection, so the published corners — grid (0,0),
+ * (w,0), (w,h) and (0,h) — describe a parallelogram and a grid coordinate is a plain
+ * bilinear blend of them. No perspective divide, and none of the four corners is
+ * privileged: at a quarter turn they read as top, right, bottom and left on screen.
+ */
 function projectCorners(
   corners: readonly [Corner, Corner, Corner, Corner],
   map: { readonly width: number; readonly height: number },
   gridX: number,
   gridY: number,
 ): { readonly x: number; readonly y: number } {
-  const [topLeft, topRight, bottomRight, bottomLeft] = corners;
-  const topWidth = topRight.x - topLeft.x;
-  const bottomWidth = bottomRight.x - bottomLeft.x;
-  const ratio = topWidth / bottomWidth;
+  const [origin, alongX, far, alongY] = corners;
   const u = gridX / map.width;
   const v = gridY / map.height;
-  const denominator = 1 + (ratio - 1) * v;
+  const blend = (a: number, b: number, c: number, d: number): number =>
+    a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v;
   return {
-    x: (topWidth * u + (ratio * bottomLeft.x - topLeft.x) * v + topLeft.x) / denominator,
-    y: ((ratio * bottomRight.y - topLeft.y) * v + topLeft.y) / denominator,
+    x: blend(origin.x, alongX.x, far.x, alongY.x),
+    y: blend(origin.y, alongX.y, far.y, alongY.y),
   };
+}
+
+/** The board's uniform scale, read back from the width its corners span. */
+function boardScale(
+  corners: readonly [Corner, Corner, Corner, Corner],
+  map: { readonly width: number; readonly height: number },
+): number {
+  const span = corners[1].x - corners[3].x;
+  return (span * Math.SQRT2) / ((map.width + map.height) * 128);
 }
 
 function captureRuntimeErrors(page: Page): string[] {
@@ -81,15 +94,14 @@ async function boardCorners(page: Page): Promise<[Corner, Corner, Corner, Corner
   return corners as [Corner, Corner, Corner, Corner];
 }
 
-/** Sprite height as a share of the square it stands on, which must not track window size. */
+/** Sprite scale as a share of the board's own scale, which must not track window size. */
 async function heroCellRatio(page: Page): Promise<number> {
   const corners = await boardCorners(page);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; scale: number }>;
   const heroId = await controlledActorId(page);
   const hero = feet.find((entry) => entry.id === heroId);
   if (!hero) throw new Error("The hero has not published its layout.");
-  const bottomWidth = (corners[2].x - corners[3].x) / ROAD_MAP.width;
-  return hero.scale / (bottomWidth / 128);
+  return hero.scale / boardScale(corners, ROAD_MAP);
 }
 
 async function boardPoint(
@@ -385,6 +397,28 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#move-legend")).toContainText("Step");
   await expect(page.locator("#move-legend")).toContainText("Stride");
 
+  // The board plane turns and squashes. The standee plane does not: every body stands
+  // upright and unsquashed on the diamond, only its own mirror flips it, and the base
+  // under it is the one part that lies down on the plane.
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-board-projection", "affine-45-0.5");
+  type Standee = { id: string; bodyFlip: number; bodyAspect: number; bodyRotation: number; baseSquash: number; badgeFlip: number };
+  const standees = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-standee-plane") ?? "[]") as Standee[];
+  expect(standees.length).toBeGreaterThan(1);
+  for (const standee of standees) {
+    expect(standee.bodyRotation).toBe(0);
+    expect(standee.bodyAspect).toBe(1);
+    expect(standee.baseSquash).toBe(0.5);
+    expect(standee.badgeFlip).toBe(1);
+  }
+  // The lackey opens facing west, so its body is mirrored and nothing else about it is.
+  expect(standees.find((standee) => standee.id === "goblin-lackey")?.bodyFlip).toBe(-1);
+  const openingHeroId = await controlledActorId(page);
+  expect(standees.find((standee) => standee.id === openingHeroId)?.bodyFlip).toBe(1);
+  // No perspective anywhere: two standees at different depths are drawn the same size.
+  const opening = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; y: number; scale: number }>;
+  expect(new Set(opening.map((entry) => entry.scale)).size).toBe(1);
+  expect(new Set(opening.map((entry) => entry.y)).size).toBe(opening.length);
+
   const initialHash = await page.locator("#app").getAttribute("data-state-hash");
   const target = await boardPoint(page, 1.5, 1.5);
   const canvasBox = await page.locator("#pixi-canvas").boundingBox();
@@ -415,7 +449,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const heroId = await controlledActorId(page);
   const heroFoot = feet.find((entry) => entry.id === heroId);
-  const expectedFoot = await boardPoint(page, 1.5, 1.8);
+  const expectedFoot = await boardPoint(page, 1.5, 1.5);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
 
@@ -487,7 +521,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(afterPan[0].x).toBeGreaterThan(afterZoom[0].x + 30);
   const zoomedFeet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const zoomedHero = zoomedFeet.find((entry) => entry.id === heroId);
-  const projectedHero = projectCorners(afterPan, ROAD_MAP, 1.5, 1.8);
+  const projectedHero = projectCorners(afterPan, ROAD_MAP, 1.5, 1.5);
   expect(zoomedHero?.x).toBeCloseTo(projectedHero.x, 0);
   expect(zoomedHero?.y).toBeCloseTo(projectedHero.y, 0);
   // Panning is bounded: the board centre stays on screen however far it is dragged.
@@ -647,7 +681,7 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const heroId = await controlledActorId(page);
   const heroFoot = feet.find((entry) => entry.id === heroId);
-  const expectedFoot = await boardPoint(page, 0.5, 1.8);
+  const expectedFoot = await boardPoint(page, 0.5, 1.5);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
   expect(runtimeErrors).toEqual([]);
@@ -666,6 +700,11 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
     return actor;
   };
 
+  // "Visible" means inside the gutters the HUD reserved, not merely on the canvas: a
+  // standee behind a panel is exactly what the camera is supposed to fetch back.
+  const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
+    { left: number; top: number; right: number; bottom: number };
+  expect(safe.right).toBeGreaterThan(0);
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   for (let index = 0; index < 8; index += 1) await page.mouse.wheel(0, -240);
   await page.keyboard.down("Alt");
@@ -674,14 +713,14 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   await page.mouse.up();
   await page.keyboard.up("Alt");
   await page.waitForTimeout(150);
-  expect((await actorFeet("goblin-lackey")).x).toBeGreaterThan(canvasBox.width);
+  expect((await actorFeet("goblin-lackey")).x).toBeGreaterThan(canvasBox.width - safe.right);
 
   await page.locator("#end-turn").click();
   await page.waitForTimeout(600);
   const goblin = await actorFeet("goblin-lackey");
-  expect(goblin.x).toBeGreaterThan(0);
-  expect(goblin.x).toBeLessThan(canvasBox.width);
-  expect(goblin.y).toBeGreaterThan(0);
-  expect(goblin.y).toBeLessThan(canvasBox.height);
+  expect(goblin.x).toBeGreaterThan(safe.left);
+  expect(goblin.x).toBeLessThan(canvasBox.width - safe.right);
+  expect(goblin.y).toBeGreaterThan(safe.top);
+  expect(goblin.y).toBeLessThan(canvasBox.height - safe.bottom);
   expect(runtimeErrors).toEqual([]);
 });

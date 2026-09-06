@@ -6,8 +6,8 @@ Every generated battle asset prompt must reference this file.
 
 - Game data stays on a flat rectangular square grid. Assets never encode gameplay projection.
 - Terrain masters are exact top-down 1:1 squares on a 256x256 production canvas.
-- The runtime composes terrain into one 128px-per-cell board texture, including its square grid lines, then applies a subtle trapezoid perspective with PixiJS.
-- Props and characters are upright paper standees. Only their bottom-center contact point is projected onto the board.
+- The runtime composes terrain into one 128px-per-cell board texture, including its square grid lines, then draws that texture on a fixed affine plane with PixiJS: a quarter turn, then a 0.5 vertical squash. Every cell is the same 2:1 diamond; there is no perspective and no near/far size change.
+- Props and characters are upright paper standees. Only their bottom-center contact point is projected onto the board, at the centre of the cell they stand on.
 - Props use normalized anchor `(0.5, 1)`. Character source sheets contain one front and one back full-body view, both with the same feet line and normalized anchor `(0.5, 1)`.
 - Perspective, isometric diamonds, 3D scene renders, floor-aligned character art, and baked camera convergence are forbidden in source assets.
 
@@ -78,7 +78,7 @@ no frame and no transparent margin, so two blocked cells side by side read as on
 - Props are generated one per image with a clear bottom-center contact point.
 - Structures are generated one per image, one terrain cell wide, with the drawing touching the left, right and bottom edges of its frame.
 - Each actor source contains exactly two non-overlapping views in this order: front, back.
-- Actor and prop sprites remain upright and must never be children of the perspective floor mesh.
+- Actor and prop sprites remain upright and must never be children of the board plane. They share only the contact point the projection gives them; the turn and the squash stop at the floor.
 
 ## References
 

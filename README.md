@@ -118,7 +118,7 @@ src/protocol protocol v3 type/schema, gameplay/control revision과 strict Ajv va
 src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
-src/pixi   BoardProjection/PerspectiveMesh/camera/depth renderers와 tactical overlay
+src/pixi   affine BoardProjection/board plane/camera/depth renderers와 tactical overlay
 src/presentation WebP atlas AssetCatalog와 layered tilemap mapping
 src/dom    Adventure/Reward/Loadout Builder, 링 컨텍스트 메뉴·카드·HUD·로그·Reaction·결과 UI
 ```
@@ -203,18 +203,41 @@ Trait provider는 engine TypeScript를 수정하지 않고 JSON으로 추가할 
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
 `art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
 `art/processed`, 4096² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
-layer 및 Equipment/Card icon mapping은 `presentation/m3`에 있습니다. 보드 위 콘텐츠는 절대 픽셀이 아니라
-투영된 셀 폭 대비(`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다. 창 크기가
-달라져도 스탠디가 칸에서 차지하는 비율은 고정이고 카메라 zoom만 크기를 바꿉니다.
-HP 뱃지는 역스케일해 작은 창에서도 화면 크기를 유지합니다.
+layer 및 Equipment/Card icon mapping은 `presentation/m3`에 있습니다.
+
+보드는 시점이 고정된 **affine diamond**입니다. 하나의 Pixi canvas 안에서 board plane과
+standee plane이 transform을 나눠 가집니다.
+
+```text
+screen = Translate(origin) x UniformScale(s) x ScaleY(0.5) x Rotate(+45°) x board-local
+```
+
+이 순서는 `boardCameraRoot > boardSquashRoot > boardTurnRoot` 컨테이너 계층으로 적혀
+있습니다. 결과로 모든 칸이 크기가 같은 2:1 diamond가 되고, 원근 수렴도 row에 따른 셀
+크기 변화도 없습니다. `BoardProjection`은 이 affine 변환의 forward/inverse만 계산하며
+`gridToScreen`/`screenToGrid`/`getCellCorners`가 picking·overlay·animation의 유일한
+경계입니다. 회전각과 squash는 presentation config(`boardRotationRadians`,
+`boardSquashY`)일 뿐 gameplay content에는 없습니다 — grid·pathfinding·LOS는 그대로
+직교 사각 격자입니다.
+
+Standee는 board plane의 자식이 아닙니다. 위치만 projection에서 받아 칸 중심에 서고,
+몸은 화면에 대해 항상 upright이며 회전도 Y squash도 받지 않습니다. 원근이 없으므로 같은
+zoom에서는 어느 칸에 서 있든 스탠디 크기가 같습니다. 보드 평면에 눕는 것은 발밑 base
+graphic 하나뿐이고(`scaleY = boardSquashY`), HP 뱃지는 역스케일해 작은 창에서도 화면
+크기를 유지합니다. 보드 위 콘텐츠는 절대 픽셀이 아니라 보드 자체의 uniform scale 대비
+(`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다.
+
+캐릭터는 front/back 양면 paper standee입니다. north는 back, south/east는 front,
+west는 front를 좌우 반전해 씁니다 — 반전은 몸에만 적용하고 base·HP 뱃지·텍스트는
+그대로 둡니다.
 
 카메라 zoom은 배율이 아니라 셀 크기로 정의됩니다. zoom 1은 항상 "맵 전체가 안전영역에
-들어오는" 상태이고, 상한은 셀이 `maxCellWidth`(220px)가 될 때까지입니다. 덕분에 9x7
-맵도 3x3과 같은 밀착 뷰에 도달합니다. 기본 상태에서 이미 셀이 목표보다 큰 맵은
-`minZoomHeadroom`(1.5x)만큼은 항상 확대할 수 있습니다. Pan은 보드 중심이 안전영역을
-벗어나지 않도록 제한되며, 턴이 시작될 때 해당 액터가 화면 밖이면 최소 거리만 pan해
-시야에 넣습니다(zoom 1에서는 전체가 보이므로 아무 일도 하지 않습니다). 캐릭터는 front/back 양면 paper standee이며
-north는 back, 나머지 cardinal 방향은 front와 projected facing arrow로 표시합니다.
+들어오는" 상태이고, 상한은 셀 diamond 폭이 `maxCellWidth`(220px)가 될 때까지입니다.
+회전 때문에 fit은 columns와 rows를 함께 보며, 3x9 같은 세로 맵도 같은 식으로 들어갑니다.
+기본 상태에서 이미 셀이 목표보다 큰 맵은 `minZoomHeadroom`(1.5x)만큼은 항상 확대할 수
+있습니다. Pan은 보드 중심이 안전영역을 벗어나지 않도록 제한되며, 턴이 시작될 때 해당
+액터가 안전영역 밖이면 최소 거리만 pan해 시야에 넣습니다(zoom 1에서는 전체가 보이므로
+아무 일도 하지 않습니다).
 
 설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M5 구현
 범위와 protocol 정정 사항은 GitHub 이슈 `#6`, M6-1 Character Stat Foundation은
@@ -241,10 +264,10 @@ Vitest는 Content schema v8 Schema/reference/fingerprint, PF2e proficiency/stati
 typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
 Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
 deck/stat/context, Adventure 8전/Reward/실패/seed/Combat bridge,
-projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
+affine BoardProjection/camera fit/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
 Reaction lifecycle, replay setup identity/hash, victory/defeat를 검증합니다. Playwright는
-Adventure shell, responsive Loadout Builder, 지연 WebP atlas 로딩, 실제 perspective board
+Adventure shell, responsive Loadout Builder, 지연 WebP atlas 로딩, 실제 affine diamond board
 hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 → 다음 Encounter 실제
 손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
 Network integration은 실제 `ws` client 3개로 queue/gameplay·control revision/idempotency,

@@ -13,7 +13,6 @@ const DEFAULT_PROP_HEIGHT = 96;
 export interface SortableVisual {
   readonly display: Container;
   readonly position: GridPosition;
-  readonly footRowOffset: number;
   readonly layerPriority: number;
   readonly stableId: string;
   /** Held at a constant screen size while the board scales, e.g. an HP badge. */
@@ -180,7 +179,6 @@ export class TerrainRenderer {
     return {
       display,
       position,
-      footRowOffset: this.config.propFootRowOffset,
       layerPriority,
       stableId,
       cellBound,

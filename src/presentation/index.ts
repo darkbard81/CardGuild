@@ -1,5 +1,5 @@
 export { AssetCatalog, createPresentationCatalog, loadPresentationPack } from "./asset-catalog";
-export { facingAsset, groundSemantic } from "./presentation-types";
+export { facingStandee, groundSemantic } from "./presentation-types";
 export {
   assertGatePair,
   assertPointPropContract,
