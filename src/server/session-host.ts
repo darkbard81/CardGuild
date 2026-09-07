@@ -1,13 +1,14 @@
 import { fingerprintValue } from "../game/determinism";
 import { chooseAiCommand, type CombatCommand } from "../game";
-import type {
-  ClientIntentEnvelope,
-  ProtocolErrorCode,
-  ServerAck,
-  ServerControlView,
-  ServerError,
-  ServerMessage,
-  ServerSnapshot,
+import {
+  PROTOCOL_VERSION,
+  type ClientIntentEnvelope,
+  type ProtocolErrorCode,
+  type ServerAck,
+  type ServerControlView,
+  type ServerError,
+  type ServerMessage,
+  type ServerSnapshot,
 } from "../protocol";
 import {
   dispatchServerCombatCommand,
@@ -256,7 +257,7 @@ export class SessionHost {
 
   private snapshot(events: readonly SessionEvent[], cause: NonNullable<ServerSnapshot["cause"]>): ServerSnapshot {
     return {
-      v: 3,
+      v: PROTOCOL_VERSION,
       type: "snapshot",
       revision: this.stateValue.revision,
       controlRevision: this.controlRevisionValue,
@@ -284,11 +285,11 @@ export class SessionHost {
   }
 
   private ack(requestId: string, accepted: boolean, committedRevision: number): ServerAck {
-    return { v: 3, type: "ack", requestId, accepted, committedRevision };
+    return { v: PROTOCOL_VERSION, type: "ack", requestId, accepted, committedRevision };
   }
 
   private errorMessage(code: ProtocolErrorCode, message: string, requestId?: string): ServerError {
-    return { v: 3, type: "error", code, message, requestId, revision: this.stateValue.revision };
+    return { v: PROTOCOL_VERSION, type: "error", code, message, requestId, revision: this.stateValue.revision };
   }
 
   private sendError(playerId: string, code: ProtocolErrorCode, message: string, requestId?: string): void {

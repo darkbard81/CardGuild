@@ -33,7 +33,7 @@ class SocketClient {
     origin: string,
     credential: SessionCredentialResponse,
     contentIdentity = PRODUCTION_CONTENT.contentIdentity,
-    version: 1 | 3 = 3,
+    version: 1 | 3 | 4 = 4,
   ): Promise<SocketClient> {
     const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
     const client = new SocketClient(socket);
@@ -118,7 +118,7 @@ async function post<T>(
 }
 
 function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
-  return { v: 3, type: "intent", requestId, expectedRevision, intent: value };
+  return { v: 4, type: "intent", requestId, expectedRevision, intent: value };
 }
 
 async function accepted(
@@ -555,12 +555,16 @@ describe("real WebSocket M5 cooperative session", () => {
     expect(new Set(snapshots.map((snapshot) => snapshot.gameplayHash)).size).toBe(1);
     expect(snapshots.every((snapshot) => snapshot.state.revision === host.state.revision)).toBe(true);
 
-    const v1 = await SocketClient.connect(server.origin, hostCredential, PRODUCTION_CONTENT.contentIdentity, 1);
-    sockets.push(v1);
-    const mismatch = await v1.waitFor(
-      (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
-    );
-    expect(mismatch.code).toBe("PROTOCOL_MISMATCH");
+    // v3 spoke a facing-less end-turn and a facing-bearing tile target, so it is turned
+    // away at the handshake rather than left to fail one rejected intent at a time.
+    for (const version of [1, 3] as const) {
+      const legacy = await SocketClient.connect(server.origin, hostCredential, PRODUCTION_CONTENT.contentIdentity, version);
+      sockets.push(legacy);
+      const mismatch = await legacy.waitFor(
+        (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
+      );
+      expect(mismatch.message).toContain("version 4");
+    }
   }, 30_000);
 
   it("preserves request, credential, payload, and newest-connection transport boundaries", async () => {

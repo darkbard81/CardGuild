@@ -61,7 +61,10 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v3 control-only
+- wire protocol은 v4입니다. v3의 `end-turn`에는 `facing`이 없고 tile target에는 `facing`이
+  필수였으므로 두 버전은 서로의 payload를 거부합니다. 그래서 같은 `v`를 선언한 채 intent
+  단위로 실패하는 대신 handshake에서 `PROTOCOL_MISMATCH`로 끊습니다.
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v4 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
   판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. server restart persistence와
   host migration은 지원하지 않습니다.
@@ -126,7 +129,7 @@ content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
 src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
-src/protocol protocol v3 type/schema, gameplay/control revision과 strict Ajv validation
+src/protocol protocol v4 type/schema, gameplay/control revision과 strict Ajv validation
 src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
@@ -147,6 +150,13 @@ server 전용 typecheck는 DOM lib 없이 이 경계를 검증합니다. UI는
 state hash를 만듭니다. CombatState와 replay는 pack ID/version/fingerprint와 Combat
 Setup Fingerprint를 보존하며 콘텐츠나 loadout setup이 다르면 첫 replay command 전에
 실패합니다.
+
+M8 Facing 변경은 과거 command의 의미도 바꿉니다. 과거 `end-turn`에는 `facing`이 없고
+과거 이동 command의 `target.facing`은 플레이어가 고른 최종 방향이었지만, 지금 이동
+Facing은 resolved path의 마지막 segment에서 나옵니다. **M8 이전 replay 호환은 보장하지
+않습니다** — legacy migration이나 version adapter를 두지 않으므로 옛 replay는 거부되거나
+과거와 다른 Facing/state/hash를 냅니다. 결정론 보장은 M8 이후 생성된 replay에만
+적용됩니다.
 
 장비와 Condition은 개별 ID 분기 대신 `TraitDefinition` provider를 통해 카드와
 Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Recovery Action도
@@ -326,7 +336,7 @@ hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 �
 손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
 Network integration은 실제 `ws` client 3개로 queue/gameplay·control revision/idempotency,
 claim race와 authorization, turn/reaction disconnect fallback·reconnect, server AI,
-newest-wins reconnect와 protocol v1 fail-fast를 검증합니다. Playwright는 별도
+newest-wins reconnect와 legacy protocol(v1·v3) fail-fast를 검증합니다. Playwright는 별도
 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어, 2P fallback,
 3P 분산 제어와 hash 수렴을 검증하며 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
 
