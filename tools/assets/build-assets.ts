@@ -158,6 +158,17 @@ async function readJson<T>(filePath: string): Promise<T> {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
 }
 
+/**
+ * A repository-relative path the way generated JSON records it: always POSIX separators.
+ * These are logical identifiers that a checker string-compares and git tracks, not paths
+ * the local filesystem is ever asked about, so a Windows build must not write
+ * `art\processed\actors\hero\aerin\front.png` and then fail its own checker a second
+ * later. Filesystem paths keep using path.join and the platform separator.
+ */
+function repoRelative(root: string, file: string): string {
+  return path.relative(root, file).split(path.sep).join("/");
+}
+
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -448,7 +459,7 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
       sourceBox: frame.box,
       processingScale,
     });
-    process.stdout.write(`Processed ${frame.plan.assetId} -> ${path.relative(root, output)}\n`);
+    process.stdout.write(`Processed ${frame.plan.assetId} -> ${repoRelative(root, output)}\n`);
   }
   return outputs;
 }
@@ -563,7 +574,7 @@ async function buildAtlas(root: string, plan: GenerationPlan, assets: readonly P
   };
   await writeJson(atlasDataPath, atlasData);
   await writeJson(path.join(root, "presentation", "m3", "atlas-map.json"), atlasData);
-  process.stdout.write(`Packed ${assets.length} non-actor sprites -> ${path.relative(root, atlasImagePath)}\n`);
+  process.stdout.write(`Packed ${assets.length} non-actor sprites -> ${repoRelative(root, atlasImagePath)}\n`);
 }
 
 /**
@@ -655,7 +666,7 @@ async function buildManifest(
     equipmentVisuals: plan.presentation.equipmentVisuals,
     cardVisuals: plan.presentation.cardVisuals,
   };
-  const sourceMap = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, path.relative(root, asset.file)]));
+  const sourceMap = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, repoRelative(root, asset.file)]));
   await writeJson(path.join(root, "presentation", "m3", "asset-manifest.json"), manifest);
   await writeJson(path.join(root, "presentation", "m3", "asset-sources.json"), sourceMap);
 }
@@ -751,7 +762,7 @@ async function writePipelineMetadata(
   runtimeImages: ReadonlyMap<string, RuntimeImage>,
 ): Promise<void> {
   // Both stores named the way the browser asks for them, so one field can be compared.
-  const atlasHref = `/${path.relative(path.join(root, "public"), path.join(root, plan.atlas.image)).split(path.sep).join("/")}`;
+  const atlasHref = `/${repoRelative(path.join(root, "public"), path.join(root, plan.atlas.image))}`;
   const metadata = {
     version: 3,
     styleSheet: plan.styleSheet,
@@ -769,7 +780,7 @@ async function writePipelineMetadata(
     atlasImage: atlasHref,
     assets: Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
       source: asset.source.input,
-      output: path.relative(root, asset.file),
+      output: repoRelative(root, asset.file),
       runtime: runtimeImages.get(asset.frame.assetId)?.path ?? atlasHref,
       sourceBox: asset.sourceBox,
       sourceIndex: asset.frame.sourceIndex ?? asset.source.frames.indexOf(asset.frame),

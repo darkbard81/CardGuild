@@ -271,6 +271,12 @@ async function main(): Promise<void> {
   if (JSON.stringify(ids) !== JSON.stringify(Object.keys(sources).sort())) {
     throw new Error("Asset source IDs and manifest asset IDs must match exactly.");
   }
+  // Generated JSON records repository-relative paths with POSIX separators whatever
+  // platform built it. Said here so a Windows build that wrote "art\processed\..."
+  // fails on the cause, rather than on a path comparison below that cannot explain why.
+  for (const [id, source] of Object.entries(sources)) {
+    if (source.includes("\\")) throw new Error(`Asset source path for "${id}" must use "/" separators.`);
+  }
 
   // The manifest is one logical namespace over two physical stores, so the split is
   // stated as a partition rather than as an equality. This is what fails if an actor
