@@ -55,6 +55,12 @@ export interface BoardViewConfig {
    * rather than pixels so "fully zoomed" means the same thing on every map *and* on every
    * monitor: a pixel target is a different number of squares on a laptop than on a large
    * display, and stops binding at all once the window is big enough.
+   *
+   * One square is what makes the close-up about a character rather than about the map.
+   * A standee is authored a little under a cell diamond wide, so once a single diamond
+   * fills the frame the body spans roughly the whole safe area from head to feet — which
+   * is the close-up a player actually wants, and the one a 3x3 map could never reach
+   * while the ceiling was three squares it already showed at rest.
    */
   readonly closeUpCells: number;
   /** Zoom-in always available, even on a map whose fitted squares are already large. */
@@ -81,7 +87,7 @@ export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
   boardRotationRadians: Math.PI / 4,
   boardSquashY: 0.5,
   referenceCellWidth: 128,
-  closeUpCells: 3,
+  closeUpCells: 1,
   minZoomHeadroom: 1.5,
   boardFitMargin: 0.94,
   boardTextureCellSize: 128,
@@ -150,8 +156,9 @@ export function cellDiamondWidth(config: BoardViewConfig): number {
 
 /**
  * The frame a fully zoomed-in camera fills: the middle `closeUpCells` squares of the
- * board, or the whole board when it is smaller than that. Clamping matters — a map
- * already smaller than the close-up would otherwise ask to be zoomed *out*.
+ * board, or the whole board when it is smaller than that. At one square nothing is ever
+ * smaller, so the clamp is inert; it stays because it is what keeps any larger close-up
+ * honest — a map already smaller than its close-up would otherwise ask to be zoomed *out*.
  */
 export function closeUpFrame(frame: BoardFrame, config: BoardViewConfig): BoardFrame {
   return {

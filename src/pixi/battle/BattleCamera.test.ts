@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { BattleCamera } from "./BattleCamera";
 import { BoardProjection } from "./BoardProjection";
 import type { BoardFrame } from "./BoardViewConfig";
-import { boardSafeBox, DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
+import { boardSafeBox, cellDiamondWidth, DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 
 const SAFE_AREA = { left: 250, top: 96, right: 268, bottom: 178 };
 
@@ -32,6 +32,19 @@ function center(camera: BattleCamera, board: BoardFrame): { x: number; y: number
   return { x: placement.originX, y: placement.originY };
 }
 
+/** One of the board's four grid corners, in screen space. */
+function corner(camera: BattleCamera, board: BoardFrame, index: number): { x: number; y: number } {
+  const point = project(camera, board).corners[index];
+  if (!point) throw new Error(`Board has no corner ${index}.`);
+  return { x: point.x, y: point.y };
+}
+
+function zoomedIn(board: BoardFrame): BattleCamera {
+  const camera = new BattleCamera();
+  camera.zoomBy(1000, board.viewportWidth / 2, board.viewportHeight / 2, board);
+  return camera;
+}
+
 describe("BattleCamera", () => {
   it.each([[3, 3], [5, 3], [9, 7], [3, 9], [9, 3]] as const)(
     "fits a %ix%i board inside the safe area at rest",
@@ -52,11 +65,13 @@ describe("BattleCamera", () => {
     },
   );
 
-  it("gives a dense map the zoom range a sparse one already has by default", () => {
+  it("lets a small map reach the close-up instead of leaving it on the headroom floor", () => {
     const camera = new BattleCamera();
-    // A 3x3 map is already the close-up, so only the headroom floor applies.
-    expect(camera.maxZoom(frame(3, 3))).toBeCloseTo(DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom, 6);
-    // A 9x7 map is much further from it, so it may zoom much further in.
+    // The close-up is one square, so even a 3x3 map is a long way from it and reaches a
+    // real close-up rather than the bare 1.5x floor it used to be stuck on.
+    expect(camera.maxZoom(frame(3, 3))).toBeCloseTo(3, 6);
+    expect(camera.maxZoom(frame(3, 3))).toBeGreaterThan(DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom);
+    // A 9x7 map starts further out, so it still has further to travel.
     expect(camera.maxZoom(frame(9, 7))).toBeGreaterThan(camera.maxZoom(frame(3, 3)));
   });
 
@@ -92,13 +107,14 @@ describe("BattleCamera", () => {
     expect(zoomed(1920, 1080)).toBeCloseTo(1, 6);
   });
 
-  it("keeps the wheel alive on a map already smaller than the close-up", () => {
-    // Framing a 3x3 map on a 3x3 close-up is zoom 1, which would leave nothing to zoom.
-    for (const [columns, rows] of [[3, 3], [2, 2], [5, 3]] as const) {
-      const camera = new BattleCamera();
+  it("keeps the wheel alive on the one board that is already its own close-up", () => {
+    // At one close-up square only a 1x1 board frames itself, and framing it again is zoom
+    // 1 — which would leave nothing to zoom. Everything larger earns real range.
+    expect(new BattleCamera().maxZoom(frame(1, 1)))
+      .toBeCloseTo(DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom, 6);
+    for (const [columns, rows] of [[1, 1], [2, 2], [3, 3], [5, 3]] as const) {
       const board = frame(columns, rows);
-      camera.zoomBy(1000, board.viewportWidth / 2, board.viewportHeight / 2, board);
-      expect(camera.scale).toBeGreaterThanOrEqual(DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom);
+      expect(zoomedIn(board).scale).toBeGreaterThanOrEqual(DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom);
     }
   });
 
@@ -122,10 +138,11 @@ describe("BattleCamera", () => {
     expect(after.y).toBeCloseTo(before.y, 6);
   });
 
-  it("keeps the board centre inside the safe area however far it is dragged", () => {
+  it("keeps a fitted board's centre inside the safe area however far it is dragged", () => {
+    // A board that fits needs no more reach than the safe area, so the clamp is exactly
+    // what it always was: drag as hard as you like and the centre stops at the corner.
     const camera = new BattleCamera();
     const board = frame(9);
-    camera.zoomBy(4, board.viewportWidth / 2, board.viewportHeight / 2, board);
 
     const nudged = { ...center(camera, board) };
     camera.panBy(40, 25, board);
@@ -143,6 +160,41 @@ describe("BattleCamera", () => {
     expect(near.y).toBeCloseTo(SAFE_AREA.top, 6);
   });
 
+  it("lets a zoomed-in board travel far enough to look at any square", () => {
+    // Pinning the centre to the safe area is the right rule for a board that fits and the
+    // wrong one for a board several screens wide: at the ceiling it would leave about a
+    // quarter of a 9x7 map unreachable. Every corner has to be able to come to the middle.
+    for (const [columns, rows] of [[3, 3], [9, 7], [3, 9], [12, 12]] as const) {
+      const board = frame(columns, rows);
+      const area = boardSafeBox(board);
+      for (const index of [0, 1, 2, 3]) {
+        const camera = zoomedIn(board);
+        const at = corner(camera, board, index);
+        camera.panBy(area.centerX - at.x, area.centerY - at.y, board);
+        const moved = corner(camera, board, index);
+        expect(moved.x, `${columns}x${rows} corner ${index}`).toBeCloseTo(area.centerX, 6);
+        expect(moved.y, `${columns}x${rows} corner ${index}`).toBeCloseTo(area.centerY, 6);
+      }
+    }
+  });
+
+  it("still keeps board under the middle of the screen at the end of any drag", () => {
+    // The reach is widened, not removed: the board may be dragged until an edge reaches
+    // the centre of the safe area, and no further, so there is always something to drag
+    // back from.
+    const board = frame(9, 7);
+    const area = boardSafeBox(board);
+    for (const [dx, dy] of [[9000, 0], [-9000, 0], [0, 9000], [0, -9000], [9000, 9000]] as const) {
+      const camera = zoomedIn(board);
+      camera.panBy(dx, dy, board);
+      const box = boardBox(camera, board);
+      expect(area.centerX).toBeGreaterThanOrEqual(box.left - 0.001);
+      expect(area.centerX).toBeLessThanOrEqual(box.right + 0.001);
+      expect(area.centerY).toBeGreaterThanOrEqual(box.top - 0.001);
+      expect(area.centerY).toBeLessThanOrEqual(box.bottom + 0.001);
+    }
+  });
+
   it("keeps the zoom range when the canvas resizes, and re-clamps the pan", () => {
     const camera = new BattleCamera();
     const small = frame(9);
@@ -155,9 +207,36 @@ describe("BattleCamera", () => {
     expect(camera.maxZoom(wide)).toBeCloseTo(camera.maxZoom(small), 9);
     camera.clamp(wide);
     expect(camera.scale).toBeCloseTo(zoomed, 9);
-    // The pan is still clamped against the new canvas, which is what resize is for.
+    // The pan is still clamped against the new canvas, which is what resize is for. At
+    // the ceiling the board is far wider than the canvas, so the stop is the reach that
+    // brings its edge to the middle rather than the safe area's own corner.
     camera.panBy(9000, 0, wide);
-    expect(center(camera, wide).x).toBeCloseTo(wide.viewportWidth - SAFE_AREA.right, 6);
+    const stopped = center(camera, wide).x;
+    expect(Number.isFinite(stopped)).toBe(true);
+    const box = boardBox(camera, wide);
+    expect(boardSafeBox(wide).centerX).toBeCloseTo(box.left, 6);
+    camera.panBy(9000, 0, wide);
+    expect(center(camera, wide).x).toBeCloseTo(stopped, 6);
+  });
+
+  it("ends on a close-up of a character: one square, and a standee about that tall", () => {
+    // Why the close-up is one square. A standee is authored a little under a cell diamond
+    // wide, so once a single diamond fills the frame the body spans about the whole of it
+    // — which is the framing "zoom in on this character" actually means. The ratio below
+    // is the part that is fixed; how much of the *screen height* that comes to depends on
+    // the window's shape, not on its size and not on the map.
+    const config = DEFAULT_BOARD_VIEW_CONFIG;
+    const standeeHeight = 152; // the shipped actors run 132..164 against a 128px cell
+    for (const [columns, rows] of [[3, 3], [9, 7], [12, 12]] as const) {
+      const board = frame(columns, rows);
+      const diamond = project(zoomedIn(board), board).getCellDiamondWidth();
+      // One square fills the safe area's binding axis, whatever the map.
+      expect(diamond).toBeCloseTo(boardSafeBox(board).width * config.boardFitMargin, 6);
+      const scale = diamond / cellDiamondWidth(config);
+      const onScreen = standeeHeight * scale * config.boardTextureCellSize / config.referenceCellWidth;
+      expect(onScreen / diamond).toBeCloseTo(standeeHeight / cellDiamondWidth(config), 6);
+      expect(onScreen).toBeGreaterThan(boardSafeBox(board).height * 0.8);
+    }
   });
 
   it("counts the zoom range in squares, not pixels", () => {
@@ -165,7 +244,8 @@ describe("BattleCamera", () => {
     // the close-up always fit on the same axis and the ratio between them is exactly the
     // ratio of their sizes in squares. That is why the range does not move with the window.
     const cells = DEFAULT_BOARD_VIEW_CONFIG.closeUpCells;
-    for (const [columns, rows] of [[9, 7], [7, 4], [3, 9], [12, 12]] as const) {
+    for (const [columns, rows] of [[9, 7], [7, 4], [3, 9], [12, 12], [3, 3]] as const) {
+      // One close-up square makes this exactly (columns + rows) / 2.
       const expected = (columns + rows) / (Math.min(columns, cells) + Math.min(rows, cells));
       const zoom = Math.max(expected, DEFAULT_BOARD_VIEW_CONFIG.minZoomHeadroom);
       for (const [viewportWidth, viewportHeight] of [[1024, 768], [1280, 800], [1920, 1080]] as const) {
