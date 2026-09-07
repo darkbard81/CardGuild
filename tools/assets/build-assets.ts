@@ -4,6 +4,13 @@ import path from "node:path";
 import sharp, { type OverlayOptions } from "sharp";
 
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
+import {
+  ACTOR_SIDES,
+  actorPathSegments,
+  assertDistinctActorPaths,
+  runtimeActorHref,
+  type ActorSide,
+} from "../../src/presentation/actor-asset-path";
 import { assertPointPropFramePlan } from "../../src/presentation/point-prop-contract";
 
 type AssetKind = "actor" | "terrain" | "object" | "ui";
@@ -33,7 +40,7 @@ interface Size {
 
 interface FramePlan {
   readonly assetId: string;
-  readonly side?: "front" | "back";
+  readonly side?: ActorSide;
   readonly sourceIndex?: number;
   readonly flipX?: boolean;
   readonly kind: AssetKind;
@@ -179,10 +186,13 @@ function validatePlan(plan: GenerationPlan): void {
     }
     if (source.mode === "two-sided-actor") {
       const sides = source.frames.map((frame) => frame.side);
-      if (JSON.stringify(sides) !== JSON.stringify(["front", "back"])) {
+      if (JSON.stringify(sides) !== JSON.stringify(ACTOR_SIDES)) {
         throw new Error(`${source.input} must contain front then back.`);
       }
       if (!source.definitionId) throw new Error(`${source.input} is missing definitionId.`);
+      // Checked before a single pixel is read, so a malformed or colliding namespace
+      // fails at the plan rather than halfway through an export.
+      actorPathSegments(source.definitionId);
     }
     // The mode a source declares is what decides how it is processed, so it has to be
     // what decides the frame contract too. Without this a prop could be normalized one
@@ -192,6 +202,8 @@ function validatePlan(plan: GenerationPlan): void {
       for (const frame of source.frames) assertPointPropFramePlan(frame);
     }
   }
+  assertDistinctActorPaths(plan.sources.flatMap((source) =>
+    source.mode === "two-sided-actor" && source.definitionId ? [source.definitionId] : []));
   assertSceneryTargets(plan);
 }
 
@@ -339,9 +351,10 @@ async function extractCleanFrames(root: string, source: SourcePlan): Promise<rea
 
 function processedPath(root: string, source: SourcePlan, frame: FramePlan): string {
   if (frame.kind === "actor") {
-    const actorSlug = source.definitionId?.split(".").slice(1).join("-");
-    if (!actorSlug || !frame.side) throw new Error(`${frame.assetId} has incomplete actor metadata.`);
-    return path.join(root, "art", "processed", "actors", actorSlug, `${frame.side}.png`);
+    if (!source.definitionId || !frame.side) throw new Error(`${frame.assetId} has incomplete actor metadata.`);
+    // The same segments the runtime and QC paths use. The runtime export reads this file
+    // back, so a namespace dropped here would ship one character wearing another's art.
+    return path.join(root, "art", "processed", "actors", ...actorPathSegments(source.definitionId), `${frame.side}.png`);
   }
   if (frame.kind === "object") {
     return path.join(root, "art", "processed", "objects", `${frame.assetId.replace(/^object\./, "").replaceAll(".", "-")}.png`);
@@ -350,20 +363,6 @@ function processedPath(root: string, source: SourcePlan, frame: FramePlan): stri
     return path.join(root, "art", "processed", "ui", `${frame.assetId.replace(/^ui\./, "").replaceAll(".", "-")}.png`);
   }
   return path.join(root, "art", "processed", "terrain", `${frame.assetId.replace(/^(terrain|transition)\./, "").replaceAll(".", "-")}.png`);
-}
-
-/**
- * The runtime home of one standee, keyed by the actor's full definition namespace so a
- * `hero.aerin` and a future `enemy.aerin` cannot land on the same file. Actors are the
- * only presentation kind stored this way: everything else is a frame in the shared atlas,
- * so a new character never repacks the tiles.
- */
-function runtimeActorHref(definitionId: string, side: "front" | "back"): string {
-  const segments = definitionId.split(".");
-  if (segments.length < 2 || segments.some((segment) => segment.length === 0)) {
-    throw new Error(`Actor definition "${definitionId}" is not a usable runtime path.`);
-  }
-  return `/${["assets", "actors", ...segments, `${side}.webp`].join("/")}`;
 }
 
 function webPixels(pixels: Buffer): Buffer {
@@ -874,8 +873,11 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
         top: Math.floor(index / source.grid.cols) * source.canvas.height,
       };
     });
-    const actorSlug = source.definitionId?.split(".").slice(1).join("-");
-    if (!actorSlug) throw new Error(`${source.input} is missing an actor slug.`);
+    if (!source.definitionId) throw new Error(`${source.input} is missing an actor definition.`);
+    // Nested by the same segments rather than flattened into one filename: joining
+    // segments with a hyphen would let `hero.aerin-b` and `hero.aerin.b` collide again.
+    const preview = path.join(qcRoot, "actors", ...actorPathSegments(source.definitionId), "front-back.png");
+    await mkdir(path.dirname(preview), { recursive: true });
     await sharp({
       create: {
         width: source.grid.cols * source.canvas.width,
@@ -883,7 +885,7 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
         channels: 4,
         background: { r: 17, g: 24, b: 32, alpha: 1 },
       },
-    }).composite(directionComposites).png({ compressionLevel: 9 }).toFile(path.join(qcRoot, `${actorSlug}-front-back.png`));
+    }).composite(directionComposites).png({ compressionLevel: 9 }).toFile(preview);
   }
 }
 
@@ -894,6 +896,10 @@ async function main(): Promise<void> {
   validatePlan(plan);
   await access(path.join(root, plan.styleSheet));
   await access(path.join(root, plan.promptConvention));
+  // Both generated actor trees are cleared first, so a renamed or retired character
+  // cannot leave a file behind that nothing in the manifest names any more.
+  await rm(path.join(root, "art", "processed", "actors"), { recursive: true, force: true });
+  await rm(path.join(root, "art", "processed", "qc", "actors"), { recursive: true, force: true });
   const groups = await Promise.all(plan.sources.map((source) => processSource(root, source)));
   const assets = groups.flat();
   // Processing is shared; delivery is not. Everything that is not an actor is packed into

@@ -3,6 +3,12 @@ import path from "node:path";
 
 import sharp from "sharp";
 
+import {
+  ACTOR_SIDES,
+  actorPathSegments,
+  assertDistinctActorPaths,
+  runtimeActorHref,
+} from "../../src/presentation/actor-asset-path";
 import { assertPointPropContract } from "../../src/presentation/point-prop-contract";
 import {
   assertRequiredTileVisuals,
@@ -317,11 +323,24 @@ async function main(): Promise<void> {
   // of the terrain path fails loudly instead of leaving a square with nothing to draw.
   assertRequiredTileVisuals(manifest.terrainVisuals, tileVisuals);
 
+  // An actor's identity has to survive every generated destination, not just the final
+  // URL. Two definitions sharing a path would make the runtime export read one
+  // character's processed PNG and ship it under the other's name.
+  assertDistinctActorPaths(Object.keys(manifest.actorVisuals));
   for (const [definitionId, visual] of Object.entries(manifest.actorVisuals)) {
-    for (const side of ["front", "back"]) {
+    const segments = actorPathSegments(definitionId).join("/");
+    for (const side of ACTOR_SIDES) {
       const id = visual[side];
-      if (!id || manifest.assets[id]?.kind !== "actor") {
+      const asset = id === undefined ? undefined : manifest.assets[id];
+      if (!id || asset?.kind !== "actor") {
         throw new Error(`Actor visual "${definitionId}" is missing a valid ${side} asset.`);
+      }
+      if (asset.source.type !== "image" || asset.source.path !== runtimeActorHref(definitionId, side)) {
+        throw new Error(`Actor "${id}" is not served from the path "${definitionId}" derives.`);
+      }
+      const processed = sources[id];
+      if (processed !== `art/processed/actors/${segments}/${side}.png`) {
+        throw new Error(`Actor "${id}" is not normalized under the namespace "${definitionId}" derives.`);
       }
     }
   }

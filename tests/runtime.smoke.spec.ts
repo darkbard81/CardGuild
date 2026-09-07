@@ -1,5 +1,9 @@
 import { expect, type Page, test } from "@playwright/test";
 
+// The same pattern the asset build generates actor paths from, so a request-shape
+// assertion here cannot describe a narrower contract than production supports.
+import { ACTOR_RUNTIME_HREF } from "../src/presentation/actor-asset-path";
+
 /** Mirrors `FOCUS_MARGIN` in src/pixi/battle/BattleView.ts: the gap the camera aims for. */
 const FOCUS_MARGIN = 48;
 
@@ -193,7 +197,6 @@ async function winRoadAmbush(page: Page): Promise<void> {
 }
 
 const ATLAS_PATH = "/assets/m3-atlas.webp";
-const ACTOR_IMAGE = /^\/assets\/actors\/[a-z0-9-]+\/[a-z0-9-]+\/(front|back)\.webp$/;
 
 /**
  * Presentation art now comes out of two stores: one atlas for tiles, props and UI, and a
@@ -205,7 +208,7 @@ function expectMixedAssetRequests(urls: readonly string[]): void {
   expect(paths).toContain(ATLAS_PATH);
   const standalone = paths.filter((pathname) => pathname !== ATLAS_PATH);
   expect(standalone.length).toBeGreaterThan(0);
-  for (const pathname of standalone) expect(pathname).toMatch(ACTOR_IMAGE);
+  for (const pathname of standalone) expect(pathname).toMatch(ACTOR_RUNTIME_HREF);
 }
 
 test("shows the Adventure shell reusing the lobby art, from the atlas and the standalone actors only", async ({ page }, testInfo) => {

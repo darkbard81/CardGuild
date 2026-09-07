@@ -1,3 +1,11 @@
+export {
+  ACTOR_RUNTIME_HREF,
+  ACTOR_SIDES,
+  actorPathSegments,
+  assertDistinctActorPaths,
+  runtimeActorHref,
+} from "./actor-asset-path";
+export type { ActorSide } from "./actor-asset-path";
 export { AssetCatalog, createPresentationCatalog, loadPresentationPack } from "./asset-catalog";
 export { facingStandee, groundSemantic } from "./presentation-types";
 export {

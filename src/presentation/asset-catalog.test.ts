@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import atlasMapJson from "../../presentation/m3/atlas-map.json";
+import { ACTOR_RUNTIME_HREF, ACTOR_SIDES, runtimeActorHref } from "./actor-asset-path";
 import { createPresentationCatalog } from "./asset-catalog";
 import { facingStandee } from "./presentation-types";
 import type { PresentationAtlasMap } from "./presentation-types";
@@ -26,10 +27,20 @@ describe("presentation asset storage", () => {
       const source = catalog.asset(id).source;
       expect(source.type).toBe("image");
       if (source.type !== "image") return;
-      // The full definition namespace is in the path, so hero.aerin and a future
-      // enemy.aerin cannot land on the same file.
-      expect(source.path).toMatch(/^\/assets\/actors\/[a-z0-9-]+\/[a-z0-9-]+\/(front|back)\.webp$/);
+      expect(source.path).toMatch(ACTOR_RUNTIME_HREF);
       expect({ width: source.width, height: source.height }).toEqual({ width: 256, height: 384 });
+    }
+  });
+
+  it("builds every actor path with the shared generator, namespace and all", () => {
+    // Asserting against runtimeActorHref rather than a second regex is what keeps the
+    // manifest and the path contract from drifting into two different rules.
+    for (const [definitionId, visual] of Object.entries(catalog.manifest.actorVisuals)) {
+      for (const side of ACTOR_SIDES) {
+        const source = catalog.asset(visual[side]).source;
+        if (source.type !== "image") throw new Error(`${definitionId} ${side} should be standalone.`);
+        expect(source.path).toBe(runtimeActorHref(definitionId, side));
+      }
     }
   });
 
@@ -60,7 +71,9 @@ describe("actor visuals across the split", () => {
     }
   });
 
-  it("resolves north to the back drawing and the other cardinals to the front", () => {
+  it("pairs the two drawings across four facings: north and west back, east and south front", () => {
+    // Two drawings cover four directions because the second of each pair is the first
+    // mirrored — west is the back drawing flipped, south the front drawing flipped.
     const visual = catalog.actorVisual("hero.aerin");
     expect(facingStandee(visual, "north")).toEqual({ assetId: visual.back, flipX: false });
     expect(facingStandee(visual, "west")).toEqual({ assetId: visual.back, flipX: true });
@@ -85,8 +98,10 @@ describe("DOM styles read whichever store an asset lives in", () => {
 
   it("keeps a standee's own proportions when sized by height", () => {
     const visual = catalog.actorVisual("hero.aerin");
-    // 256x384 art at 132px tall is 88px wide: the frame is the whole file, so nothing
-    // has to be offset out of a sheet first.
+    // The standalone file keeps the same normalized 256x384 canvas the atlas frame had,
+    // so the display geometry is unchanged by the move: 132px tall is 88px wide. The CSS
+    // itself is not — the URL and the offsets into it are necessarily different now, and
+    // that is what these assertions pin down.
     const style = catalog.domStandeeStyle(visual.front, 132);
     expect(style).toMatchObject({
       backgroundPosition: "0px 0px",

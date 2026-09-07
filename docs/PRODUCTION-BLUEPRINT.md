@@ -81,6 +81,8 @@ AUTHORED ART
 
 GENERATED — 직접 수정 금지
   art/processed/**                 정규화 프레임, QC, pipeline-meta.json
+  art/processed/actors/<namespace>/<name>/{front,back}.png       정규화 standee
+  art/processed/qc/actors/<namespace>/<name>/front-back.png      QC 미리보기
   presentation/m3/asset-manifest.json  asset-sources.json  tilemaps.json
   public/assets/m3-atlas.webp  public/assets/m3-atlas.json   ← terrain / object / UI
   public/assets/actors/<namespace>/<name>/{front,back}.webp  ← actor standee (파일 1장씩)
@@ -841,8 +843,8 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 
 | 층 | 무엇을 강제하는가 | 소유자 |
 |---|---|---|
-| **plan 검증** (`assets:build` 시작 시) | plan version 3, 배경 `transparent`, atlas 크기 2의 거듭제곱·padding 1–2, `frames.length == rows × cols`, assetId 유일, anchor `0..1`, **`two-sided-actor`의 side 순서가 정확히 `front → back`**, `definitionId` 존재, **모든 prompt가 `art/STYLE.md`를 참조** | `validatePlan()` in `tools/assets/build-assets.ts` |
-| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain 256×256 정사각·footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **manifest = atlas frame(non-actor) + standalone actor 파티션(§11.5)**, runtime actor WebP가 읽히고 알파·256×384 유지, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조(전부 atlas frame), **tile visual 계약(§11.4)과 gate state pair 존재** | `tools/assets/check-assets.ts` |
+| **plan 검증** (`assets:build` 시작 시) | plan version 3, 배경 `transparent`, atlas 크기 2의 거듭제곱·padding 1–2, `frames.length == rows × cols`, assetId 유일, anchor `0..1`, **`two-sided-actor`의 side 순서가 정확히 `front → back`**, `definitionId` 존재·**경로로 쓸 수 있는 2+ segment·서로 충돌 없음(§11.5)**, **모든 prompt가 `art/STYLE.md`를 참조** | `validatePlan()` in `tools/assets/build-assets.ts` |
+| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain 256×256 정사각·footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **manifest = atlas frame(non-actor) + standalone actor 파티션(§11.5)**, runtime actor WebP가 읽히고 알파·256×384 유지, **actor의 processed·runtime 경로가 definitionId에서 파생된 것과 일치**, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조(전부 atlas frame), **tile visual 계약(§11.4)과 gate state pair 존재** | `tools/assets/check-assets.ts` |
 | **convention** (기계가 잡지 않음) | prop·actor anchor `(0.5, 1)`(발밑 접점), UI·terrain anchor `(0.5, 0.5)`, 좌우 동일 feet line·동일 정체성, 투영·팔레트·조명 기준 | `art/STYLE.md` |
 
 마지막 층이 위험합니다 — actor anchor를 `(0.5, 0.4)`로 적으면 범위 검사(0..1)는 통과하고
@@ -906,8 +908,28 @@ kind === "actor"  → standalone runtime image (public/assets/actors/**)
 그 외             → atlas frame (public/assets/m3-atlas.webp)
 ```
 
-경로는 actor definition의 **namespace 전체**로 만듭니다 (`hero.aerin` →
-`/assets/actors/hero/aerin/front.webp`), 그래야 `hero.*`와 `enemy.*`가 충돌하지 않습니다.
+경로는 actor definition의 **namespace 전체**로 만듭니다. dotted segment 하나가 디렉터리
+하나가 되고, segment는 2개 이상이어야 합니다.
+
+```text
+hero.aerin              → hero/aerin
+enemy.goblin-skirmisher → enemy/goblin-skirmisher
+enemy.goblin.elite      → enemy/goblin/elite
+```
+
+이 규칙은 `src/presentation/actor-asset-path.ts` **한 곳**이 소유하고, 생성되는 세 목적지가
+전부 같은 helper를 씁니다.
+
+```text
+art/processed/actors/hero/aerin/front.png        정규화 PNG (source of truth)
+art/processed/qc/actors/hero/aerin/front-back.png QC
+public/assets/actors/hero/aerin/front.webp        runtime
+```
+
+**세 곳 모두에서 namespace가 유지되어야 합니다.** runtime export는 정규화 PNG를 다시 읽으므로,
+processed 단계에서 `hero.aerin`과 `enemy.aerin`이 같은 파일로 뭉개지면 runtime 경로가 아무리
+정확해도 한 캐릭터가 다른 캐릭터의 그림을 입고 나갑니다. `validatePlan()`과 `assets:check`가
+경로 충돌을 각각 막고, unit test가 manifest 경로를 production generator와 대조합니다.
 
 `actorVisuals`는 계속 **논리 ID**를 담습니다. URL을 담지 않습니다 — 그래야 저장 방식이
 `ActorRenderer`, facing 로직, gameplay state, content 정의로 새지 않습니다.
