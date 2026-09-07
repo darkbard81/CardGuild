@@ -9,8 +9,8 @@ import {
 import type { PresentationAssetDefinition } from "./presentation-types";
 
 const LEVER: PresentationAssetDefinition = {
-  frame: "object.lever",
   kind: "object",
+  source: { type: "atlas", frame: "object.lever" },
   anchor: { x: 0.5, y: 1 },
   displayHeight: 88,
 };

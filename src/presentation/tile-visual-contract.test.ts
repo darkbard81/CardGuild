@@ -9,8 +9,8 @@ import type { PresentationAssetDefinition } from "./presentation-types";
 
 const CANVAS = { width: TILE_SOURCE_SIZE, height: TILE_SOURCE_SIZE };
 const GATE: PresentationAssetDefinition = {
-  frame: "terrain.gate.closed",
   kind: "terrain",
+  source: { type: "atlas", frame: "terrain.gate.closed" },
   anchor: { x: 0.5, y: 0.5 },
   displayWidth: 128,
   displayHeight: 128,

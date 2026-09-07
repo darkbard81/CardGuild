@@ -8,9 +8,20 @@ export interface AssetPoint {
   readonly y: number;
 }
 
+/**
+ * Where an asset's pixels physically live. Logical asset identity is deliberately
+ * independent of this: a caller asks for `actor.hero.aerin.front` and never learns
+ * whether that came out of the shared atlas or its own file. Only the pipeline and the
+ * loader read it, so adding a standee cannot force the tile/object atlas to be repacked.
+ */
+export type PresentationAssetSource =
+  | { readonly type: "atlas"; readonly frame: string }
+  /** Width and height are the file's own, so DOM backgrounds can place it without loading it. */
+  | { readonly type: "image"; readonly path: string; readonly width: number; readonly height: number };
+
 export interface PresentationAssetDefinition {
-  readonly frame: string;
   readonly kind: PresentationAssetKind;
+  readonly source: PresentationAssetSource;
   readonly anchor: AssetPoint;
   readonly displayWidth?: number;
   readonly displayHeight?: number;
@@ -34,7 +45,7 @@ export interface ActorVisualDefinition {
 }
 
 export interface PresentationAssetManifest {
-  readonly version: 4;
+  readonly version: 5;
   readonly bundle: string;
   readonly atlas: {
     readonly path: string;
@@ -76,7 +87,7 @@ export interface PresentationAtlasMap {
   readonly meta: { readonly size: { readonly w: number; readonly h: number } };
 }
 
-export interface DomAtlasStyle {
+export interface DomAssetStyle {
   readonly backgroundImage: string;
   readonly backgroundPosition: string;
   readonly backgroundSize: string;
@@ -85,7 +96,7 @@ export interface DomAtlasStyle {
 }
 
 /** The same frame expressed in percentages, so it scales with whatever element holds it. */
-export interface DomAtlasFillStyle {
+export interface DomFillStyle {
   readonly backgroundImage: string;
   readonly backgroundPosition: string;
   readonly backgroundSize: string;

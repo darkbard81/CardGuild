@@ -5,8 +5,8 @@ import manifestJson from "../../presentation/m3/asset-manifest.json";
 import tilemapsJson from "../../presentation/m3/tilemaps.json";
 import type {
   ActorVisualDefinition,
-  DomAtlasFillStyle,
-  DomAtlasStyle,
+  DomAssetStyle,
+  DomFillStyle,
   PresentationAssetDefinition,
   PresentationAssetId,
   PresentationAssetManifest,
@@ -23,6 +23,22 @@ import { validatePresentationTilemaps } from "./tilemap";
  */
 const PORTRAIT_INK_FRACTION = 0.3;
 
+/**
+ * One asset's pixels as CSS sees them: a picture to point `background-image` at, the size
+ * of that picture, and the box inside it the asset occupies. An atlas frame is a box
+ * inside a big sheet; a standalone actor file is the whole of its own picture. Saying it
+ * this way once is what keeps every DOM helper below from asking where the art is stored.
+ */
+interface DomFrame {
+  readonly imagePath: string;
+  readonly imageWidth: number;
+  readonly imageHeight: number;
+  readonly x: number;
+  readonly y: number;
+  readonly w: number;
+  readonly h: number;
+}
+
 export class AssetCatalog {
   private readonly textures = new Map<PresentationAssetId, Texture>();
   private initialized = false;
@@ -35,25 +51,39 @@ export class AssetCatalog {
     validatePresentationTilemaps(tilemaps, manifest);
   }
 
+  /**
+   * The atlas and every standalone actor image, loaded as one bundle so a single unload
+   * still takes the whole encounter's art with it. Actors are loaded eagerly: the party
+   * and its enemies are picked before the board exists, so nothing here is per-encounter
+   * yet, and a lazy path would buy latency at the cost of a lifecycle nobody needs.
+   */
   public async loadEncounterBundle(): Promise<void> {
     if (this.initialized) return;
     const atlasAlias = `${this.manifest.bundle}.atlas`;
+    const imageAssets = Object.entries(this.manifest.assets).flatMap(([id, asset]) =>
+      asset.source.type === "image" ? [{ alias: id, src: asset.source.path }] : []);
     await Assets.init({
       manifest: {
         bundles: [
           {
             name: this.manifest.bundle,
-            assets: [{ alias: atlasAlias, src: this.manifest.atlas.path }],
+            assets: [{ alias: atlasAlias, src: this.manifest.atlas.path }, ...imageAssets],
           },
         ],
       },
     });
-    const loaded = await Assets.loadBundle(this.manifest.bundle) as Record<string, Spritesheet>;
-    const sheet = loaded[atlasAlias];
+    const loaded = await Assets.loadBundle(this.manifest.bundle) as Record<string, unknown>;
+    const sheet = loaded[atlasAlias] as Spritesheet | undefined;
     if (!sheet) throw new Error(`Presentation atlas "${atlasAlias}" did not load.`);
     for (const [id, asset] of Object.entries(this.manifest.assets)) {
-      const texture = sheet.textures[asset.frame];
-      if (!texture) throw new Error(`Presentation frame "${asset.frame}" is missing from the atlas.`);
+      if (asset.source.type === "atlas") {
+        const texture = sheet.textures[asset.source.frame];
+        if (!texture) throw new Error(`Presentation frame "${asset.source.frame}" is missing from the atlas.`);
+        this.textures.set(id, texture);
+        continue;
+      }
+      const texture = loaded[id] as Texture | undefined;
+      if (!texture) throw new Error(`Presentation image "${asset.source.path}" did not load.`);
       this.textures.set(id, texture);
     }
     this.initialized = true;
@@ -91,16 +121,42 @@ export class AssetCatalog {
     return this.manifest.cardVisuals[cardDefinitionId] ?? null;
   }
 
-  public domAtlasStyle(id: PresentationAssetId, size: number): DomAtlasStyle {
-    const frame = this.atlasMap.frames[id]?.frame;
-    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
-    if (!Number.isFinite(size) || size <= 0) throw new Error("DOM atlas size must be positive.");
+  private domFrame(id: PresentationAssetId): DomFrame {
+    const source = this.asset(id).source;
+    if (source.type === "image") {
+      return {
+        imagePath: source.path,
+        imageWidth: source.width,
+        imageHeight: source.height,
+        x: 0,
+        y: 0,
+        w: source.width,
+        h: source.height,
+      };
+    }
+    const frame = this.atlasMap.frames[source.frame]?.frame;
+    if (!frame) throw new Error(`Presentation atlas frame "${source.frame}" is not registered.`);
+    return {
+      imagePath: this.manifest.atlas.imagePath,
+      imageWidth: this.manifest.atlas.width,
+      imageHeight: this.manifest.atlas.height,
+      x: frame.x,
+      y: frame.y,
+      w: frame.w,
+      h: frame.h,
+    };
+  }
+
+  /** One asset drawn into a square of the given side, whatever it is stored in. */
+  public domAssetStyle(id: PresentationAssetId, size: number): DomAssetStyle {
+    if (!Number.isFinite(size) || size <= 0) throw new Error("DOM asset size must be positive.");
+    const frame = this.domFrame(id);
     const scaleX = size / frame.w;
     const scaleY = size / frame.h;
     return {
-      backgroundImage: `url("${this.manifest.atlas.imagePath}")`,
+      backgroundImage: `url("${frame.imagePath}")`,
       backgroundPosition: `${-frame.x * scaleX}px ${-frame.y * scaleY}px`,
-      backgroundSize: `${this.manifest.atlas.width * scaleX}px ${this.manifest.atlas.height * scaleY}px`,
+      backgroundSize: `${frame.imageWidth * scaleX}px ${frame.imageHeight * scaleY}px`,
       width: `${size}px`,
       height: `${size}px`,
     };
@@ -111,53 +167,51 @@ export class AssetCatalog {
    * and the front of anything that does not. Framed from the measured ink box, so a
    * creature whose art leaves the top of its canvas empty is not shown as an empty box.
    */
-  public domPortraitStyle(id: PresentationAssetId, size: number): DomAtlasStyle {
-    const frame = this.atlasMap.frames[id]?.frame;
-    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
+  public domPortraitStyle(id: PresentationAssetId, size: number): DomAssetStyle {
     if (!Number.isFinite(size) || size <= 0) throw new Error("DOM portrait size must be positive.");
+    const frame = this.domFrame(id);
     const ink = this.asset(id).ink;
     const side = Math.min(frame.w, ink ? frame.h * ink.height * PORTRAIT_INK_FRACTION : frame.h);
     const top = ink ? frame.h * ink.top : 0;
     const centerX = ink ? frame.w * (ink.left + ink.width / 2) : frame.w / 2;
     const scale = size / side;
     return {
-      backgroundImage: `url("${this.manifest.atlas.imagePath}")`,
+      backgroundImage: `url("${frame.imagePath}")`,
       backgroundPosition:
         `${-(frame.x + centerX - side / 2) * scale}px ${-(frame.y + top) * scale}px`,
-      backgroundSize: `${this.manifest.atlas.width * scale}px ${this.manifest.atlas.height * scale}px`,
+      backgroundSize: `${frame.imageWidth * scale}px ${frame.imageHeight * scale}px`,
       width: `${size}px`,
       height: `${size}px`,
     };
   }
 
   /**
-   * One atlas frame as a background that scales with its element, so a card can hand its
+   * One asset as a background that scales with its element, so a card can hand its
    * picture whatever room it has instead of the picture fixing the room. The frame is
-   * placed by percentage, which is what makes a sprite sheet resize cleanly.
+   * placed by percentage, which is what makes a sprite sheet resize cleanly; a standalone
+   * image is its own whole picture, so the same arithmetic lands on `0% 0% / 100% 100%`.
    */
-  public domAtlasFillStyle(id: PresentationAssetId): DomAtlasFillStyle {
-    const frame = this.atlasMap.frames[id]?.frame;
-    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
-    const atlas = this.manifest.atlas;
-    const spanX = atlas.width - frame.w;
-    const spanY = atlas.height - frame.h;
+  public domFillStyle(id: PresentationAssetId): DomFillStyle {
+    const frame = this.domFrame(id);
+    const spanX = frame.imageWidth - frame.w;
+    const spanY = frame.imageHeight - frame.h;
     return {
-      backgroundImage: `url("${atlas.imagePath}")`,
+      backgroundImage: `url("${frame.imagePath}")`,
       backgroundPosition:
         `${spanX <= 0 ? 0 : (frame.x / spanX) * 100}% ${spanY <= 0 ? 0 : (frame.y / spanY) * 100}%`,
-      backgroundSize: `${(atlas.width / frame.w) * 100}% ${(atlas.height / frame.h) * 100}%`,
+      backgroundSize: `${(frame.imageWidth / frame.w) * 100}% ${(frame.imageHeight / frame.h) * 100}%`,
     };
   }
 
-  public domAtlasPortraitStyle(id: PresentationAssetId, height: number): DomAtlasStyle {
-    const frame = this.atlasMap.frames[id]?.frame;
-    if (!frame) throw new Error(`Presentation atlas frame "${id}" is not registered.`);
-    if (!Number.isFinite(height) || height <= 0) throw new Error("DOM atlas height must be positive.");
+  /** A whole standee at a given height, keeping the drawing's own proportions. */
+  public domStandeeStyle(id: PresentationAssetId, height: number): DomAssetStyle {
+    if (!Number.isFinite(height) || height <= 0) throw new Error("DOM standee height must be positive.");
+    const frame = this.domFrame(id);
     const scale = height / frame.h;
     return {
-      backgroundImage: `url("${this.manifest.atlas.imagePath}")`,
+      backgroundImage: `url("${frame.imagePath}")`,
       backgroundPosition: `${-frame.x * scale}px ${-frame.y * scale}px`,
-      backgroundSize: `${this.manifest.atlas.width * scale}px ${this.manifest.atlas.height * scale}px`,
+      backgroundSize: `${frame.imageWidth * scale}px ${frame.imageHeight * scale}px`,
       width: `${frame.w * scale}px`,
       height: `${height}px`,
     };

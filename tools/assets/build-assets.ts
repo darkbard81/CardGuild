@@ -1,4 +1,4 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import sharp, { type OverlayOptions } from "sharp";
@@ -352,6 +352,20 @@ function processedPath(root: string, source: SourcePlan, frame: FramePlan): stri
   return path.join(root, "art", "processed", "terrain", `${frame.assetId.replace(/^(terrain|transition)\./, "").replaceAll(".", "-")}.png`);
 }
 
+/**
+ * The runtime home of one standee, keyed by the actor's full definition namespace so a
+ * `hero.aerin` and a future `enemy.aerin` cannot land on the same file. Actors are the
+ * only presentation kind stored this way: everything else is a frame in the shared atlas,
+ * so a new character never repacks the tiles.
+ */
+function runtimeActorHref(definitionId: string, side: "front" | "back"): string {
+  const segments = definitionId.split(".");
+  if (segments.length < 2 || segments.some((segment) => segment.length === 0)) {
+    throw new Error(`Actor definition "${definitionId}" is not a usable runtime path.`);
+  }
+  return `/${["assets", "actors", ...segments, `${side}.webp`].join("/")}`;
+}
+
 function webPixels(pixels: Buffer): Buffer {
   const result = Buffer.alloc(pixels.length);
   for (let offset = 0; offset < pixels.length; offset += 4) {
@@ -440,6 +454,43 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
   return outputs;
 }
 
+interface RuntimeImage {
+  readonly path: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Standalone runtime files for the actors, exported from the same normalized PNGs the
+ * atlas path packs. The directory is cleared first so a renamed or retired character
+ * cannot leave a file behind that the manifest no longer names.
+ */
+async function buildActorImages(
+  root: string,
+  assets: readonly ProcessedAsset[],
+): Promise<ReadonlyMap<string, RuntimeImage>> {
+  const actorRoot = path.join(root, "public", "assets", "actors");
+  await rm(actorRoot, { recursive: true, force: true });
+  const exported = new Map<string, RuntimeImage>();
+  for (const asset of assets) {
+    const definitionId = asset.source.definitionId;
+    if (!definitionId || !asset.frame.side) {
+      throw new Error(`${asset.frame.assetId} has incomplete actor metadata.`);
+    }
+    const href = runtimeActorHref(definitionId, asset.frame.side);
+    const output = path.join(root, "public", href.slice(1));
+    await mkdir(path.dirname(output), { recursive: true });
+    await sharp(asset.file).webp({ lossless: true, effort: 6 }).toFile(output);
+    const metadata = await sharp(output).metadata();
+    if (metadata.width !== asset.width || metadata.height !== asset.height) {
+      throw new Error(`${asset.frame.assetId} changed size on its way to ${href}.`);
+    }
+    exported.set(asset.frame.assetId, { path: href, width: asset.width, height: asset.height });
+    process.stdout.write(`Exported ${asset.frame.assetId} -> public${href}\n`);
+  }
+  return exported;
+}
+
 function packFrames(assets: readonly ProcessedAsset[], size: number, padding: number): Readonly<Record<string, PixelBox>> {
   const sorted = [...assets].sort((left, right) => right.height - left.height || right.width - left.width || left.frame.assetId.localeCompare(right.frame.assetId));
   const frames: Record<string, PixelBox> = {};
@@ -460,7 +511,11 @@ function packFrames(assets: readonly ProcessedAsset[], size: number, padding: nu
   return frames;
 }
 
+/** Tiles, props and UI only: an actor never reaches the shared atlas. */
 async function buildAtlas(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
+  if (assets.some((asset) => asset.frame.kind === "actor")) {
+    throw new Error("Actors are standalone runtime images and must not be packed into the atlas.");
+  }
   const packed = packFrames(assets, plan.atlas.size, plan.atlas.padding);
   const byId = new Map(assets.map((asset) => [asset.frame.assetId, asset]));
   const atlasImagePath = path.join(root, plan.atlas.image);
@@ -509,7 +564,7 @@ async function buildAtlas(root: string, plan: GenerationPlan, assets: readonly P
   };
   await writeJson(atlasDataPath, atlasData);
   await writeJson(path.join(root, "presentation", "m3", "atlas-map.json"), atlasData);
-  process.stdout.write(`Packed ${assets.length} sprites -> ${path.relative(root, atlasImagePath)}\n`);
+  process.stdout.write(`Packed ${assets.length} non-actor sprites -> ${path.relative(root, atlasImagePath)}\n`);
 }
 
 /**
@@ -548,14 +603,29 @@ async function measureInk(file: string): Promise<{
   };
 }
 
-async function buildManifest(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
+async function buildManifest(
+  root: string,
+  plan: GenerationPlan,
+  assets: readonly ProcessedAsset[],
+  runtimeImages: ReadonlyMap<string, RuntimeImage>,
+): Promise<void> {
   // Only actors get portraits, and scanning every frame's pixels would cost the build.
   const ink = new Map(await Promise.all(assets
     .filter((asset) => asset.frame.kind === "actor")
     .map(async (asset) => [asset.frame.assetId, await measureInk(asset.file)] as const)));
+  // Storage follows the asset kind and nothing else. Prompt wording is no guide: a wall
+  // and a lever are described as standees too, and they stay in the atlas.
+  const storage = (asset: ProcessedAsset): Record<string, unknown> => {
+    if (asset.frame.kind !== "actor") {
+      return { source: { type: "atlas", frame: asset.frame.assetId } };
+    }
+    const image = runtimeImages.get(asset.frame.assetId);
+    if (!image) throw new Error(`Actor "${asset.frame.assetId}" has no standalone runtime image.`);
+    return { source: { type: "image", path: image.path, width: image.width, height: image.height } };
+  };
   const definitions = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
-    frame: asset.frame.assetId,
     kind: asset.frame.kind,
+    ...storage(asset),
     anchor: asset.frame.anchor,
     ...(asset.frame.displaySize.width === undefined ? {} : { displayWidth: asset.frame.displaySize.width }),
     ...(asset.frame.displaySize.height === undefined ? {} : { displayHeight: asset.frame.displaySize.height }),
@@ -571,7 +641,7 @@ async function buildManifest(root: string, plan: GenerationPlan, assets: readonl
     }));
   }
   const manifest = {
-    version: 4,
+    version: 5,
     bundle: "m3-encounter",
     atlas: {
       path: "/assets/m3-atlas.json",
@@ -675,7 +745,14 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
   process.stdout.write(`Built ${Object.keys(maps).length} layered tilemaps\n`);
 }
 
-async function writePipelineMetadata(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
+async function writePipelineMetadata(
+  root: string,
+  plan: GenerationPlan,
+  assets: readonly ProcessedAsset[],
+  runtimeImages: ReadonlyMap<string, RuntimeImage>,
+): Promise<void> {
+  // Both stores named the way the browser asks for them, so one field can be compared.
+  const atlasHref = `/${path.relative(path.join(root, "public"), path.join(root, plan.atlas.image)).split(path.sep).join("/")}`;
   const metadata = {
     version: 3,
     styleSheet: plan.styleSheet,
@@ -685,9 +762,16 @@ async function writePipelineMetadata(root: string, plan: GenerationPlan, assets:
       outputAlpha: "straight",
     },
     atlas: { size: plan.atlas.size, padding: plan.atlas.padding },
+    /** Which of the two runtime stores each asset ended up in, so QC can see the split. */
+    runtimeStorage: {
+      atlas: assets.filter((asset) => asset.frame.kind !== "actor").length,
+      image: runtimeImages.size,
+    },
+    atlasImage: atlasHref,
     assets: Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
       source: asset.source.input,
       output: path.relative(root, asset.file),
+      runtime: runtimeImages.get(asset.frame.assetId)?.path ?? atlasHref,
       sourceBox: asset.sourceBox,
       sourceIndex: asset.frame.sourceIndex ?? asset.source.frames.indexOf(asset.frame),
       flipX: asset.frame.flipX ?? false,
@@ -812,12 +896,20 @@ async function main(): Promise<void> {
   await access(path.join(root, plan.promptConvention));
   const groups = await Promise.all(plan.sources.map((source) => processSource(root, source)));
   const assets = groups.flat();
-  await buildAtlas(root, plan, assets);
-  await buildManifest(root, plan, assets);
+  // Processing is shared; delivery is not. Everything that is not an actor is packed into
+  // the one atlas, and every actor gets a file of its own.
+  const actors = assets.filter((asset) => asset.frame.kind === "actor");
+  const atlasAssets = assets.filter((asset) => asset.frame.kind !== "actor");
+  await buildAtlas(root, plan, atlasAssets);
+  const runtimeImages = await buildActorImages(root, actors);
+  await buildManifest(root, plan, assets, runtimeImages);
   await buildTilemaps(root, plan);
-  await writePipelineMetadata(root, plan, assets);
+  await writePipelineMetadata(root, plan, assets, runtimeImages);
   await buildQcPreviews(root, assets);
-  process.stdout.write(`Assets built: ${assets.length} frames from ${plan.sources.length} generated sources\n`);
+  process.stdout.write(
+    `Assets built: ${assets.length} frames from ${plan.sources.length} generated sources ` +
+    `(${atlasAssets.length} atlas, ${runtimeImages.size} standalone actors)\n`,
+  );
 }
 
 await main();

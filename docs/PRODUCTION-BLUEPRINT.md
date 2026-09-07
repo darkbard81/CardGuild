@@ -82,9 +82,15 @@ AUTHORED ART
 GENERATED — 직접 수정 금지
   art/processed/**                 정규화 프레임, QC, pipeline-meta.json
   presentation/m3/asset-manifest.json  asset-sources.json  tilemaps.json
-  public/assets/m3-atlas.webp  public/assets/m3-atlas.json
+  public/assets/m3-atlas.webp  public/assets/m3-atlas.json   ← terrain / object / UI
+  public/assets/actors/<namespace>/<name>/{front,back}.webp  ← actor standee (파일 1장씩)
   dist/  dist-server/
 ```
+
+> **presentation asset은 두 곳에 저장됩니다 (§11.5).** `kind: "actor"`는 자기 파일 하나,
+> 나머지(terrain / object / ui)는 공유 atlas frame입니다. 논리 asset ID
+> (`actor.hero.aerin.front`, `object.wall`, `terrain.stone-floor`)는 저장 위치와 무관하게
+> 그대로이고, 상위 계층은 언제나 물리 경로가 아니라 이 ID를 참조합니다.
 
 > **`presentation/m3` / `m3-atlas`는 legacy 이름이지만 현재 M7이 실제로 쓰는 산출물입니다.**
 > M3 fixture 자산이 아닙니다. 이름 때문에 "옛날 것"이라 판단하고 지우거나 무시하면 런타임이
@@ -836,7 +842,7 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 | 층 | 무엇을 강제하는가 | 소유자 |
 |---|---|---|
 | **plan 검증** (`assets:build` 시작 시) | plan version 3, 배경 `transparent`, atlas 크기 2의 거듭제곱·padding 1–2, `frames.length == rows × cols`, assetId 유일, anchor `0..1`, **`two-sided-actor`의 side 순서가 정확히 `front → back`**, `definitionId` 존재, **모든 prompt가 `art/STYLE.md`를 참조** | `validatePlan()` in `tools/assets/build-assets.ts` |
-| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain 256×256 정사각·footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조, **tile visual 계약(§11.4)과 gate state pair 존재** | `tools/assets/check-assets.ts` |
+| **산출물 검증** (`assets:check`) | processed canvas(actor 256×384, UI 256×256, object 폭 256\|384, terrain 256×256 정사각·footprint 128×128), 알파 청결(모서리 배경·마젠타 잔여), manifest와 atlas의 frame·anchor 일치, atlas가 정사각·2의 거듭제곱, **manifest = atlas frame(non-actor) + standalone actor 파티션(§11.5)**, runtime actor WebP가 읽히고 알파·256×384 유지, **Card/Equipment visual이 production 정의와 정확히 일치**, actor visual 양면 존재, tilemap 레이어 길이·팔레트 참조(전부 atlas frame), **tile visual 계약(§11.4)과 gate state pair 존재** | `tools/assets/check-assets.ts` |
 | **convention** (기계가 잡지 않음) | prop·actor anchor `(0.5, 1)`(발밑 접점), UI·terrain anchor `(0.5, 0.5)`, 좌우 동일 feet line·동일 정체성, 투영·팔레트·조명 기준 | `art/STYLE.md` |
 
 마지막 층이 위험합니다 — actor anchor를 `(0.5, 0.4)`로 적으면 범위 검사(0..1)는 통과하고
@@ -859,13 +865,17 @@ reserve Card/Equipment도 아이콘이 있어야 합니다. Actor visual은 prod
 npm run assets        # = assets:build && assets:check
 ```
 
-`assets:build`가 하는 일: source PNG를 프레임으로 자르고 정규화(`art/processed/**`), 4096²
-WebP atlas와 `public/assets/m3-atlas.{webp,json}` 생성, `presentation/m3/asset-manifest.json`
-과 `asset-sources.json` 작성, **production pack의 Scenario에서 `tilemaps.json` 생성**, QC 출력.
+`assets:build`가 하는 일: source PNG를 프레임으로 자르고 정규화(`art/processed/**`) — 여기까지는
+모든 asset이 같은 경로입니다. 그 다음 **runtime 전달만 갈라집니다**: non-actor는 4096² WebP
+atlas와 `public/assets/m3-atlas.{webp,json}`으로 packing되고, actor는
+`public/assets/actors/**`에 standee 한 장당 WebP 파일 하나로 export됩니다. 이어서
+`presentation/m3/asset-manifest.json`과 `asset-sources.json` 작성(§11.5),
+**production pack의 Scenario에서 `tilemaps.json` 생성**, QC 출력.
 
 `assets:check`가 보는 것: atlas가 정사각·2의 거듭제곱인지, frame 기하와 anchor가 manifest와
 atlas에서 일치하는지, 알파가 깨끗한지(모서리 배경·마젠타 잔여), actor 256×384 / UI 256×256
-캔버스, 양면 actor visual, tilemap 레이어 길이와 팔레트 참조, 그리고 §11.2의 정확 일치.
+캔버스, runtime actor 파일이 존재하고 알파를 유지하는지, manifest가 atlas와 standalone actor로
+정확히 나뉘는지, 양면 actor visual, tilemap 레이어 길이와 팔레트 참조, 그리고 §11.2의 정확 일치.
 
 ### 11.4 벽과 문은 terrain 입니다
 
@@ -877,6 +887,49 @@ Board Tile Visual  floor / difficult / chasm / web / wall / gate.closed / gate.o
 Point Prop         lever / chest / crate / barrel
 Actor Standee      character / creature
 ```
+
+### 11.5 asset은 두 곳에 저장되고, ID는 한 곳에 있습니다
+
+manifest(`version: 5`)의 asset은 각자 **어디에 저장되는지**를 스스로 말합니다.
+
+```ts
+type PresentationAssetSource =
+  | { type: "atlas"; frame: string }
+  | { type: "image"; path: string; width: number; height: number };
+```
+
+정책은 **kind 하나로만** 결정됩니다. prompt 문구는 근거가 아닙니다 — 벽과 레버의 prompt에도
+"Standee"라는 단어가 들어갑니다.
+
+```text
+kind === "actor"  → standalone runtime image (public/assets/actors/**)
+그 외             → atlas frame (public/assets/m3-atlas.webp)
+```
+
+경로는 actor definition의 **namespace 전체**로 만듭니다 (`hero.aerin` →
+`/assets/actors/hero/aerin/front.webp`), 그래야 `hero.*`와 `enemy.*`가 충돌하지 않습니다.
+
+`actorVisuals`는 계속 **논리 ID**를 담습니다. URL을 담지 않습니다 — 그래야 저장 방식이
+`ActorRenderer`, facing 로직, gameplay state, content 정의로 새지 않습니다.
+
+`AssetCatalog`는 atlas와 (manifest가 요구하는) 모든 standalone actor 이미지를 **한 번에**
+같은 bundle로 읽고, 둘 다 같은 texture map에 등록합니다. 그래서 호출자는 끝까지
+`catalog.texture(assetId)` / `catalog.asset(assetId)`만 쓰고 저장 위치를 묻지 않습니다.
+DOM 쪽도 마찬가지로 `domAssetStyle` / `domPortraitStyle` / `domStandeeStyle` / `domFillStyle`이
+atlas frame과 standalone 이미지를 모두 받습니다.
+
+`assets:check`는 이 분할을 **파티션으로** 강제합니다.
+
+```text
+manifest assets = atlas-backed non-actor assets + standalone actor assets
+atlas frame IDs = atlas-backed asset IDs only
+```
+
+actor가 atlas로 돌아가거나 non-actor가 standalone이 되면 실패합니다.
+
+> **atlas 크기는 이 분할과 별개입니다.** actor가 빠져 4096²에 여유가 생겼지만 크기는 그대로
+> 둡니다. 저장 구조와 packing 용량을 한 번에 바꾸면 회귀 원인을 가릅니다 — 줄일지는 non-actor
+> frame 면적을 측정한 뒤 별도로 결정합니다.
 
 벽도 문도 서 있는 구조물이 아니라 **바닥과 똑같은 정사각 terrain tile 한 장**입니다.
 방향별 그림도, corner/edge asset도, autotile atlas도 만들지 않습니다. 여러 칸이 하나의

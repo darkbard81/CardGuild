@@ -445,7 +445,7 @@ export class BattleUi {
     if (visual) {
       const image = element("span", "card-art-image");
       // Percentage-placed, so the picture takes whatever room the frame has.
-      Object.assign(image.style, this.catalog.domAtlasFillStyle(visual));
+      Object.assign(image.style, this.catalog.domFillStyle(visual));
       art.append(image);
     } else {
       art.textContent = action.name.slice(0, 1);

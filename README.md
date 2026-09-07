@@ -119,7 +119,7 @@ src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
 src/pixi   affine BoardProjection/board plane/camera/depth renderers와 tactical overlay
-src/presentation WebP atlas AssetCatalog와 layered tilemap mapping
+src/presentation atlas + standalone actor 혼합 저장 AssetCatalog와 layered tilemap mapping
 src/dom    Adventure/Reward/Loadout Builder, 링 컨텍스트 메뉴·카드·HUD·로그·Reaction·결과 UI
 ```
 
@@ -202,8 +202,11 @@ Trait provider는 engine TypeScript를 수정하지 않고 JSON으로 추가할 
 
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
 `art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
-`art/processed`, 4096² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
-layer 및 Equipment/Card icon mapping은 `presentation/m3`에 있습니다.
+`art/processed`에 있습니다. runtime 저장은 두 갈래입니다 — terrain/object/UI는 4096² WebP
+atlas(`public/assets/m3-atlas.{webp,json}`), actor standee는 파일 한 장씩
+(`public/assets/actors/<namespace>/<name>/{front,back}.webp`). 논리 asset ID는 양쪽에서
+동일하고, atlas·ground/transition/object layer 및 Equipment/Card icon mapping은
+`presentation/m3`에 있습니다.
 
 보드는 시점이 고정된 **affine diamond**입니다. 하나의 Pixi canvas 안에서 board plane과
 standee plane이 transform을 나눠 가집니다.
@@ -278,7 +281,7 @@ npm run content:check # 모든 pack의 Schema, references, compile, fingerprint
 npm run content:production-check # 현재 M7 release policy/reachability/1P-3P 구조 coverage
 npm run assets        # raw PNG cleanup -> normalized frames -> atlas/tilemap -> validation
 npm run assets:build  # 위 pipeline 산출물 재생성
-npm run assets:check  # alpha, anchors, 양면 standee, atlas, layered tilemap 검증
+npm run assets:check  # alpha, anchors, 양면 standee, atlas/standalone 저장 파티션, layered tilemap 검증
 npm run check         # Content/asset, TypeScript, core 경계, ESLint, Vitest
 npm run build         # Content/asset 검증 후 production bundle
 npm run typecheck:server # DOM 없는 server/session/protocol type boundary
@@ -295,7 +298,7 @@ deck/stat/context, Adventure 8전/Reward/실패/seed/Combat bridge,
 affine BoardProjection/camera fit/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
 Reaction lifecycle, replay setup identity/hash, victory/defeat를 검증합니다. Playwright는
-Adventure shell, responsive Loadout Builder, 지연 WebP atlas 로딩, 실제 affine diamond board
+Adventure shell, responsive Loadout Builder, atlas + standalone actor WebP 로딩, 실제 affine diamond board
 hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 → 다음 Encounter 실제
 손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
 Network integration은 실제 `ws` client 3개로 queue/gameplay·control revision/idempotency,

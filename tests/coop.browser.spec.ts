@@ -36,6 +36,10 @@ async function applyThreeCharacterParty(page: Page): Promise<void> {
   // Four Characters are selectable; a party still seats at most three of them.
   await expect(page.locator(".party-character-card")).toHaveCount(4);
   await expect(page.locator(".party-character-art")).toHaveCount(4);
+  // Actor art is stored per standee, so a portrait names its own file rather than a
+  // window onto the shared tile atlas.
+  await expect(page.locator('.party-character-card[data-actor-definition-id="hero.aerin"] .party-character-art'))
+    .toHaveCSS("background-image", /\/assets\/actors\/hero\/aerin\/front\.webp/);
   await expect(page.locator("#party-slot-1")).toHaveValue("hero.aerin");
   await expect(page.locator("#party-slot-2")).toHaveValue("hero.lyra");
   await expect(page.locator("#party-slot-3")).toHaveValue("hero.brom");

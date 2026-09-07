@@ -192,7 +192,23 @@ async function winRoadAmbush(page: Page): Promise<void> {
   await expect(page.locator("#adventure-content h1")).toHaveText("Choose one reward");
 }
 
-test("shows the Adventure shell after reusing the lobby actor atlas without loading extra WebP assets", async ({ page }, testInfo) => {
+const ATLAS_PATH = "/assets/m3-atlas.webp";
+const ACTOR_IMAGE = /^\/assets\/actors\/[a-z0-9-]+\/[a-z0-9-]+\/(front|back)\.webp$/;
+
+/**
+ * Presentation art now comes out of two stores: one atlas for tiles, props and UI, and a
+ * file per actor standee. Asserting the shape of the split rather than a request count
+ * keeps this from breaking every time the roster grows.
+ */
+function expectMixedAssetRequests(urls: readonly string[]): void {
+  const paths = [...new Set(urls.map((url) => new URL(url).pathname))];
+  expect(paths).toContain(ATLAS_PATH);
+  const standalone = paths.filter((pathname) => pathname !== ATLAS_PATH);
+  expect(standalone.length).toBeGreaterThan(0);
+  for (const pathname of standalone) expect(pathname).toMatch(ACTOR_IMAGE);
+}
+
+test("shows the Adventure shell reusing the lobby art, from the atlas and the standalone actors only", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpRequests: string[] = [];
   page.on("request", (request) => {
@@ -212,7 +228,7 @@ test("shows the Adventure shell after reusing the lobby actor atlas without load
   await expect(owned.filter({ hasText: "Halberd" })).toHaveCount(1);
   await expect(owned.filter({ hasText: "Steel Shield" })).toHaveCount(1);
   await expect(owned.filter({ hasText: "Boots of Fly" })).toHaveCount(1);
-  expect(new Set(webpRequests.map((url) => new URL(url).pathname))).toEqual(new Set(["/assets/m3-atlas.webp"]));
+  expectMixedAssetRequests(webpRequests);
 
   // The whole run has to be readable at the supported minimum. A rail that scrolls hides
   // the finale, which is the one step the player is heading for.
@@ -242,7 +258,7 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
   await expect(page.locator('.deck-contribution[data-card-id="card.fly"]')).toContainText("Boots of Fly / Fly");
   await expect(page.locator('.deck-contribution[data-card-id="card.trip"]')).toContainText("Halberd / Trip");
-  expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
+  expectMixedAssetRequests(webpResponses);
 
   // The weapon rows are resolved Strike output, not raw weapon authoring.
   await expect(page.locator("#loadout-detail")).toContainText("Halberd · martial expert");
@@ -435,8 +451,9 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#action-pips .available")).toHaveCount(3);
   await expect(page.locator("#hand-cards .tactical-card")).toHaveCount(6);
   await expect(page.locator("#app")).toHaveAttribute("data-state-hash", /^[0-9a-f]{16}$/);
-  expect(new Set(webpResponses).size).toBe(1);
-  expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
+  // The board draws its tiles out of the atlas and its standees out of their own files,
+  // and every one of those requests came back OK for the standees to have rendered.
+  expectMixedAssetRequests(webpResponses);
 
   // Target-first input only works if the player can see where they may go before they
   // click. The overlay is Graphics, so the canvas reports what it drew.

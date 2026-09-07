@@ -150,7 +150,7 @@ export class LoadoutUi {
       wrapper.textContent = label.slice(0, 1);
       return wrapper;
     }
-    Object.assign(wrapper.style, this.catalog.domAtlasStyle(assetId, size));
+    Object.assign(wrapper.style, this.catalog.domAssetStyle(assetId, size));
     return wrapper;
   }
 

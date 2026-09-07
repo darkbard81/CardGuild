@@ -10,10 +10,16 @@
     "size": 4096,
     "padding": 2
   },
+  "runtimeStorage": {
+    "atlas": 66,
+    "image": 44
+  },
+  "atlasImage": "/assets/m3-atlas.webp",
   "assets": {
     "terrain.stone-floor": {
       "source": "art/source/terrain/stone-floor.png",
       "output": "art/processed/terrain/stone-floor.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 153,
         "top": 133,
@@ -31,6 +37,7 @@
     "terrain.rubble": {
       "source": "art/source/terrain/rubble.png",
       "output": "art/processed/terrain/rubble.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 83,
         "top": 72,
@@ -48,6 +55,7 @@
     "terrain.chasm": {
       "source": "art/source/terrain/chasm.png",
       "output": "art/processed/terrain/chasm.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 139,
         "top": 135,
@@ -65,6 +73,7 @@
     "terrain.wall-block": {
       "source": "art/source/terrain/wall-block.png",
       "output": "art/processed/terrain/wall-block.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 0,
         "top": 0,
@@ -82,6 +91,7 @@
     "terrain.gate.closed": {
       "source": "art/source/terrain/gate-closed.png",
       "output": "art/processed/terrain/gate-closed.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 0,
         "top": 0,
@@ -99,6 +109,7 @@
     "terrain.gate.open": {
       "source": "art/source/terrain/gate-open.png",
       "output": "art/processed/terrain/gate-open.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 0,
         "top": 0,
@@ -116,6 +127,7 @@
     "transition.web": {
       "source": "art/source/terrain/web-overlay.png",
       "output": "art/processed/terrain/web.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 60,
         "top": 60,
@@ -133,6 +145,7 @@
     "object.chest": {
       "source": "art/source/objects/chest.png",
       "output": "art/processed/objects/chest.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 237,
         "top": 147,
@@ -150,6 +163,7 @@
     "object.lever": {
       "source": "art/source/objects/lever.png",
       "output": "art/processed/objects/lever.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 50,
         "top": 11,
@@ -167,6 +181,7 @@
     "actor.hero.aerin.front": {
       "source": "art/source/actors/aerin-front-back.png",
       "output": "art/processed/actors/aerin/front.png",
+      "runtime": "/assets/actors/hero/aerin/front.webp",
       "sourceBox": {
         "left": 0,
         "top": 77,
@@ -184,6 +199,7 @@
     "actor.hero.aerin.back": {
       "source": "art/source/actors/aerin-front-back.png",
       "output": "art/processed/actors/aerin/back.png",
+      "runtime": "/assets/actors/hero/aerin/back.webp",
       "sourceBox": {
         "left": 0,
         "top": 77,
@@ -201,6 +217,7 @@
     "actor.hero.lyra.front": {
       "source": "art/source/actors/lyra-front-back.png",
       "output": "art/processed/actors/lyra/front.png",
+      "runtime": "/assets/actors/hero/lyra/front.webp",
       "sourceBox": {
         "left": 16,
         "top": 92,
@@ -218,6 +235,7 @@
     "actor.hero.lyra.back": {
       "source": "art/source/actors/lyra-front-back.png",
       "output": "art/processed/actors/lyra/back.png",
+      "runtime": "/assets/actors/hero/lyra/back.webp",
       "sourceBox": {
         "left": 32,
         "top": 113,
@@ -235,6 +253,7 @@
     "actor.hero.brom.front": {
       "source": "art/source/actors/brom-front-back.png",
       "output": "art/processed/actors/brom/front.png",
+      "runtime": "/assets/actors/hero/brom/front.webp",
       "sourceBox": {
         "left": 0,
         "top": 107,
@@ -252,6 +271,7 @@
     "actor.hero.brom.back": {
       "source": "art/source/actors/brom-front-back.png",
       "output": "art/processed/actors/brom/back.png",
+      "runtime": "/assets/actors/hero/brom/back.webp",
       "sourceBox": {
         "left": 0,
         "top": 109,
@@ -269,6 +289,7 @@
     "actor.hero.nera.front": {
       "source": "art/source/actors/nera-front-back.png",
       "output": "art/processed/actors/nera/front.png",
+      "runtime": "/assets/actors/hero/nera/front.webp",
       "sourceBox": {
         "left": 10,
         "top": 30,
@@ -286,6 +307,7 @@
     "actor.hero.nera.back": {
       "source": "art/source/actors/nera-front-back.png",
       "output": "art/processed/actors/nera/back.png",
+      "runtime": "/assets/actors/hero/nera/back.webp",
       "sourceBox": {
         "left": 17,
         "top": 31,
@@ -303,6 +325,7 @@
     "actor.goblin-skirmisher.front": {
       "source": "art/source/actors/goblin-skirmisher-front-back.png",
       "output": "art/processed/actors/goblin-skirmisher/front.png",
+      "runtime": "/assets/actors/enemy/goblin-skirmisher/front.webp",
       "sourceBox": {
         "left": 11,
         "top": 135,
@@ -320,6 +343,7 @@
     "actor.goblin-skirmisher.back": {
       "source": "art/source/actors/goblin-skirmisher-front-back.png",
       "output": "art/processed/actors/goblin-skirmisher/back.png",
+      "runtime": "/assets/actors/enemy/goblin-skirmisher/back.webp",
       "sourceBox": {
         "left": 9,
         "top": 139,
@@ -337,6 +361,7 @@
     "actor.goblin-brute.front": {
       "source": "art/source/actors/goblin-brute-front-back.png",
       "output": "art/processed/actors/goblin-brute/front.png",
+      "runtime": "/assets/actors/enemy/goblin-brute/front.webp",
       "sourceBox": {
         "left": 9,
         "top": 281,
@@ -354,6 +379,7 @@
     "actor.goblin-brute.back": {
       "source": "art/source/actors/goblin-brute-front-back.png",
       "output": "art/processed/actors/goblin-brute/back.png",
+      "runtime": "/assets/actors/enemy/goblin-brute/back.webp",
       "sourceBox": {
         "left": 0,
         "top": 282,
@@ -371,6 +397,7 @@
     "actor.goblin-chief.front": {
       "source": "art/source/actors/goblin-chief-front-back.png",
       "output": "art/processed/actors/goblin-chief/front.png",
+      "runtime": "/assets/actors/enemy/goblin-chief/front.webp",
       "sourceBox": {
         "left": 0,
         "top": 6,
@@ -388,6 +415,7 @@
     "actor.goblin-chief.back": {
       "source": "art/source/actors/goblin-chief-front-back.png",
       "output": "art/processed/actors/goblin-chief/back.png",
+      "runtime": "/assets/actors/enemy/goblin-chief/back.webp",
       "sourceBox": {
         "left": 0,
         "top": 143,
@@ -405,6 +433,7 @@
     "ui.equipment.halberd": {
       "source": "art/source/ui/equipment-icons.png",
       "output": "art/processed/ui/equipment-halberd.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 12,
         "top": 11,
@@ -422,6 +451,7 @@
     "ui.equipment.shield": {
       "source": "art/source/ui/equipment-icons.png",
       "output": "art/processed/ui/equipment-shield.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 0,
         "top": 11,
@@ -439,6 +469,7 @@
     "ui.equipment.boots-of-fly": {
       "source": "art/source/ui/equipment-icons.png",
       "output": "art/processed/ui/equipment-boots-of-fly.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 88,
         "top": 41,
@@ -456,6 +487,7 @@
     "ui.card.trip": {
       "source": "art/source/ui/card-icons.png",
       "output": "art/processed/ui/card-trip.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 19,
         "top": 10,
@@ -473,6 +505,7 @@
     "ui.card.fly": {
       "source": "art/source/ui/card-icons.png",
       "output": "art/processed/ui/card-fly.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 87,
         "top": 11,
@@ -490,6 +523,7 @@
     "ui.card.spirit-beacon": {
       "source": "art/source/ui/card-icons.png",
       "output": "art/processed/ui/card-spirit-beacon.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 93,
         "top": 0,
@@ -507,6 +541,7 @@
     "ui.card.reactive-strike": {
       "source": "art/source/ui/card-icons.png",
       "output": "art/processed/ui/card-reactive-strike.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 0,
         "top": 0,
@@ -524,6 +559,7 @@
     "actor.skeleton-rabble.front": {
       "source": "art/source/actors/skeleton-rabble-front-back.png",
       "output": "art/processed/actors/skeleton-rabble/front.png",
+      "runtime": "/assets/actors/enemy/skeleton-rabble/front.webp",
       "sourceBox": {
         "left": 8,
         "top": 149,
@@ -541,6 +577,7 @@
     "actor.skeleton-rabble.back": {
       "source": "art/source/actors/skeleton-rabble-front-back.png",
       "output": "art/processed/actors/skeleton-rabble/back.png",
+      "runtime": "/assets/actors/enemy/skeleton-rabble/back.webp",
       "sourceBox": {
         "left": 22,
         "top": 149,
@@ -558,6 +595,7 @@
     "actor.skeleton-guard.front": {
       "source": "art/source/actors/skeleton-guard-front-back.png",
       "output": "art/processed/actors/skeleton-guard/front.png",
+      "runtime": "/assets/actors/enemy/skeleton-guard/front.webp",
       "sourceBox": {
         "left": 21,
         "top": 104,
@@ -575,6 +613,7 @@
     "actor.skeleton-guard.back": {
       "source": "art/source/actors/skeleton-guard-front-back.png",
       "output": "art/processed/actors/skeleton-guard/back.png",
+      "runtime": "/assets/actors/enemy/skeleton-guard/back.webp",
       "sourceBox": {
         "left": 28,
         "top": 106,
@@ -592,6 +631,7 @@
     "actor.skeleton-archer.front": {
       "source": "art/source/actors/skeleton-archer-front-back.png",
       "output": "art/processed/actors/skeleton-archer/front.png",
+      "runtime": "/assets/actors/enemy/skeleton-archer/front.webp",
       "sourceBox": {
         "left": 36,
         "top": 221,
@@ -609,6 +649,7 @@
     "actor.skeleton-archer.back": {
       "source": "art/source/actors/skeleton-archer-front-back.png",
       "output": "art/processed/actors/skeleton-archer/back.png",
+      "runtime": "/assets/actors/enemy/skeleton-archer/back.webp",
       "sourceBox": {
         "left": 7,
         "top": 236,
@@ -626,6 +667,7 @@
     "actor.bone-hulk.front": {
       "source": "art/source/actors/bone-hulk-front-back.png",
       "output": "art/processed/actors/bone-hulk/front.png",
+      "runtime": "/assets/actors/enemy/bone-hulk/front.webp",
       "sourceBox": {
         "left": 13,
         "top": 275,
@@ -643,6 +685,7 @@
     "actor.bone-hulk.back": {
       "source": "art/source/actors/bone-hulk-front-back.png",
       "output": "art/processed/actors/bone-hulk/back.png",
+      "runtime": "/assets/actors/enemy/bone-hulk/back.webp",
       "sourceBox": {
         "left": 16,
         "top": 279,
@@ -660,6 +703,7 @@
     "actor.bone-priest.front": {
       "source": "art/source/actors/bone-priest-front-back.png",
       "output": "art/processed/actors/bone-priest/front.png",
+      "runtime": "/assets/actors/enemy/bone-priest/front.webp",
       "sourceBox": {
         "left": 29,
         "top": 308,
@@ -677,6 +721,7 @@
     "actor.bone-priest.back": {
       "source": "art/source/actors/bone-priest-front-back.png",
       "output": "art/processed/actors/bone-priest/back.png",
+      "runtime": "/assets/actors/enemy/bone-priest/back.webp",
       "sourceBox": {
         "left": 22,
         "top": 316,
@@ -694,6 +739,7 @@
     "actor.wolf-yearling.front": {
       "source": "art/source/actors/wolf-yearling-front-back.png",
       "output": "art/processed/actors/wolf-yearling/front.png",
+      "runtime": "/assets/actors/enemy/wolf-yearling/front.webp",
       "sourceBox": {
         "left": 94,
         "top": 263,
@@ -711,6 +757,7 @@
     "actor.wolf-yearling.back": {
       "source": "art/source/actors/wolf-yearling-front-back.png",
       "output": "art/processed/actors/wolf-yearling/back.png",
+      "runtime": "/assets/actors/enemy/wolf-yearling/back.webp",
       "sourceBox": {
         "left": 95,
         "top": 260,
@@ -728,6 +775,7 @@
     "actor.dire-wolf.front": {
       "source": "art/source/actors/dire-wolf-front-back.png",
       "output": "art/processed/actors/dire-wolf/front.png",
+      "runtime": "/assets/actors/enemy/dire-wolf/front.webp",
       "sourceBox": {
         "left": 11,
         "top": 185,
@@ -745,6 +793,7 @@
     "actor.dire-wolf.back": {
       "source": "art/source/actors/dire-wolf-front-back.png",
       "output": "art/processed/actors/dire-wolf/back.png",
+      "runtime": "/assets/actors/enemy/dire-wolf/back.webp",
       "sourceBox": {
         "left": 10,
         "top": 185,
@@ -762,6 +811,7 @@
     "actor.cave-spider.front": {
       "source": "art/source/actors/cave-spider-front-back.png",
       "output": "art/processed/actors/cave-spider/front.png",
+      "runtime": "/assets/actors/enemy/cave-spider/front.webp",
       "sourceBox": {
         "left": 31,
         "top": 984,
@@ -779,6 +829,7 @@
     "actor.cave-spider.back": {
       "source": "art/source/actors/cave-spider-front-back.png",
       "output": "art/processed/actors/cave-spider/back.png",
+      "runtime": "/assets/actors/enemy/cave-spider/back.webp",
       "sourceBox": {
         "left": 34,
         "top": 988,
@@ -796,6 +847,7 @@
     "actor.giant-spider.front": {
       "source": "art/source/actors/giant-spider-front-back.png",
       "output": "art/processed/actors/giant-spider/front.png",
+      "runtime": "/assets/actors/enemy/giant-spider/front.webp",
       "sourceBox": {
         "left": 20,
         "top": 555,
@@ -813,6 +865,7 @@
     "actor.giant-spider.back": {
       "source": "art/source/actors/giant-spider-front-back.png",
       "output": "art/processed/actors/giant-spider/back.png",
+      "runtime": "/assets/actors/enemy/giant-spider/back.webp",
       "sourceBox": {
         "left": 23,
         "top": 557,
@@ -830,6 +883,7 @@
     "actor.cult-initiate.front": {
       "source": "art/source/actors/cult-initiate-front-back.png",
       "output": "art/processed/actors/cult-initiate/front.png",
+      "runtime": "/assets/actors/enemy/cult-initiate/front.webp",
       "sourceBox": {
         "left": 21,
         "top": 83,
@@ -847,6 +901,7 @@
     "actor.cult-initiate.back": {
       "source": "art/source/actors/cult-initiate-front-back.png",
       "output": "art/processed/actors/cult-initiate/back.png",
+      "runtime": "/assets/actors/enemy/cult-initiate/back.webp",
       "sourceBox": {
         "left": 28,
         "top": 90,
@@ -864,6 +919,7 @@
     "actor.cult-firebrand.front": {
       "source": "art/source/actors/cult-firebrand-front-back.png",
       "output": "art/processed/actors/cult-firebrand/front.png",
+      "runtime": "/assets/actors/enemy/cult-firebrand/front.webp",
       "sourceBox": {
         "left": 25,
         "top": 92,
@@ -881,6 +937,7 @@
     "actor.cult-firebrand.back": {
       "source": "art/source/actors/cult-firebrand-front-back.png",
       "output": "art/processed/actors/cult-firebrand/back.png",
+      "runtime": "/assets/actors/enemy/cult-firebrand/back.webp",
       "sourceBox": {
         "left": 9,
         "top": 92,
@@ -898,6 +955,7 @@
     "actor.cult-hierophant.front": {
       "source": "art/source/actors/cult-hierophant-front-back.png",
       "output": "art/processed/actors/cult-hierophant/front.png",
+      "runtime": "/assets/actors/enemy/cult-hierophant/front.webp",
       "sourceBox": {
         "left": 18,
         "top": 89,
@@ -915,6 +973,7 @@
     "actor.cult-hierophant.back": {
       "source": "art/source/actors/cult-hierophant-front-back.png",
       "output": "art/processed/actors/cult-hierophant/back.png",
+      "runtime": "/assets/actors/enemy/cult-hierophant/back.webp",
       "sourceBox": {
         "left": 11,
         "top": 85,
@@ -932,6 +991,7 @@
     "actor.goblin-lackey.front": {
       "source": "art/source/actors/goblin-lackey-front-back.png",
       "output": "art/processed/actors/goblin-lackey/front.png",
+      "runtime": "/assets/actors/enemy/goblin-lackey/front.webp",
       "sourceBox": {
         "left": 20,
         "top": 127,
@@ -949,6 +1009,7 @@
     "actor.goblin-lackey.back": {
       "source": "art/source/actors/goblin-lackey-front-back.png",
       "output": "art/processed/actors/goblin-lackey/back.png",
+      "runtime": "/assets/actors/enemy/goblin-lackey/back.webp",
       "sourceBox": {
         "left": 53,
         "top": 132,
@@ -966,6 +1027,7 @@
     "actor.goblin-spearman.front": {
       "source": "art/source/actors/goblin-spearman-front-back.png",
       "output": "art/processed/actors/goblin-spearman/front.png",
+      "runtime": "/assets/actors/enemy/goblin-spearman/front.webp",
       "sourceBox": {
         "left": 32,
         "top": 36,
@@ -983,6 +1045,7 @@
     "actor.goblin-spearman.back": {
       "source": "art/source/actors/goblin-spearman-front-back.png",
       "output": "art/processed/actors/goblin-spearman/back.png",
+      "runtime": "/assets/actors/enemy/goblin-spearman/back.webp",
       "sourceBox": {
         "left": 70,
         "top": 51,
@@ -1000,6 +1063,7 @@
     "actor.goblin-slinger.front": {
       "source": "art/source/actors/goblin-slinger-front-back.png",
       "output": "art/processed/actors/goblin-slinger/front.png",
+      "runtime": "/assets/actors/enemy/goblin-slinger/front.webp",
       "sourceBox": {
         "left": 14,
         "top": 144,
@@ -1017,6 +1081,7 @@
     "actor.goblin-slinger.back": {
       "source": "art/source/actors/goblin-slinger-front-back.png",
       "output": "art/processed/actors/goblin-slinger/back.png",
+      "runtime": "/assets/actors/enemy/goblin-slinger/back.webp",
       "sourceBox": {
         "left": 29,
         "top": 162,
@@ -1034,6 +1099,7 @@
     "ui.equipment.light-blade": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-light-blade.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 44,
         "top": 16,
@@ -1051,6 +1117,7 @@
     "ui.equipment.guardian-mace": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-guardian-mace.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 44,
         "top": 16,
@@ -1068,6 +1135,7 @@
     "ui.equipment.composite-shortbow": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-composite-shortbow.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 54,
         "top": 16,
@@ -1085,6 +1153,7 @@
     "ui.equipment.leather-armor": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-leather-armor.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 53,
         "top": 16,
@@ -1102,6 +1171,7 @@
     "ui.equipment.scale-mail": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-scale-mail.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 50,
         "top": 16,
@@ -1119,6 +1189,7 @@
     "ui.equipment.half-plate": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-half-plate.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 38,
         "top": 16,
@@ -1136,6 +1207,7 @@
     "ui.equipment.dueling-rapier": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-dueling-rapier.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 57,
         "top": 16,
@@ -1153,6 +1225,7 @@
     "ui.equipment.throwing-axes": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-throwing-axes.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 20,
         "top": 16,
@@ -1170,6 +1243,7 @@
     "ui.equipment.greatsword": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-greatsword.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 54,
         "top": 16,
@@ -1187,6 +1261,7 @@
     "ui.equipment.boar-spear": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-boar-spear.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 60,
         "top": 16,
@@ -1204,6 +1279,7 @@
     "ui.equipment.executioner-axe": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-executioner-axe.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 46,
         "top": 16,
@@ -1221,6 +1297,7 @@
     "ui.equipment.flick-mace": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-flick-mace.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 45,
         "top": 16,
@@ -1238,6 +1315,7 @@
     "ui.equipment.scout-leather": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-scout-leather.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 51,
         "top": 16,
@@ -1255,6 +1333,7 @@
     "ui.equipment.brigandine": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-brigandine.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 47,
         "top": 16,
@@ -1272,6 +1351,7 @@
     "ui.equipment.buckler": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-buckler.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 31,
         "top": 16,
@@ -1289,6 +1369,7 @@
     "ui.equipment.tower-shield": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-tower-shield.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 82,
         "top": 16,
@@ -1306,6 +1387,7 @@
     "ui.equipment.spiked-shield": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-spiked-shield.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 39,
         "top": 16,
@@ -1323,6 +1405,7 @@
     "ui.equipment.striders-boots": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-striders-boots.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 34,
         "top": 16,
@@ -1340,6 +1423,7 @@
     "ui.equipment.medics-kit": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-medics-kit.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 30,
         "top": 16,
@@ -1357,6 +1441,7 @@
     "ui.equipment.warding-charm": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-warding-charm.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 68,
         "top": 16,
@@ -1374,6 +1459,7 @@
     "ui.equipment.hexers-focus": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-hexers-focus.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 68,
         "top": 16,
@@ -1391,6 +1477,7 @@
     "ui.equipment.bloodied-talisman": {
       "source": "art/source/ui/equipment-icons-2.png",
       "output": "art/processed/ui/equipment-bloodied-talisman.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 74,
         "top": 16,
@@ -1408,6 +1495,7 @@
     "ui.card.knockdown": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-knockdown.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 32,
@@ -1425,6 +1513,7 @@
     "ui.card.vicious-swing": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-vicious-swing.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 37,
@@ -1442,6 +1531,7 @@
     "ui.card.intimidating-strike": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-intimidating-strike.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 42,
@@ -1459,6 +1549,7 @@
     "ui.card.combat-grab": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-combat-grab.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 37,
@@ -1476,6 +1567,7 @@
     "ui.card.aimed-shot": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-aimed-shot.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 30,
         "top": 26,
@@ -1493,6 +1585,7 @@
     "ui.card.shield-press": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-shield-press.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 41,
@@ -1510,6 +1603,7 @@
     "ui.card.grapple": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-grapple.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 42,
@@ -1527,6 +1621,7 @@
     "ui.card.demoralize": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-demoralize.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 27,
@@ -1544,6 +1639,7 @@
     "ui.card.slip-free": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-slip-free.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 33,
@@ -1561,6 +1657,7 @@
     "ui.card.battle-medicine": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-battle-medicine.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 47,
@@ -1578,6 +1675,7 @@
     "ui.card.frostbite": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-frostbite.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 38,
         "top": 26,
@@ -1595,6 +1693,7 @@
     "ui.card.fear": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-fear.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 38,
         "top": 26,
@@ -1612,6 +1711,7 @@
     "ui.card.harm": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-harm.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 43,
@@ -1629,6 +1729,7 @@
     "ui.card.daze": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-daze.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 28,
@@ -1646,6 +1747,7 @@
     "ui.card.iron-presence": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-iron-presence.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 49,
         "top": 26,
@@ -1663,6 +1765,7 @@
     "ui.card.telekinetic-projectile": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-telekinetic-projectile.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 32,
@@ -1680,6 +1783,7 @@
     "ui.card.ember-lash": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-ember-lash.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 28,
@@ -1697,6 +1801,7 @@
     "ui.card.force-barrage": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-force-barrage.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 36,
         "top": 26,
@@ -1714,6 +1819,7 @@
     "ui.card.heal": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-heal.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 27,
         "top": 26,
@@ -1731,6 +1837,7 @@
     "ui.card.soothe": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-soothe.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 32,
@@ -1748,6 +1855,7 @@
     "ui.card.lay-on-hands": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-lay-on-hands.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 36,
         "top": 26,
@@ -1765,6 +1873,7 @@
     "ui.card.spirit-edge": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-spirit-edge.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 29,
@@ -1782,6 +1891,7 @@
     "ui.card.brace-behind-cover": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-brace-behind-cover.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 31,
@@ -1799,6 +1909,7 @@
     "ui.card.dueling-parry": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-dueling-parry.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 27,
         "top": 26,
@@ -1816,6 +1927,7 @@
     "ui.card.arcane-ward": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-arcane-ward.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 32,
         "top": 26,
@@ -1833,6 +1945,7 @@
     "ui.card.careful-advance": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-careful-advance.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 37,
@@ -1850,6 +1963,7 @@
     "ui.card.hover-step": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-hover-step.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 26,
         "top": 45,
@@ -1867,6 +1981,7 @@
     "ui.card.spirit-lance": {
       "source": "art/source/ui/card-icons-2.png",
       "output": "art/processed/ui/card-spirit-lance.png",
+      "runtime": "/assets/m3-atlas.webp",
       "sourceBox": {
         "left": 29,
         "top": 26,
