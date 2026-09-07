@@ -66,7 +66,7 @@ export class LoadoutUi {
   private readonly screen = required<HTMLElement>("#loadout-screen");
   private selectedMemberId: string | null = null;
   private editor: Editor = { kind: "equipment", slot: "weapon" };
-  private pending: PendingCandidate | null = null;
+  private pending: (PendingCandidate & { readonly selected: boolean }) | null = null;
   private state: AdventureState | null = null;
   private editableMemberIds: ReadonlySet<string> = new Set();
 
@@ -297,10 +297,11 @@ export class LoadoutUi {
       const reasonId = `loadout-reason-${this.editor.kind}-${option.id.replaceAll(".", "-")}`;
       button.setAttribute("aria-describedby", reasonId);
       button.append(this.icon(option.assetId, option.label, 40), element("strong", undefined, option.label));
-      const show = (): void => this.showCandidate({ label: option.label, loadout: option.candidate, preview });
+      const candidate = { label: option.label, loadout: option.candidate, preview };
+      const show = (): void => this.showCandidate(candidate);
       button.addEventListener("mouseenter", show);
       button.addEventListener("focus", show);
-      button.addEventListener("click", show);
+      button.addEventListener("click", () => this.showCandidate(candidate, true));
       const reason = element("small", preview.legal ? "option-available" : "option-unavailable", preview.legal ? "Available" : preview.validation.issues[0]?.message ?? "Unavailable");
       reason.id = reasonId;
       row.append(button, reason);
@@ -315,11 +316,14 @@ export class LoadoutUi {
       label,
       loadout: candidate,
       preview: previewLoadoutChange(state.party, state.collection, this.pack, memberId, candidate),
-    });
+    }, true);
   }
 
-  private showCandidate(candidate: PendingCandidate): void {
-    this.pending = candidate;
+  private showCandidate(candidate: PendingCandidate, selected = false): void {
+    // Hover and keyboard navigation must not replace an explicit selection while
+    // the player moves to Apply Change, especially after choosing Remove.
+    if (this.pending?.selected && !selected) return;
+    this.pending = { ...candidate, selected };
     this.renderCandidateDetail();
   }
 

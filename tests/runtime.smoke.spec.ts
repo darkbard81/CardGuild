@@ -289,6 +289,57 @@ test("previews and atomically applies a responsive loadout change", async ({ pag
   expect(runtimeErrors).toEqual([]);
 });
 
+for (const editor of ["equipment", "cards"] as const) {
+  test(`removes and restores a prepared card without ${editor} previews replacing the selection`, async ({ page }) => {
+    const runtimeErrors = captureRuntimeErrors(page);
+    await page.setViewportSize({ width: 1024, height: 768 });
+    await openAdventure(page);
+    await page.getByRole("button", { name: "Manage Loadout" }).click();
+    const prepared = page.locator(".prepared-card");
+    const knockdown = prepared.filter({ hasText: "Knockdown" });
+    const summary = page.locator(".loadout-change-summary h2");
+    const collection = await page.locator(".collection-panel").innerText();
+    await expect(prepared).toHaveCount(2);
+    if (editor === "cards") await page.getByRole("button", { name: "+ Add Card" }).click();
+
+    await knockdown.getByRole("button", { name: "Remove" }).click();
+    await expect(summary).toHaveText("Preview: Knockdown removed");
+    // Reaching Apply passes other candidates with the pointer or keyboard. Neither
+    // should change the operation the player explicitly selected with Remove.
+    if (editor === "equipment") {
+      await page.locator('.loadout-option[data-option-id="empty-weapon"]').hover();
+    } else {
+      await page.locator('.loadout-option[data-option-id="card.intimidating-strike"]').focus();
+    }
+    await expect(summary).toHaveText("Preview: Knockdown removed");
+    await page.getByRole("button", { name: "Apply Change" }).click();
+    await expect(knockdown).toHaveCount(0);
+    await expect(prepared).toHaveCount(1);
+    await expect(prepared).toContainText("Intimidating Strike");
+    await expect(page.locator(".prepared-heading")).toHaveText("Prepared Cards 1/3");
+    await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
+    await expect(page.locator('.equipment-slot[data-slot="weapon"]')).toContainText("Halberd");
+    expect(await page.locator(".collection-panel").innerText()).toBe(collection);
+
+    await page.getByRole("button", { name: "Done" }).click();
+    await page.getByRole("button", { name: "Manage Loadout" }).click();
+    await expect(knockdown).toHaveCount(0);
+    await page.getByRole("button", { name: "+ Add Card" }).click();
+    await page.locator('.loadout-option[data-option-id="card.intimidating-strike"]').focus();
+    await page.keyboard.press("Enter");
+    await expect(page.getByRole("button", { name: "Apply Change" })).toBeDisabled();
+    await page.locator('.loadout-option[data-option-id="card.knockdown"]').click();
+    await page.locator('.loadout-option[data-option-id="card.intimidating-strike"]').hover();
+    await expect(summary).toHaveText("Preview: Knockdown");
+    await page.getByRole("button", { name: "Apply Change" }).click();
+    await expect(prepared).toHaveCount(2);
+    await expect(knockdown).toHaveCount(1);
+    await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
+    expect(await page.locator(".collection-panel").innerText()).toBe(collection);
+    expect(runtimeErrors).toEqual([]);
+  });
+}
+
 test("carries a reward loadout through the shared resolver into the next encounter", async ({ page }, testInfo) => {
   test.setTimeout(45_000);
   const runtimeErrors = captureRuntimeErrors(page);
