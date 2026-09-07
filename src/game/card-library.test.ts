@@ -137,6 +137,7 @@ function play(state: CombatState, source: ActionSource, target: ActionTarget): C
 function endTurn(state: CombatState): CombatCommand {
   return {
     type: "end-turn",
+    facing: state.actors[state.turn.activeActorId]!.facing,
     id: `end-${String(state.sequence + 1)}`,
     sequence: state.sequence + 1,
     actorId: state.turn.activeActorId,
@@ -456,6 +457,31 @@ describe("hp restoration", () => {
 });
 
 describe("spell-like checks", () => {
+  it.each(["card.trip", "card.frostbite"])("accepted side-target %s faces its target before resolution", (definitionId) => {
+    const state = combat({ hero: { facing: "north" } });
+    const prepared = withCard(state, "hero", definitionId);
+    const result = dispatchCombatCommand(prepared.state, play(prepared.state, prepared.source, ENEMY), CONTENT);
+    expect(result.accepted).toBe(true);
+    expect(result.state.actors.hero?.facing).toBe("east");
+    expect(result.events.findIndex((event) => event.type === "FACING_CHANGED"))
+      .toBeLessThan(result.events.findIndex((event) => event.type === "CHECK_ROLLED"));
+  });
+
+  it.each(["card.heal", "card.soothe"])("%s faces an ally behind the caster without imposing enemy legality", (definitionId) => {
+    const prepared = withCard(combat({ hero: { facing: "north" }, ally: { hp: 1 } }), "hero", definitionId);
+    const result = dispatchCombatCommand(prepared.state, play(prepared.state, prepared.source, ALLY), CONTENT);
+    expect(result.accepted).toBe(true);
+    expect(result.state.actors.hero?.facing).toBe("south");
+  });
+
+  it("creature-scoped Heal on the caster preserves its facing", () => {
+    const prepared = withCard(combat({ hero: { facing: "west", hp: 1 } }), "hero", "card.heal");
+    const result = dispatchCombatCommand(prepared.state, play(prepared.state, prepared.source, { kind: "actor", actorId: "hero" }), CONTENT);
+    expect(result.accepted).toBe(true);
+    expect(result.state.actors.hero?.facing).toBe("west");
+    expect(result.events.some((event) => event.type === "FACING_CHANGED")).toBe(false);
+  });
+
   it("rolls the target's save against a DC derived from the acting Character", () => {
     const state = combat();
     const plan = planFor(state, "frostbite", ENEMY);

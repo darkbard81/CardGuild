@@ -256,6 +256,7 @@ function playCombat(
       bump(tally.noCommand, actor?.definitionId ?? "unknown");
       const forced: CombatCommand = {
         type: "end-turn",
+        facing: actor?.facing ?? "north",
         id: `forced-${String(state.sequence + 1)}`,
         sequence: state.sequence + 1,
         actorId: state.turn.activeActorId,
@@ -274,6 +275,7 @@ function playCombat(
       rejectedCommands += 1;
       const forced: CombatCommand = {
         type: "end-turn",
+        facing: actor?.facing ?? "north",
         id: `forced-${String(state.sequence + 1)}`,
         sequence: state.sequence + 1,
         actorId: state.turn.activeActorId,

@@ -12,6 +12,7 @@ import { damageTotal } from "./offense";
 import { resolveActionSource, validateActionIntent } from "./queries";
 import { createRng, rollDice, shuffle } from "./rng";
 import {
+  facingToward,
   getEquipment,
   hasTrait,
   isInFrontOrSide,
@@ -28,6 +29,7 @@ import type {
   ActionOutcomeEffect,
   ActionParticipant,
   ActionSource,
+  ActionTarget,
   ActorState,
   BattleMapState,
   CardInstance,
@@ -41,6 +43,7 @@ import type {
   CommandResult,
   DamageType,
   DegreeOfSuccess,
+  Direction,
   ConditionId,
   ConditionInstance,
   ConditionValuePolicy,
@@ -665,6 +668,24 @@ function applyWebTerrain(
   if (!isSuccessful(check.degree)) addCondition(draft, actorId, "grabbed", tile.id, content, events);
 }
 
+function changeFacing(draft: CombatDraft, actorId: string, facing: Direction, events: CombatEvent[]): void {
+  const actor = draft.actors[actorId];
+  if (!actor || actor.facing === facing) return;
+  replaceActor(draft, { ...actor, facing });
+  events.push({ type: "FACING_CHANGED", actorId, facing });
+}
+
+function faceActionTarget(draft: CombatDraft, actorId: string, target: ActionTarget, events: CombatEvent[]): void {
+  const actor = draft.actors[actorId];
+  if (!actor) return;
+  const position = target.kind === "actor" ? draft.actors[target.actorId]?.position
+    : target.kind === "object" ? draft.map.objects[target.objectId]?.position
+    : target.kind === "tile" ? target.position : undefined;
+  if (position && positionKey(position) !== positionKey(actor.position)) {
+    changeFacing(draft, actor.id, facingToward(actor.position, position), events);
+  }
+}
+
 function completeMove(
   draft: CombatDraft,
   continuation: PendingReaction["continuation"],
@@ -673,10 +694,12 @@ function completeMove(
 ): void {
   const actor = draft.actors[continuation.actorId];
   if (!actor || actor.defeated || draft.outcome) return;
+  const last = continuation.path.at(-1);
+  if (!last) return;
+  const previous = continuation.path.at(-2) ?? actor.position;
   replaceActor(draft, {
     ...actor,
     position: { ...continuation.destination },
-    facing: continuation.facing,
   });
   events.push({
     type: "ACTOR_MOVED",
@@ -684,7 +707,7 @@ function completeMove(
     path: continuation.path,
     movementMode: continuation.movementMode,
   });
-  events.push({ type: "FACING_CHANGED", actorId: actor.id, facing: continuation.facing });
+  changeFacing(draft, actor.id, facingToward(previous, last), events);
   applyWebTerrain(draft, actor.id, continuation.movementMode, events, content);
 }
 
@@ -764,6 +787,10 @@ function executeMove(
   if (definition.resolution.kind !== "move" || target.kind !== "tile") return;
   const actor = draft.actors[actorId];
   if (!actor) return;
+  if (definition.resolution.step && positionKey(actor.position) === positionKey(target.position)) {
+    if (target.facing) changeFacing(draft, actor.id, target.facing, events);
+    return;
+  }
   const maximumCost = definition.resolution.step ? 5 : actor.speedFeet;
   const path = findPath(
     draft.map,
@@ -782,7 +809,6 @@ function executeMove(
     source,
     path: path.path,
     destination: target.position,
-    facing: target.facing,
     movementMode: definition.resolution.movementMode,
   };
   const candidates = definition.resolution.triggersReactions
@@ -990,6 +1016,11 @@ function useAction(
     remaining: draft.turn.actionsRemaining,
   });
   if (resolved.card) discardCard(draft, actor.id, resolved.card.id, events);
+  // Legality and the plan above use the original facing. Only accepted directional
+  // actions rotate, including a missed attack; self/effect/none preserve orientation.
+  if (resolved.definition.resolution.kind !== "move") {
+    faceActionTarget(draft, actor.id, command.target, events);
+  }
   executeResolvedAction(draft, plan, resolved.definition, content, events);
   checkCombatOutcome(draft, events);
   return { accepted: true, state: asState(draft), events };
@@ -1003,9 +1034,11 @@ function endTurn(
   if (state.outcome) return fail(state, "Combat has ended.");
   if (state.pendingReaction) return fail(state, "Resolve the pending reaction first.");
   if (state.turn.activeActorId !== command.actorId) return fail(state, "Actor is not active.");
+  if (!["north", "east", "south", "west"].includes(command.facing)) return fail(state, "Invalid final facing.");
   const draft = cloneState(state);
   const events: CombatEvent[] = [];
   beginAcceptedCommand(draft, command);
+  changeFacing(draft, command.actorId, command.facing, events);
   advanceTurn(draft, content, events);
   return { accepted: true, state: asState(draft), events };
 }
@@ -1118,7 +1151,10 @@ function useReaction(
     content,
     { kind: "off-turn" },
   );
-  if (plan) executeResolvedAction(draft, plan, definition, content, events);
+  if (plan) {
+    faceActionTarget(draft, reactor.id, plan.target, events);
+    executeResolvedAction(draft, plan, definition, content, events);
+  }
   continueReactionQueue(draft, pending, pending.candidates.slice(1), content, events);
   return { accepted: true, state: asState(draft), events };
 }

@@ -57,6 +57,7 @@ export interface BattleViewHandlers {
   /** A board target was picked; the screen point anchors the radial action menu. */
   readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
   readonly onFacing: (facing: Direction) => void;
+  readonly onCancelDirection?: () => void;
   readonly onHoverCell: (position: GridPosition | null) => void;
   /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
   readonly safeArea: () => BoardSafeArea;
@@ -244,6 +245,8 @@ export class BattleView {
     this.cancelAnimations();
     this.state = state;
     this.currentHighlights = highlights;
+    this.app.canvas.dataset.facingPosition = highlights.facingPosition
+      ? `${highlights.facingPosition.x},${highlights.facingPosition.y}` : "";
     this.safeArea = this.handlers.safeArea();
     const nextBoardKey = `${state.scenarioId}:${state.map.width}x${state.map.height}`;
     if (this.boardKey !== nextBoardKey) {
@@ -281,6 +284,7 @@ export class BattleView {
     this.layoutScene();
     const turnStarted = [...events].reverse().find((event) => event.type === "TURN_STARTED");
     if (turnStarted) this.ensureActorVisible(turnStarted.actorId);
+    if (highlights.facingPosition) this.ensureDirectionVisible(highlights.facingPosition);
     this.renderFeedback(events);
     this.animateMovement(events, previousPositions);
     this.app.canvas.dataset.boardSize = `${state.map.width}x${state.map.height}`;
@@ -308,6 +312,34 @@ export class BattleView {
     if (dx === 0 && dy === 0) return;
     this.camera.panBy(dx, dy, this.boardFrame());
     this.layoutScene();
+  }
+
+  /** At close-up zoom a visible head need not mean visible feet. Frame the input widget itself. */
+  private ensureDirectionVisible(position: GridPosition): void {
+    const frame = this.boardFrame();
+    const left = this.safeArea.left + 16;
+    const right = this.app.screen.width - this.safeArea.right - 16;
+    const top = this.safeArea.top + 16;
+    const bottom = this.app.screen.height - this.safeArea.bottom - 16;
+    const bounds = () => {
+      const points = (["north", "east", "south", "west"] as const)
+        .flatMap((direction) => facingPolygon(this.projection, position, direction));
+      return { left: Math.min(...points.map((point) => point.x)), right: Math.max(...points.map((point) => point.x)),
+        top: Math.min(...points.map((point) => point.y)), bottom: Math.max(...points.map((point) => point.y)) };
+    };
+    let widget = bounds();
+    const factor = Math.min(1, (right - left) / (widget.right - widget.left), (bottom - top) / (widget.bottom - widget.top));
+    if (factor > 0 && factor < 1) {
+      this.camera.zoomBy(factor, (widget.left + widget.right) / 2, (widget.top + widget.bottom) / 2, frame);
+      this.layoutScene();
+      widget = bounds();
+    }
+    const dx = widget.left < left ? left - widget.left : widget.right > right ? right - widget.right : 0;
+    const dy = widget.top < top ? top - widget.top : widget.bottom > bottom ? bottom - widget.bottom : 0;
+    if (dx || dy) {
+      this.camera.panBy(dx, dy, frame);
+      this.layoutScene();
+    }
   }
 
   private boardFrame(): BoardFrame {
@@ -502,6 +534,8 @@ export class BattleView {
           return;
         }
       }
+      this.handlers.onCancelDirection?.();
+      return;
     }
     const position = this.gridAt(point.x, point.y);
     if (!position) return;

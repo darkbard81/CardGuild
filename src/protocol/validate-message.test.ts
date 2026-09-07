@@ -4,6 +4,16 @@ import { PRODUCTION_CONTENT } from "../content";
 import { validateClientMessage } from "./validate-message";
 
 describe("protocol v3 structural validation", () => {
+  it("requires one valid final direction on end-turn, but not on movement targets", () => {
+    const message = (intent: unknown) => ({ v: 3, type: "intent", requestId: "facing", expectedRevision: 1, intent });
+    for (const facing of [undefined, null, "northeast", 1]) {
+      expect(validateClientMessage(message({ type: "end-turn", facing })).ok).toBe(false);
+    }
+    for (const facing of ["north", "east", "south", "west"]) {
+      expect(validateClientMessage(message({ type: "end-turn", facing })).ok).toBe(true);
+    }
+    expect(validateClientMessage(message({ type: "use-action", action: { kind: "basic", id: "stride" }, target: { kind: "tile", position: { x: 1, y: 1 } } })).ok).toBe(true);
+  });
   it("accepts hello, party/claim intents, and actor-id-free combat intents", () => {
     expect(validateClientMessage({
       v: 3,
@@ -18,7 +28,7 @@ describe("protocol v3 structural validation", () => {
       type: "intent",
       requestId: "request-a",
       expectedRevision: 3,
-      intent: { type: "end-turn" },
+      intent: { type: "end-turn", facing: "west" },
     }).ok).toBe(true);
     expect(validateClientMessage({
       v: 3,
@@ -57,7 +67,7 @@ describe("protocol v3 structural validation", () => {
         type: "intent",
         requestId: "actor-injection",
         expectedRevision: 3,
-        intent: { type: "end-turn", actorId: "enemy.goblin" },
+        intent: { type: "end-turn", facing: "east", actorId: "enemy.goblin" },
       },
       {
         v: 3,
@@ -85,7 +95,7 @@ describe("protocol v3 structural validation", () => {
         type: "intent",
         requestId: "command-order-injection",
         expectedRevision: 3,
-        intent: { type: "end-turn", id: "client-command", sequence: 99 },
+        intent: { type: "end-turn", facing: "east", id: "client-command", sequence: 99 },
       },
       {
         v: 1,

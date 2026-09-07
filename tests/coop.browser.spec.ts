@@ -81,6 +81,7 @@ async function advanceCurrentBoundary(page: Page): Promise<boolean> {
   const endTurn = page.locator("#end-turn");
   if (await endTurn.isEnabled()) {
     await endTurn.click();
+    await chooseFacing(page, "east");
     return true;
   }
   return false;
@@ -355,3 +356,4 @@ test("3P guests choose distinct remaining characters and only their effective ac
     await Promise.all(players.map((player) => player.context.close()));
   }
 });
+import { chooseFacing } from "./facing-input";

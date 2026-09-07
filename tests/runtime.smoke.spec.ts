@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { chooseFacing } from "./facing-input";
 
 // The same pattern the asset build generates actor paths from, so a request-shape
 // assertion here cannot describe a narrower contract than production supports.
@@ -441,6 +442,60 @@ test("carries a reward loadout through the shared resolver into the next encount
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-next-encounter.png"), fullPage: true });
 });
 
+for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024 }]) {
+  test(`explicit facing preserves cancellation and sends one atomic intent at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    const errors = captureRuntimeErrors(page);
+    const intents: Array<{ type: string; facing?: string; target?: unknown }> = [];
+    page.on("websocket", (socket) => socket.on("framesent", ({ payload }) => {
+      const message = JSON.parse(String(payload)) as { type: string; intent?: typeof intents[number] };
+      if (message.type === "intent" && message.intent) intents.push(message.intent);
+    }));
+    await openBattle(page);
+    const app = page.locator("#app");
+    const canvas = page.locator("#pixi-canvas");
+    const hash = await app.getAttribute("data-state-hash");
+    const count = intents.length;
+    // Cancelling returns to the selected card, with no gameplay mutation or traffic.
+    const trip = page.locator('#hand-cards .tactical-card[data-action-id="trip"]:not([disabled])').first();
+    await trip.click();
+    await page.locator("#end-turn").click();
+    await expect(canvas).toHaveAttribute("data-facing-position", "0,1");
+    await expect(app).toHaveAttribute("data-state-hash", hash!);
+    expect(intents).toHaveLength(count);
+    await page.keyboard.press("Escape");
+    await expect(trip).toHaveAttribute("aria-pressed", "true");
+    await expect(canvas).toHaveAttribute("data-facing-position", "");
+    await trip.click();
+    // The self-ring offers Step. Cancelling its direction picker restores the ring.
+    await pickRingAction(page, 0.5, 1.5, "step");
+    await expect(canvas).toHaveAttribute("data-facing-position", "0,1");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#ring-root")).toBeVisible();
+    await expect(app).toHaveAttribute("data-state-hash", hash!);
+    expect(intents).toHaveLength(count);
+    await page.locator('#ring-root .ring-option[data-action-id="step"]').click();
+    await page.screenshot({ path: testInfo.outputPath("step-direction.png") });
+    await chooseFacing(page, "north");
+    await expect(page.locator("#action-pips .available")).toHaveCount(2);
+    await expect(page.locator("#combat-log .log-line").first()).toContainText("now facing north");
+    await expect(page.locator("#combat-log .log-line").first()).not.toContainText("moved");
+    expect(intents.slice(count)).toEqual([{ type: "use-action", action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 0, y: 1 }, facing: "north" } }]);
+    const afterStep = await app.getAttribute("data-state-hash");
+    await page.locator("#end-turn").click();
+    await clickBoardPoint(page, 1.5, 1.5);
+    await expect(canvas).toHaveAttribute("data-facing-position", "");
+    await expect(app).toHaveAttribute("data-state-hash", afterStep!);
+    expect(intents).toHaveLength(count + 1);
+    await page.locator("#end-turn").click();
+    await page.screenshot({ path: testInfo.outputPath("end-turn-direction.png") });
+    await chooseFacing(page, "east");
+    await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");
+    expect(intents.slice(count + 1)).toEqual([{ type: "end-turn", facing: "east" }]);
+    expect(errors).toEqual([]);
+  });
+}
+
 test("loads the 2.5D board and keeps hover, movement, and facing on the square grid", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpResponses: string[] = [];
@@ -500,22 +555,18 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-hover-cell", "1,1");
   await pickRingAction(page, 1.5, 1.5, "step");
   await expect(page.locator("#ring-root")).toBeHidden();
-  await expect(page.locator("#board-prompt")).toContainText("바라볼 방향");
-  // A locked-in destination is the one square that matters now, so the reach clears.
-  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-move-bands", "{}");
-  await expect(page.locator("#move-legend")).toBeHidden();
-  await clickBoardPoint(page, 1.5, 1.7);
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "");
 
   // Facing changed, and the card reports it on the sheet rather than in the summary.
   await expect(page.locator("#hero-stats .save-cell")).toHaveCount(3);
   await expect(page.locator("#hero-details")).toBeHidden();
   await openHeroDetails(page);
-  await expect(page.locator("#hero-details")).toContainText("south");
+  await expect(page.locator("#hero-details")).toContainText("east");
   await expect(page.locator("#action-pips .available")).toHaveCount(2);
   // One line per action: what was used and everything it did. The cost and the rolls fold
   // underneath it.
   await expect(page.locator("#combat-log .log-line").first())
-    .toContainText("used Step — moved 1 square by land · now facing south");
+    .toContainText("used Step — moved 1 square by land");
   await expect(page.locator("#combat-log .log-detail").first()).toContainText("Cost 1 action");
   await expect(page.locator("#app")).not.toHaveAttribute("data-state-hash", initialHash ?? "");
   await page.waitForTimeout(500);
@@ -566,10 +617,20 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#board-prompt")).toContainText("강조된 적");
   await clickBoardPoint(page, 2.5, 1.5);
   await expect(page.locator("#combat-log")).toContainText("used Trip");
-  // The third action leaves a turn with nothing but End Turn in it -- every action in
-  // the pack costs at least one -- so the client sends it rather than making the player
-  // click. The pips are not asserted here: the enemy can answer fast enough that the
-  // board is back on Aerin's next turn before a poll sees them empty.
+  await expect(page.locator("#action-pips .available")).toHaveCount(0);
+  await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
+  // The last pip spent leaves End Turn as the only move, so the final-facing widget opens
+  // itself. It still only offers the turn: Esc hands the board back without ending it.
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", /^\d+,\d+$/);
+  await expect(page.locator("#combat-log")).not.toContainText("Aerin ended the turn.");
+  const beforeEnd = await page.locator("#app").getAttribute("data-state-hash");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "");
+  await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
+  await expect(page.locator("#app")).toHaveAttribute("data-state-hash", beforeEnd!);
+  await page.locator("#end-turn").click();
+  await expect(page.locator("#app")).toHaveAttribute("data-state-hash", beforeEnd!);
+  await chooseFacing(page, "east");
   await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");
 
   // The board sprite draws the whole texture as the board plane, so the texture has to be
@@ -853,6 +914,7 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   expect((await actorFeet("goblin-lackey")).x).toBeGreaterThan(canvasBox.width - safe.right);
 
   await page.locator("#end-turn").click();
+  await chooseFacing(page, "east");
   await page.waitForTimeout(600);
   const goblin = await actorFeet("goblin-lackey");
   // Every edge of the standee, so a head or an HP badge left under the HUD still fails.

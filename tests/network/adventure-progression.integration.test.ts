@@ -40,7 +40,7 @@ function restoresHp(actionId: string): boolean {
  */
 function heroIntent(combat: CombatState, actorId: string): SessionIntent {
   const actor = combat.actors[actorId];
-  if (!actor) return { type: "end-turn" };
+  if (!actor) throw new Error("Missing active hero.");
   const actions = listLegalActions(combat, actorId, CONTENT).filter((entry) => entry.enabled);
   const use = (source: ActionSource, target: ActionTarget): SessionIntent =>
     ({ type: "use-action", action: source, target });
@@ -100,10 +100,10 @@ function heroIntent(combat: CombatState, actorId: string): SessionIntent {
         left.position.y - right.position.y ||
         left.position.x - right.position.x)[0];
     if (destination && gridDistance(destination.position, enemy.position) < gridDistance(actor.position, enemy.position)) {
-      return { type: "use-action", action: stride.source, target: { kind: "tile", position: destination.position, facing: actor.facing } };
+      return { type: "use-action", action: stride.source, target: { kind: "tile", position: destination.position } };
     }
   }
-  return { type: "end-turn" };
+  return { type: "end-turn", facing: actor.facing };
 }
 
 /**

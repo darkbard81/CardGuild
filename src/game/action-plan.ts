@@ -266,7 +266,9 @@ export function buildResolvedActionPlan(
 
   const resolution = definition.resolution;
   if (resolution.kind === "move") {
-    return { ...base, resolution, notes: [`Face ${target.kind === "tile" ? target.facing : actor.facing} after moving.`] };
+    return { ...base, resolution, notes: [target.kind === "tile" && target.position.x === actor.position.x && target.position.y === actor.position.y
+      ? `Face ${target.facing ?? actor.facing} in place (1 Action).`
+      : "Face the final segment of the resolved movement path."] };
   }
   if (resolution.kind === "direct") {
     return { ...base, resolution, notes: [] };

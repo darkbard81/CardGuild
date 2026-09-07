@@ -90,6 +90,26 @@ function beginAndStart(state: SessionCoreState): SessionCoreState {
 }
 
 describe("pure M5 Session authority", () => {
+  it("authorizes and commits final facing plus End Turn as one revision", () => {
+    const state = beginAndStart(readyThreePlayers());
+    const combat = state.combat!;
+    const actorId = combat.turn.activeActorId;
+    const owner = control(state).effectiveControllerByMemberId[actorId]!;
+    const other = state.seats.find((seat) => seat.playerId !== owner)!.playerId;
+    const facing = combat.actors[actorId]!.facing === "west" ? "east" : "west";
+    const denied = dispatch(state, other, { type: "end-turn", facing });
+    expect(denied.accepted).toBe(false);
+    expect(denied.state).toBe(state);
+    const result = dispatch(state, owner, { type: "end-turn", facing });
+    expect(result.accepted).toBe(true);
+    expect(result.state.revision).toBe(state.revision + 1);
+    expect(result.state.combat?.sequence).toBe(combat.sequence + 1);
+    expect(result.state.combat?.actors[actorId]?.facing).toBe(facing);
+    expect(result.state.combat?.commandLog.at(-1)).toMatchObject({ type: "end-turn", facing, actorId });
+    expect(result.events.findIndex((event) => event.type === "FACING_CHANGED"))
+      .toBeLessThan(result.events.findIndex((event) => event.type === "TURN_ENDED"));
+    expect(result.events.some((event) => event.type === "ACTION_SPENT")).toBe(false);
+  });
   it("keeps player seats separate and prepares deterministic 1/2/3-character parties", () => {
     for (const size of [1, 2, 3] as const) {
       const state = prepare(lobby("session-" + String(size)), DEFAULT_PARTY.slice(0, size));

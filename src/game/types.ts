@@ -389,7 +389,8 @@ export type ActionTarget =
   | {
       readonly kind: "tile";
       readonly position: GridPosition;
-      readonly facing: Direction;
+      /** Explicit direction only for an in-place Step; ignored for actual movement. */
+      readonly facing?: Direction;
     }
   | { readonly kind: "object"; readonly objectId: ObjectId }
   | { readonly kind: "effect"; readonly effectId: EffectId };
@@ -405,6 +406,7 @@ export type CombatCommand =
     }
   | {
       readonly type: "end-turn";
+      readonly facing: Direction;
       readonly id: string;
       readonly sequence: number;
       readonly actorId: EntityId;
@@ -438,7 +440,6 @@ export interface MoveContinuation {
   readonly source: ActionSource;
   readonly path: readonly GridPosition[];
   readonly destination: GridPosition;
-  readonly facing: Direction;
   readonly movementMode: MovementMode;
 }
 

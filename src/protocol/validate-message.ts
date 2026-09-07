@@ -37,7 +37,7 @@ const actionTarget = {
     {
       type: "object",
       additionalProperties: false,
-      required: ["kind", "position", "facing"],
+      required: ["kind", "position"],
       properties: {
         kind: { const: "tile" },
         position: gridPosition,
@@ -125,7 +125,7 @@ const intent = {
       required: ["type", "action", "target"],
       properties: { type: { const: "use-action" }, action: actionSource, target: actionTarget },
     },
-    { type: "object", additionalProperties: false, required: ["type"], properties: { type: { const: "end-turn" } } },
+    { type: "object", additionalProperties: false, required: ["type", "facing"], properties: { type: { const: "end-turn" }, facing: { enum: ["north", "east", "south", "west"] } } },
     {
       type: "object",
       additionalProperties: false,

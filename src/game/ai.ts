@@ -198,13 +198,17 @@ export function chooseAiCommand(state: CombatState, content: CombatContent): Com
       return useActionCommand(state, actor.id, stride.source, {
         kind: "tile",
         position: destination.position,
-        facing: facingToward(destination.position, hero.position),
       });
     }
   }
 
+  // Final orientation is an explicit tactical choice; ordinary actions derive theirs in GameCore.
+  const nearestEnemy = Object.values(state.actors)
+    .filter((candidate) => candidate.team !== actor.team && !candidate.defeated)
+    .sort((left, right) => gridDistance(actor.position, left.position) - gridDistance(actor.position, right.position) || left.id.localeCompare(right.id))[0];
   return {
     type: "end-turn",
+    facing: nearestEnemy ? facingToward(actor.position, nearestEnemy.position) : actor.facing,
     id: commandId(state, "end-turn"),
     sequence: state.sequence + 1,
     actorId: actor.id,

@@ -7,6 +7,7 @@ import type {
   CombatEvent,
   CombatState,
   ContentIdentity,
+  Direction,
 } from "../game";
 import type { PartyMemberLoadout } from "../loadout";
 
@@ -76,7 +77,7 @@ export type SessionIntent =
   | { readonly type: "choose-reward"; readonly rewardId: string; readonly choiceIndex: number }
   | { readonly type: "set-loadout"; readonly memberId: string; readonly loadout: PartyMemberLoadout }
   | { readonly type: "use-action"; readonly action: ActionSource; readonly target: ActionTarget }
-  | { readonly type: "end-turn" }
+  | { readonly type: "end-turn"; readonly facing: Direction }
   | { readonly type: "use-reaction"; readonly triggerId: string; readonly cardInstanceId: CardInstanceId }
   | { readonly type: "pass-reaction"; readonly triggerId: string };
 

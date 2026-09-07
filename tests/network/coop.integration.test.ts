@@ -196,6 +196,37 @@ describe("real WebSocket M5 cooperative session", () => {
     vi.restoreAllMocks();
   });
 
+  it("transports atomic final facing and preserves it in a reconnect snapshot", async () => {
+    const server = await start();
+    const credential = await create(server);
+    const client = await SocketClient.connect(server.origin, credential);
+    sockets.push(client);
+    await client.waitForSnapshot();
+    const host = server.store.get(credential.sessionId)!;
+    await accepted(client, host, "party-facing", { type: "set-party-composition", actorDefinitionIds: PARTY });
+    await accepted(client, host, "begin-facing", { type: "begin-adventure" });
+    await accepted(client, host, "encounter-facing", { type: "start-encounter" });
+    const before = host.state;
+    const actorId = before.combat!.turn.activeActorId;
+    const facing = before.combat!.actors[actorId]!.facing === "west" ? "east" : "west";
+    const mark = client.mark();
+    const ack = await accepted(client, host, "end-facing", { type: "end-turn", facing });
+    expect(ack.committedRevision).toBe(before.revision + 1);
+    const snapshot = await client.waitForSnapshot(mark, (message) => message.cause?.requestId === "end-facing");
+    expect(snapshot.state.combat!.actors[actorId]!.facing).toBe(facing);
+    expect(snapshot.state.combat!.turn.activeActorId).not.toBe(actorId);
+    expect(snapshot.state.combat!.commandLog.at(-1)).toMatchObject({ type: "end-turn", facing, actorId });
+    expect(snapshot.events.findIndex((event) => event.type === "FACING_CHANGED"))
+      .toBeLessThan(snapshot.events.findIndex((event) => event.type === "TURN_ENDED"));
+    expect(snapshot.events.some((event) => event.type === "ACTION_SPENT")).toBe(false);
+    await client.close();
+    const reconnected = await SocketClient.connect(server.origin, credential);
+    sockets.push(reconnected);
+    const recovered = await reconnected.waitForSnapshot();
+    expect(recovered.state.combat!.actors[actorId]!.facing).toBe(facing);
+    expect(recovered.gameplayHash).toBe(hashSessionGameplayState(host.state));
+  });
+
   it("runs a 1P session with the host controlling and editing all three characters", async () => {
     const server = await start();
     const credential = await create(server);
@@ -383,7 +414,7 @@ describe("real WebSocket M5 cooperative session", () => {
       const ownerClient = controller === hostCredential.playerId ? hostClient : guestClient;
       await accepted(ownerClient, host, "advance-" + String(index), combat.pendingReaction
         ? { type: "pass-reaction", triggerId: combat.pendingReaction.triggerId }
-        : { type: "end-turn" });
+        : { type: "end-turn", facing: combat.actors[combat.turn.activeActorId]!.facing });
     }
     const boundaryCombat = host.state.combat;
     const boundaryReaction = boundaryCombat?.pendingReaction;

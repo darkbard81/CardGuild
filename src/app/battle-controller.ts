@@ -32,7 +32,9 @@ import { MOVE_BAND_ORDER, moveBandOf, moveBandsFor, moveBandTilesFor } from "./m
 import type { Application } from "pixi.js";
 
 const PROMPT_IDLE = "보드에서 적·칸·오브젝트를 클릭해 행동을 고르세요.";
-const PROMPT_FACING = "이동 후 바라볼 방향을 선택하세요.";
+const PROMPT_FACING = "제자리 Step으로 바라볼 방향을 선택하세요. (1 Action · Esc 취소)";
+const PROMPT_END_TURN = "턴을 마칠 최종 방향을 선택하세요. (무료 · Esc 취소)";
+const PROMPT_SPENT_TURN = "Action을 모두 사용했습니다. 최종 방향을 고르면 턴이 끝납니다. (무료 · Esc 취소)";
 
 export interface BattleControllerOptions {
   readonly definition: CombatDefinition;
@@ -61,14 +63,14 @@ function targetKey(target: LegalTarget): string {
   }
 }
 
-function legalTargetToActionTarget(target: LegalTarget, fallbackFacing: Direction): ActionTarget {
+function legalTargetToActionTarget(target: LegalTarget): ActionTarget {
   switch (target.kind) {
     case "none":
       return { kind: "none" };
     case "actor":
       return { kind: "actor", actorId: target.actorId };
     case "tile":
-      return { kind: "tile", position: target.position, facing: fallbackFacing };
+      return { kind: "tile", position: target.position };
     case "object":
       return { kind: "object", objectId: target.objectId };
     case "effect":
@@ -91,6 +93,15 @@ export class BattleController {
   private readonly view: BattleView;
   private readonly ui: BattleUi;
   private readonly ring: RingMenu;
+  private directionReturn: { interaction: Interaction; prompt: string } | null = null;
+  private ringAnchor: ScreenPoint = { x: 0, y: 0 };
+  private ringTitle = "";
+  private readonly keyHandler = (event: KeyboardEvent): void => {
+    if (event.key === "Escape" && this.interaction.kind === "direction") {
+      event.preventDefault();
+      this.cancelDirection();
+    }
+  };
 
   public constructor(app: Application, catalog: AssetCatalog, options: BattleControllerOptions) {
     this.definition = options.definition;
@@ -104,6 +115,7 @@ export class BattleController {
     this.view = new BattleView(app, catalog, {
       onPick: (pick, screen) => this.handlePick(pick, screen),
       onFacing: (facing) => this.handleFacing(facing),
+      onCancelDirection: () => this.cancelDirection(),
       onHoverCell: (position) => this.handleHoverCell(position),
       safeArea: () => measureHudSafeArea(stage),
     });
@@ -121,12 +133,13 @@ export class BattleController {
       onDismiss: () => this.dismissRing(),
     });
     this.refreshMoveBands();
+    window.addEventListener("keydown", this.keyHandler);
     this.render(options.history);
   }
 
-  /** Guards against sending a second end-turn while the first is still outstanding. */
-  private autoEndedTurn = false;
   private moveBands: readonly MoveBandTile[] = [];
+  /** The turn whose spent-action widget already opened, so a cancel is not undone. */
+  private spentTurnOffered: number | null = null;
 
   private requireElement<T extends Element>(selector: string): T {
     const element = document.querySelector<T>(selector);
@@ -183,7 +196,7 @@ export class BattleController {
     switch (interaction.kind) {
       case "idle":
         return this.moveBands;
-      case "facing":
+      case "direction":
         return [];
       case "card":
       case "ring": {
@@ -196,8 +209,7 @@ export class BattleController {
 
   private highlights(): BoardHighlights {
     const interaction = this.interaction;
-    // The facing step has committed to a destination: only that square stays lit.
-    if (interaction.kind === "facing") {
+    if (interaction.kind === "direction") {
       return {
         tiles: [interaction.position],
         actorIds: [],
@@ -232,7 +244,9 @@ export class BattleController {
       this.state,
       actor.id,
       action.source,
-      legalTargetToActionTarget(resolved, actor.facing),
+      resolved.kind === "tile" && samePosition(resolved.position, actor.position)
+        ? { kind: "tile", position: resolved.position, facing: actor.facing }
+        : legalTargetToActionTarget(resolved),
       this.definition.content,
     );
   }
@@ -299,6 +313,7 @@ export class BattleController {
   }
 
   private goIdle(): void {
+    this.directionReturn = null;
     this.enter(IDLE_INTERACTION);
     this.hoveredCardAction = null;
   }
@@ -314,10 +329,8 @@ export class BattleController {
   private handlePick(pick: BoardPick, screen: ScreenPoint): void {
     if (!this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
     const interaction = this.interaction;
-    if (interaction.kind === "facing") {
-      this.goIdle();
-      this.prompt = PROMPT_IDLE;
-      this.render();
+    if (interaction.kind === "direction") {
+      this.cancelDirection();
       return;
     }
     if (interaction.kind === "card") {
@@ -334,7 +347,9 @@ export class BattleController {
     this.enter({ kind: "ring", position: pick.position, entries, hoveredOptionId: null });
     this.prompt = "링 메뉴에서 행동을 선택하세요. (Esc 취소)";
     this.render();
-    this.ring.show(screen, this.pickLabel(pick), entries.map((entry) => this.ringOption(entry, entries)));
+    this.ringAnchor = screen;
+    this.ringTitle = this.pickLabel(pick);
+    this.ring.show(screen, this.ringTitle, entries.map((entry) => this.ringOption(entry, entries)));
   }
 
   private ringOption(entry: RingEntry, entries: readonly RingEntry[]): RingMenuOption {
@@ -388,7 +403,9 @@ export class BattleController {
       case "actor":
         return target.kind === "actor"
           ? target.actorId === pick.actorId
-          : pick.actorId === heroId && (target.kind === "none" || target.kind === "effect");
+          : target.kind === "tile"
+            ? samePosition(target.position, pick.position)
+            : pick.actorId === heroId && (target.kind === "none" || target.kind === "effect");
     }
   }
 
@@ -397,7 +414,6 @@ export class BattleController {
     if (interaction.kind !== "ring") return;
     const entry = interaction.entries.find((candidate) => candidate.id === optionId);
     if (!entry) return;
-    this.goIdle();
     this.commit(entry.action, entry.target);
   }
 
@@ -429,7 +445,7 @@ export class BattleController {
     }
     this.prompt =
       single?.kind === "tile"
-        ? "강조된 칸을 선택한 뒤 바라볼 방향을 정하세요."
+        ? "강조된 칸을 선택하세요. 제자리 Step은 방향을 선택합니다."
         : single?.kind === "actor"
           ? "강조된 적을 선택하세요."
           : single?.kind === "object"
@@ -449,17 +465,19 @@ export class BattleController {
     this.commit(action, target);
   }
 
-  /** Tile targets need a facing pick on the board before the command is sent. */
+  /** Only an in-place Step needs explicit direction input. */
   private commit(action: LegalAction, target: LegalTarget): void {
-    if (target.kind === "tile") {
-      this.enter({ kind: "facing", action, position: { ...target.position } });
+    const hero = this.state.actors[this.heroId()];
+    if (!hero) return;
+    const resolution = this.definition.content.actions[action.actionId]?.resolution;
+    if (resolution?.kind === "move" && resolution.step && target.kind === "tile" && samePosition(target.position, hero.position)) {
+      this.directionReturn = { interaction: this.interaction, prompt: this.prompt };
+      this.enter({ kind: "direction", purpose: "step-turn", action, position: { ...target.position } });
       this.prompt = PROMPT_FACING;
       this.render();
       return;
     }
-    const hero = this.state.actors[this.heroId()];
-    if (!hero) return;
-    this.useAction(action, legalTargetToActionTarget(target, hero.facing));
+    this.useAction(action, legalTargetToActionTarget(target));
   }
 
   private handleActionHover(action: LegalAction | null): void {
@@ -475,7 +493,11 @@ export class BattleController {
 
   private handleFacing(facing: Direction): void {
     const interaction = this.interaction;
-    if (interaction.kind !== "facing") return;
+    if (interaction.kind !== "direction") return;
+    if (interaction.purpose === "end-turn") {
+      this.sendIntent({ type: "end-turn", facing });
+      return;
+    }
     this.useAction(interaction.action, {
       kind: "tile",
       position: interaction.position,
@@ -492,27 +514,45 @@ export class BattleController {
     });
   }
 
-  private endTurn(): boolean {
-    if (!this.activeHeroId()) return false;
-    return this.sendIntent({ type: "end-turn" });
+  /** Opens the final-facing widget without drawing it, so a caller can batch the render. */
+  private beginEndTurnDirection(prompt: string): boolean {
+    const actorId = this.activeHeroId();
+    if (!actorId || this.state.pendingReaction || this.state.outcome || this.interaction.kind === "direction") return false;
+    const actor = this.state.actors[actorId];
+    if (!actor) return false;
+    this.directionReturn = { interaction: this.interaction, prompt: this.prompt };
+    this.enter({ kind: "direction", purpose: "end-turn", position: actor.position });
+    this.prompt = prompt;
+    return true;
+  }
+
+  private endTurn(): void {
+    if (this.beginEndTurnDirection(PROMPT_END_TURN)) this.render();
   }
 
   /**
-   * A turn with no actions left has nothing but End Turn in it: every action in the
-   * pack costs at least one, and Reactions are resolved by their own window rather
-   * than from the turn. Sending it here saves the click that has no alternative.
-   *
-   * The flag clears as soon as a turn with actions is seen, so a new turn always ends
-   * itself again, and a rejected intent is retried on the next snapshot instead of
-   * leaving the player stuck with a turn the client thinks it already ended.
+   * A turn with no actions left has nothing but End Turn in it: every action in the pack
+   * costs at least one, and Reactions are resolved by their own window rather than from
+   * the turn. So the final-facing widget opens itself and the direction picked there ends
+   * the turn, sparing the player a button press with no alternative. The turn is still not
+   * ended for them: `Esc` puts the board back and leaves End Turn to be pressed, and the
+   * remembered turn number keeps the next snapshot from reopening what they dismissed.
    */
-  private endSpentTurn(): void {
-    if (this.state.turn.actionsRemaining > 0) {
-      this.autoEndedTurn = false;
-      return;
+  private offerSpentTurnDirection(): void {
+    if (this.state.turn.actionsRemaining > 0 || this.spentTurnOffered === this.state.turn.turnNumber) return;
+    if (this.beginEndTurnDirection(PROMPT_SPENT_TURN)) this.spentTurnOffered = this.state.turn.turnNumber;
+  }
+
+  private cancelDirection(): void {
+    const previous = this.directionReturn;
+    this.directionReturn = null;
+    this.enter(previous?.interaction ?? IDLE_INTERACTION);
+    this.prompt = previous?.prompt ?? PROMPT_IDLE;
+    this.render();
+    if (this.interaction.kind === "ring") {
+      const entries = this.interaction.entries;
+      this.ring.show(this.ringAnchor, this.ringTitle, entries.map((entry) => this.ringOption(entry, entries)));
     }
-    if (this.autoEndedTurn || !this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
-    this.autoEndedTurn = this.endTurn();
   }
 
   private resolveReaction(use: boolean): void {
@@ -564,13 +604,14 @@ export class BattleController {
         : this.activeHeroId()
           ? PROMPT_IDLE
           : `${state.actors[state.turn.activeActorId]?.name ?? "다른 플레이어"}의 턴입니다.`;
-    // Render first so the action that spent the last pip is animated and logged before
-    // the turn is handed over.
+    // Chosen before the render so the action that spent the last pip is animated and
+    // logged in the same pass that puts the widget on the board.
+    this.offerSpentTurnDirection();
     this.render(events);
-    this.endSpentTurn();
   }
 
   public destroy(): void {
+    window.removeEventListener("keydown", this.keyHandler);
     this.ring.destroy();
     this.ui.destroy();
     this.view.destroy();

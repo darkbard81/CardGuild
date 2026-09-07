@@ -1,6 +1,5 @@
 import { gridDistance } from "../../src/game/grid";
 import { listLegalActions, listLegalTargets, previewAction } from "../../src/game/queries";
-import { facingToward } from "../../src/game/rules";
 import type {
   ActionDefinition,
   ActionOutcomeEffect,
@@ -278,14 +277,13 @@ export function chooseHeroCommand(state: CombatState, content: CombatContent): C
       return useActionCommand(state, actor.id, stride.source, {
         kind: "tile",
         position: destination.position,
-        facing: facingToward(destination.position, goal),
       });
     }
   }
 
   // The basic Strike is already in the scored pool, so reaching here means the hero had
   // nothing legal worth an action: no reachable enemy, no step that closes, nothing to raise.
-  return { type: "end-turn", id: commandId(state, "end-turn"), sequence: state.sequence + 1, actorId: actor.id };
+  return { type: "end-turn", facing: actor.facing, id: commandId(state, "end-turn"), sequence: state.sequence + 1, actorId: actor.id };
 }
 
 /** The reaction queue only ever offers its head candidate, so the policy answers for that one. */

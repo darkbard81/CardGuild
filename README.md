@@ -83,8 +83,20 @@ port 8787 backend로 proxy합니다.
   클릭으로 닫습니다.
 - `Step`, `Stride`, `Strike`는 손패와 무관한 고정 Basic Action이며 별도 버튼 없이
   링 메뉴에 나타납니다.
-- 이동은 상하좌우만 가능하며 목적지를 고른 뒤 보드 위 4방향 위젯에서 최종 Facing을
-  선택합니다.
+- 이동은 상하좌우만 가능하며 Facing은 GameCore가 실제 경로의 마지막 이동 방향으로
+  결정합니다. 일반 이동에는 방향 확인 단계가 없습니다.
+- 방향성이 있는 Actor/Object/Tile 행동은 현재 Facing으로 합법성을 검사한 뒤 대상 방향으로
+  회전합니다. self/none/Sustain은 방향을 유지하며, 뒤쪽 적을 자동 회전으로 공격할 수 없습니다.
+- 자기 칸의 `Step`은 4방향 위젯으로 방향을 선택하고 1 Action을 소비합니다. 위치 이동,
+  이동 이벤트, Reaction은 발생하지 않으며 Prone/Grabbed 등 Step 제한도 그대로 적용됩니다.
+- `End Turn`을 누르면 자기 칸에 4방향 위젯이 나타나고, 선택한 최종 Facing과 턴 종료를 무료인
+  하나의 명령으로 처리합니다. `Esc` 또는 바깥 클릭은 명령 없이 이전 입력 상태로 돌아갑니다.
+  같은 방향이면 중복 `FACING_CHANGED`는 발생하지 않습니다.
+- Action을 모두 사용하면 같은 위젯이 자동으로 열립니다. 방향을 고르면 그대로 턴이 끝나고,
+  취소하면 턴은 유지되며 그 턴에는 다시 자동으로 열리지 않습니다. 턴을 끝내는 명령은
+  언제나 플레이어가 고른 방향과 함께 나갑니다.
+- AI는 일반 행동의 방향 계산을 GameCore에 맡기며, 턴 종료 시 가장 가까운 살아있는 적을
+  바라봅니다. 동률은 Actor ID 순서, 적이 없으면 현재 방향을 유지합니다.
 - 같은 팀의 살아있는 Actor가 있는 칸은 통과할 수 있지만 이동을 끝낼 수 없습니다.
   상대 팀의 살아있는 Actor는 통과와 정지를 모두 막으며, defeated Actor는 점유에서 제외됩니다.
 - `Escape`, `Interact`, `Raise Shield`, `Sustain Spell`은 현재 상태가 제공하는
@@ -123,7 +135,7 @@ src/presentation atlas + standalone actor 혼합 저장 AssetCatalog와 layered 
 src/dom    Adventure/Reward/Loadout Builder, 링 컨텍스트 메뉴·카드·HUD·로그·Reaction·결과 UI
 ```
 
-전투 입력은 `battle-interaction.ts`의 `Interaction` union(`idle`/`card`/`ring`/`facing`)이
+전투 입력은 `battle-interaction.ts`의 `Interaction` union(`idle`/`card`/`ring`/`direction`)이
 단계를 소유합니다. 각 단계가 자기 데이터를 들고 있으므로 링 항목이나 확정된 목적지가
 다음 단계로 새지 않으며, 이후 AoE·multi-target·drag 같은 targeting mode도 여기에
 붙입니다.

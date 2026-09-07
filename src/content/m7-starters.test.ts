@@ -155,6 +155,7 @@ describe("starter build identity", () => {
       for (let guard = 0; guard < 8 && current.turn.activeActorId !== "hero"; guard += 1) {
         const result = dispatchCombatCommand(current, {
           type: "end-turn",
+          facing: current.actors[current.turn.activeActorId]!.facing,
           id: `end-${String(current.sequence + 1)}`,
           sequence: current.sequence + 1,
           actorId: current.turn.activeActorId,

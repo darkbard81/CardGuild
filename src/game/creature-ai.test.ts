@@ -74,6 +74,38 @@ const MID = { x: 3, y: 3 } as const;      // 20 ft: past weapon reach, inside a 
 const ADJACENT = { x: 2, y: 1 } as const; // 5 ft
 
 describe("creature AI action consumption", () => {
+  it("leaves movement facing to GameCore and faces a side-target attack after acceptance", () => {
+    const moving = arena([HERO, { id: "rabble", definitionId: "enemy.skeleton-rabble", team: "enemies", position: FAR, facing: "north", initiative: 100 }]);
+    const move = aiCommand(moving);
+    expect(move).toMatchObject({ type: "use-action", action: { id: "stride" }, target: { kind: "tile" } });
+    if (move.type !== "use-action") throw new Error("Expected movement.");
+    expect(move.target).not.toHaveProperty("facing");
+    expect(dispatchCombatCommand(moving, move, CONTENT).accepted).toBe(true);
+    const striking = arena([HERO, { id: "archer", definitionId: "enemy.skeleton-archer", team: "enemies", position: ADJACENT, facing: "north", initiative: 100 }]);
+    const strike = aiCommand(striking);
+    expect(actionIdOf(strike)).toBe("strike");
+    const result = dispatchCombatCommand(striking, strike, CONTENT);
+    expect(result.accepted).toBe(true);
+    expect(result.state.actors.archer?.facing).toBe("west");
+    expect(result.events).toContainEqual({ type: "FACING_CHANGED", actorId: "archer", facing: "west" });
+  });
+
+  it("ends toward the nearest living enemy with stable ID ties and preserves direction without enemies", () => {
+    const initial = arena([
+      { ...HERO, id: "hero-a", position: { x: 1, y: 2 } },
+      { ...HERO, id: "hero-b", position: { x: 2, y: 1 } },
+      { id: "rabble", definitionId: "enemy.skeleton-rabble", team: "enemies", position: { x: 2, y: 2 }, facing: "south", initiative: 100 },
+    ]);
+    const state = { ...initial, turn: { ...initial.turn, actionsRemaining: 0 } };
+    expect(aiCommand(state)).toMatchObject({ type: "end-turn", facing: "west" });
+    const reversed = { ...state, actors: Object.fromEntries(Object.entries(state.actors).reverse()) };
+    expect(aiCommand(reversed)).toEqual(aiCommand(state));
+    const oneEnemy = { ...state, actors: { ...state.actors, "hero-a": { ...state.actors["hero-a"]!, defeated: true } } };
+    expect(aiCommand(oneEnemy)).toMatchObject({ type: "end-turn", facing: "north" });
+    const none = { ...oneEnemy, actors: { ...oneEnemy.actors, "hero-b": { ...state.actors["hero-b"]!, defeated: true } } };
+    expect(aiCommand(none)).toMatchObject({ type: "end-turn", facing: "south" });
+  });
+
   it("uses a Fixed Strike's own range instead of closing on the hero", () => {
     // The archer's authored Strike reaches 60 ft, so the generic Strike step is legal from
     // across the board and the AI never falls through to Stride.
