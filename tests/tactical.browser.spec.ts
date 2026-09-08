@@ -192,3 +192,46 @@ test("returns to the previously selected card when a refused facing is cancelled
   await expect(card).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => window.tacticalFixture.events)).toEqual([]);
 });
+
+/**
+ * An actor standing against a wall of the map still has to be able to face outward, and
+ * mouse and finger have no arrow keys to fall back on. The pointer is read as the board
+ * coordinate it lands on, so aiming past the edge is an aim like any other.
+ */
+type MapSize = { width: number; height: number };
+const EDGES = [
+  { edge: "top", cell: (size: MapSize) => ({ x: Math.floor(size.width / 2), y: 0 }), aim: [0.5, -0.5], facing: "north" },
+  { edge: "bottom", cell: (size: MapSize) => ({ x: Math.floor(size.width / 2), y: size.height - 1 }), aim: [0.5, 1.5], facing: "south" },
+  { edge: "left", cell: (size: MapSize) => ({ x: 0, y: Math.floor(size.height / 2) }), aim: [-0.5, 0.5], facing: "west" },
+  { edge: "right", cell: (size: MapSize) => ({ x: size.width - 1, y: Math.floor(size.height / 2) }), aim: [1.5, 0.5], facing: "east" },
+] as const;
+
+for (const { edge, cell, aim, facing } of EDGES) {
+  test(`aims off the ${edge} edge of the map with the pointer and with a finger`, async ({ page }) => {
+    const canvas = page.locator("#pixi-canvas");
+    const size = await page.evaluate(() => window.tacticalFixture.placeHero(0, 0));
+    const at = cell(size);
+    await page.evaluate(([x, y]) => window.tacticalFixture.placeHero(x!, y!), [at.x, at.y]);
+    await page.locator("#end-turn").click();
+    await expect(canvas).toHaveAttribute("data-facing-position", `${at.x},${at.y}`);
+    await canvas.click({ position: await boardPoint(page, at.x + aim[0], at.y + aim[1]) });
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([{ type: "end-turn", facing }]);
+    expect(await page.evaluate(() => window.tacticalFixture.state.actors.hero!.facing)).toBe(facing);
+  });
+}
+
+test.describe("touch aiming off the map", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 1024, height: 768 } });
+  for (const { edge, cell, aim, facing } of EDGES) {
+    test(`taps past the ${edge} edge to face outward`, async ({ page }) => {
+      const canvas = page.locator("#pixi-canvas");
+      const size = await page.evaluate(() => window.tacticalFixture.placeHero(0, 0));
+      const at = cell(size);
+      await page.evaluate(([x, y]) => window.tacticalFixture.placeHero(x!, y!), [at.x, at.y]);
+      await page.locator("#end-turn").tap();
+      await expect(canvas).toHaveAttribute("data-facing-position", `${at.x},${at.y}`);
+      await canvas.tap({ position: await boardPoint(page, at.x + aim[0], at.y + aim[1]) });
+      expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([{ type: "end-turn", facing }]);
+    });
+  }
+});

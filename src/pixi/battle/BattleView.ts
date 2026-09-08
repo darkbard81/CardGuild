@@ -56,8 +56,8 @@ export interface ScreenPoint {
 export interface BattleViewHandlers {
   /** A board target was picked; the screen point anchors the radial action menu. */
   readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
-  /** A facing is chosen by picking the board position to look at, not a direction widget. */
-  readonly onFacingTarget: (position: GridPosition) => void;
+  /** A facing is aimed at a board coordinate, not chosen from a direction widget. */
+  readonly onFacingPoint: (point: { readonly x: number; readonly y: number }) => void;
   readonly onCancelDirection?: () => void;
   readonly onHoverCell: (position: GridPosition | null) => void;
   /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
@@ -240,6 +240,20 @@ export class BattleView {
   }
 
   public render(state: CombatState, highlights: BoardHighlights, events: readonly CombatEvent[] = []): void {
+    const nextBoardKey = `${state.scenarioId}:${state.map.width}x${state.map.height}`;
+    // Choosing a phase is not a new snapshot. Rebuilding the scene for one would cancel a
+    // movement still playing from the snapshot that opened the phase -- which is exactly
+    // when a final facing gets aimed -- so an interaction-only render repaints the overlay
+    // and leaves the board, the standees and their animations where they are.
+    if (this.state === state && events.length === 0 && this.boardKey === nextBoardKey) {
+      this.currentHighlights = highlights;
+      this.app.canvas.dataset.facingPosition = highlights.facingPosition
+        ? `${highlights.facingPosition.x},${highlights.facingPosition.y}` : "";
+      this.safeArea = this.handlers.safeArea();
+      if (highlights.facingPosition) this.ensureDirectionVisible(highlights.facingPosition);
+      this.renderOverlay();
+      return;
+    }
     const previousPositions = new Map(
       Object.values(this.state?.actors ?? {}).map((actor) => [actor.id, { ...actor.position }]),
     );
@@ -249,7 +263,6 @@ export class BattleView {
     this.app.canvas.dataset.facingPosition = highlights.facingPosition
       ? `${highlights.facingPosition.x},${highlights.facingPosition.y}` : "";
     this.safeArea = this.handlers.safeArea();
-    const nextBoardKey = `${state.scenarioId}:${state.map.width}x${state.map.height}`;
     if (this.boardKey !== nextBoardKey) {
       this.boardKey = nextBoardKey;
       this.camera.reset();
@@ -316,35 +329,23 @@ export class BattleView {
   }
 
   /**
-   * A facing is picked by choosing a square to look at, so the four squares around the
-   * actor are the input: at close-up zoom they are what has to be on screen, not just
-   * the actor standing between them.
+   * There is no widget to frame any more — the answer is a square anywhere on the board —
+   * so entering the mode keeps the camera the player set and only pans when the actor
+   * being turned is not on screen to begin with. Nothing is zoomed.
    */
   private ensureDirectionVisible(position: GridPosition): void {
-    const frame = this.boardFrame();
-    const left = this.safeArea.left + 16;
-    const right = this.app.screen.width - this.safeArea.right - 16;
-    const top = this.safeArea.top + 16;
-    const bottom = this.app.screen.height - this.safeArea.bottom - 16;
-    const bounds = () => {
-      const points = [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }]
-        .flatMap((offset) => this.projection.getCellCorners(position.x + offset.x, position.y + offset.y));
-      return { left: Math.min(...points.map((point) => point.x)), right: Math.max(...points.map((point) => point.x)),
-        top: Math.min(...points.map((point) => point.y)), bottom: Math.max(...points.map((point) => point.y)) };
-    };
-    let widget = bounds();
-    const factor = Math.min(1, (right - left) / (widget.right - widget.left), (bottom - top) / (widget.bottom - widget.top));
-    if (factor > 0 && factor < 1) {
-      this.camera.zoomBy(factor, (widget.left + widget.right) / 2, (widget.top + widget.bottom) / 2, frame);
-      this.layoutScene();
-      widget = bounds();
-    }
-    const dx = widget.left < left ? left - widget.left : widget.right > right ? right - widget.right : 0;
-    const dy = widget.top < top ? top - widget.top : widget.bottom > bottom ? bottom - widget.bottom : 0;
-    if (dx || dy) {
-      this.camera.panBy(dx, dy, frame);
-      this.layoutScene();
-    }
+    const points = this.projection.getCellCorners(position.x, position.y);
+    const cell = { left: Math.min(...points.map((point) => point.x)), right: Math.max(...points.map((point) => point.x)),
+      top: Math.min(...points.map((point) => point.y)), bottom: Math.max(...points.map((point) => point.y)) };
+    const left = this.safeArea.left + FOCUS_MARGIN;
+    const right = this.app.screen.width - this.safeArea.right - FOCUS_MARGIN;
+    const top = this.safeArea.top + FOCUS_MARGIN;
+    const bottom = this.app.screen.height - this.safeArea.bottom - FOCUS_MARGIN;
+    const dx = cell.left < left ? left - cell.left : cell.right > right ? right - cell.right : 0;
+    const dy = cell.top < top ? top - cell.top : cell.bottom > bottom ? bottom - cell.bottom : 0;
+    if (dx === 0 && dy === 0) return;
+    this.camera.panBy(dx, dy, this.boardFrame());
+    this.layoutScene();
   }
 
   private boardFrame(): BoardFrame {
@@ -500,6 +501,19 @@ export class BattleView {
     return position;
   }
 
+  /**
+   * A facing is aimed, not selected off a list, so the pointer is kept as the continuous
+   * board coordinate it lands on rather than snapped to a square. An actor on the edge can
+   * then look off the map without the board having to pretend a tile exists out there.
+   * Only a pointer more than a square clear of the board is a cancel instead of an aim.
+   */
+  private facingPointAt(screenX: number, screenY: number): { x: number; y: number } | null {
+    if (!this.state) return null;
+    const board = this.projection.screenToGrid(screenX, screenY);
+    if (board.x < -1 || board.y < -1 || board.x > this.state.map.width + 1 || board.y > this.state.map.height + 1) return null;
+    return { x: board.x, y: board.y };
+  }
+
   /** Midpoint and spread of the two live touch points, in client coordinates. */
   private readGesture(): { x: number; y: number; spread: number } | null {
     const [first, second] = [...this.touchPoints.values()];
@@ -537,10 +551,10 @@ export class BattleView {
     if (this.gestureBlocksTap) return;
     const point = new Point(event.global.x, event.global.y);
     if (this.currentHighlights.facingPosition) {
-      // Every square is an answer, so only a tap that misses the board is a cancel. The
-      // direction itself is the rules' business, not the projection's.
-      const picked = this.gridAt(point.x, point.y);
-      if (picked) this.handlers.onFacingTarget(picked);
+      // Where the pointer is on the board is the whole answer; which direction that makes
+      // is the rules' business, not the projection's.
+      const aimed = this.facingPointAt(point.x, point.y);
+      if (aimed) this.handlers.onFacingPoint(aimed);
       else this.handlers.onCancelDirection?.();
       return;
     }

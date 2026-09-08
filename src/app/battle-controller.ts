@@ -123,7 +123,7 @@ export class BattleController {
     const stage = this.requireElement<HTMLElement>(".combat-stage");
     this.view = new BattleView(app, catalog, {
       onPick: (pick, screen) => this.handlePick(pick, screen),
-      onFacingTarget: (position) => this.handleFacingTarget(position),
+      onFacingPoint: (point) => this.handleFacingPoint(point),
       onCancelDirection: () => this.cancelDirection(),
       onHoverCell: (position) => this.handleHoverCell(position),
       safeArea: () => measureHudSafeArea(stage),
@@ -510,15 +510,18 @@ export class BattleController {
   }
 
   /**
-   * The player says where the actor should look by picking that place on the board, so
-   * the direction is derived from two board positions by the same rule the engine uses
-   * for a move's final facing. Picking the actor's own square names no direction.
+   * The player says where the actor should look by aiming at that place on the board, so
+   * the direction is the one from the actor's square to the pointer, decided by the same
+   * rule the engine uses for a move's final facing. The board coordinate is continuous —
+   * it is a place aimed at, not a tile — which is what lets an actor on the edge look off
+   * the map. Aiming inside the actor's own square names no direction at all.
    */
-  private handleFacingTarget(position: GridPosition): void {
+  private handleFacingPoint(point: { readonly x: number; readonly y: number }): void {
     const interaction = this.interaction;
     if (interaction.kind !== "direction") return;
-    if (samePosition(position, interaction.position)) return;
-    this.submitFacing(facingToward(interaction.position, position));
+    const from = { x: interaction.position.x + 0.5, y: interaction.position.y + 0.5 };
+    if (Math.abs(point.x - from.x) < 0.5 && Math.abs(point.y - from.y) < 0.5) return;
+    this.submitFacing(facingToward(from, point));
   }
 
   private submitFacing(facing: Direction): void {

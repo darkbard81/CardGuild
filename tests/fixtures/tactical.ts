@@ -16,6 +16,7 @@ export interface TacticalFixture {
   rejectAfterSend: boolean;
   addStrikeCard: () => void;
   setActions: (remaining: number) => void;
+  placeHero: (x: number, y: number) => { width: number; height: number };
   setPenalty: (value: number) => void;
   reset: (mode: TacticalCase) => void;
   send: (intent: SessionIntent) => boolean;
@@ -82,6 +83,13 @@ async function start() {
       fixture.state = { ...fixture.state, cardZones: { ...fixture.state.cardZones, hero: { ...zones,
         hand: [{ id: "fixture-strike", definitionId: "card.fixture-strike", source: { kind: "prepared", memberId: "hero" } }, ...zones.hand] } } };
       controller?.update(fixture.state, []);
+    },
+    /** Stands the hero on a chosen square, so a test can reach the map's edges. */
+    placeHero(x, y) {
+      const hero = fixture.state.actors.hero!;
+      fixture.state = { ...fixture.state, actors: { ...fixture.state.actors, hero: { ...hero, position: { x, y } } } };
+      controller?.update(fixture.state, [], true);
+      return { width: fixture.state.map.width, height: fixture.state.map.height };
     },
     /** Lets a test spend the turn down so the next Action opens the final-facing widget. */
     setActions(remaining) {
