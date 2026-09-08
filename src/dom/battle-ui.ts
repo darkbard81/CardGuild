@@ -521,6 +521,11 @@ export class BattleUi {
     this.cardDetail.hidden = true;
   }
 
+  /** Replaces the inspector with one line, for a phase that has nothing to inspect. */
+  public renderHint(text: string): void {
+    this.selectedDetail.replaceChildren(element("p", "detail-hint", text));
+  }
+
   public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null, state?: CombatState): void {
     this.selectedDetail.replaceChildren();
     if (!action) {
@@ -580,21 +585,6 @@ export class BattleUi {
       if (tactical) diagnostics.append(element("pre", undefined, JSON.stringify(tactical, null, 2)));
       this.selectedDetail.append(diagnostics);
     }
-  }
-
-  public renderDirection(facing: string, cost: string, confirm: () => void, cancel: () => void): void {
-    this.selectedDetail.replaceChildren();
-    const controls = element("div", "facing-controls");
-    controls.append(element("strong", undefined, `Facing: ${facing}`),
-      element("p", undefined, `${cost} · 방향 선택 후 확정 · 방향키 / Enter / Esc`));
-    const accept = element("button", "primary-button", "확정");
-    accept.id = "confirm-facing";
-    accept.addEventListener("click", confirm);
-    const dismiss = element("button", undefined, "취소");
-    dismiss.id = "cancel-facing";
-    dismiss.addEventListener("click", cancel);
-    controls.append(accept, dismiss);
-    this.selectedDetail.append(controls);
   }
 
   /** Inspector view for an actor the pointer is hovering on the board. */

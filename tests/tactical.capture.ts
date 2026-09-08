@@ -26,22 +26,17 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
       await inspectStrike(page);
       await shot(mode, "같은 Strike plan에서 받은 AC·원인·협공 아군 표시");
     }
-    // The ring hub sits on the target, so the board itself is read through the card path:
-    // a selected card plus a hovered enemy inspects without anything covering the square.
+    // The same relationship close up: the board stays terrain and standees, and the whole
+    // explanation is still the inspector's.
     await page.keyboard.press("Escape");
-    await page.evaluate(() => window.tacticalFixture.addStrikeCard());
-    await page.locator('#hand-cards [data-action-id="strike"]').click();
     await page.locator("#pixi-canvas").hover({ position: await boardPoint(page, 2.5, 1.5) });
-    await expect(page.locator(".target-ac")).toBeVisible();
-    await shot("board-overlay", "링에 가리지 않은 보드: 대상 후방 칸 실선·Rear 표식, 협공 아군 이중 테두리, 대상 Flanking 표식");
     for (let step = 0; step < 4; step++) await page.mouse.wheel(0, -400);
-    await page.locator("#pixi-canvas").hover({ position: await boardPoint(page, 2.5, 1.5) });
-    await expect(page.locator(".target-ac")).toBeVisible();
-    await shot("both-zoomed", "확대 상태의 후방 칸 실선과 협공 아군 이중 테두리");
+    await inspectStrike(page);
+    await shot("both-zoomed", "확대해도 보드에는 규칙 설명 overlay가 없고 HUD만 설명한다");
     await page.keyboard.press("Escape");
     await page.locator("#end-turn").click();
-    await page.keyboard.press("ArrowDown");
-    await shot("facing-preview", "확정 전 standee·선택 쐐기·후방 칸 표시, authoritative state는 유지");
+    await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", /^\d+,\d+$/);
+    await shot("facing-select", "방향 선택 모드: 바라볼 보드 위치를 한 번 고르면 Facing이 정해지고 전송된다");
     await writeFile(path.join(directory, "manifest.json"), JSON.stringify({ viewport: { ...viewport, id, label: "Tactical feedback fixture" }, capturedAt: new Date().toISOString(), shots }, null, 2) + "\n");
   });
 }

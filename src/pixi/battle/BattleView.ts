@@ -11,7 +11,7 @@ import {
   Texture,
 } from "pixi.js";
 
-import type { facingContext, StrikeTacticalFeedback, CombatEvent, CombatState, Direction, GridPosition } from "../../game";
+import type { CombatEvent, CombatState, GridPosition } from "../../game";
 import type { AssetCatalog } from "../../presentation";
 import { ActorRenderer } from "./ActorRenderer";
 import { BattleCamera } from "./BattleCamera";
@@ -19,7 +19,7 @@ import { BoardProjection } from "./BoardProjection";
 import type { BoardFrame, BoardSafeArea, BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG, ZERO_BOARD_SAFE_AREA } from "./BoardViewConfig";
 import { ObjectRenderer } from "./ObjectRenderer";
-import { facingPolygon, pointInPolygon, TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
+import { TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
 import { TerrainRenderer, type SortableVisual } from "./TerrainRenderer";
 
 /**
@@ -35,10 +35,6 @@ export interface MoveBandTile {
 }
 
 export interface BoardHighlights {
-  readonly tactical?: StrikeTacticalFeedback;
-  readonly targetFacing?: ReturnType<typeof facingContext>;
-  readonly actorFacing?: ReturnType<typeof facingContext>;
-  readonly previewFacing?: { readonly actorId: string; readonly direction: Direction };
   readonly tiles: readonly GridPosition[];
   readonly actorIds: readonly string[];
   readonly objectIds: readonly string[];
@@ -60,7 +56,8 @@ export interface ScreenPoint {
 export interface BattleViewHandlers {
   /** A board target was picked; the screen point anchors the radial action menu. */
   readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
-  readonly onFacing: (facing: Direction) => void;
+  /** A facing is chosen by picking the board position to look at, not a direction widget. */
+  readonly onFacingTarget: (position: GridPosition) => void;
   readonly onCancelDirection?: () => void;
   readonly onHoverCell: (position: GridPosition | null) => void;
   /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
@@ -116,8 +113,6 @@ export class BattleView {
     sortableChildren: true,
     sortFunction: (left, right) => left.zIndex - right.zIndex || left.label.localeCompare(right.label),
   });
-  /** Text markers belong above the standees they describe, so they read at any zoom. */
-  private readonly boardLabelLayer = new Container({ label: "boardLabelLayer", eventMode: "none" });
   private readonly effectLayer = new Container({ label: "effectLayer" });
   private readonly projection: BoardProjection;
   private readonly terrainRenderer: TerrainRenderer;
@@ -217,7 +212,6 @@ export class BattleView {
       this.propLayer,
       this.actorLayer,
       this.depthRenderLayer,
-      this.boardLabelLayer,
       this.effectLayer,
     );
     this.app.stage.addChild(this.scene);
@@ -266,7 +260,7 @@ export class BattleView {
     // The board texture is destroyed and rebuilt when the map changes size, so let go of
     // it before asking for the new one rather than leaving a sprite bound to a dead page.
     if (this.boardSprite) this.boardSprite.texture = Texture.EMPTY;
-    for (const layer of [this.boardOverlayLayer, this.boardLabelLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
+    for (const layer of [this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
     if (!this.boardSprite) {
       this.boardSprite = new Sprite({ label: "boardPlane" });
@@ -280,7 +274,7 @@ export class BattleView {
     this.projection.update(state.map.width, state.map.height, this.camera.placement(this.boardFrame()));
 
     const props = [...this.terrainRenderer.renderProps(state), ...this.objectRenderer.render(state)];
-    const actors = this.actorRenderer.render(state, highlights.previewFacing);
+    const actors = this.actorRenderer.render(state);
     this.visuals = [];
     this.actorVisuals.clear();
     for (const visual of props) this.registerVisual(visual, this.propLayer);
@@ -321,7 +315,11 @@ export class BattleView {
     this.layoutScene();
   }
 
-  /** At close-up zoom a visible head need not mean visible feet. Frame the input widget itself. */
+  /**
+   * A facing is picked by choosing a square to look at, so the four squares around the
+   * actor are the input: at close-up zoom they are what has to be on screen, not just
+   * the actor standing between them.
+   */
   private ensureDirectionVisible(position: GridPosition): void {
     const frame = this.boardFrame();
     const left = this.safeArea.left + 16;
@@ -329,8 +327,8 @@ export class BattleView {
     const top = this.safeArea.top + 16;
     const bottom = this.app.screen.height - this.safeArea.bottom - 16;
     const bounds = () => {
-      const points = (["north", "east", "south", "west"] as const)
-        .flatMap((direction) => facingPolygon(this.projection, position, direction));
+      const points = [{ x: 0, y: 0 }, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }]
+        .flatMap((offset) => this.projection.getCellCorners(position.x + offset.x, position.y + offset.y));
       return { left: Math.min(...points.map((point) => point.x)), right: Math.max(...points.map((point) => point.x)),
         top: Math.min(...points.map((point) => point.y)), bottom: Math.max(...points.map((point) => point.y)) };
     };
@@ -400,28 +398,8 @@ export class BattleView {
     this.renderOverlay();
   }
 
-  /**
-   * A facing the player is still choosing has not been sent anywhere, so it is a drawing
-   * rather than a state change: the standee already on the board is re-faced and the
-   * overlay repainted. `render` would cancel every animation and rebuild every visual,
-   * and the Step that opened the final-facing widget is usually still sliding when the
-   * first arrow key arrives.
-   */
-  public previewFacing(highlights: BoardHighlights): void {
-    this.currentHighlights = highlights;
-    const preview = highlights.previewFacing;
-    const actor = preview ? this.state?.actors[preview.actorId] : undefined;
-    const visual = preview ? this.actorVisuals.get(preview.actorId) : undefined;
-    if (preview && actor && visual) this.actorRenderer.reface(visual.display, actor, preview.direction);
-    this.renderOverlay();
-    this.publishLayout();
-  }
-
   private renderOverlay(): void {
     clearLayer(this.boardOverlayLayer);
-    clearLayer(this.boardLabelLayer);
-    this.app.canvas.dataset.tactical = JSON.stringify({ tactical: this.currentHighlights.tactical,
-      targetFacing: this.currentHighlights.targetFacing, actorFacing: this.currentHighlights.actorFacing });
     // The bands are Graphics, so a test can only see them through what the canvas reports.
     this.app.canvas.dataset.moveBands = JSON.stringify(
       this.currentHighlights.moveBands.reduce<Record<string, number>>((counts, tile) => {
@@ -436,7 +414,6 @@ export class BattleView {
       this.hoverPosition,
       this.projection,
       this.boardOverlayLayer,
-      this.boardLabelLayer,
     );
   }
 
@@ -559,15 +536,12 @@ export class BattleView {
     // The lift that ends a pinch is not a pick.
     if (this.gestureBlocksTap) return;
     const point = new Point(event.global.x, event.global.y);
-    const facingPosition = this.currentHighlights.facingPosition;
-    if (facingPosition) {
-      for (const direction of ["north", "east", "south", "west"] as const) {
-        if (pointInPolygon(point, facingPolygon(this.projection, facingPosition, direction))) {
-          this.handlers.onFacing(direction);
-          return;
-        }
-      }
-      this.handlers.onCancelDirection?.();
+    if (this.currentHighlights.facingPosition) {
+      // Every square is an answer, so only a tap that misses the board is a cancel. The
+      // direction itself is the rules' business, not the projection's.
+      const picked = this.gridAt(point.x, point.y);
+      if (picked) this.handlers.onFacingTarget(picked);
+      else this.handlers.onCancelDirection?.();
       return;
     }
     const position = this.gridAt(point.x, point.y);

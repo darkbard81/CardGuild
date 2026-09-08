@@ -5,7 +5,7 @@
     "id": "1440x900-tactical",
     "label": "Tactical feedback fixture"
   },
-  "capturedAt": "2026-09-08T03:43:28.729Z",
+  "capturedAt": "2026-09-08T04:08:19.199Z",
   "shots": [
     {
       "id": "front",
@@ -32,22 +32,16 @@
       "file": "both.png"
     },
     {
-      "id": "board-overlay",
-      "title": "board-overlay",
-      "note": "링에 가리지 않은 보드: 대상 후방 칸 실선·Rear 표식, 협공 아군 이중 테두리, 대상 Flanking 표식",
-      "file": "board-overlay.png"
-    },
-    {
       "id": "both-zoomed",
       "title": "both-zoomed",
-      "note": "확대 상태의 후방 칸 실선과 협공 아군 이중 테두리",
+      "note": "확대해도 보드에는 규칙 설명 overlay가 없고 HUD만 설명한다",
       "file": "both-zoomed.png"
     },
     {
-      "id": "facing-preview",
-      "title": "facing-preview",
-      "note": "확정 전 standee·선택 쐐기·후방 칸 표시, authoritative state는 유지",
-      "file": "facing-preview.png"
+      "id": "facing-select",
+      "title": "facing-select",
+      "note": "방향 선택 모드: 바라볼 보드 위치를 한 번 고르면 Facing이 정해지고 전송된다",
+      "file": "facing-select.png"
     }
   ]
 }

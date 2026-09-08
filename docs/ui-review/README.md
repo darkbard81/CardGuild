@@ -69,17 +69,18 @@ UI를 고친 뒤에는 `npm run ui:capture`만 다시 돌리고 `docs/ui-review/
 
 `npm run ui:capture`는 기존 화면과 함께 `current/1024x768-tactical/`,
 `current/1440x900-tactical/`에 결정적 전투 fixture의 Front, Rear, Flanking,
-Rear+Flanking, 링에 가리지 않은 보드 표시, 확대된 관계 표시, 확정 전 Facing 캡처와
-manifest를 생성합니다.
+Rear+Flanking, 확대 상태, 방향 선택 모드 캡처와 manifest를 생성합니다.
 비교 페이지에서도 Tactical feedback fixture 묶음으로 확인할 수 있습니다.
 
+표시 정책은 한 문장입니다: **보드는 위치와 입력, HUD는 규칙과 modifier**.
+
 - HUD: AC 전후 값, Off-Guard 효과 한 번, 원인 목록, 협공 아군 이름 순서로 읽습니다.
-- 보드: 후방 칸은 점선, 실제 Rear는 실선, 협공 아군은 이중 테두리로 구분합니다.
-  Rear·Flanking 글자는 standee 위 레이어에 그려 확대·축소와 무관하게 읽힙니다.
-  링이 대상 표식을 가리는 경우 링의 대상 이름에도 Flanking을 표시하고, 카드 선택 후
-  대상 hover로 링 없이 보드만 읽을 수도 있습니다(`board-overlay` 캡처).
-- Facing: 강조된 쐐기와 standee가 미리 선택한 방향을 표시합니다. 확정/취소는 기존 HUD에
-  두고 주변 보드를 덮지 않습니다. 일반 idle에는 전술 관계 표시를 남기지 않습니다.
-- `tests/tactical.browser.spec.ts`는 실제 명령으로 이동과 턴을 진행해 관계 변화를 검증하며,
-  확대/이동/회전 후 실제 Graphics 경계를 보드 투영과 비교합니다. 테스트 fixture는
-  production 콘텐츠에 포함하지 않습니다.
+- 보드: Rear·Flanking·Off-Guard를 설명하는 표식과 글자를 그리지 않습니다. 후방 칸 guide,
+  협공 아군 테두리, Facing 쐐기, 링의 Flanking 배지는 모두 없습니다. 남는 것은 기존 대상·
+  이동 강조와, 방향 선택 중 회전할 Actor의 칸 강조뿐입니다.
+- Facing: 바라볼 보드 위치를 한 번 고르면 `facingToward()`가 방향을 정하고 명령이 바로
+  나갑니다. 별도 위젯도 확정 버튼도 없으며, 그 선택으로 이동하지는 않습니다.
+- `tests/tactical.browser.spec.ts`는 실제 명령으로 이동과 턴을 진행해 관계 변화를 검증하고,
+  제거한 보드 표식이 다시 그려지지 않는지 Graphics label과 보드 글자로 확인하며, 확대/이동/
+  회전 후에도 같은 칸이 같은 Facing을 뜻하는지 검사합니다. 테스트 fixture는 production
+  콘텐츠에 포함하지 않습니다.

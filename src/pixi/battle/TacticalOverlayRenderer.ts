@@ -1,4 +1,4 @@
-import { Container, Graphics, Point, Text } from "pixi.js";
+import { Container, Graphics, Point } from "pixi.js";
 
 import type { CombatState, Direction, GridPosition } from "../../game";
 import type { BoardHighlights, MoveBand } from "./BattleView";
@@ -58,7 +58,6 @@ export class TacticalOverlayRenderer {
     hover: GridPosition | null,
     projection: BoardProjection,
     layer: Container,
-    labels: Container = layer,
   ): void {
     // Drawn first so a selected target's highlight reads on top of the reach it sits in.
     for (const tile of highlights.moveBands) {
@@ -77,83 +76,11 @@ export class TacticalOverlayRenderer {
       if (object) this.cell(layer, projection, object.position, 0xd49b3a, 0.24, 0xffdc83, 3);
     }
     if (hover) this.cell(layer, projection, hover, 0xffd76a, 0.16, 0xffe99e, 2);
-    const facing = highlights.actorFacing;
-    if (facing) {
-      for (const direction of facing.arcDirections) {
-        const current = direction === facing.facing;
-        const marker = new Graphics({ label: `arc-${direction}` })
-          .poly(flat(facingPolygon(projection, facing.position, direction)), true)
-          .fill({ color: 0xffdf71, alpha: current ? 0.55 : 0.12 })
-          .stroke({ color: 0xffdf71, width: current ? 2 : 1, alpha: 0.8 });
-        marker.eventMode = "none";
-        layer.addChild(marker);
-      }
-      this.rearCell(state, layer, labels, projection, facing.rearCell, false, "뒤");
-    }
-    if (highlights.targetFacing) {
-      this.rearCell(state, layer, labels, projection, highlights.targetFacing.rearCell,
-        highlights.tactical?.causes.includes("rear") ?? false, "Rear");
-    }
-    for (const id of highlights.tactical?.partnerIds ?? []) {
-      const partner = state.actors[id];
-      if (!partner) continue;
-      this.cell(layer, projection, partner.position, 0x80e6d0, 0.06, 0x80e6d0, 3);
-      const centre = projection.gridToScreen(partner.position.x + 0.5, partner.position.y + 0.5);
-      const inner = projection.getCellCorners(partner.position.x, partner.position.y)
-        .map((point) => new Point(centre.x + (point.x - centre.x) * 0.82, centre.y + (point.y - centre.y) * 0.82));
-      const outline = new Graphics({ label: `flanking-partner-${id}` }).poly(flat(inner), true)
-        .stroke({ color: 0x80e6d0, width: 1 });
-      outline.eventMode = "none";
-      layer.addChild(outline);
-    }
-    if (highlights.tactical?.causes.includes("flanking")) {
-      const target = state.actors[highlights.tactical.targetId];
-      if (target) this.label(labels, projection, target.position, "Flanking", 0x80e6d0);
-    }
+    // The turning actor's own square is marked so the player knows who is being aimed;
+    // the direction itself is read from whichever board position they pick next.
     if (highlights.facingPosition) {
       this.cell(layer, projection, highlights.facingPosition, 0xffd76a, 0.15, 0xffdc71, 3);
-      for (const direction of ["north", "east", "south", "west"] as const) {
-        const polygon = facingPolygon(projection, highlights.facingPosition, direction);
-        // The picked wedge is the only preview of an unsent facing, so it reads as lit
-        // rather than merely tinted against the unpicked three.
-        const picked = highlights.previewFacing?.direction === direction;
-        const graphic = new Graphics({ label: `face-${direction}` })
-          .poly(flat(polygon), true)
-          .fill({ color: picked ? 0xf2c463 : 0x172334, alpha: 0.92 })
-          .stroke({ width: picked ? 3 : 2, color: picked ? 0xfff3d0 : 0xffdf71, alpha: 1 });
-        graphic.eventMode = "none";
-        layer.addChild(graphic);
-      }
     }
-  }
-
-  private label(layer: Container, projection: BoardProjection, position: GridPosition, value: string, color: number): void {
-    const point = projection.gridToScreen(position.x + 0.5, position.y + 0.86);
-    const label = new Text({ text: value, style: { fontFamily: "system-ui", fontSize: 11, fontWeight: "bold", fill: color,
-      stroke: { color: 0x111820, width: 3 } } });
-    label.anchor.set(0.5);
-    label.position.copyFrom(point);
-    label.eventMode = "none";
-    layer.addChild(label);
-  }
-
-  private rearCell(state: CombatState, layer: Container, labels: Container, projection: BoardProjection, position: GridPosition, active: boolean, label: string): void {
-    if (position.x < 0 || position.y < 0 || position.x >= state.map.width || position.y >= state.map.height) return;
-    const corners = projection.getCellCorners(position.x, position.y);
-    const outline = new Graphics({ label: active ? "rear-active" : "rear-position" });
-    if (active) outline.poly(flat(corners), true).stroke({ color: 0xcaa5ef, width: 3 });
-    else for (let i = 0; i < corners.length; i++) {
-      const from = corners[i]!;
-      const to = corners[(i + 1) % corners.length]!;
-      for (let dash = 0; dash < 6; dash += 2) {
-        outline.moveTo(from.x + (to.x - from.x) * dash / 6, from.y + (to.y - from.y) * dash / 6)
-          .lineTo(from.x + (to.x - from.x) * (dash + 1) / 6, from.y + (to.y - from.y) * (dash + 1) / 6);
-      }
-      outline.stroke({ color: 0xcaa5ef, width: 1.5, alpha: 0.8 });
-    }
-    outline.eventMode = "none";
-    layer.addChild(outline);
-    this.label(labels, projection, position, label, 0xe4c9ff);
   }
 
   private cell(

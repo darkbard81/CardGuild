@@ -1,6 +1,6 @@
 import {
   hashCombatState,
-  facingContext,
+  facingToward,
   listLegalActions,
   listLegalTargets,
   previewAction,
@@ -33,9 +33,9 @@ import { MOVE_BAND_ORDER, moveBandOf, moveBandsFor, moveBandTilesFor } from "./m
 import type { Application } from "pixi.js";
 
 const PROMPT_IDLE = "보드에서 적·칸·오브젝트를 클릭해 행동을 고르세요.";
-const PROMPT_FACING = "제자리 Step으로 바라볼 방향을 선택하세요. (1 Action · Esc 취소)";
-const PROMPT_END_TURN = "턴을 마칠 최종 방향을 선택하세요. (무료 · Esc 취소)";
-const PROMPT_SPENT_TURN = "Action을 모두 사용했습니다. 최종 방향을 선택한 뒤 확정하세요. (무료 · Esc 취소)";
+const PROMPT_FACING = "제자리 Step으로 바라볼 위치를 보드에서 선택하세요. (1 Action · Esc 취소)";
+const PROMPT_END_TURN = "턴을 마칠 때 바라볼 위치를 보드에서 선택하세요. (무료 · Esc 취소)";
+const PROMPT_SPENT_TURN = "Action을 모두 사용했습니다. 바라볼 위치를 보드에서 선택하면 턴이 끝납니다. (무료 · Esc 취소)";
 
 export interface BattleControllerOptions {
   readonly definition: CombatDefinition;
@@ -95,17 +95,16 @@ export class BattleController {
   private readonly ui: BattleUi;
   private readonly ring: RingMenu;
   private directionReturn: { interaction: Interaction; prompt: string } | null = null;
-  private pendingFacing: { interaction: Extract<Interaction, { kind: "direction" }>; facing: Direction; previous: { interaction: Interaction; prompt: string } | null } | null = null;
+  private pendingFacing: { interaction: Extract<Interaction, { kind: "direction" }>; previous: { interaction: Interaction; prompt: string } | null } | null = null;
   private inspectionCache: { state: CombatState; interaction: Interaction; card: LegalAction | null; hover: GridPosition | null;
     value: { action: LegalAction | null; preview: ActionPreview | null } } | null = null;
-  private selectedFacing: Direction | null = null;
   private ringAnchor: ScreenPoint = { x: 0, y: 0 };
   private ringTitle = "";
   private readonly keyHandler = (event: KeyboardEvent): void => {
     if (this.interaction.kind === "direction") {
+      // The keyboard names the direction outright; the board names the place to look at.
       const direction = ({ ArrowUp: "north", ArrowRight: "east", ArrowDown: "south", ArrowLeft: "west" } as const)[event.key as "ArrowUp"];
-      if (direction) { event.preventDefault(); this.handleFacing(direction); return; }
-      if (event.key === "Enter") { event.preventDefault(); this.confirmFacing(); return; }
+      if (direction) { event.preventDefault(); this.submitFacing(direction); return; }
     }
     if (event.key === "Escape" && this.interaction.kind === "direction") {
       event.preventDefault();
@@ -124,7 +123,7 @@ export class BattleController {
     const stage = this.requireElement<HTMLElement>(".combat-stage");
     this.view = new BattleView(app, catalog, {
       onPick: (pick, screen) => this.handlePick(pick, screen),
-      onFacing: (facing) => this.handleFacing(facing),
+      onFacingTarget: (position) => this.handleFacingTarget(position),
       onCancelDirection: () => this.cancelDirection(),
       onHoverCell: (position) => this.handleHoverCell(position),
       safeArea: () => measureHudSafeArea(stage),
@@ -220,24 +219,12 @@ export class BattleController {
   private highlights(): BoardHighlights {
     const interaction = this.interaction;
     if (interaction.kind === "direction") {
-      return {
-        tiles: [interaction.position],
-        actorIds: [],
-        objectIds: [],
-        facingPosition: interaction.position,
-        moveBands: [],
-        actorFacing: this.state.actors[this.heroId()] ? facingContext(this.state.actors[this.heroId()]!, this.selectedFacing ?? undefined) : undefined,
-        previewFacing: this.selectedFacing ? { actorId: this.heroId(), direction: this.selectedFacing } : undefined,
-      };
+      return { tiles: [], actorIds: [], objectIds: [], facingPosition: interaction.position, moveBands: [] };
     }
     const hovered = hoveredRingEntry(interaction);
     const targets = hovered
       ? [hovered.target]
       : this.targetsFor(interaction.kind === "card" ? interaction.action : null);
-    const inspection = this.inspection();
-    const inspectedTarget = inspection.preview?.tactical?.targetId;
-    const targetActor = inspectedTarget ? this.state.actors[inspectedTarget] : undefined;
-    const actor = this.state.actors[this.heroId()];
     const ringCell = interaction.kind === "ring" ? [interaction.position] : [];
     return {
       tiles: [
@@ -248,9 +235,6 @@ export class BattleController {
       objectIds: targets.flatMap((target) => (target.kind === "object" ? [target.objectId] : [])),
       facingPosition: null,
       moveBands: this.visibleMoveBands(),
-      tactical: inspection.preview?.tactical,
-      targetFacing: targetActor ? facingContext(targetActor) : undefined,
-      actorFacing: inspection.action && actor ? facingContext(actor) : undefined,
     };
   }
 
@@ -305,14 +289,12 @@ export class BattleController {
   }
 
   private renderDetail(): void {
-    if (this.interaction.kind === "direction") {
-      this.ui.renderDirection(this.selectedFacing ?? this.state.actors[this.heroId()]!.facing,
-        this.interaction.purpose === "step-turn" ? "1 Action" : "무료",
-        () => this.confirmFacing(), () => this.cancelDirection());
+    const { action, preview } = this.inspection();
+    // The board is asking a question here; the idle hint would answer a different one.
+    if (this.interaction.kind === "direction" && !action) {
+      this.ui.renderHint("바라볼 보드 위치를 선택하면 그 방향으로 턴을 마칩니다. (Esc 취소)");
       return;
     }
-    const { action, preview } = this.inspection();
-    this.ring.setContext(preview?.tactical?.causes.includes("flanking") ? "Flanking" : null);
     if (action) {
       this.ui.renderActionDetail(action, preview, this.state);
       return;
@@ -344,8 +326,6 @@ export class BattleController {
   /** Every phase change goes through here so the ring can never outlive its state. */
   private enter(interaction: Interaction): void {
     this.interaction = interaction;
-    if (interaction.kind === "direction") this.selectedFacing = this.state.actors[this.heroId()]?.facing ?? null;
-    else this.selectedFacing = null;
     if (interaction.kind !== "ring") this.ring.hide();
   }
 
@@ -529,35 +509,43 @@ export class BattleController {
     this.renderDetail();
   }
 
-  private handleFacing(facing: Direction): void {
-    if (this.interaction.kind !== "direction") return;
-    this.selectedFacing = facing;
-    // Nothing has been sent, so nothing but the preview may change. The full render path
-    // cancels in-flight animations, and the Step that opened this widget is often still
-    // moving when the direction is picked.
-    this.view.previewFacing(this.highlights());
-    this.renderDetail();
-  }
-
-  private confirmFacing(): void {
-    const facing = this.selectedFacing;
-    if (!facing) return;
+  /**
+   * The player says where the actor should look by picking that place on the board, so
+   * the direction is derived from two board positions by the same rule the engine uses
+   * for a move's final facing. Picking the actor's own square names no direction.
+   */
+  private handleFacingTarget(position: GridPosition): void {
     const interaction = this.interaction;
     if (interaction.kind !== "direction") return;
-    this.pendingFacing = { interaction, facing, previous: this.directionReturn };
-    const sent = this.sendIntent(interaction.purpose === "end-turn"
-      ? { type: "end-turn", facing }
-      : { type: "use-action", action: interaction.action.source, target: { kind: "tile", position: interaction.position, facing } });
-    if (!sent) this.pendingFacing = null;
+    if (samePosition(position, interaction.position)) return;
+    this.submitFacing(facingToward(interaction.position, position));
   }
 
-  public reportError(message: string): void {
+  private submitFacing(facing: Direction): void {
+    const interaction = this.interaction;
+    if (interaction.kind !== "direction") return;
+    // There is no confirm step to come back to, so the only thing a rejection restores is
+    // the mode itself, with the same direction still free to be picked again.
+    this.pendingFacing = { interaction, previous: this.directionReturn };
+    if (!this.sendIntent(interaction.purpose === "end-turn"
+      ? { type: "end-turn", facing }
+      : { type: "use-action", action: interaction.action.source, target: { kind: "tile", position: interaction.position, facing } })) {
+      this.restoreDirection();
+      this.render();
+    }
+  }
+
+  private restoreDirection(): void {
     const pending = this.pendingFacing;
     if (!pending) return;
     this.pendingFacing = null;
     this.enter(pending.interaction);
     this.directionReturn = pending.previous;
-    this.selectedFacing = pending.facing;
+  }
+
+  public reportError(message: string): void {
+    if (!this.pendingFacing) return;
+    this.restoreDirection();
     this.prompt = message;
     this.render();
   }
@@ -571,7 +559,7 @@ export class BattleController {
     });
   }
 
-  /** Opens the final-facing widget without drawing it, so a caller can batch the render. */
+  /** Opens the direction mode without drawing it, so a caller can batch the render. */
   private beginEndTurnDirection(prompt: string): boolean {
     const actorId = this.activeHeroId();
     if (!actorId || this.state.pendingReaction || this.state.outcome || this.interaction.kind === "direction") return false;
@@ -590,8 +578,8 @@ export class BattleController {
   /**
    * A turn with no actions left has nothing but End Turn in it: every action in the pack
    * costs at least one, and Reactions are resolved by their own window rather than from
-   * the turn. So the final-facing widget opens itself; selecting a direction previews it
-   * and confirming ends the turn. The turn is still not
+   * the turn. So the direction mode opens itself and the board position picked there ends
+   * the turn, sparing the player a button press with no alternative. The turn is still not
    * ended for them: `Esc` puts the board back and leaves End Turn to be pressed, and the
    * remembered turn number keeps the next snapshot from reopening what they dismissed.
    */

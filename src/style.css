@@ -1970,11 +1970,3 @@ button {
 .off-guard-causes { color: var(--gold-bright); }
 .preview-diagnostics { font-size: .7rem; overflow-wrap: anywhere; }
 .preview-diagnostics pre { white-space: pre-wrap; }
-.facing-controls { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
-.facing-controls > strong, .facing-controls > p { grid-column: 1 / -1; }
-.facing-controls button { min-height: 44px; border: 1px solid var(--gold); border-radius: .4rem; background: #26251f; color: #fff4df; cursor: pointer; }
-.facing-controls .primary-button { background: #a3482c; }
-
-.ring-hub:has(.ring-tactical-context) { white-space: normal; }
-.ring-target-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.ring-tactical-context { display: block; color: #80e6d0; font-size: .7rem; line-height: 1.2; }

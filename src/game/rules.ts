@@ -117,15 +117,3 @@ export function isSuccessful(degree: DegreeOfSuccessLike): boolean {
 }
 
 type DegreeOfSuccessLike = "critical-success" | "success" | "failure" | "critical-failure";
-
-/** Presentation consumes these rule-derived positions; it only projects/draws them. */
-export function facingContext(actor: ActorState, facing: Direction = actor.facing, target?: GridPosition) {
-  const vector = DIRECTION_VECTORS[facing];
-  const directions = Object.entries(DIRECTION_VECTORS) as [Direction, GridPosition][];
-  return {
-    actorId: actor.id, position: actor.position, facing,
-    rearCell: { x: actor.position.x - vector.x, y: actor.position.y - vector.y },
-    arcDirections: directions.filter(([, direction]) => direction.x * vector.x + direction.y * vector.y >= 0).map(([direction]) => direction),
-    targetInArc: target ? isInFrontOrSide({ ...actor, facing }, target) : undefined,
-  };
-}

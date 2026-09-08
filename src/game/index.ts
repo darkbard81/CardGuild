@@ -63,5 +63,3 @@ export {
 } from "./statistics";
 export type { StatisticResolutionContext } from "./statistics";
 export type * from "./types";
-
-export { facingContext } from "./rules";

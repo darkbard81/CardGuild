@@ -432,7 +432,8 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024
     expect(intents.slice(count)).toEqual([{ type: "use-action", action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 0, y: 1 }, facing: "north" } }]);
     const afterStep = await app.getAttribute("data-state-hash");
     await page.locator("#end-turn").click();
-    await clickBoardPoint(page, 1.5, 1.5);
+    // Every square is now an answer, so Escape is what backs out of the End Turn choice.
+    await page.keyboard.press("Escape");
     await expect(canvas).toHaveAttribute("data-facing-position", "");
     await expect(app).toHaveAttribute("data-state-hash", afterStep!);
     expect(intents).toHaveLength(count + 1);

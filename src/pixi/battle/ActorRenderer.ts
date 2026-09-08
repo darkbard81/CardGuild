@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite, Text } from "pixi.js";
 
-import type { ActorState, CombatState, Direction } from "../../game";
+import type { ActorState, CombatState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
 import { facingStandee } from "../../presentation";
 import type { BoardViewConfig, StandeeBaseStyle } from "./BoardViewConfig";
@@ -28,22 +28,17 @@ function standeeBase(style: StandeeBaseStyle): Graphics {
  * the front pose with west mirrored. Mirroring is a scale on the body alone — the base
  * under it and the badge above it are screen furniture and stay as they are.
  */
-function applyStandeeBody(body: Sprite, catalog: AssetCatalog, actor: ActorState): number {
+function standeeBody(catalog: AssetCatalog, actor: ActorState): { body: Sprite; height: number } {
   const facing = facingStandee(catalog.actorVisual(actor.definitionId), actor.facing);
   const asset = catalog.asset(facing.assetId);
   const height = asset.displayHeight ?? DEFAULT_STANDEE_HEIGHT;
-  body.texture = catalog.texture(facing.assetId);
+  const body = new Sprite(catalog.texture(facing.assetId));
+  body.label = "standee-body";
   body.anchor.set(asset.anchor.x, asset.anchor.y);
   body.height = height;
   body.scale.x = facing.flipX ? -body.scale.y : body.scale.y;
-  return height;
-}
-
-function standeeBody(catalog: AssetCatalog, actor: ActorState): { body: Sprite; height: number } {
-  const body = new Sprite();
-  body.label = "standee-body";
   body.eventMode = "none";
-  return { body, height: applyStandeeBody(body, catalog, actor) };
+  return { body, height };
 }
 
 function actorVisual(
@@ -80,9 +75,9 @@ export class ActorRenderer {
     private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
   ) {}
 
-  public render(state: CombatState, preview?: { readonly actorId: string; readonly direction: Direction }): readonly SortableVisual[] {
+  public render(state: CombatState): readonly SortableVisual[] {
     return Object.values(state.actors).map((actor) => {
-      const visual = actorVisual(this.catalog, preview?.actorId === actor.id ? { ...actor, facing: preview.direction } : actor, this.config);
+      const visual = actorVisual(this.catalog, actor, this.config);
       return {
         display: visual.display,
         screenSpace: visual.badge,
@@ -91,15 +86,5 @@ export class ActorRenderer {
         stableId: actor.id,
       };
     });
-  }
-
-  /**
-   * A previewed facing changes which drawing the standee shows and nothing else, so it is
-   * applied to the body already on the board. Rebuilding the actor to turn it would take
-   * the render path, and that cancels whatever movement is still playing underneath.
-   */
-  public reface(display: Container, actor: ActorState, facing: Direction): void {
-    const body = display.getChildByLabel("standee-body");
-    if (body instanceof Sprite) applyStandeeBody(body, this.catalog, { ...actor, facing });
   }
 }

@@ -1,4 +1,4 @@
-import { Application } from "pixi.js";
+import { Application, Text } from "pixi.js";
 import { BattleController } from "../../src/app/battle-controller";
 import { M6_COMBAT_DEFINITION } from "../../src/content/load-m6-content";
 import { createCombat, dispatchCombatCommand, hashCombatState } from "../../src/game";
@@ -21,6 +21,7 @@ export interface TacticalFixture {
   send: (intent: SessionIntent) => boolean;
   loseAlly: () => void;
   bounds: (label: string) => { x: number; y: number; width: number; height: number } | null;
+  boardText: () => string[];
 }
 declare global { interface Window { tacticalFixture: TacticalFixture } }
 
@@ -100,6 +101,16 @@ async function start() {
       if (!graphic) return null;
       const bounds = graphic.getBounds();
       return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+    },
+    /** Every string the board itself draws, so a test can prove the rule labels are gone. */
+    boardText() {
+      const found: string[] = [];
+      const walk = (node: { children?: unknown[] }) => {
+        if (node instanceof Text) found.push(node.text);
+        for (const child of node.children ?? []) walk(child as { children?: unknown[] });
+      };
+      walk(app.stage);
+      return found;
     },
     loseAlly() {
       fixture.state = { ...fixture.state, actors: { ...fixture.state.actors, ally: { ...fixture.state.actors.ally!, defeated: true } } };

@@ -3,7 +3,6 @@ import { M6_COMBAT_DEFINITION, M6_CONTENT } from "../content/load-m6-content";
 import { buildResolvedActionPlan } from "./action-plan";
 import { createCombat, dispatchCombatCommand } from "./engine";
 import { previewAction } from "./queries";
-import { facingContext } from "./rules";
 import type { ActorState, CombatContent } from "./types";
 
 function fixture(rear = false, flanking = false, penalty = 0) {
@@ -64,13 +63,5 @@ describe("structured tactical feedback", () => {
     expect(preview.reason).toContain("facing arc");
     expect(preview.tactical).toBeUndefined();
     expect(preview.hitChance).toBeUndefined();
-  });
-
-  it("derives display geometry without mutating current facing", () => {
-    const { attacker } = fixture();
-    expect(facingContext(attacker, "south", { x: 1, y: 0 })).toMatchObject({
-      facing: "south", rearCell: { x: 1, y: 0 }, arcDirections: ["east", "south", "west"], targetInArc: false,
-    });
-    expect(attacker.facing).toBe("east");
   });
 });
