@@ -36,15 +36,11 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
     await page.keyboard.press("Escape");
     await page.locator("#end-turn").click();
     const hash = await page.locator("#app").getAttribute("data-state-hash");
-    // Entering the mode is not a command, and neither is leaving it again.
+    // Opening the question is not a command; only answering it is.
     await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "1,1");
-    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
-    await page.screenshot({ path: testInfo.outputPath("facing-select.png") });
-    await page.keyboard.press("Escape");
-    await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "");
     await expect(page.locator("#app")).toHaveAttribute("data-state-hash", hash!);
     expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
-    await page.locator("#end-turn").click();
+    await page.screenshot({ path: testInfo.outputPath("facing-select.png") });
     // Looking at the square below the actor is what "south" means.
     await page.locator("#pixi-canvas").click({ position: await boardPoint(page, 1.5, 2.5) });
     expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([{ type: "end-turn", facing: "south" }]);
@@ -177,20 +173,63 @@ test.describe("touch tactical feedback", () => {
   });
 });
 
-test("returns to the previously selected card when a refused facing is cancelled", async ({ page }) => {
-  const card = page.locator('#hand-cards [data-action-id="trip"]').first();
-  await card.click();
+test("leaves a refused End Turn facing open, since it has no way back", async ({ page }) => {
   await page.locator("#end-turn").click();
   await page.evaluate(() => { window.tacticalFixture.rejectAfterSend = true; });
   const hash = await page.locator("#app").getAttribute("data-state-hash");
   await page.locator("#pixi-canvas").click({ position: await boardPoint(page, 0.5, 1.5) });
-  // The server refused it, so the choice is open again and nothing has moved.
+  // It left, the server refused it, and so the question stands with nothing moved.
   await expect(page.locator("#board-prompt")).toHaveText("Rejected by fixture");
   await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "1,1");
   await expect(page.locator("#app")).toHaveAttribute("data-state-hash", hash!);
-  await page.keyboard.press("Escape");
-  await expect(card).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => window.tacticalFixture.events)).toEqual([]);
+  // The same aim is still available, and this time it takes.
+  await page.locator("#pixi-canvas").click({ position: await boardPoint(page, 0.5, 1.5) });
+  expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([
+    { type: "end-turn", facing: "west" }, { type: "end-turn", facing: "west" },
+  ]);
+  expect(await page.evaluate(() => window.tacticalFixture.state.actors.hero!.facing)).toBe("west");
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "");
+});
+
+/**
+ * Pressing End Turn is the decision; the direction is the rest of it. Nothing short of an
+ * answer gets out of the mode, so neither the keyboard, nor a card, nor a pointer nowhere
+ * near the board may be read as a way back.
+ */
+test("commits to the End Turn direction until it is answered", async ({ page }) => {
+  const canvas = page.locator("#pixi-canvas");
+  const card = page.locator('#hand-cards [data-action-id="trip"]').first();
+  await card.click();
+  await page.locator("#end-turn").click();
+  const hash = await page.locator("#app").getAttribute("data-state-hash");
+  await page.keyboard.press("Escape");
+  await expect(canvas).toHaveAttribute("data-facing-position", "1,1");
+  await card.click();
+  await expect(canvas).toHaveAttribute("data-facing-position", "1,1");
+  await expect(page.locator("#app")).toHaveAttribute("data-state-hash", hash!);
+  expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+  // Far off the board is still an aim, not an escape.
+  const box = (await canvas.boundingBox())!;
+  await canvas.click({ position: { x: box.width - 4, y: box.height / 2 } });
+  expect(await page.evaluate(() => window.tacticalFixture.intents.map((intent) => intent.type))).toEqual(["end-turn"]);
+  await expect(canvas).toHaveAttribute("data-facing-position", "");
+});
+
+/** A Step is targeting, not a decision already taken, so Escape still puts the card back. */
+test("returns to the selected card when a Step's direction is cancelled", async ({ page }) => {
+  await page.evaluate(() => window.tacticalFixture.addStepCard());
+  const card = page.locator('#hand-cards [data-action-id="step"]').first();
+  await card.click();
+  const hash = await page.locator("#app").getAttribute("data-state-hash");
+  await page.locator("#pixi-canvas").click({ position: await boardPoint(page, 1.5, 1.5) });
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "1,1");
+  expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "");
+  await expect(card).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#app")).toHaveAttribute("data-state-hash", hash!);
+  expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
 });
 
 /**

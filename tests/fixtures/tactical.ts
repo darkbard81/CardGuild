@@ -15,6 +15,7 @@ export interface TacticalFixture {
   rejectNext: boolean;
   rejectAfterSend: boolean;
   addStrikeCard: () => void;
+  addStepCard: () => void;
   setActions: (remaining: number) => void;
   placeHero: (x: number, y: number) => { width: number; height: number };
   setPenalty: (value: number) => void;
@@ -82,6 +83,13 @@ async function start() {
       const zones = fixture.state.cardZones.hero!;
       fixture.state = { ...fixture.state, cardZones: { ...fixture.state.cardZones, hero: { ...zones,
         hand: [{ id: "fixture-strike", definitionId: "card.fixture-strike", source: { kind: "prepared", memberId: "hero" } }, ...zones.hand] } } };
+      controller?.update(fixture.state, []);
+    },
+    addStepCard() {
+      content.cards["card.fixture-step"] = { id: "card.fixture-step", name: "Fixture Step", actionId: "step", traits: [] };
+      const zones = fixture.state.cardZones.hero!;
+      fixture.state = { ...fixture.state, cardZones: { ...fixture.state.cardZones, hero: { ...zones,
+        hand: [{ id: "fixture-step", definitionId: "card.fixture-step", source: { kind: "prepared", memberId: "hero" } }, ...zones.hand] } } };
       controller?.update(fixture.state, []);
     },
     /** Stands the hero on a chosen square, so a test can reach the map's edges. */

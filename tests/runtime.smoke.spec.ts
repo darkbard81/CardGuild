@@ -405,18 +405,8 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024
     const canvas = page.locator("#pixi-canvas");
     const hash = await app.getAttribute("data-state-hash");
     const count = intents.length;
-    // Cancelling returns to the selected card, with no gameplay mutation or traffic.
-    const trip = page.locator('#hand-cards .tactical-card[data-action-id="trip"]:not([disabled])').first();
-    await trip.click();
-    await page.locator("#end-turn").click();
-    await expect(canvas).toHaveAttribute("data-facing-position", "0,1");
-    await expect(app).toHaveAttribute("data-state-hash", hash!);
-    expect(intents).toHaveLength(count);
-    await page.keyboard.press("Escape");
-    await expect(trip).toHaveAttribute("aria-pressed", "true");
-    await expect(canvas).toHaveAttribute("data-facing-position", "");
-    await trip.click();
-    // The self-ring offers Step. Cancelling its direction picker restores the ring.
+    // The self-ring offers Step. A Step is targeting, so cancelling its direction picker
+    // restores the ring, with no gameplay mutation or traffic.
     await pickRingAction(page, 0.5, 1.5, "step");
     await expect(canvas).toHaveAttribute("data-facing-position", "0,1");
     await page.keyboard.press("Escape");
@@ -432,12 +422,11 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024
     expect(intents.slice(count)).toEqual([{ type: "use-action", action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 0, y: 1 }, facing: "north" } }]);
     const afterStep = await app.getAttribute("data-state-hash");
     await page.locator("#end-turn").click();
-    // Every square is now an answer, so Escape is what backs out of the End Turn choice.
+    // End Turn is the decision and the direction is the rest of it: Esc is not an answer.
     await page.keyboard.press("Escape");
-    await expect(canvas).toHaveAttribute("data-facing-position", "");
+    await expect(canvas).toHaveAttribute("data-facing-position", "0,1");
     await expect(app).toHaveAttribute("data-state-hash", afterStep!);
     expect(intents).toHaveLength(count + 1);
-    await page.locator("#end-turn").click();
     await page.screenshot({ path: testInfo.outputPath("end-turn-direction.png") });
     await chooseFacing(page, "east");
     await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");
@@ -569,16 +558,15 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#combat-log")).toContainText("used Trip");
   await expect(page.locator("#action-pips .available")).toHaveCount(0);
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
-  // The last pip spent leaves End Turn as the only move, so the final-facing widget opens
-  // itself. It still only offers the turn: Esc hands the board back without ending it.
+  // The last pip spent leaves End Turn as the only move, so the direction mode opens
+  // itself. Opening it is not ending the turn: only the direction aimed at does that, and
+  // Esc is not one.
   await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", /^\d+,\d+$/);
   await expect(page.locator("#combat-log")).not.toContainText("Aerin ended the turn.");
   const beforeEnd = await page.locator("#app").getAttribute("data-state-hash");
   await page.keyboard.press("Escape");
-  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "");
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", /^\d+,\d+$/);
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
-  await expect(page.locator("#app")).toHaveAttribute("data-state-hash", beforeEnd!);
-  await page.locator("#end-turn").click();
   await expect(page.locator("#app")).toHaveAttribute("data-state-hash", beforeEnd!);
   await chooseFacing(page, "east");
   await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");

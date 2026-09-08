@@ -34,8 +34,8 @@ import type { Application } from "pixi.js";
 
 const PROMPT_IDLE = "보드에서 적·칸·오브젝트를 클릭해 행동을 고르세요.";
 const PROMPT_FACING = "제자리 Step으로 바라볼 위치를 보드에서 선택하세요. (1 Action · Esc 취소)";
-const PROMPT_END_TURN = "턴을 마칠 때 바라볼 위치를 보드에서 선택하세요. (무료 · Esc 취소)";
-const PROMPT_SPENT_TURN = "Action을 모두 사용했습니다. 바라볼 위치를 보드에서 선택하면 턴이 끝납니다. (무료 · Esc 취소)";
+const PROMPT_END_TURN = "턴을 마칠 때 바라볼 위치를 보드에서 선택하세요. (무료)";
+const PROMPT_SPENT_TURN = "Action을 모두 사용했습니다. 바라볼 위치를 보드에서 선택하면 턴이 끝납니다. (무료)";
 
 export interface BattleControllerOptions {
   readonly definition: CombatDefinition;
@@ -106,7 +106,9 @@ export class BattleController {
       const direction = ({ ArrowUp: "north", ArrowRight: "east", ArrowDown: "south", ArrowLeft: "west" } as const)[event.key as "ArrowUp"];
       if (direction) { event.preventDefault(); this.submitFacing(direction); return; }
     }
-    if (event.key === "Escape" && this.interaction.kind === "direction") {
+    // Escape is the Step's targeting cancel. End Turn has no way back: the button was the
+    // decision and the direction is the rest of it, so every pointer answers it instead.
+    if (event.key === "Escape" && this.interaction.kind === "direction" && this.interaction.purpose === "step-turn") {
       event.preventDefault();
       this.cancelDirection();
     }
@@ -124,7 +126,6 @@ export class BattleController {
     this.view = new BattleView(app, catalog, {
       onPick: (pick, screen) => this.handlePick(pick, screen),
       onFacingPoint: (point) => this.handleFacingPoint(point),
-      onCancelDirection: () => this.cancelDirection(),
       onHoverCell: (position) => this.handleHoverCell(position),
       safeArea: () => measureHudSafeArea(stage),
     });
@@ -292,7 +293,7 @@ export class BattleController {
     const { action, preview } = this.inspection();
     // The board is asking a question here; the idle hint would answer a different one.
     if (this.interaction.kind === "direction" && !action) {
-      this.ui.renderHint("바라볼 보드 위치를 선택하면 그 방향으로 턴을 마칩니다. (Esc 취소)");
+      this.ui.renderHint("바라볼 곳을 보드에서 선택하면 그 방향으로 턴을 마칩니다.");
       return;
     }
     if (action) {
@@ -346,10 +347,8 @@ export class BattleController {
   private handlePick(pick: BoardPick, screen: ScreenPoint): void {
     if (!this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
     const interaction = this.interaction;
-    if (interaction.kind === "direction") {
-      this.cancelDirection();
-      return;
-    }
+    // A board pick in direction mode is an aim, and the view has already routed it there.
+    if (interaction.kind === "direction") return;
     if (interaction.kind === "card") {
       this.resolveCardTarget(interaction.action, pick);
       return;
@@ -445,6 +444,8 @@ export class BattleController {
   /** Card-first path: select a card, then pick one of its highlighted board targets. */
   private handleCard(action: LegalAction): void {
     if (!action.enabled || !this.activeHeroId() || this.state.pendingReaction) return;
+    // The board is mid-question. Answering it, or cancelling a Step's, comes first.
+    if (this.interaction.kind === "direction") return;
     const current = this.interaction;
     if (current.kind === "card" && current.action.source.id === action.source.id) {
       this.goIdle();
@@ -581,10 +582,10 @@ export class BattleController {
   /**
    * A turn with no actions left has nothing but End Turn in it: every action in the pack
    * costs at least one, and Reactions are resolved by their own window rather than from
-   * the turn. So the direction mode opens itself and the board position picked there ends
-   * the turn, sparing the player a button press with no alternative. The turn is still not
-   * ended for them: `Esc` puts the board back and leaves End Turn to be pressed, and the
-   * remembered turn number keeps the next snapshot from reopening what they dismissed.
+   * the turn. So the direction mode opens itself and the place aimed at there ends the
+   * turn, sparing the player a button press with no alternative. The remembered turn number
+   * is what keeps a snapshot that arrives after they have answered — another player's
+   * action resolving, say — from asking the same spent turn a second time.
    */
   private offerSpentTurnDirection(): void {
     if (this.state.turn.actionsRemaining > 0 || this.spentTurnOffered === this.state.turn.turnNumber) return;

@@ -58,7 +58,6 @@ export interface BattleViewHandlers {
   readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
   /** A facing is aimed at a board coordinate, not chosen from a direction widget. */
   readonly onFacingPoint: (point: { readonly x: number; readonly y: number }) => void;
-  readonly onCancelDirection?: () => void;
   readonly onHoverCell: (position: GridPosition | null) => void;
   /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
   readonly safeArea: () => BoardSafeArea;
@@ -503,14 +502,13 @@ export class BattleView {
 
   /**
    * A facing is aimed, not selected off a list, so the pointer is kept as the continuous
-   * board coordinate it lands on rather than snapped to a square. An actor on the edge can
-   * then look off the map without the board having to pretend a tile exists out there.
-   * Only a pointer more than a square clear of the board is a cancel instead of an aim.
+   * board coordinate it lands on rather than snapped to a square. Nothing is out of range:
+   * an actor on the edge looks off the map by aiming there, and a direction is the only
+   * thing a pointer can mean while the mode is open.
    */
   private facingPointAt(screenX: number, screenY: number): { x: number; y: number } | null {
     if (!this.state) return null;
     const board = this.projection.screenToGrid(screenX, screenY);
-    if (board.x < -1 || board.y < -1 || board.x > this.state.map.width + 1 || board.y > this.state.map.height + 1) return null;
     return { x: board.x, y: board.y };
   }
 
@@ -555,7 +553,6 @@ export class BattleView {
       // is the rules' business, not the projection's.
       const aimed = this.facingPointAt(point.x, point.y);
       if (aimed) this.handlers.onFacingPoint(aimed);
-      else this.handlers.onCancelDirection?.();
       return;
     }
     const position = this.gridAt(point.x, point.y);
