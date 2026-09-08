@@ -29,7 +29,7 @@ export function resolveOffGuardTo(
   attacker: ActorState,
   target: ActorState,
   context: StatisticResolutionContext,
-): { readonly offGuard: boolean; readonly causes: readonly OffGuardCause[]; readonly modifiers: readonly StatisticContextModifier[] } {
+): { readonly partnerIds: readonly string[]; readonly offGuard: boolean; readonly causes: readonly OffGuardCause[]; readonly modifiers: readonly StatisticContextModifier[] } {
   const threatens = (actor: ActorState) => {
     const strike = resolveStrike(actor, context);
     // Creature fixed Strikes currently represent authored melee attacks (including reach).
@@ -41,13 +41,17 @@ export function resolveOffGuardTo(
       && hasLineOfEffect(state.map, actor.position, target.position);
   };
   const causes: OffGuardCause[] = [];
+  let partnerIds: string[] = [];
   if (threatens(attacker)) {
     if (isDirectlyBehind(attacker.position, target)) causes.push("rear");
-    if (Object.values(state.actors).some((ally) => ally.id !== attacker.id
+    partnerIds = Object.values(state.actors).filter((ally) => ally.id !== attacker.id
       && ally.team === attacker.team && threatens(ally)
-      && crossesOppositeSides(attacker.position, ally.position, target.position))) causes.push("flanking");
+      && crossesOppositeSides(attacker.position, ally.position, target.position))
+      .map((ally) => ally.id).sort();
+    if (partnerIds.length) causes.push("flanking");
   }
   return {
+    partnerIds,
     offGuard: causes.length > 0,
     causes,
     modifiers: causes.map((cause) => ({

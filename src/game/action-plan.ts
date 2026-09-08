@@ -30,6 +30,7 @@ import type {
   ResolvedStrikeProfile,
   StatisticContextModifier,
   StatisticSource,
+  StrikeTacticalFeedback,
 } from "./types";
 
 /** The two actors a resolution may refer to. `target` is absent for self-targeted Actions. */
@@ -58,6 +59,7 @@ export type ResolvedActionResolution =
       readonly kind: "strike";
       readonly check: ResolvedActionCheck;
       readonly strike: ResolvedStrikeProfile;
+      readonly tactical: StrikeTacticalFeedback;
       readonly damageMultiplier: number;
       readonly outcomes: DegreeOutcomeMap;
     }
@@ -209,7 +211,7 @@ function resolveStrikeCheck(
   attacksThisTurn: number,
   extraWeaponDice: number,
   state: Pick<CombatState, "actors" | "map">,
-): { readonly check: ResolvedActionCheck; readonly strike: ResolvedStrikeProfile } | null {
+): { readonly check: ResolvedActionCheck; readonly strike: ResolvedStrikeProfile; readonly tactical: StrikeTacticalFeedback } | null {
   const { actor, target } = participants;
   if (!target) return null;
   const strike = resolveStrike(actor, context, { attacksThisTurn, extraWeaponDice });
@@ -220,6 +222,13 @@ function resolveStrikeCheck(
   });
   return {
     strike,
+    tactical: {
+      attackerId: actor.id, targetId: target.id,
+      acBeforeOffGuard: resolveArmorClass(target, context).value,
+      ac: armorClass.value, causes: offGuard.causes, partnerIds: offGuard.partnerIds,
+      penalty: offGuard.modifiers[0]?.value ?? 0,
+      penaltyApplied: armorClass.sources.some((source) => source.applied && source.sourceId.startsWith("off-guard:")),
+    },
     check: {
       roller: "actor",
       rollerActorId: actor.id,
@@ -290,6 +299,7 @@ export function buildResolvedActionPlan(
         kind: "strike",
         check: resolved.check,
         strike: resolved.strike,
+        tactical: resolved.tactical,
         damageMultiplier: resolution.damageMultiplier,
         outcomes: resolution.outcomes,
       },

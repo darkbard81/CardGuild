@@ -20,5 +20,6 @@ export async function chooseFacing(page: Page, direction: "north" | "east" | "so
   const box = await canvas.boundingBox();
   if (!box) throw new Error("Missing canvas bounds.");
   await page.mouse.click(box.x + point.x, box.y + point.y);
+  await page.locator("#confirm-facing").click();
   await expect(canvas).toHaveAttribute("data-facing-position", "");
 }

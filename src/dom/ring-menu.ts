@@ -43,6 +43,7 @@ export class RingMenu {
   private readonly connectors = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   private readonly abortController = new AbortController();
   private open = false;
+  private title = "";
   /**
    * A finger cannot hover, so a touch player would fire an action without ever seeing
    * its odds. The first tap on an option only arms it — and the detail panel fills —
@@ -81,6 +82,20 @@ export class RingMenu {
     );
   }
 
+  public setContext(context: string | null): void {
+    this.hub.replaceChildren();
+    const title = document.createElement("span");
+    title.className = "ring-target-name";
+    title.textContent = this.title;
+    this.hub.append(title);
+    if (context) {
+      const badge = document.createElement("span");
+      badge.className = "ring-tactical-context";
+      badge.textContent = context;
+      this.hub.append(badge);
+    }
+  }
+
   public get isOpen(): boolean {
     return this.open;
   }
@@ -91,6 +106,7 @@ export class RingMenu {
     this.menu.setAttribute("aria-label", title);
     this.menu.replaceChildren();
     while (this.connectors.firstChild) this.connectors.firstChild.remove();
+    this.title = title;
     this.hub.textContent = title;
     this.hub.style.left = `${anchor.x}px`;
     this.hub.style.top = `${anchor.y}px`;

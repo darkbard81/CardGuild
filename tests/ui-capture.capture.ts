@@ -1,3 +1,4 @@
+import { chooseFacing } from "./facing-input";
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
@@ -294,10 +295,11 @@ async function winRoadAmbush(page: Page, album: ScreenAlbum, interrupts: Interru
     }
     if (await page.locator("#app").getAttribute("data-screen") !== "combat") break;
     if (await captureResult(page, album, interrupts)) break;
-    // A fully spent turn ends itself, so only an unfinished one needs the button.
+    // A spent turn opens the selector; either entry path still needs confirmation.
     const spent = await page.locator("#action-pips .available").count() === 0;
     const revision = await page.locator("#app").getAttribute("data-session-revision");
     if (!spent) await page.getByRole("button", { name: "End Turn" }).click();
+    await chooseFacing(page, "east");
     await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "");
   }
 }
@@ -322,6 +324,7 @@ async function captureInterrupts(page: Page, album: ScreenAlbum, interrupts: Int
     if ((await page.locator("#initiative-list .active").textContent())?.includes("Aerin")) {
       const revision = await page.locator("#app").getAttribute("data-session-revision");
       await page.getByRole("button", { name: "End Turn" }).click().catch(() => undefined);
+      await chooseFacing(page, "east");
       await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "")
         .catch(() => undefined);
       continue;

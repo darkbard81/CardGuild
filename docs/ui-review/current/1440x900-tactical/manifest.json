@@ -1,0 +1,53 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "id": "1440x900-tactical",
+    "label": "Tactical feedback fixture"
+  },
+  "capturedAt": "2026-09-08T02:28:24.348Z",
+  "shots": [
+    {
+      "id": "front",
+      "title": "front",
+      "note": "같은 Strike plan에서 받은 AC·원인·협공 아군 표시",
+      "file": "front.png"
+    },
+    {
+      "id": "rear",
+      "title": "rear",
+      "note": "같은 Strike plan에서 받은 AC·원인·협공 아군 표시",
+      "file": "rear.png"
+    },
+    {
+      "id": "flanking",
+      "title": "flanking",
+      "note": "같은 Strike plan에서 받은 AC·원인·협공 아군 표시",
+      "file": "flanking.png"
+    },
+    {
+      "id": "both",
+      "title": "both",
+      "note": "같은 Strike plan에서 받은 AC·원인·협공 아군 표시",
+      "file": "both.png"
+    },
+    {
+      "id": "board-overlay",
+      "title": "board-overlay",
+      "note": "링에 가리지 않은 보드: 대상 후방 칸 실선·Rear 표식, 협공 아군 이중 테두리, 대상 Flanking 표식",
+      "file": "board-overlay.png"
+    },
+    {
+      "id": "both-zoomed",
+      "title": "both-zoomed",
+      "note": "확대 상태의 후방 칸 실선과 협공 아군 이중 테두리",
+      "file": "both-zoomed.png"
+    },
+    {
+      "id": "facing-preview",
+      "title": "facing-preview",
+      "note": "확정 전 standee·선택 쐐기·후방 칸 표시, authoritative state는 유지",
+      "file": "facing-preview.png"
+    }
+  ]
+}

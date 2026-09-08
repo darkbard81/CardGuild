@@ -1,6 +1,6 @@
 import { Container, Graphics, Sprite, Text } from "pixi.js";
 
-import type { ActorState, CombatState } from "../../game";
+import type { ActorState, CombatState, Direction } from "../../game";
 import type { AssetCatalog } from "../../presentation";
 import { facingStandee } from "../../presentation";
 import type { BoardViewConfig, StandeeBaseStyle } from "./BoardViewConfig";
@@ -75,9 +75,9 @@ export class ActorRenderer {
     private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
   ) {}
 
-  public render(state: CombatState): readonly SortableVisual[] {
+  public render(state: CombatState, preview?: { readonly actorId: string; readonly direction: Direction }): readonly SortableVisual[] {
     return Object.values(state.actors).map((actor) => {
-      const visual = actorVisual(this.catalog, actor, this.config);
+      const visual = actorVisual(this.catalog, preview?.actorId === actor.id ? { ...actor, facing: preview.direction } : actor, this.config);
       return {
         display: visual.display,
         screenSpace: visual.badge,

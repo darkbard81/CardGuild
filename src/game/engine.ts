@@ -606,6 +606,7 @@ function rollPlannedCheck(
     baseDegree: result.baseDegree,
     degree: result.degree,
     modifierSources: plan.notes,
+    ...(plan.resolution.kind === "strike" ? { tactical: plan.resolution.tactical } : {}),
   });
   return result.degree;
 }

@@ -63,3 +63,23 @@ UI를 고친 뒤에는 `npm run ui:capture`만 다시 돌리고 `docs/ui-review/
   실패 화면(12)이 대신하고 있습니다.
 
 두 항목은 `manifest.json`에도 이유와 함께 남아 있고, 비교 페이지에서는 빈 칸으로 표시됩니다.
+
+
+### Tactical Feedback (#34)
+
+`npm run ui:capture`는 기존 화면과 함께 `current/1024x768-tactical/`,
+`current/1440x900-tactical/`에 결정적 전투 fixture의 Front, Rear, Flanking,
+Rear+Flanking, 링에 가리지 않은 보드 표시, 확대된 관계 표시, 확정 전 Facing 캡처와
+manifest를 생성합니다.
+비교 페이지에서도 Tactical feedback fixture 묶음으로 확인할 수 있습니다.
+
+- HUD: AC 전후 값, Off-Guard 효과 한 번, 원인 목록, 협공 아군 이름 순서로 읽습니다.
+- 보드: 후방 칸은 점선, 실제 Rear는 실선, 협공 아군은 이중 테두리로 구분합니다.
+  Rear·Flanking 글자는 standee 위 레이어에 그려 확대·축소와 무관하게 읽힙니다.
+  링이 대상 표식을 가리는 경우 링의 대상 이름에도 Flanking을 표시하고, 카드 선택 후
+  대상 hover로 링 없이 보드만 읽을 수도 있습니다(`board-overlay` 캡처).
+- Facing: 강조된 쐐기와 standee가 미리 선택한 방향을 표시합니다. 확정/취소는 기존 HUD에
+  두고 주변 보드를 덮지 않습니다. 일반 idle에는 전술 관계 표시를 남기지 않습니다.
+- `tests/tactical.browser.spec.ts`는 실제 명령으로 이동과 턴을 진행해 관계 변화를 검증하며,
+  확대/이동/회전 후 실제 Graphics 경계를 보드 투영과 비교합니다. 테스트 fixture는
+  production 콘텐츠에 포함하지 않습니다.

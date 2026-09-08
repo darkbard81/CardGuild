@@ -5,7 +5,7 @@
     "height": 768,
     "label": "지원 최소 해상도"
   },
-  "capturedAt": "2026-09-06T15:52:12.821Z",
+  "capturedAt": "2026-09-08T02:31:12.149Z",
   "shots": [
     {
       "id": "session-lobby",
@@ -29,22 +29,19 @@
       "id": "loadout-builder",
       "title": "Loadout Builder (기본 상태)",
       "note": "장비 탭의 장착 슬롯과 보유 장비 아이콘 그리드.",
-      "file": "04-loadout-builder.png",
-      "capturedAt": "2026-09-07T20:15:47.527Z"
+      "file": "04-loadout-builder.png"
     },
     {
       "id": "loadout-card-picker",
       "title": "Loadout · 준비 카드 추가",
       "note": "준비 카드 슬롯과 클릭 한 번으로 추가하는 보유 카드 그리드.",
-      "file": "05-loadout-card-picker.png",
-      "capturedAt": "2026-09-07T20:15:47.527Z"
+      "file": "05-loadout-card-picker.png"
     },
     {
       "id": "loadout-preview-diff",
       "title": "Loadout · 적용 전 변화 미리보기",
       "note": "무기 아이콘 hover로 해제 시 명중/피해 변화를 보여주는 팝오버.",
-      "file": "06-loadout-preview-diff.png",
-      "capturedAt": "2026-09-07T20:15:47.527Z"
+      "file": "06-loadout-preview-diff.png"
     },
     {
       "id": "combat-turn",

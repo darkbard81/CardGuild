@@ -116,6 +116,7 @@ export class AdventureController {
       onError: (error) => {
         this.root.dataset.sessionError = error.code;
         this.loadoutUi.reportError(error.message);
+        this.battle?.reportError(error.message);
         if (isTerminalHandshakeFailure(error.code)) {
           this.returnToLanding(error.message);
           return;
@@ -124,7 +125,10 @@ export class AdventureController {
       },
       onStatus: (status) => {
         this.root.dataset.sessionStatus = status;
-        if (status !== "connected") this.loadoutUi.reportError(`Session ${status}…`);
+        if (status !== "connected") {
+          this.loadoutUi.reportError(`Session ${status}…`);
+          this.battle?.reportError(`Session ${status}…`);
+        }
         this.lobbyUi.setStatus(status === "connected" ? "서버에 연결되었습니다." : `Session ${status}…`);
       },
     });

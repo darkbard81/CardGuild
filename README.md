@@ -136,6 +136,17 @@ Strike와 Reactive Strike는 공격자의 전방/측면만 대상으로 삼습�
   않습니다. Preview와 실행의 공통 plan 및 debug notes에 원인과 적용/억제 여부를 표시합니다.
 
 
+전투 Preview는 `Target AC`와 `Off-Guard -2` 효과를 한 번 표시하고, `Rear · Flanking`
+원인 및 협공 아군 이름을 별도로 표시합니다. 더 강한 기존 circumstance 페널티가 있으면
+실제 AC와 `추가 AC 감소 없음`을 표시합니다. 상세 stack은 개발 모드의 접힌 Debug에 둡니다.
+후방 점선/실선, 협공 아군 이중 테두리, 선택 Actor의 Facing 표식은 공격 검사·방향 선택
+문맥에서만 나타납니다. 이동 후의 가상 공격이나 방향 추천은 제공하지 않습니다.
+
+End Turn 및 제자리 Step은 방향 쐐기 클릭/터치 또는 방향키로 미리 보고, 확정 버튼/Enter로
+제출합니다. 확정 전에는 gameplay state가 변하지 않으며 취소/Esc/쐐기 밖 클릭은 이전
+선택으로 돌아갑니다. Action 0의 자동 선택기 열기와 카드 대상 한 번 터치 실행은 유지합니다.
+터치에서 공격 전 Preview를 읽으려면 기존 링 메뉴에서 첫 터치로 행동을 선택합니다.
+
 ## 구조
 
 ```text

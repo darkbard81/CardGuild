@@ -11,7 +11,7 @@ import {
   Texture,
 } from "pixi.js";
 
-import type { CombatEvent, CombatState, Direction, GridPosition } from "../../game";
+import type { facingContext, StrikeTacticalFeedback, CombatEvent, CombatState, Direction, GridPosition } from "../../game";
 import type { AssetCatalog } from "../../presentation";
 import { ActorRenderer } from "./ActorRenderer";
 import { BattleCamera } from "./BattleCamera";
@@ -35,6 +35,10 @@ export interface MoveBandTile {
 }
 
 export interface BoardHighlights {
+  readonly tactical?: StrikeTacticalFeedback;
+  readonly targetFacing?: ReturnType<typeof facingContext>;
+  readonly actorFacing?: ReturnType<typeof facingContext>;
+  readonly previewFacing?: { readonly actorId: string; readonly direction: Direction };
   readonly tiles: readonly GridPosition[];
   readonly actorIds: readonly string[];
   readonly objectIds: readonly string[];
@@ -112,6 +116,8 @@ export class BattleView {
     sortableChildren: true,
     sortFunction: (left, right) => left.zIndex - right.zIndex || left.label.localeCompare(right.label),
   });
+  /** Text markers belong above the standees they describe, so they read at any zoom. */
+  private readonly boardLabelLayer = new Container({ label: "boardLabelLayer", eventMode: "none" });
   private readonly effectLayer = new Container({ label: "effectLayer" });
   private readonly projection: BoardProjection;
   private readonly terrainRenderer: TerrainRenderer;
@@ -211,6 +217,7 @@ export class BattleView {
       this.propLayer,
       this.actorLayer,
       this.depthRenderLayer,
+      this.boardLabelLayer,
       this.effectLayer,
     );
     this.app.stage.addChild(this.scene);
@@ -259,7 +266,7 @@ export class BattleView {
     // The board texture is destroyed and rebuilt when the map changes size, so let go of
     // it before asking for the new one rather than leaving a sprite bound to a dead page.
     if (this.boardSprite) this.boardSprite.texture = Texture.EMPTY;
-    for (const layer of [this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
+    for (const layer of [this.boardOverlayLayer, this.boardLabelLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
     if (!this.boardSprite) {
       this.boardSprite = new Sprite({ label: "boardPlane" });
@@ -273,7 +280,7 @@ export class BattleView {
     this.projection.update(state.map.width, state.map.height, this.camera.placement(this.boardFrame()));
 
     const props = [...this.terrainRenderer.renderProps(state), ...this.objectRenderer.render(state)];
-    const actors = this.actorRenderer.render(state);
+    const actors = this.actorRenderer.render(state, highlights.previewFacing);
     this.visuals = [];
     this.actorVisuals.clear();
     for (const visual of props) this.registerVisual(visual, this.propLayer);
@@ -388,8 +395,16 @@ export class BattleView {
     this.app.stage.hitArea = new Rectangle(0, 0, this.app.screen.width, this.app.screen.height);
   }
 
+  public updateHighlights(highlights: BoardHighlights): void {
+    this.currentHighlights = highlights;
+    this.renderOverlay();
+  }
+
   private renderOverlay(): void {
     clearLayer(this.boardOverlayLayer);
+    clearLayer(this.boardLabelLayer);
+    this.app.canvas.dataset.tactical = JSON.stringify({ tactical: this.currentHighlights.tactical,
+      targetFacing: this.currentHighlights.targetFacing, actorFacing: this.currentHighlights.actorFacing });
     // The bands are Graphics, so a test can only see them through what the canvas reports.
     this.app.canvas.dataset.moveBands = JSON.stringify(
       this.currentHighlights.moveBands.reduce<Record<string, number>>((counts, tile) => {
@@ -404,6 +419,7 @@ export class BattleView {
       this.hoverPosition,
       this.projection,
       this.boardOverlayLayer,
+      this.boardLabelLayer,
     );
   }
 

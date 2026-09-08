@@ -1,5 +1,6 @@
 import {
   hashCombatState,
+  facingContext,
   listLegalActions,
   listLegalTargets,
   previewAction,
@@ -34,7 +35,7 @@ import type { Application } from "pixi.js";
 const PROMPT_IDLE = "보드에서 적·칸·오브젝트를 클릭해 행동을 고르세요.";
 const PROMPT_FACING = "제자리 Step으로 바라볼 방향을 선택하세요. (1 Action · Esc 취소)";
 const PROMPT_END_TURN = "턴을 마칠 최종 방향을 선택하세요. (무료 · Esc 취소)";
-const PROMPT_SPENT_TURN = "Action을 모두 사용했습니다. 최종 방향을 고르면 턴이 끝납니다. (무료 · Esc 취소)";
+const PROMPT_SPENT_TURN = "Action을 모두 사용했습니다. 최종 방향을 선택한 뒤 확정하세요. (무료 · Esc 취소)";
 
 export interface BattleControllerOptions {
   readonly definition: CombatDefinition;
@@ -94,9 +95,18 @@ export class BattleController {
   private readonly ui: BattleUi;
   private readonly ring: RingMenu;
   private directionReturn: { interaction: Interaction; prompt: string } | null = null;
+  private pendingFacing: { interaction: Extract<Interaction, { kind: "direction" }>; facing: Direction; previous: { interaction: Interaction; prompt: string } | null } | null = null;
+  private inspectionCache: { state: CombatState; interaction: Interaction; card: LegalAction | null; hover: GridPosition | null;
+    value: { action: LegalAction | null; preview: ActionPreview | null } } | null = null;
+  private selectedFacing: Direction | null = null;
   private ringAnchor: ScreenPoint = { x: 0, y: 0 };
   private ringTitle = "";
   private readonly keyHandler = (event: KeyboardEvent): void => {
+    if (this.interaction.kind === "direction") {
+      const direction = ({ ArrowUp: "north", ArrowRight: "east", ArrowDown: "south", ArrowLeft: "west" } as const)[event.key as "ArrowUp"];
+      if (direction) { event.preventDefault(); this.handleFacing(direction); return; }
+      if (event.key === "Enter") { event.preventDefault(); this.confirmFacing(); return; }
+    }
     if (event.key === "Escape" && this.interaction.kind === "direction") {
       event.preventDefault();
       this.cancelDirection();
@@ -216,12 +226,18 @@ export class BattleController {
         objectIds: [],
         facingPosition: interaction.position,
         moveBands: [],
+        actorFacing: this.state.actors[this.heroId()] ? facingContext(this.state.actors[this.heroId()]!, this.selectedFacing ?? undefined) : undefined,
+        previewFacing: this.selectedFacing ? { actorId: this.heroId(), direction: this.selectedFacing } : undefined,
       };
     }
     const hovered = hoveredRingEntry(interaction);
     const targets = hovered
       ? [hovered.target]
       : this.targetsFor(interaction.kind === "card" ? interaction.action : null);
+    const inspection = this.inspection();
+    const inspectedTarget = inspection.preview?.tactical?.targetId;
+    const targetActor = inspectedTarget ? this.state.actors[inspectedTarget] : undefined;
+    const actor = this.state.actors[this.heroId()];
     const ringCell = interaction.kind === "ring" ? [interaction.position] : [];
     return {
       tiles: [
@@ -232,13 +248,19 @@ export class BattleController {
       objectIds: targets.flatMap((target) => (target.kind === "object" ? [target.objectId] : [])),
       facingPosition: null,
       moveBands: this.visibleMoveBands(),
+      tactical: inspection.preview?.tactical,
+      targetFacing: targetActor ? facingContext(targetActor) : undefined,
+      actorFacing: inspection.action && actor ? facingContext(actor) : undefined,
     };
   }
 
   private previewFor(action: LegalAction | null, target: LegalTarget | null): ActionPreview | null {
     const actor = this.state.actors[this.heroId()];
     if (!action || !actor) return null;
-    const resolved = target ?? (this.targetsFor(action).length === 1 ? this.targetsFor(action)[0] ?? null : null);
+    const hoveredActor = this.hoverCell ? Object.values(this.state.actors).find((candidate) => samePosition(candidate.position, this.hoverCell!)) : undefined;
+    const hoverTarget: LegalTarget | null = hoveredActor && hoveredActor.team !== actor.team
+      ? { kind: "actor", actorId: hoveredActor.id, label: hoveredActor.name } : null;
+    const resolved = target ?? hoverTarget ?? (this.targetsFor(action).length === 1 ? this.targetsFor(action)[0] ?? null : null);
     if (!resolved) return null;
     return previewAction(
       this.state,
@@ -271,15 +293,28 @@ export class BattleController {
     this.renderDetail();
   }
 
-  private renderDetail(): void {
+  private inspection(): { action: LegalAction | null; preview: ActionPreview | null } {
+    const cached = this.inspectionCache;
+    if (cached && cached.state === this.state && cached.interaction === this.interaction
+      && cached.card === this.hoveredCardAction && cached.hover === this.hoverCell) return cached.value;
     const hovered = hoveredRingEntry(this.interaction);
-    if (hovered) {
-      this.ui.renderActionDetail(hovered.action, this.previewFor(hovered.action, hovered.target));
+    const action = hovered?.action ?? this.hoveredCardAction ?? interactionAction(this.interaction);
+    const value = { action, preview: this.previewFor(action, hovered?.target ?? null) };
+    this.inspectionCache = { state: this.state, interaction: this.interaction, card: this.hoveredCardAction, hover: this.hoverCell, value };
+    return value;
+  }
+
+  private renderDetail(): void {
+    if (this.interaction.kind === "direction") {
+      this.ui.renderDirection(this.selectedFacing ?? this.state.actors[this.heroId()]!.facing,
+        this.interaction.purpose === "step-turn" ? "1 Action" : "무료",
+        () => this.confirmFacing(), () => this.cancelDirection());
       return;
     }
-    const action = this.hoveredCardAction ?? interactionAction(this.interaction);
+    const { action, preview } = this.inspection();
+    this.ring.setContext(preview?.tactical?.causes.includes("flanking") ? "Flanking" : null);
     if (action) {
-      this.ui.renderActionDetail(action, this.previewFor(action, null));
+      this.ui.renderActionDetail(action, preview, this.state);
       return;
     }
     // A ring that is open but has nothing chosen yet should describe what it opened on.
@@ -309,6 +344,8 @@ export class BattleController {
   /** Every phase change goes through here so the ring can never outlive its state. */
   private enter(interaction: Interaction): void {
     this.interaction = interaction;
+    if (interaction.kind === "direction") this.selectedFacing = this.state.actors[this.heroId()]?.facing ?? null;
+    else this.selectedFacing = null;
     if (interaction.kind !== "ring") this.ring.hide();
   }
 
@@ -421,7 +458,7 @@ export class BattleController {
     const interaction = this.interaction;
     if (interaction.kind !== "ring") return;
     this.interaction = { ...interaction, hoveredOptionId: optionId };
-    this.view.render(this.state, this.highlights());
+    this.view.updateHighlights(this.highlights());
     this.renderDetail();
   }
 
@@ -482,27 +519,43 @@ export class BattleController {
 
   private handleActionHover(action: LegalAction | null): void {
     this.hoveredCardAction = action;
-    this.view.render(this.state, this.highlights());
+    this.view.updateHighlights(this.highlights());
     this.renderDetail();
   }
 
   private handleHoverCell(position: GridPosition | null): void {
     this.hoverCell = position;
+    this.view.updateHighlights(this.highlights());
     this.renderDetail();
   }
 
   private handleFacing(facing: Direction): void {
+    if (this.interaction.kind !== "direction") return;
+    this.selectedFacing = facing;
+    this.render();
+  }
+
+  private confirmFacing(): void {
+    const facing = this.selectedFacing;
+    if (!facing) return;
     const interaction = this.interaction;
     if (interaction.kind !== "direction") return;
-    if (interaction.purpose === "end-turn") {
-      this.sendIntent({ type: "end-turn", facing });
-      return;
-    }
-    this.useAction(interaction.action, {
-      kind: "tile",
-      position: interaction.position,
-      facing,
-    });
+    this.pendingFacing = { interaction, facing, previous: this.directionReturn };
+    const sent = this.sendIntent(interaction.purpose === "end-turn"
+      ? { type: "end-turn", facing }
+      : { type: "use-action", action: interaction.action.source, target: { kind: "tile", position: interaction.position, facing } });
+    if (!sent) this.pendingFacing = null;
+  }
+
+  public reportError(message: string): void {
+    const pending = this.pendingFacing;
+    if (!pending) return;
+    this.pendingFacing = null;
+    this.enter(pending.interaction);
+    this.directionReturn = pending.previous;
+    this.selectedFacing = pending.facing;
+    this.prompt = message;
+    this.render();
   }
 
   private useAction(action: LegalAction, target: ActionTarget): void {
@@ -533,8 +586,8 @@ export class BattleController {
   /**
    * A turn with no actions left has nothing but End Turn in it: every action in the pack
    * costs at least one, and Reactions are resolved by their own window rather than from
-   * the turn. So the final-facing widget opens itself and the direction picked there ends
-   * the turn, sparing the player a button press with no alternative. The turn is still not
+   * the turn. So the final-facing widget opens itself; selecting a direction previews it
+   * and confirming ends the turn. The turn is still not
    * ended for them: `Esc` puts the board back and leaves End Turn to be pressed, and the
    * remembered turn number keeps the next snapshot from reopening what they dismissed.
    */
@@ -588,6 +641,8 @@ export class BattleController {
     replaceHistory = false,
     controlledActorIds: ReadonlySet<string> = this.controlledActorIds,
   ): void {
+    this.pendingFacing = null;
+    this.hoverCell = null;
     this.state = state;
     this.controlledActorIds = new Set(controlledActorIds);
     this.syncPresentedActor();

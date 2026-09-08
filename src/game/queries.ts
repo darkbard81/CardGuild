@@ -313,6 +313,12 @@ export function validateActionIntent(
   const base = validateActionBase(state, actorId, source, content);
   if (!base.legal || !base.actor || !base.resolved) return { legal: false, reason: base.reason };
   const targets = listCandidateTargets(state, base.actor, base.resolved.definition, content);
+  if (target.kind === "actor" && base.resolved.definition.resolution.kind === "strike") {
+    const defender = state.actors[target.actorId];
+    if (defender && !isInFrontOrSide(base.actor, defender.position)) {
+      return { legal: false, reason: "Target is outside the front/side facing arc." };
+    }
+  }
   if (targets.length === 0) return { legal: false, reason: "No legal target." };
   if (!targetIsLegal(targets, target)) return { legal: false, reason: "Target is not legal." };
   if (base.resolved.definition.resolution.kind === "move" && target.kind === "tile" &&
@@ -458,6 +464,7 @@ export function previewAction(
   const strike = resolution.strike;
   return {
     ...checkPreview,
+    tactical: resolution.tactical,
     hitChance: probabilities.success + probabilities["critical-success"],
     criticalChance: probabilities["critical-success"],
     damageRange: [

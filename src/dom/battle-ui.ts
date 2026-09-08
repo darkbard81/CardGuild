@@ -521,7 +521,7 @@ export class BattleUi {
     this.cardDetail.hidden = true;
   }
 
-  public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null): void {
+  public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null, state?: CombatState): void {
     this.selectedDetail.replaceChildren();
     if (!action) {
       this.selectedDetail.append(element("p", "detail-hint", DETAIL_HINT));
@@ -537,6 +537,10 @@ export class BattleUi {
     if (action.sourceLabel) this.selectedDetail.append(element("p", "detail-source", `Source: ${action.sourceLabel}`));
     if (action.reason) this.selectedDetail.append(element("p", "detail-warning", action.reason));
     if (!preview) return;
+    if (!preview.legal) {
+      this.selectedDetail.append(element("p", "detail-warning", preview.reason ?? "Target is not legal."));
+      return;
+    }
     const previewGrid = element("dl", "preview-grid");
     if (preview.hitChance !== undefined) {
       previewGrid.append(element("dt", undefined, "Hit"), element("dd", undefined, percentage(preview.hitChance)));
@@ -553,8 +557,44 @@ export class BattleUi {
     if (preview.pathCostFeet !== undefined) {
       previewGrid.append(element("dt", undefined, "Move cost"), element("dd", undefined, `${preview.pathCostFeet}ft`));
     }
+    const tactical = preview.tactical;
+    if (tactical) {
+      previewGrid.append(element("dt", undefined, "Target AC"), element("dd", "target-ac",
+        tactical.acBeforeOffGuard === tactical.ac ? String(tactical.ac) : `${tactical.acBeforeOffGuard} → ${tactical.ac}`));
+    } else if (preview.check) {
+      previewGrid.append(element("dt", undefined, "Check / DC"), element("dd", undefined, `${preview.check.modifier >= 0 ? "+" : ""}${preview.check.modifier} / ${preview.check.dc}`));
+    }
     this.selectedDetail.append(previewGrid);
-    for (const note of preview.notes) this.selectedDetail.append(element("p", "preview-note", note));
+    if (tactical?.causes.length) {
+      const effect = element("div", "off-guard-summary");
+      effect.append(element("strong", "off-guard-effect", `Off-Guard ${tactical.penalty}`),
+        element("span", "off-guard-causes", tactical.causes.map((cause) => cause === "rear" ? "Rear" : "Flanking").join(" · ")));
+      if (tactical.acBeforeOffGuard === tactical.ac) effect.append(element("span", undefined, "기존 페널티 적용 · 추가 AC 감소 없음"));
+      if (tactical.partnerIds.length) effect.append(element("span", "flanking-partners", `협공 아군: ${tactical.partnerIds.map((id) => state?.actors[id]?.name ?? "아군").join(", ")}`));
+      this.selectedDetail.append(effect);
+    }
+    if (import.meta.env.DEV) {
+      const diagnostics = element("details", "preview-diagnostics");
+      diagnostics.append(element("summary", undefined, "Debug"));
+      for (const note of preview.notes) diagnostics.append(element("p", "preview-note", note));
+      if (tactical) diagnostics.append(element("pre", undefined, JSON.stringify(tactical, null, 2)));
+      this.selectedDetail.append(diagnostics);
+    }
+  }
+
+  public renderDirection(facing: string, cost: string, confirm: () => void, cancel: () => void): void {
+    this.selectedDetail.replaceChildren();
+    const controls = element("div", "facing-controls");
+    controls.append(element("strong", undefined, `Facing: ${facing}`),
+      element("p", undefined, `${cost} · 방향 선택 후 확정 · 방향키 / Enter / Esc`));
+    const accept = element("button", "primary-button", "확정");
+    accept.id = "confirm-facing";
+    accept.addEventListener("click", confirm);
+    const dismiss = element("button", undefined, "취소");
+    dismiss.id = "cancel-facing";
+    dismiss.addEventListener("click", cancel);
+    controls.append(accept, dismiss);
+    this.selectedDetail.append(controls);
   }
 
   /** Inspector view for an actor the pointer is hovering on the board. */
