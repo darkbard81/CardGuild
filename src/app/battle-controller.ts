@@ -98,6 +98,7 @@ export class BattleController {
   private pendingFacing: { interaction: Extract<Interaction, { kind: "direction" }>; previous: { interaction: Interaction; prompt: string } | null } | null = null;
   private inspectionCache: { state: CombatState; interaction: Interaction; card: LegalAction | null; hover: GridPosition | null;
     value: { action: LegalAction | null; preview: ActionPreview | null } } | null = null;
+  private aimedFacing: Direction | null = null;
   private ringAnchor: ScreenPoint = { x: 0, y: 0 };
   private ringTitle = "";
   private readonly keyHandler = (event: KeyboardEvent): void => {
@@ -126,6 +127,7 @@ export class BattleController {
     this.view = new BattleView(app, catalog, {
       onPick: (pick, screen) => this.handlePick(pick, screen),
       onFacingPoint: (point) => this.handleFacingPoint(point),
+      onFacingAim: (point) => this.handleFacingAim(point),
       onHoverCell: (position) => this.handleHoverCell(position),
       safeArea: () => measureHudSafeArea(stage),
     });
@@ -220,7 +222,8 @@ export class BattleController {
   private highlights(): BoardHighlights {
     const interaction = this.interaction;
     if (interaction.kind === "direction") {
-      return { tiles: [], actorIds: [], objectIds: [], facingPosition: interaction.position, moveBands: [] };
+      return { tiles: [], actorIds: [], objectIds: [], facingPosition: interaction.position, moveBands: [],
+        ...(this.aimedFacing ? { aimedFacing: this.aimedFacing } : {}) };
     }
     const hovered = hoveredRingEntry(interaction);
     const targets = hovered
@@ -327,6 +330,7 @@ export class BattleController {
   /** Every phase change goes through here so the ring can never outlive its state. */
   private enter(interaction: Interaction): void {
     this.interaction = interaction;
+    this.aimedFacing = null;
     if (interaction.kind !== "ring") this.ring.hide();
   }
 
@@ -517,12 +521,27 @@ export class BattleController {
    * it is a place aimed at, not a tile — which is what lets an actor on the edge look off
    * the map. Aiming inside the actor's own square names no direction at all.
    */
+  private facingFrom(cell: GridPosition, point: { readonly x: number; readonly y: number }): Direction | null {
+    const from = { x: cell.x + 0.5, y: cell.y + 0.5 };
+    if (Math.abs(point.x - from.x) < 0.5 && Math.abs(point.y - from.y) < 0.5) return null;
+    return facingToward(from, point);
+  }
+
   private handleFacingPoint(point: { readonly x: number; readonly y: number }): void {
     const interaction = this.interaction;
     if (interaction.kind !== "direction") return;
-    const from = { x: interaction.position.x + 0.5, y: interaction.position.y + 0.5 };
-    if (Math.abs(point.x - from.x) < 0.5 && Math.abs(point.y - from.y) < 0.5) return;
-    this.submitFacing(facingToward(from, point));
+    const facing = this.facingFrom(interaction.position, point);
+    if (facing) this.submitFacing(facing);
+  }
+
+  /** Lights the arrow the pointer is over, so the answer is visible before it is given. */
+  private handleFacingAim(point: { readonly x: number; readonly y: number }): void {
+    const interaction = this.interaction;
+    if (interaction.kind !== "direction") return;
+    const facing = this.facingFrom(interaction.position, point);
+    if (facing === this.aimedFacing) return;
+    this.aimedFacing = facing;
+    this.view.updateHighlights(this.highlights());
   }
 
   private submitFacing(facing: Direction): void {

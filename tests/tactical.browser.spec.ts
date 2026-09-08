@@ -29,6 +29,7 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
       // The board carries position and input only: no rule overlay, no rule text.
       const drawn = await page.evaluate((labels) => labels.filter((label) => window.tacticalFixture.bounds(label)), REMOVED_GRAPHICS);
       expect(drawn).toEqual([]);
+      expect(await page.evaluate(() => window.tacticalFixture.bounds("facing-arrow-north"))).toBeNull();
       const text = await page.evaluate(() => window.tacticalFixture.boardText());
       expect(text.filter((value) => ["Rear", "Flanking", "뒤"].includes(value))).toEqual([]);
       await page.screenshot({ path: testInfo.outputPath(`${mode}.png`) });
@@ -216,6 +217,36 @@ test("commits to the End Turn direction until it is answered", async ({ page }) 
   await expect(canvas).toHaveAttribute("data-facing-position", "");
 });
 
+/**
+ * The four arrows are the affordance for a mode that accepts any aim at all: they say
+ * which answers the board is shaped around, and which one the pointer is giving.
+ */
+test("marks the four directions with arrows and lights the one being aimed", async ({ page }) => {
+  const canvas = page.locator("#pixi-canvas");
+  const arrow = (direction: string) => page.evaluate((value) => window.tacticalFixture.bounds(`facing-arrow-${value}`), direction);
+  await page.locator("#end-turn").click();
+  for (const direction of ["north", "east", "south", "west"]) expect(await arrow(direction)).not.toBeNull();
+  // Each arrow stands in the square it offers, at the place the projection puts it.
+  const centre = await boardPoint(page, 1.5, 1.5);
+  for (const [direction, cell] of [["north", [1.5, 0.5]], ["east", [2.5, 1.5]], ["south", [1.5, 2.5]], ["west", [0.5, 1.5]]] as const) {
+    const neighbour = await boardPoint(page, cell[0], cell[1]);
+    const bounds = (await arrow(direction))!;
+    expect(Math.hypot(bounds.x + bounds.width / 2 - (centre.x + (neighbour.x - centre.x) * 0.82),
+      bounds.y + bounds.height / 2 - (centre.y + (neighbour.y - centre.y) * 0.82))).toBeLessThan(4);
+  }
+  // Opposite directions draw the same shape turned around, so only the aim changes the size.
+  const before = (await arrow("north"))!;
+  expect(before.width).toBeCloseTo((await arrow("south"))!.width, 1);
+  await canvas.hover({ position: await boardPoint(page, 1.5, 0.5) });
+  await expect.poll(async () => (await arrow("north"))!.width > before.width).toBe(true);
+  expect((await arrow("south"))!.width).toBeCloseTo(before.width, 1);
+  await canvas.hover({ position: await boardPoint(page, 1.5, 2.5) });
+  await expect.poll(async () => (await arrow("south"))!.width > before.width).toBe(true);
+  expect((await arrow("north"))!.width).toBeCloseTo(before.width, 1);
+  // Aiming is not answering: still no command until the pointer is put down.
+  expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+});
+
 /** A Step is targeting, not a decision already taken, so Escape still puts the card back. */
 test("returns to the selected card when a Step's direction is cancelled", async ({ page }) => {
   await page.evaluate(() => window.tacticalFixture.addStepCard());
@@ -253,7 +284,14 @@ for (const { edge, cell, aim, facing } of EDGES) {
     await page.evaluate(([x, y]) => window.tacticalFixture.placeHero(x!, y!), [at.x, at.y]);
     await page.locator("#end-turn").click();
     await expect(canvas).toHaveAttribute("data-facing-position", `${at.x},${at.y}`);
-    await canvas.click({ position: await boardPoint(page, at.x + aim[0], at.y + aim[1]) });
+    // The square out there does not exist, but the arrow offering it still has a place.
+    const outward = await page.evaluate((value) => window.tacticalFixture.bounds(`facing-arrow-${value}`), facing);
+    expect(outward).not.toBeNull();
+    const centre = await boardPoint(page, at.x + 0.5, at.y + 0.5);
+    const beyond = await boardPoint(page, at.x + aim[0], at.y + aim[1]);
+    expect(Math.hypot(outward!.x + outward!.width / 2 - (centre.x + (beyond.x - centre.x) * 0.82),
+      outward!.y + outward!.height / 2 - (centre.y + (beyond.y - centre.y) * 0.82))).toBeLessThan(4);
+    await canvas.click({ position: beyond });
     expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([{ type: "end-turn", facing }]);
     expect(await page.evaluate(() => window.tacticalFixture.state.actors.hero!.facing)).toBe(facing);
   });

@@ -11,7 +11,7 @@ import {
   Texture,
 } from "pixi.js";
 
-import type { CombatEvent, CombatState, GridPosition } from "../../game";
+import type { CombatEvent, CombatState, Direction, GridPosition } from "../../game";
 import type { AssetCatalog } from "../../presentation";
 import { ActorRenderer } from "./ActorRenderer";
 import { BattleCamera } from "./BattleCamera";
@@ -35,6 +35,8 @@ export interface MoveBandTile {
 }
 
 export interface BoardHighlights {
+  /** Which of the four arrows the pointer is currently answering, if any. */
+  readonly aimedFacing?: Direction;
   readonly tiles: readonly GridPosition[];
   readonly actorIds: readonly string[];
   readonly objectIds: readonly string[];
@@ -58,6 +60,8 @@ export interface BattleViewHandlers {
   readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
   /** A facing is aimed at a board coordinate, not chosen from a direction widget. */
   readonly onFacingPoint: (point: { readonly x: number; readonly y: number }) => void;
+  /** The same coordinate under a hovering pointer, for showing what it would answer. */
+  readonly onFacingAim: (point: { readonly x: number; readonly y: number }) => void;
   readonly onHoverCell: (position: GridPosition | null) => void;
   /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
   readonly safeArea: () => BoardSafeArea;
@@ -112,6 +116,12 @@ export class BattleView {
     sortableChildren: true,
     sortFunction: (left, right) => left.zIndex - right.zIndex || left.label.localeCompare(right.label),
   });
+  /**
+   * The facing arrows are input, not decoration, and the squares they mark are exactly the
+   * ones a standee is most likely to be standing on. They therefore sit above the actors —
+   * an affordance hidden behind the thing it is offered about is no affordance at all.
+   */
+  private readonly facingAimLayer = new Container({ label: "facingAimLayer", eventMode: "none" });
   private readonly effectLayer = new Container({ label: "effectLayer" });
   private readonly projection: BoardProjection;
   private readonly terrainRenderer: TerrainRenderer;
@@ -211,6 +221,7 @@ export class BattleView {
       this.propLayer,
       this.actorLayer,
       this.depthRenderLayer,
+      this.facingAimLayer,
       this.effectLayer,
     );
     this.app.stage.addChild(this.scene);
@@ -272,7 +283,7 @@ export class BattleView {
     // The board texture is destroyed and rebuilt when the map changes size, so let go of
     // it before asking for the new one rather than leaving a sprite bound to a dead page.
     if (this.boardSprite) this.boardSprite.texture = Texture.EMPTY;
-    for (const layer of [this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
+    for (const layer of [this.boardOverlayLayer, this.facingAimLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
     if (!this.boardSprite) {
       this.boardSprite = new Sprite({ label: "boardPlane" });
@@ -400,6 +411,7 @@ export class BattleView {
 
   private renderOverlay(): void {
     clearLayer(this.boardOverlayLayer);
+    clearLayer(this.facingAimLayer);
     // The bands are Graphics, so a test can only see them through what the canvas reports.
     this.app.canvas.dataset.moveBands = JSON.stringify(
       this.currentHighlights.moveBands.reduce<Record<string, number>>((counts, tile) => {
@@ -414,6 +426,7 @@ export class BattleView {
       this.hoverPosition,
       this.projection,
       this.boardOverlayLayer,
+      this.facingAimLayer,
     );
   }
 
@@ -481,6 +494,10 @@ export class BattleView {
 
   private handleHover(event: FederatedPointerEvent): void {
     if (this.panPointer) return;
+    if (this.currentHighlights.facingPosition) {
+      const aimed = this.facingPointAt(event.global.x, event.global.y);
+      if (aimed) this.handlers.onFacingAim(aimed);
+    }
     this.setHover(this.gridAt(event.global.x, event.global.y));
   }
 
