@@ -116,9 +116,25 @@ port 8787 backend로 proxy합니다.
 ### CardGuild Rules Override
 
 Facing은 PF2e Remaster 기본 규칙이 아니라 CardGuild 고유 전술 규칙입니다.
-이동을 마칠 때 네 방향 중 하나를 정하고, Strike와 Reactive Strike는 전방/측면만
-대상으로 삼습니다. 바로 뒤에서 가하는 근접 공격은 대상 AC를 2 낮춥니다. 이는
-PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 분리할 규칙입니다.
+이동 Facing은 마지막 이동 구간에서 결정하며, 제자리 Step과 End Turn에서 방향을 선택합니다.
+Strike와 Reactive Strike는 공격자의 전방/측면만 대상으로 삼습니다.
+
+- Rear: 대상 Facing의 정확한 후방 인접 칸에서 가하는 근접 Strike는 그 공격자에게만
+  대상을 Off-Guard로 만듭니다. 이는 CardGuild 고유의 추가 원인입니다.
+- Flanking: 공격자와 아군의 중심을 연결한 선이 대상 칸의 서로 반대인 변 또는 모서리를
+  통과해야 합니다. 대상 Facing과 무관하며, 두 공격자 모두 살아 있고 현재 근접 Strike로
+  대상을 위협해야 합니다(공격자 Facing, 사거리, 시야 및 효과선 적용).
+  현재 행동 불능 판정은 defeated이며, 남은 Action/Reaction이나 현재 턴 소유자는 무관합니다.
+- 기존 Manhattan 거리 규칙을 유지하므로 대각선 인접 칸은 10ft reach가 필요합니다.
+  Character는 현재 선택된 melee 무기 또는 기본 unarmed Strike를 사용합니다.
+  현재 Creature의 fixed Strike는 reach를 포함한 authored 근접 공격으로 취급합니다.
+- Off-Guard는 AC -2 circumstance penalty입니다. Rear와 Flanking의 modifier를 공통
+  stack에 각각 전달하므로 동시에 성립해도 -4가 되지 않습니다. 더 큰 circumstance
+  penalty가 우선하며, circumstance bonus는 별도로 함께 적용됩니다.
+- 기본 Strike, Strike 기반 Card, Reactive Strike 모두 같은 판정을 사용합니다.
+  원거리 Strike나 skill/save check에는 적용하지 않으며, 전역 Actor condition을 추가하지
+  않습니다. Preview와 실행의 공통 plan 및 debug notes에 원인과 적용/억제 여부를 표시합니다.
+
 
 ## 구조
 

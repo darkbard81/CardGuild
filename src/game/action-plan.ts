@@ -1,5 +1,5 @@
 import { attacksForMap, resolveMapPenalty, resolveStrike } from "./offense";
-import { isDirectlyBehind } from "./rules";
+import { resolveOffGuardTo } from "./off-guard";
 import {
   formatStatisticSources,
   proficiencyRankAtLeast,
@@ -208,30 +208,34 @@ function resolveStrikeCheck(
   context: StatisticResolutionContext,
   attacksThisTurn: number,
   extraWeaponDice: number,
+  state: Pick<CombatState, "actors" | "map">,
 ): { readonly check: ResolvedActionCheck; readonly strike: ResolvedStrikeProfile } | null {
   const { actor, target } = participants;
   if (!target) return null;
   const strike = resolveStrike(actor, context, { attacksThisTurn, extraWeaponDice });
-  const armorClass = resolveArmorClass(target, context);
-  const rearAdjustment = isDirectlyBehind(actor.position, target) ? -2 : 0;
-  const rearSources: readonly StatisticSource[] = rearAdjustment
-    ? [{ kind: "position", sourceId: "rear-attack", label: "Rear attack: target AC", value: rearAdjustment, applied: true }]
-    : [];
+  const offGuard = resolveOffGuardTo(state, actor, target, context);
+  const armorClass = resolveArmorClass(target, {
+    ...context,
+    modifiers: [...(context.modifiers ?? []), ...offGuard.modifiers],
+  });
   return {
     strike,
     check: {
       roller: "actor",
       rollerActorId: actor.id,
       modifier: strike.attackModifier,
-      dc: armorClass.value + rearAdjustment,
+      dc: armorClass.value,
       modifierSources: strike.sources,
-      dcSources: [...armorClass.sources, ...rearSources],
+      dcSources: armorClass.sources,
     },
   };
 }
 
 function checkNotes(check: ResolvedActionCheck, prefix: readonly string[] = []): readonly string[] {
-  return [...prefix, ...formatStatisticSources(check.modifierSources), ...formatStatisticSources(check.dcSources)];
+  return [...prefix, ...formatStatisticSources(check.modifierSources), ...formatStatisticSources(check.dcSources),
+    ...check.dcSources.filter((source) => !source.applied && source.sourceId.startsWith("off-guard:"))
+      .map((source) => `${source.label} ${String(source.value)} (suppressed by circumstance stacking)`),
+  ];
 }
 
 /**
@@ -244,7 +248,7 @@ export function buildResolvedActionPlan(
   actor: ActorState,
   target: ActionTarget,
   source: ActionSource,
-  state: Pick<CombatState, "actors">,
+  state: Pick<CombatState, "actors" | "map">,
   content: CombatContent,
   mapContext: ActionMapContext,
 ): ResolvedActionPlan | null {
@@ -275,7 +279,7 @@ export function buildResolvedActionPlan(
   }
   if (resolution.kind === "strike") {
     const extraWeaponDice = resolution.extraWeaponDice ?? 0;
-    const resolved = resolveStrikeCheck(participants, context, attacksThisTurn, extraWeaponDice);
+    const resolved = resolveStrikeCheck(participants, context, attacksThisTurn, extraWeaponDice, state);
     if (!resolved) return null;
     const extraDiceNote = extraWeaponDice > 0
       ? [`+${String(extraWeaponDice)}d${String(resolved.strike.damage.sides)} weapon damage`]

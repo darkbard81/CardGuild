@@ -334,8 +334,11 @@ describe("resolved action plan", () => {
     expect(offTurn.resolution.check.modifier).toBe(8);
   });
 
-  it("previews the plan the executor rolls, without consuming the RNG", () => {
-    const state = heroFirst();
+  it.each([false, true])("previews Off-Guard exactly as executed, with flanking %s", (flanking) => {
+    const opened = heroFirst({ "goblin-skirmisher": { facing: "east" } });
+    const state = flanking ? { ...opened, actors: { ...opened.actors,
+      ally: { ...opened.actors.hero!, id: "ally", position: { x: 3, y: 1 }, facing: "west" as const },
+    } } : opened;
     const hero = state.actors.hero as NonNullable<CombatState["actors"][string]>;
     const source: ActionSource = { kind: "basic", id: "strike" };
     const rngBefore = structuredClone(state.rng);
@@ -343,6 +346,8 @@ describe("resolved action plan", () => {
     const preview = previewAction(state, "hero", source, ENEMY, M6_CONTENT);
     expect(state.rng).toEqual(rngBefore);
     expect(preview.degreeProbabilities).toBeDefined();
+    expect(preview.notes.some((note) => note.startsWith("Off-Guard (rear) -2"))).toBe(true);
+    if (flanking) expect(preview.notes.some((note) => note.startsWith("Off-Guard (flanking) -2"))).toBe(true);
 
     const plan = buildResolvedActionPlan(
       M6_CONTENT.actions.strike as NonNullable<(typeof M6_CONTENT.actions)["strike"]>,

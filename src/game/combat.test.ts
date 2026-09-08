@@ -552,7 +552,7 @@ describe("M0 combat core", () => {
       M0_CONTENT,
     );
     expect(preview.legal).toBe(true);
-    expect(preview.notes).toContain("Rear attack: target AC -2");
+    expect(preview.notes).toContain("Off-Guard (rear) -2");
   });
 
   it("counts every Attack trait action for MAP and rejects overspending", () => {
