@@ -37,6 +37,16 @@ const PROMPT_FACING = "제자리 Step으로 바라볼 위치를 보드에서 선
 const PROMPT_END_TURN = "턴을 마칠 때 바라볼 위치를 보드에서 선택하세요. (무료)";
 const PROMPT_SPENT_TURN = "Action을 모두 사용했습니다. 바라볼 위치를 보드에서 선택하면 턴이 끝납니다. (무료)";
 
+/** How far the telling may fall behind the truth before it stops waiting and catches up. */
+const MAX_PACED_UPDATES = 24;
+
+interface PacedUpdate {
+  readonly state: CombatState;
+  readonly events: readonly CombatEvent[];
+  readonly replaceHistory: boolean;
+  readonly controlledActorIds: ReadonlySet<string>;
+}
+
 export interface BattleControllerOptions {
   readonly definition: CombatDefinition;
   readonly state: CombatState;
@@ -99,6 +109,7 @@ export class BattleController {
   private inspectionCache: { state: CombatState; interaction: Interaction; card: LegalAction | null; hover: GridPosition | null;
     value: { action: LegalAction | null; preview: ActionPreview | null } } | null = null;
   private aimedFacing: Direction | null = null;
+  private readonly pacedUpdates: PacedUpdate[] = [];
   private ringAnchor: ScreenPoint = { x: 0, y: 0 };
   private ringTitle = "";
   private readonly keyHandler = (event: KeyboardEvent): void => {
@@ -129,6 +140,9 @@ export class BattleController {
       onFacingPoint: (point) => this.handleFacingPoint(point),
       onFacingAim: (point) => this.handleFacingAim(point),
       onHoverCell: (position) => this.handleHoverCell(position),
+      // Out of the ticker frame first: draining re-renders, and a re-render touches the
+      // very animation list this is being reported from.
+      onMovementSettled: () => queueMicrotask(() => this.drainPacedUpdates()),
       safeArea: () => measureHudSafeArea(stage),
     });
     this.ui = new BattleUi(this.definition.content, this.definition.scenario, catalog, {
@@ -650,12 +664,45 @@ export class BattleController {
     this.render();
   }
 
+  /**
+   * The server resolves a creature's whole turn in one tick — move, Strike, damage, end —
+   * and broadcasts each command as it goes, so four snapshots can land between two frames.
+   * Rendering each one cancels the walk the one before it started, which is why an enemy
+   * teleported while a hero, whose commands arrive one human decision apart, did not.
+   *
+   * So the board plays them in order instead: while a standee is walking the next snapshot
+   * waits, and the walk's end hands it over. Authority is untouched — the state is already
+   * settled and only its telling is paced — and the wait is bounded by the walk itself, by
+   * a resync, which drops the queue for the truth, and by a backlog cap, past which the
+   * remainder is applied at once rather than falling ever further behind.
+   */
   public update(
     state: CombatState,
     events: readonly CombatEvent[],
     replaceHistory = false,
     controlledActorIds: ReadonlySet<string> = this.controlledActorIds,
   ): void {
+    if (replaceHistory || this.pacedUpdates.length >= MAX_PACED_UPDATES) {
+      const backlog = this.pacedUpdates.splice(0);
+      if (!replaceHistory) for (const paced of backlog) this.applyUpdate(paced);
+      this.applyUpdate({ state, events, replaceHistory, controlledActorIds });
+      return;
+    }
+    if (this.view.isMoving || this.pacedUpdates.length > 0) {
+      this.pacedUpdates.push({ state, events, replaceHistory, controlledActorIds });
+      return;
+    }
+    this.applyUpdate({ state, events, replaceHistory, controlledActorIds });
+  }
+
+  /** Runs after the walk that was holding the queue, one snapshot per walk. */
+  private drainPacedUpdates(): void {
+    while (this.pacedUpdates.length > 0 && !this.view.isMoving) {
+      this.applyUpdate(this.pacedUpdates.shift()!);
+    }
+  }
+
+  private applyUpdate({ state, events, replaceHistory, controlledActorIds }: PacedUpdate): void {
     this.pendingFacing = null;
     this.hoverCell = null;
     this.state = state;
@@ -681,6 +728,7 @@ export class BattleController {
   }
 
   public destroy(): void {
+    this.pacedUpdates.length = 0;
     window.removeEventListener("keydown", this.keyHandler);
     this.ring.destroy();
     this.ui.destroy();

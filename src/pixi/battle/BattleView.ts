@@ -63,6 +63,8 @@ export interface BattleViewHandlers {
   /** The same coordinate under a hovering pointer, for showing what it would answer. */
   readonly onFacingAim: (point: { readonly x: number; readonly y: number }) => void;
   readonly onHoverCell: (position: GridPosition | null) => void;
+  /** Fires when the last movement finishes, so a paced caller can hand over the next one. */
+  readonly onMovementSettled?: () => void;
   /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
   readonly safeArea: () => BoardSafeArea;
 }
@@ -130,6 +132,8 @@ export class BattleView {
   private readonly tacticalRenderer = new TacticalOverlayRenderer();
   private readonly camera: BattleCamera;
   private readonly animations: AnimationRecord[] = [];
+  /** Movement only. A damage flash is feedback about a snapshot, not a reason to hold one. */
+  private movementCount = 0;
   private readonly pointerTapHandler = (event: FederatedPointerEvent): void => this.handlePointerTap(event);
   private readonly pointerMoveStageHandler = (event: FederatedPointerEvent): void => this.handleHover(event);
   private readonly pointerLeaveHandler = (): void => this.setHover(null);
@@ -485,8 +489,10 @@ export class BattleView {
           visual.currentPosition = { ...path[path.length - 1] as GridPosition };
           this.placeVisual(visual);
           this.app.ticker.remove(callback);
+          this.endMovement();
         }
       };
+      this.movementCount += 1;
       this.animations.push({ callback });
       this.app.ticker.add(callback);
     }
@@ -598,9 +604,25 @@ export class BattleView {
     return { x: point.x, y: point.y };
   }
 
+  /** Whether a standee is still walking, and so whether the board is mid-sentence. */
+  public get isMoving(): boolean {
+    return this.movementCount > 0;
+  }
+
+  private endMovement(): void {
+    if (this.movementCount === 0) return;
+    this.movementCount -= 1;
+    if (this.movementCount === 0) this.handlers.onMovementSettled?.();
+  }
+
   private cancelAnimations(): void {
     for (const animation of this.animations) this.app.ticker.remove(animation.callback);
     this.animations.length = 0;
+    const wasMoving = this.movementCount > 0;
+    this.movementCount = 0;
+    // A cancelled walk still ends the sentence: whoever was waiting on it must be released,
+    // or a paced queue would sit behind an animation that is never going to finish.
+    if (wasMoving) this.handlers.onMovementSettled?.();
   }
 
   private publishLayout(): void {

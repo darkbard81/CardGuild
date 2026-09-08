@@ -312,3 +312,20 @@ test.describe("touch aiming off the map", () => {
     });
   }
 });
+
+/**
+ * A creature's whole turn is resolved and broadcast in one server tick, so its snapshots
+ * arrive faster than a frame. Rendering each as it lands cancelled the walk the one before
+ * it began, and the creature appeared where it was going without ever crossing the board.
+ */
+test("plays a snapshot that lands mid-walk after the walk, not over it", async ({ page }) => {
+  const hp = page.locator(".hp-row strong").first();
+  await expect(hp).toHaveText("21/21");
+  await page.locator("#pixi-canvas").click({ position: await boardPoint(page, 3.5, 1.5) });
+  await page.locator('#ring-root [data-action-id="stride"]').click();
+  // The walk is under way; this is the next command of the same turn arriving behind it.
+  await page.evaluate(() => window.tacticalFixture.nudgeHp(7));
+  expect(await hp.innerText()).toBe("21/21");
+  await expect(hp).toHaveText("7/21");
+  await expect.poll(() => page.evaluate(() => window.tacticalFixture.state.actors.hero!.position)).toEqual({ x: 3, y: 1 });
+});

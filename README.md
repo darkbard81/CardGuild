@@ -136,6 +136,11 @@ Strike와 Reactive Strike는 공격자의 전방/측면만 대상으로 삼습�
   않습니다. Preview와 실행의 공통 plan 및 debug notes에 원인과 적용/억제 여부를 표시합니다.
 
 
+서버는 creature의 턴을 한 tick에 끝내고 명령마다 snapshot을 보내므로 네 개가 한 프레임
+안에 도착할 수 있습니다. 보드는 이것을 순서대로 재생합니다. standee가 걷는 동안 다음
+snapshot은 기다리고, 걸음이 끝나면 넘겨받습니다. authority는 그대로이고 전달 순서만
+늦춰지며, 대기는 걸음 길이·resync·backlog 상한으로 묶여 있습니다.
+
 규칙 설명은 HUD가, 위치와 입력은 보드가 담당합니다. 전투 Preview는 `Target AC`와
 `Off-Guard -2` 효과를 한 번 표시하고, `Rear · Flanking` 원인 및 협공 아군 이름을 별도로
 표시합니다. 더 강한 기존 circumstance 페널티가 있으면 실제 AC와 `추가 AC 감소 없음`을
