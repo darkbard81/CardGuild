@@ -246,119 +246,74 @@ test("shows the Adventure shell reusing the lobby art, from the atlas and the st
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-adventure.png"), fullPage: true });
 });
 
-test("previews and atomically applies a responsive loadout change", async ({ page }, testInfo) => {
+test("equips in one click and fits the minimum loadout viewport", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
-  const webpResponses: string[] = [];
-  page.on("response", (response) => {
-    if (response.url().endsWith(".webp") && response.ok()) webpResponses.push(response.url());
-  });
   await page.setViewportSize({ width: 1024, height: 768 });
   await openAdventure(page);
   await page.getByRole("button", { name: "Manage Loadout" }).click();
-  await expect(page.locator("#app")).toHaveAttribute("data-screen", "loadout");
-  // Aerin owns four equipment pieces and starts with two prepared cards.
-  await expect(page.locator(".collection-item")).toHaveCount(6);
-  await expect(page.locator(".deck-contribution")).toHaveCount(6);
-  await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
-  await expect(page.locator('.deck-contribution[data-card-id="card.fly"]')).toContainText("Boots of Fly / Fly");
-  await expect(page.locator('.deck-contribution[data-card-id="card.trip"]')).toContainText("Halberd / Trip");
-  expectMixedAssetRequests(webpResponses);
-
-  // The weapon rows are resolved Strike output, not raw weapon authoring.
-  await expect(page.locator("#loadout-detail")).toContainText("Halberd · martial expert");
-  await expect(page.locator("#loadout-detail")).toContainText("1d10+3 slashing");
-  await page.locator('.equipment-slot[data-slot="weapon"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-weapon"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("+8 → +6");
-  await expect(page.locator("#loadout-detail")).toContainText("1d10+3 slashing → 1d4+3 bludgeoning");
-  await expect(page.locator("#loadout-detail")).toContainText("Fist · unarmed trained");
-
-  await expect(page.locator("#loadout-detail")).toContainText("Scale Mail · medium");
-  await expect(page.locator("#loadout-detail")).toContainText("+3 item · DEX cap 2");
-  await page.locator('.equipment-slot[data-slot="armor"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-armor"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("18 → 15");
-  await expect(page.locator("#loadout-detail")).toContainText("Unarmored · unarmored");
-
-  await page.locator('.equipment-slot[data-slot="feet"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-feet"]').click();
+  await expect(page.locator(".loadout-option")).toHaveCount(4);
+  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  const feet = page.locator('.equipment-slot[data-slot="feet"]');
+  await feet.hover();
   await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
   await expect(page.locator("#loadout-detail")).toContainText("Fly ×2");
-  await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
-  await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
-  await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
-  await expect(page.locator(".collection-panel")).toContainText("×1");
-
-  await page.locator('.equipment-slot[data-slot="feet"]').click();
-  await page.locator('.loadout-option[data-option-id="boots-of-fly"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("15 → 16");
-  await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
-
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(0);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-loadout-1024.png"), fullPage: true });
-
+  await feet.click();
+  await expect(feet).toContainText("Empty feet");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
+  const boots = page.locator('.loadout-option[data-option-id="boots-of-fly"]');
+  await expect(boots).toContainText("×1");
+  await boots.click();
+  await expect(feet).toContainText("Boots of Fly");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  await page.getByRole("tab", { name: "덱·능력치", exact: true }).click();
+  await expect(page.locator(".deck-contribution")).toHaveCount(6);
+  await expect(page.locator(".deck-panel")).toContainText("Halberd · martial expert");
+  await expect(page.locator(".deck-panel")).toContainText("1d10+3 slashing");
+  for (const tab of ["장비", "준비 카드", "덱·능력치"]) {
+    await page.getByRole("tab", { name: tab, exact: true }).click();
+    await expect(page.locator(".loadout-pagination")).toBeInViewport();
+    expect(await page.evaluate(() => ({ x: document.documentElement.scrollWidth - innerWidth, y: document.documentElement.scrollHeight - innerHeight }))).toEqual({ x: 0, y: 0 });
+  }
+  await page.screenshot({ path: testInfo.outputPath("loadout-1024.png") });
   await page.setViewportSize({ width: 390, height: 844 });
-  const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(mobileOverflow).toBeLessThanOrEqual(0);
-  await page.getByRole("button", { name: "Done" }).focus();
-  await page.keyboard.press("Enter");
-  await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   expect(runtimeErrors).toEqual([]);
 });
 
-for (const editor of ["equipment", "cards"] as const) {
-  test(`removes and restores a prepared card without ${editor} previews replacing the selection`, async ({ page }) => {
-    const runtimeErrors = captureRuntimeErrors(page);
-    await page.setViewportSize({ width: 1024, height: 768 });
-    await openAdventure(page);
-    await page.getByRole("button", { name: "Manage Loadout" }).click();
-    const prepared = page.locator(".prepared-card");
-    const knockdown = prepared.filter({ hasText: "Knockdown" });
-    const summary = page.locator(".loadout-change-summary h2");
-    const collection = await page.locator(".collection-panel").innerText();
-    await expect(prepared).toHaveCount(2);
-    if (editor === "cards") await page.getByRole("button", { name: "+ Add Card" }).click();
-
-    await knockdown.getByRole("button", { name: "Remove" }).click();
-    await expect(summary).toHaveText("Preview: Knockdown removed");
-    // Reaching Apply passes other candidates with the pointer or keyboard. Neither
-    // should change the operation the player explicitly selected with Remove.
-    if (editor === "equipment") {
-      await page.locator('.loadout-option[data-option-id="empty-weapon"]').hover();
-    } else {
-      await page.locator('.loadout-option[data-option-id="card.intimidating-strike"]').focus();
-    }
-    await expect(summary).toHaveText("Preview: Knockdown removed");
-    await page.getByRole("button", { name: "Apply Change" }).click();
-    await expect(knockdown).toHaveCount(0);
-    await expect(prepared).toHaveCount(1);
-    await expect(prepared).toContainText("Intimidating Strike");
-    await expect(page.locator(".prepared-heading")).toHaveText("Prepared Cards 1/3");
-    await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
-    await expect(page.locator('.equipment-slot[data-slot="weapon"]')).toContainText("Halberd");
-    expect(await page.locator(".collection-panel").innerText()).toBe(collection);
-
-    await page.getByRole("button", { name: "Done" }).click();
-    await page.getByRole("button", { name: "Manage Loadout" }).click();
-    await expect(knockdown).toHaveCount(0);
-    await page.getByRole("button", { name: "+ Add Card" }).click();
-    await page.locator('.loadout-option[data-option-id="card.intimidating-strike"]').focus();
-    await page.keyboard.press("Enter");
-    await expect(page.getByRole("button", { name: "Apply Change" })).toBeDisabled();
-    await page.locator('.loadout-option[data-option-id="card.knockdown"]').click();
-    await page.locator('.loadout-option[data-option-id="card.intimidating-strike"]').hover();
-    await expect(summary).toHaveText("Preview: Knockdown");
-    await page.getByRole("button", { name: "Apply Change" }).click();
-    await expect(prepared).toHaveCount(2);
-    await expect(knockdown).toHaveCount(1);
-    await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
-    expect(await page.locator(".collection-panel").innerText()).toBe(collection);
-    expect(runtimeErrors).toEqual([]);
-  });
-}
+test("hover, hold and keyboard inspection do not change prepared cards", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openAdventure(page);
+  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
+  const knockdown = page.locator(".prepared-card").filter({ hasText: "Knockdown" });
+  const revision = await page.locator("#app").getAttribute("data-session-revision");
+  await knockdown.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(550);
+  await expect(page.locator("#loadout-detail")).toBeVisible();
+  await page.mouse.up();
+  await expect(knockdown).toHaveCount(1);
+  await expect(page.locator("#app")).toHaveAttribute("data-session-revision", revision!);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#loadout-detail")).toBeHidden();
+  await knockdown.click();
+  await expect(page.locator(".prepared-card")).toHaveCount(1);
+  await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
+  const unavailable = page.locator('.loadout-option[data-option-id="card.intimidating-strike"]');
+  await unavailable.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".prepared-card")).toHaveCount(1);
+  await expect(page.locator(".loadout-status")).toContainText("only 1");
+  await page.locator('.loadout-option[data-option-id="card.knockdown"]').focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".prepared-card")).toHaveCount(2);
+  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await expect(page.getByRole("tab", { name: "준비 카드", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".prepared-card")).toHaveCount(2);
+});
 
 test("carries a reward loadout through the shared resolver into the next encounter", async ({ page }, testInfo) => {
   test.setTimeout(45_000);
@@ -379,21 +334,15 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator(".encounter-threats")).toContainText("Goblin Spearman");
   await page.getByRole("button", { name: "Manage Loadout" }).click();
 
-  await page.getByRole("button", { name: "+ Add Card" }).click();
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
   await page.locator('.loadout-option[data-option-id="card.brace-behind-cover"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("Brace Behind Cover ×1 (Prepared Card)");
-  await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("11 Tactical Cards");
-
+  await expect(page.locator(".loadout-deck-count")).toHaveText("11 Tactical Cards");
+  await page.getByRole("tab", { name: "장비", exact: true }).click();
   await page.locator('.equipment-slot[data-slot="feet"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-feet"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
-  await page.getByRole("button", { name: "Apply Change" }).click();
+  await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
   await page.locator('.equipment-slot[data-slot="shield"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-shield"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("− Context: Raise Shield");
-  await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
+  await expect(page.locator('.equipment-slot[data-slot="shield"]')).toContainText("Empty");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
   await expect(page.locator(".collection-panel")).toContainText("Steel Shield");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-reward-loadout.png"), fullPage: true });

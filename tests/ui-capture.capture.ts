@@ -151,25 +151,24 @@ async function captureLoadout(page: Page, album: ScreenAlbum): Promise<void> {
   await album.shot(
     "loadout-builder",
     "Loadout Builder (기본 상태)",
-    "장비 슬롯 · Collection · 덱 기여 카드가 한 화면에 있는 편성 화면.",
+    "장비 탭의 장착 슬롯과 보유 장비 아이콘 그리드.",
   );
 
-  // The weapon slot is already open on entry, so the second distinct state worth
-  // reviewing is the prepared-card picker, not another equipment list.
-  await page.getByRole("button", { name: "+ Add Card" }).click();
+  // Capture the separate prepared-card tab before inspecting a removal.
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
   await album.shot(
     "loadout-card-picker",
     "Loadout · 준비 카드 추가",
-    "Prepared Cards 슬롯에 넣을 카드 후보 목록. 덱 미리보기와 나란히 놓인다.",
+    "준비 카드 슬롯과 클릭 한 번으로 추가하는 보유 카드 그리드.",
   );
 
-  await page.locator('.equipment-slot[data-slot="weapon"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-weapon"]').click();
+  await page.getByRole("tab", { name: "장비", exact: true }).click();
+  await page.locator('.equipment-slot[data-slot="weapon"]').hover();
   await expect(page.locator("#loadout-detail")).toContainText("+8 → +6");
   await album.shot(
     "loadout-preview-diff",
     "Loadout · 적용 전 변화 미리보기",
-    "무기를 비웠을 때 명중/피해가 어떻게 바뀌는지 Apply 전에 diff로 보여주는 상태.",
+    "무기 아이콘 hover로 해제 시 명중/피해 변화를 보여주는 팝오버.",
   );
 
   await page.getByRole("button", { name: "Done" }).click();

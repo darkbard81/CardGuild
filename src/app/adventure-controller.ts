@@ -115,6 +115,7 @@ export class AdventureController {
       },
       onError: (error) => {
         this.root.dataset.sessionError = error.code;
+        this.loadoutUi.reportError(error.message);
         if (isTerminalHandshakeFailure(error.code)) {
           this.returnToLanding(error.message);
           return;
@@ -123,6 +124,7 @@ export class AdventureController {
       },
       onStatus: (status) => {
         this.root.dataset.sessionStatus = status;
+        if (status !== "connected") this.loadoutUi.reportError(`Session ${status}…`);
         this.lobbyUi.setStatus(status === "connected" ? "서버에 연결되었습니다." : `Session ${status}…`);
       },
     });
@@ -282,11 +284,11 @@ export class AdventureController {
     this.renderAdventure(adventure, viewer);
   }
 
-  private setMemberLoadout(memberId: string, loadout: PartyMemberLoadout): void {
+  private setMemberLoadout(memberId: string, loadout: PartyMemberLoadout): boolean {
     const snapshot = this.snapshot;
     const viewer = snapshot ? this.viewerSeat(snapshot) : undefined;
-    if (!snapshot || !viewer || !this.controlledMemberIds(snapshot, viewer.playerId).has(memberId)) return;
-    this.sendIntent({ type: "set-loadout", memberId, loadout });
+    if (!snapshot || !viewer || !this.controlledMemberIds(snapshot, viewer.playerId).has(memberId)) return false;
+    return this.sendIntent({ type: "set-loadout", memberId, loadout });
   }
 
   private sendIntent(intent: SessionIntent): boolean {
@@ -294,6 +296,7 @@ export class AdventureController {
   }
 
   public destroy(): void {
+    this.loadoutUi.destroy();
     this.battle?.destroy();
     this.client?.destroy();
   }

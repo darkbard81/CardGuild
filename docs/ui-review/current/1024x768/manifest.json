@@ -28,20 +28,23 @@
     {
       "id": "loadout-builder",
       "title": "Loadout Builder (기본 상태)",
-      "note": "장비 슬롯 · Collection · 덱 기여 카드가 한 화면에 있는 편성 화면.",
-      "file": "04-loadout-builder.png"
+      "note": "장비 탭의 장착 슬롯과 보유 장비 아이콘 그리드.",
+      "file": "04-loadout-builder.png",
+      "capturedAt": "2026-09-07T20:15:47.527Z"
     },
     {
       "id": "loadout-card-picker",
       "title": "Loadout · 준비 카드 추가",
-      "note": "Prepared Cards 슬롯에 넣을 카드 후보 목록. 덱 미리보기와 나란히 놓인다.",
-      "file": "05-loadout-card-picker.png"
+      "note": "준비 카드 슬롯과 클릭 한 번으로 추가하는 보유 카드 그리드.",
+      "file": "05-loadout-card-picker.png",
+      "capturedAt": "2026-09-07T20:15:47.527Z"
     },
     {
       "id": "loadout-preview-diff",
       "title": "Loadout · 적용 전 변화 미리보기",
-      "note": "무기를 비웠을 때 명중/피해가 어떻게 바뀌는지 Apply 전에 diff로 보여주는 상태.",
-      "file": "06-loadout-preview-diff.png"
+      "note": "무기 아이콘 hover로 해제 시 명중/피해 변화를 보여주는 팝오버.",
+      "file": "06-loadout-preview-diff.png",
+      "capturedAt": "2026-09-07T20:15:47.527Z"
     },
     {
       "id": "combat-turn",

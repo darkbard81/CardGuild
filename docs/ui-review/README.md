@@ -43,9 +43,9 @@ UI를 고친 뒤에는 `npm run ui:capture`만 다시 돌리고 `docs/ui-review/
 | 01 | `session-lobby` | 세션 로비 (진입 화면) | 첫 화면에서 무엇을 먼저 해야 하는지, Create/Join의 무게 배분 |
 | 02 | `party-builder` | 호스트 로비 · 파티 편성 | Session ID 공유, seat 상태, 1–3인 캐릭터 편성과 시작 게이팅 |
 | 03 | `adventure-brief` | Adventure 진행 화면 | 8단계 진행 레일, 보상 표시, 소유 Collection, 다음 Encounter 브리핑 |
-| 04 | `loadout-builder` | Loadout Builder 기본 상태 | Collection · 장비 · 덱 미리보기 3열 배치와 파생 스탯 패널 |
-| 05 | `loadout-card-picker` | 준비 카드 추가 | Prepared Cards 후보 목록이 덱 미리보기와 어떻게 연결되는지 |
-| 06 | `loadout-preview-diff` | 적용 전 변화 미리보기 | Apply 전에 보여주는 스탯 diff의 가독성 |
+| 04 | `loadout-builder` | Loadout Builder 기본 상태 | 장비 탭 · 장착 슬롯 · 보유 장비 아이콘 그리드와 페이지 이동 |
+| 05 | `loadout-card-picker` | 준비 카드 추가 | 준비 슬롯과 보유 카드 그리드의 한 번 클릭 장착·해제 |
+| 06 | `loadout-preview-diff` | 적용 전 변화 미리보기 | 아이콘 hover로 보여주는 장착·해제 전 스탯 diff의 가독성 |
 | 07 | `combat-turn` | 전투 화면 · 내 턴 시작 | 보드 위 반투명 HUD 배치, 액션 pip, 이니셔티브, 핸드 독 |
 | 08 | `combat-action-ring` | 타겟 선택 후 액션 링 | target-first 라디얼 메뉴와 Detail 패널의 명중/피해 설명 |
 | 09 | `combat-hero-sheet` | 캐릭터 상세 시트 | 상세 버튼이 펼치는 시트 — 세이브 DC, Strike, 장비 수치가 요약 카드 대신 여기 모인다 |
