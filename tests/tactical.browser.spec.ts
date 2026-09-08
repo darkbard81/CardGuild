@@ -197,3 +197,41 @@ test("restores the selected direction and previous card after server rejection",
   await expect(card).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => window.tacticalFixture.events)).toEqual([]);
 });
+
+/**
+ * The final-facing widget opens on the same snapshot that starts the Step's movement, so
+ * the first direction is usually picked while the standee is still sliding. Choosing one
+ * sends nothing, and must therefore leave that animation alone.
+ */
+test("previews a facing mid-move without cancelling the movement animation", async ({ page }) => {
+  await page.evaluate(() => { window.tacticalFixture.reset("front"); window.tacticalFixture.setActions(1); });
+  const canvas = page.locator("#pixi-canvas");
+  const feet = () => canvas.evaluate((element) => {
+    const entry = (JSON.parse((element as HTMLCanvasElement).dataset.actorFeet!) as { id: string; x: number; y: number }[])
+      .find((actor) => actor.id === "hero")!;
+    return { x: entry.x, y: entry.y };
+  });
+  const bodyFlip = () => canvas.evaluate((element) =>
+    (JSON.parse((element as HTMLCanvasElement).dataset.standeePlane!) as { id: string; bodyFlip: number }[])
+      .find((actor) => actor.id === "hero")!.bodyFlip);
+  expect(await bodyFlip()).toBe(1);
+  await canvas.click({ position: await boardPoint(page, 3.5, 1.5) });
+  await page.locator('#ring-root [data-action-id="stride"]').click();
+  // No waiting before the key: the widget opens synchronously with the snapshot, and the
+  // point of the test is to arrive while the two squares are still being walked.
+  await page.keyboard.press("ArrowDown");
+  const midMove = await feet();
+  expect(await bodyFlip()).toBe(-1);
+  // The Stride is the only thing sent: picking a direction adds no command of its own.
+  expect(await page.evaluate(() => window.tacticalFixture.intents.map((intent) => intent.type))).toEqual(["use-action"]);
+  let settled = await feet();
+  await expect.poll(async () => {
+    const next = await feet();
+    const stable = next.x === settled.x && next.y === settled.y;
+    settled = next;
+    return stable;
+  }).toBe(true);
+  expect(midMove).not.toEqual(settled);
+  await expect(page.locator(".facing-controls")).toContainText("south");
+  await expect(page.locator("#confirm-facing")).toBeVisible();
+});

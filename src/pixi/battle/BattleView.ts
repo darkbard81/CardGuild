@@ -400,6 +400,23 @@ export class BattleView {
     this.renderOverlay();
   }
 
+  /**
+   * A facing the player is still choosing has not been sent anywhere, so it is a drawing
+   * rather than a state change: the standee already on the board is re-faced and the
+   * overlay repainted. `render` would cancel every animation and rebuild every visual,
+   * and the Step that opened the final-facing widget is usually still sliding when the
+   * first arrow key arrives.
+   */
+  public previewFacing(highlights: BoardHighlights): void {
+    this.currentHighlights = highlights;
+    const preview = highlights.previewFacing;
+    const actor = preview ? this.state?.actors[preview.actorId] : undefined;
+    const visual = preview ? this.actorVisuals.get(preview.actorId) : undefined;
+    if (preview && actor && visual) this.actorRenderer.reface(visual.display, actor, preview.direction);
+    this.renderOverlay();
+    this.publishLayout();
+  }
+
   private renderOverlay(): void {
     clearLayer(this.boardOverlayLayer);
     clearLayer(this.boardLabelLayer);

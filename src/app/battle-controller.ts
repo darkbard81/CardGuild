@@ -532,7 +532,11 @@ export class BattleController {
   private handleFacing(facing: Direction): void {
     if (this.interaction.kind !== "direction") return;
     this.selectedFacing = facing;
-    this.render();
+    // Nothing has been sent, so nothing but the preview may change. The full render path
+    // cancels in-flight animations, and the Step that opened this widget is often still
+    // moving when the direction is picked.
+    this.view.previewFacing(this.highlights());
+    this.renderDetail();
   }
 
   private confirmFacing(): void {

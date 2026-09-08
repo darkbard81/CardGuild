@@ -15,6 +15,7 @@ export interface TacticalFixture {
   rejectNext: boolean;
   rejectAfterSend: boolean;
   addStrikeCard: () => void;
+  setActions: (remaining: number) => void;
   setPenalty: (value: number) => void;
   reset: (mode: TacticalCase) => void;
   send: (intent: SessionIntent) => boolean;
@@ -79,6 +80,11 @@ async function start() {
       const zones = fixture.state.cardZones.hero!;
       fixture.state = { ...fixture.state, cardZones: { ...fixture.state.cardZones, hero: { ...zones,
         hand: [{ id: "fixture-strike", definitionId: "card.fixture-strike", source: { kind: "prepared", memberId: "hero" } }, ...zones.hand] } } };
+      controller?.update(fixture.state, []);
+    },
+    /** Lets a test spend the turn down so the next Action opens the final-facing widget. */
+    setActions(remaining) {
+      fixture.state = { ...fixture.state, turn: { ...fixture.state.turn, actionsRemaining: remaining } };
       controller?.update(fixture.state, []);
     },
     setPenalty(value) {

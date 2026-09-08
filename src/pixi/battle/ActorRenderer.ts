@@ -28,17 +28,22 @@ function standeeBase(style: StandeeBaseStyle): Graphics {
  * the front pose with west mirrored. Mirroring is a scale on the body alone — the base
  * under it and the badge above it are screen furniture and stay as they are.
  */
-function standeeBody(catalog: AssetCatalog, actor: ActorState): { body: Sprite; height: number } {
+function applyStandeeBody(body: Sprite, catalog: AssetCatalog, actor: ActorState): number {
   const facing = facingStandee(catalog.actorVisual(actor.definitionId), actor.facing);
   const asset = catalog.asset(facing.assetId);
   const height = asset.displayHeight ?? DEFAULT_STANDEE_HEIGHT;
-  const body = new Sprite(catalog.texture(facing.assetId));
-  body.label = "standee-body";
+  body.texture = catalog.texture(facing.assetId);
   body.anchor.set(asset.anchor.x, asset.anchor.y);
   body.height = height;
   body.scale.x = facing.flipX ? -body.scale.y : body.scale.y;
+  return height;
+}
+
+function standeeBody(catalog: AssetCatalog, actor: ActorState): { body: Sprite; height: number } {
+  const body = new Sprite();
+  body.label = "standee-body";
   body.eventMode = "none";
-  return { body, height };
+  return { body, height: applyStandeeBody(body, catalog, actor) };
 }
 
 function actorVisual(
@@ -86,5 +91,15 @@ export class ActorRenderer {
         stableId: actor.id,
       };
     });
+  }
+
+  /**
+   * A previewed facing changes which drawing the standee shows and nothing else, so it is
+   * applied to the body already on the board. Rebuilding the actor to turn it would take
+   * the render path, and that cancels whatever movement is still playing underneath.
+   */
+  public reface(display: Container, actor: ActorState, facing: Direction): void {
+    const body = display.getChildByLabel("standee-body");
+    if (body instanceof Sprite) applyStandeeBody(body, this.catalog, { ...actor, facing });
   }
 }
