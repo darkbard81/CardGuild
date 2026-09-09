@@ -50,6 +50,8 @@ export interface CampaignRepository {
   listByOwner(ownerAccountId: string): readonly CampaignRecord[];
   /** Ownership is part of the lookup, so a caller cannot forget to check it. */
   findOwned(campaignId: string, ownerAccountId: string): CampaignRecord | undefined;
+  /** Undoes a create whose live session could not be opened. Ownership is part of the key. */
+  delete(campaignId: string, ownerAccountId: string): boolean;
 }
 
 export interface Persistence {

@@ -63,7 +63,15 @@ export function createCampaignService(
         createdAt,
         updatedAt: createdAt,
       });
-      const credential = store.create(displayName);
+      let credential;
+      try {
+        credential = store.create(displayName);
+      } catch (error) {
+        // The caller is about to see a failure, so the campaign must not survive it. A row
+        // with no session would still be listed and would still be M9-3's durable identity.
+        persistence.campaigns.delete(campaign.campaignId, accountId);
+        throw error;
+      }
       ownership.set(credential.sessionId, {
         campaignId: campaign.campaignId,
         ownerAccountId: accountId,

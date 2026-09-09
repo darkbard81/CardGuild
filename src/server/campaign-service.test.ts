@@ -1,5 +1,5 @@
 import { DatabaseSync } from "node:sqlite";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { PRODUCTION_CONTENT } from "../content";
 import { hashSessionGameplayState } from "../session";
@@ -114,6 +114,28 @@ describe("M9-2 campaign ownership", () => {
     // An unknown owner violates the accounts foreign key, which is the durable write failing.
     expect(() => campaigns.create("acc_missing", "Orphan")).toThrow(/FOREIGN KEY/i);
     expect(store.get("session-1")).toBeUndefined();
+  });
+
+  it("leaves no campaign behind when the live session cannot be opened", () => {
+    const { campaigns, store } = harness();
+    const failure = new Error("Session store refused to open a session.");
+    vi.spyOn(store, "create").mockImplementationOnce(() => { throw failure; });
+
+    expect(() => campaigns.create("acc_owner", "Half made")).toThrow(failure);
+    // The caller saw a failure, so nothing may remain that a later Continue could resume.
+    expect(campaigns.list("acc_owner")).toEqual([]);
+    vi.restoreAllMocks();
+  });
+
+  it("keeps a failed creation from taking an earlier campaign with it", () => {
+    const { campaigns, store } = harness();
+    const kept = campaigns.create("acc_owner", "Kept");
+    vi.spyOn(store, "create").mockImplementationOnce(() => { throw new Error("no session"); });
+
+    expect(() => campaigns.create("acc_owner", "Discarded")).toThrow("no session");
+    expect(campaigns.list("acc_owner").map((row) => row.campaignId)).toEqual([kept.campaign.campaignId]);
+    expect(campaigns.ownershipOf(kept.credential.sessionId)).toBeDefined();
+    vi.restoreAllMocks();
   });
 
   it("knows nothing about a session it did not open", () => {

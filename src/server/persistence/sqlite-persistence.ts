@@ -105,6 +105,9 @@ export function createPersistence(database: DatabaseSync): Persistence {
   const selectOwnedCampaign = database.prepare(
     "SELECT * FROM campaigns WHERE campaign_id = ? AND owner_account_id = ?",
   );
+  const deleteOwnedCampaign = database.prepare(
+    "DELETE FROM campaigns WHERE campaign_id = ? AND owner_account_id = ?",
+  );
 
   return {
     accounts: {
@@ -160,6 +163,9 @@ export function createPersistence(database: DatabaseSync): Persistence {
       findOwned(campaignId, ownerAccountId) {
         const row = selectOwnedCampaign.get(campaignId, ownerAccountId);
         return row ? toCampaign(row) : undefined;
+      },
+      delete(campaignId, ownerAccountId) {
+        return Number(deleteOwnedCampaign.run(campaignId, ownerAccountId).changes) > 0;
       },
     },
     close() {
