@@ -2,8 +2,7 @@
 
 [Parent issue #36](https://github.com/darkbard81/CardGuild/issues/36)의 M9-3 구현 계약과 검증
 기록이다. 기준 브랜치는 `M9-Persistence`, 구현 전 기준 커밋은 M9-2를 끝낸 `ad6089e`이며,
-계획은 [issue #39](https://github.com/darkbard81/CardGuild/issues/39)와 저장소 루트의
-`M9-3_Durable_Campaign_Save_Implementation_Plan.md`다.
+계획은 [issue #39](https://github.com/darkbard81/CardGuild/issues/39)다.
 
 ## 1. 목표와 범위
 
