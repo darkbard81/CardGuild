@@ -10,7 +10,7 @@ import {
   type ProtocolErrorCode,
   type ServerError,
 } from "../protocol";
-import type { SessionConnection } from "./session-host";
+import { SESSION_RETIRED_CLOSE_CODE, type SessionConnection } from "./session-host";
 import type { SessionStore } from "./session-store";
 import { createOpaqueId } from "./credentials";
 
@@ -126,7 +126,12 @@ export function attachWebSocketGateway(
         const attached = await host.attach(hello.playerId, hello.reconnectToken, hello.contentIdentity, connection);
         if (!attached.ok) {
           send(socket, errorMessage(attached.code, attached.message));
-          socket.close(4003, attached.code.toLowerCase());
+          // A retired session gets its own close code so the client discards the credential
+          // instead of reconnecting to a room that will never come back.
+          socket.close(
+            attached.code === "SESSION_RETIRED" ? SESSION_RETIRED_CLOSE_CODE : 4003,
+            attached.code.toLowerCase(),
+          );
           return;
         }
         identity = { sessionId: hello.sessionId, playerId: hello.playerId };

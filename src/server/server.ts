@@ -114,6 +114,9 @@ export async function startCardGuildServer(options: StartServerOptions): Promise
     close: async () => {
       await gateway.close();
       await new Promise<void>((resolve, reject) => httpServer.close((error) => error ? reject(error) : resolve()));
+      // New work is refused and every host queue is drained before the database closes, so a
+      // transition that already told a client "committed" is never left half written.
+      await store.drain();
       persistence.close();
     },
   };
