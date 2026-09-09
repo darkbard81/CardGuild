@@ -629,15 +629,46 @@ test.describe("touch camera", () => {
         type,
         touchPoints: points.map((point) => ({ ...point, radiusX: 12, radiusY: 12, force: 1 })),
       });
-    const quad = async (): Promise<{ width: number; centerX: number }> => {
-      const corners = await boardCorners(page);
+    interface BoardReading {
+      readonly width: number;
+      readonly centerX: number;
+      readonly zoom: number;
+      readonly safeArea: string;
+    }
+    const quad = async (): Promise<BoardReading> => {
+      const canvas = page.locator("#pixi-canvas");
+      const [corners, zoom, safeArea] = await Promise.all([
+        boardCorners(page),
+        canvas.getAttribute("data-board-zoom"),
+        canvas.getAttribute("data-safe-area"),
+      ]);
       return {
         width: Math.max(...corners.map((corner) => corner.x)) - Math.min(...corners.map((corner) => corner.x)),
         centerX: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
+        zoom: Number(zoom),
+        safeArea: safeArea ?? "",
       };
     };
+    /**
+     * CDP resolves a touch dispatch before the page has handled it, and the HUD can still
+     * be settling into its safe area, so a single read may come from a board that is still
+     * moving. Only accept a reading the page has stopped changing.
+     */
+    const settled = async (): Promise<BoardReading> => {
+      let previous = await quad();
+      await expect.poll(async () => {
+        const current = await quad();
+        const quiet = current.width === previous.width &&
+          current.centerX === previous.centerX &&
+          current.zoom === previous.zoom &&
+          current.safeArea === previous.safeArea;
+        previous = current;
+        return quiet;
+      }, { timeout: 15_000 }).toBe(true);
+      return previous;
+    };
 
-    const start = await quad();
+    const start = await settled();
     let left = { x: 520, y: 380, id: 1 };
     let right = { x: 620, y: 440, id: 2 };
     await touch("touchStart", [left, right]);
@@ -647,9 +678,11 @@ test.describe("touch camera", () => {
       await touch("touchMove", [left, right]);
     }
     await touch("touchEnd", []);
-    // The camera lays out on the next frame, so measure once it has settled.
-    await expect.poll(async () => (await quad()).width).toBeGreaterThan(start.width * 1.2);
-    const zoomed = await quad();
+    const zoomed = await settled();
+    // Spreading two fingers zooms in, the way turning the wheel away does, and the board
+    // really is drawn larger for it.
+    expect(zoomed.zoom).toBeGreaterThan(start.zoom * 1.2);
+    expect(zoomed.width).toBeGreaterThan(start.width * 1.2);
 
     left = { x: 520, y: 380, id: 1 };
     right = { x: 640, y: 460, id: 2 };
@@ -660,10 +693,13 @@ test.describe("touch camera", () => {
       await touch("touchMove", [left, right]);
     }
     await touch("touchEnd", []);
-    await expect.poll(async () => (await quad()).centerX).toBeLessThan(zoomed.centerX - 50);
-    const panned = await quad();
-    // Fingers travelling together move the board without changing how big it is.
-    expect(panned.width).toBeCloseTo(zoomed.width, 0);
+    const panned = await settled();
+    expect(panned.centerX).toBeLessThan(zoomed.centerX - 50);
+    // Fingers travelling together move the board without zooming. This reads the camera
+    // rather than the board's on-screen width, because the width is the camera multiplied
+    // by the fit: a HUD that reflows between the two readings resizes the board on its own,
+    // which is not the gesture doing anything.
+    expect(panned.zoom).toBeCloseTo(zoomed.zoom, 4);
     // Lifting out of a gesture is not a pick, so no radial menu opens behind it.
     await expect(page.locator("#ring-root")).toBeHidden();
   });

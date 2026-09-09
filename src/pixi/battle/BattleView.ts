@@ -630,6 +630,10 @@ export class BattleView {
     // The gutters the HUD measured for itself: the board is fitted inside this rectangle
     // and an actor outside it is the thing `ensureActorVisible` exists to pan back.
     this.app.canvas.dataset.safeArea = JSON.stringify(this.safeArea);
+    // The camera's own framing, apart from the fit. On-screen size is the two multiplied,
+    // so a HUD that reflows changes how big the board is drawn without the camera moving:
+    // only this tells a gesture that zoomed apart from one that merely panned.
+    this.app.canvas.dataset.boardZoom = this.camera.scale.toFixed(4);
     this.app.canvas.dataset.boardTextureFit = this.terrainRenderer.boardTextureFit;
     this.app.canvas.dataset.solidRegionFit = this.terrainRenderer.solidRegionFit;
     this.app.canvas.dataset.boardCorners = JSON.stringify(
