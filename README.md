@@ -8,7 +8,7 @@ Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Ad
 
 ## 요구 환경과 실행
 
-- Node.js 22.13 이상(22.x) 또는 Node.js 24 이상
+- Node.js 24 이상. 서버가 내장 `node:sqlite`를 쓰는데, 22.x에서는 실험 플래그가 필요합니다.
 - npm 11 이상
 - 최소 지원 해상도 1024x768. 보드 투영은 HUD gutter를 제외한 영역 안에서 계산되며,
   gutter 크기는 `data-hud-gutter` 패널을 실제로 measure해서 얻습니다. style.css가
@@ -19,16 +19,24 @@ npm install
 npm run dev:coop
 ```
 
-브라우저는 `http://127.0.0.1:4173`에서 엽니다. 호스트가 `Create & Host`로 세션을 만든 뒤
-화면에 표시되는 Session ID만 B/C에게 전달합니다. 공개 방 목록이나 matchmaking은 없고,
-게스트는 그 ID로 `Join Host`합니다. 재접속 credential은 각 탭의 `sessionStorage`에만
-보관되며 URL이나 초대 코드에는 포함되지 않습니다.
+브라우저는 `http://127.0.0.1:4173`에서 엽니다. 호스트는 `Host sign in`으로 로그인한 뒤
+`New Campaign`으로 방을 만들고, 화면에 표시되는 Session ID만 B/C에게 전달합니다. 공개 방
+목록이나 matchmaking은 없고, 게스트는 계정 없이 그 ID로 `Join Host`합니다. `npm run dev:coop`은
+개발용 계정(`dev-host-a` / `dev-host-b`)을 자동으로 심어 둡니다. 재접속 credential은 각 탭의
+`sessionStorage`에만 보관되며 URL이나 초대 코드에는 포함되지 않습니다. 로그인 토큰은
+`HttpOnly` 쿠키에만 있어 페이지 스크립트가 읽을 수 없습니다.
 
 Production build는 client와 server entry를 모두 생성합니다.
 
 ```bash
 npm run build
 npm run start:production
+```
+
+운영 계정은 가입 라우트가 아니라 CLI로 만듭니다.
+
+```bash
+printf %s "$PASSWORD" | npm run account:create -- --username <아이디>
 ```
 
 `start:production`은 `deploy/cardguild.production.env`를 읽어 `127.0.0.1:3011`에서
@@ -176,7 +184,7 @@ src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
 src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
 src/protocol protocol v5 type/schema, gameplay/control revision과 strict Ajv validation
-src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
+src/server HTTP auth/campaign/join, credential, SQLite persistence, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
 src/pixi   affine BoardProjection/board plane/camera/depth renderers와 tactical overlay
@@ -420,3 +428,22 @@ runtime progression 때문에 다시 계산하지 않습니다.
 
 실제 EXP 지급과 Level-Up은 M9-4, 계정/저장/복구는 M9-2 이후 범위입니다.
 자세한 계약과 검증은 [M9-1 구현문서](docs/m9-1-character-progression-foundation.md)에 있습니다.
+
+## M9-2 Host Identity & Campaign Ownership
+
+Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유자는 영속 `accountId`
+하나뿐입니다. auth session token과 live `gameSessionId`는 소유자가 아닙니다. Guest는
+지금까지처럼 계정 없이 Session ID로 참가합니다.
+
+- 계정·auth session·Campaign metadata는 single-file SQLite(`node:sqlite`)에 저장합니다.
+  경로는 `CARDGUILD_DB_PATH`(기본 `.data/cardguild.sqlite`)입니다.
+- 가입 라우트는 없습니다. 계정은 `npm run account:create`로 만듭니다.
+- 비밀번호는 scrypt 해시로만, auth token은 digest로만 저장합니다. 쿠키는
+  `HttpOnly`·`SameSite=Lax`이고 `Secure`는 `CARDGUILD_COOKIE_SECURE`로 정합니다.
+- 남의 Campaign은 "권한 없음"이 아니라 "없음"으로 보입니다.
+- gameplay snapshot 저장과 Continue 복구는 M9-3, 서버 재시작 복구는 M9-5입니다.
+  그래서 지금 Continue는 `409 SAVE_NOT_FOUND`이고 목록의 Continue 버튼은 비활성입니다.
+- account/campaign 식별자는 `SessionCoreState`에 들어가지 않으므로 gameplay hash와
+  결정론은 그대로이고, wire protocol도 v5 그대로입니다.
+
+자세한 계약과 검증은 [M9-2 구현문서](docs/m9-2-host-identity-campaign-ownership.md)에 있습니다.
