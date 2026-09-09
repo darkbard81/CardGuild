@@ -93,12 +93,6 @@ export class SessionClient {
     private readonly handlers: SessionClientHandlers,
   ) {}
 
-  public static async create(displayName: string): Promise<SessionCredential> {
-    const credential = await apiPost<SessionCredential>("/api/sessions", { displayName });
-    SessionClient.storeCredential(credential);
-    return credential;
-  }
-
   public static async login(username: string, password: string): Promise<AccountIdentity> {
     const { account } = await apiPost<{ account: AccountIdentity }>("/api/auth/login", { username, password });
     return account;

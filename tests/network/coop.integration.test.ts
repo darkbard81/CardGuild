@@ -15,6 +15,7 @@ import { startCardGuildServer, type RunningCardGuildServer } from "../../src/ser
 import type { SessionCredentialResponse } from "../../src/server/session-store";
 import { EXPERIENCE_PER_LEVEL } from "../../src/adventure/progression";
 import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../../src/session";
+import { hostSession, seededPersistence } from "./host-account";
 
 const TEST_ORIGIN = "http://cardguild.test";
 const PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
@@ -168,6 +169,7 @@ describe("real WebSocket M5 cooperative session", () => {
       context: { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId },
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
+      persistence: await seededPersistence(),
       sources: {
         sessionId: () => "session-" + String(++sessionSequence),
         playerId: () => "player-" + String(++playerSequence),
@@ -182,13 +184,8 @@ describe("real WebSocket M5 cooperative session", () => {
   }
 
   async function create(server: RunningCardGuildServer): Promise<SessionCredentialResponse> {
-    const result = await post<SessionCredentialResponse>(
-      server.origin,
-      "/api/sessions",
-      { displayName: "Host" },
-    );
-    expect(result.status).toBe(201);
-    return result.body;
+    // Hosting goes through an account and a campaign now; joining still does not.
+    return hostSession(server.origin);
   }
 
   afterEach(async () => {
@@ -779,6 +776,7 @@ describe("real WebSocket M5 cooperative session", () => {
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
       onInternalError: authorityErrors,
+      persistence: await seededPersistence(),
       sources: {
         sessionId: () => "session-failure-boundary",
         playerId: () => "player-failure-boundary",
@@ -789,11 +787,11 @@ describe("real WebSocket M5 cooperative session", () => {
         adventureSeed: () => 1,
       },
     });
-    const created = await post<SessionCredentialResponse>(running.origin, "/api/sessions", { displayName: "Host" });
-    const client = await SocketClient.connect(running.origin, created.body);
+    const created = await hostSession(running.origin);
+    const client = await SocketClient.connect(running.origin, created);
     sockets.push(client);
     await client.waitForSnapshot();
-    const host = running.store.get(created.body.sessionId) as NonNullable<ReturnType<typeof running.store.get>>;
+    const host = running.store.get(created.sessionId) as NonNullable<ReturnType<typeof running.store.get>>;
     const authorityFailure = new Error("private invariant detail");
     vi.spyOn(host, "handleIntent").mockRejectedValueOnce(authorityFailure);
     const closed = new Promise<{ readonly code: number; readonly reason: string }>((resolve) => {

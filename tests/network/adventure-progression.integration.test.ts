@@ -12,6 +12,7 @@ import { digestReconnectToken } from "../../src/server/credentials";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
 import type { SessionCredentialResponse } from "../../src/server/session-store";
 import type { SessionIntent } from "../../src/session";
+import { hostSession, seededPersistence } from "./host-account";
 
 const TEST_ORIGIN = "http://cardguild.test";
 // A frontline, a guardian and the healer. The policy below has a heal branch, and after
@@ -214,16 +215,6 @@ class SocketClient {
   }
 }
 
-async function post<T>(origin: string, path: string, body: unknown): Promise<T> {
-  const response = await fetch(origin + path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  expect(response.status).toBe(201);
-  return await response.json() as T;
-}
-
 describe("the production adventure completes over a real co-op session", () => {
   let running: RunningCardGuildServer | null = null;
   const sockets: SocketClient[] = [];
@@ -242,6 +233,7 @@ describe("the production adventure completes over a real co-op session", () => {
       context: { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId },
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
+      persistence: await seededPersistence(),
       sources: {
         sessionId: () => "session-" + String(++sessionSequence),
         playerId: () => "player-" + String(++playerSequence),
@@ -258,7 +250,7 @@ describe("the production adventure completes over a real co-op session", () => {
       },
     });
     running = server;
-    const credential = await post<SessionCredentialResponse>(server.origin, "/api/sessions", { displayName: "Host" });
+    const credential = await hostSession(server.origin);
     const client = await SocketClient.connect(server.origin, credential);
     sockets.push(client);
     const host = server.store.get(credential.sessionId) as Host;

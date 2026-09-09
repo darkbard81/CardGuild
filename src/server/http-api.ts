@@ -200,16 +200,6 @@ export function createHttpApi(
       return true;
     }
 
-    if (method === "POST" && url.pathname === "/api/sessions") {
-      try {
-        const credential = store.create(displayName(await readJsonBody(request)));
-        json(response, 201, { ...credential, invite: { sessionId: credential.sessionId } });
-      } catch (error) {
-        badRequest(response, error);
-      }
-      return true;
-    }
-
     const join = /^\/api\/sessions\/([^/]+)\/join$/.exec(url.pathname);
     if (method === "POST" && join?.[1]) {
       try {

@@ -268,10 +268,11 @@ describe("M9-2 host identity and campaign ownership over real HTTP", () => {
   it("keeps account and campaign identity out of the gameplay snapshot and hash", async () => {
     const server = await start();
     const owner = await signIn(server);
+    const stranger = await signIn(server, STRANGER);
     const created = await request<{ campaign: { campaignId: string } } & SessionCredentialResponse>(
       server.origin, "POST", "/api/campaigns", { body: { name: "Goblin Trouble" }, cookie: owner });
-    const anonymous = await request<SessionCredentialResponse>(
-      server.origin, "POST", "/api/sessions", { body: { displayName: "Host" } });
+    const other = await request<SessionCredentialResponse>(
+      server.origin, "POST", "/api/campaigns", { body: { name: "Someone else" }, cookie: stranger });
 
     const snapshot = await snapshotOf(server.origin, created.body);
     const serialized = JSON.stringify(snapshot);
@@ -280,10 +281,10 @@ describe("M9-2 host identity and campaign ownership over real HTTP", () => {
     }
     expect(serialized).not.toContain("scrypt$");
 
-    // Owning a campaign changes nothing a gameplay hash can see.
+    // Two campaigns owned by different accounts hash identically: ownership is not gameplay.
     const ownedState = server.store.get(created.body.sessionId)!.state;
-    const anonymousState = server.store.get(anonymous.body.sessionId)!.state;
-    expect(hashSessionGameplayState(ownedState)).toBe(hashSessionGameplayState(anonymousState));
+    const otherState = server.store.get(other.body.sessionId)!.state;
+    expect(hashSessionGameplayState(ownedState)).toBe(hashSessionGameplayState(otherState));
   });
 
   it("never writes a password, token or hash to the server's own output", async () => {
