@@ -3,7 +3,11 @@ import { createServer, type Server as HttpServer, type ServerResponse } from "no
 import path from "node:path";
 
 import type { SessionAuthorityContext } from "../session";
+import { createAuthService, DEFAULT_AUTH_TTL_MS } from "./auth-service";
+import { createCampaignService } from "./campaign-service";
+import type { CookieConfig } from "./cookies";
 import { createHttpApi } from "./http-api";
+import { createSqlitePersistence, MEMORY_DATABASE, type Persistence } from "./persistence";
 import { SessionStore, type SessionStoreSources } from "./session-store";
 import { attachWebSocketGateway } from "./ws-gateway";
 
@@ -17,6 +21,10 @@ export interface StartServerOptions {
   readonly heartbeatMs?: number;
   readonly helloDeadlineMs?: number;
   readonly onInternalError?: (error: unknown) => void;
+  /** Defaults to a private in-memory database, which is what every test wants. */
+  readonly persistence?: Persistence;
+  readonly authTtlMs?: number;
+  readonly cookie?: CookieConfig;
 }
 
 export interface RunningCardGuildServer {
@@ -61,7 +69,14 @@ async function serveStatic(root: string, pathname: string, serverResponse: Serve
 
 export async function startCardGuildServer(options: StartServerOptions): Promise<RunningCardGuildServer> {
   const store = new SessionStore(options.context, options.sources);
-  const api = createHttpApi(store);
+  const persistence = options.persistence ?? createSqlitePersistence(MEMORY_DATABASE);
+  const authTtlMs = options.authTtlMs ?? DEFAULT_AUTH_TTL_MS;
+  const api = createHttpApi({
+    store,
+    auth: createAuthService(persistence, authTtlMs),
+    campaigns: createCampaignService(persistence, store),
+    cookie: options.cookie ?? { secure: false, ttlMs: authTtlMs },
+  });
   const httpServer = createServer((request, response) => {
     void (async () => {
       if (await api(request, response)) return;
@@ -99,6 +114,7 @@ export async function startCardGuildServer(options: StartServerOptions): Promise
     close: async () => {
       await gateway.close();
       await new Promise<void>((resolve, reject) => httpServer.close((error) => error ? reject(error) : resolve()));
+      persistence.close();
     },
   };
 }
