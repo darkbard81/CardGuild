@@ -69,13 +69,14 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- wire protocol은 v5입니다. M9-1의 AdventureState v3 snapshot은 모든 PartyMember에
-  runtime Level/EXP를 필수로 포함합니다. 이전 wire version은 `PROTOCOL_MISMATCH`로
+- wire protocol은 v6이고 `SessionCoreState`는 v3입니다. M9-1의 AdventureState v3 snapshot은
+  모든 PartyMember에 runtime Level/EXP를 필수로 포함하고, M9-3의 `resume-lobby` lifecycle과
+  `resume-adventure` intent가 v6에 들어 있습니다. 이전 wire version은 `PROTOCOL_MISMATCH`로
   거절하며, 서버와 클라이언트를 함께 갱신해야 합니다. M8의 Facing 입력 계약은 유지합니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v5 control-only
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v6 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
-  판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. server restart persistence와
-  host migration은 지원하지 않습니다.
+  판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. host migration은 지원하지
+  않지만, 서버가 재시작되면 Host가 Campaign을 Continue해 마지막 저장부터 이어갑니다.
 
 ## 플레이
 
@@ -183,8 +184,8 @@ content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
 src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
-src/protocol protocol v5 type/schema, gameplay/control revision과 strict Ajv validation
-src/server HTTP auth/campaign/join, credential, SQLite persistence, SessionHost queue, WebSocket, server AI orchestration
+src/protocol protocol v6 type/schema, gameplay/control revision과 strict Ajv validation
+src/server HTTP auth/campaign/continue/join, credential, SQLite persistence, durable Campaign save/CAS, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
 src/pixi   affine BoardProjection/board plane/camera/depth renderers와 tactical overlay
@@ -390,9 +391,12 @@ hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 �
 손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
 Network integration은 실제 `ws` client 3개로 queue/gameplay·control revision/idempotency,
 claim race와 authorization, turn/reaction disconnect fallback·reconnect, server AI,
-newest-wins reconnect와 legacy protocol(v1·v3) fail-fast를 검증합니다. Playwright는 별도
-BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어, 2P fallback,
-3P 분산 제어와 hash 수렴을 검증하며 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
+newest-wins reconnect와 legacy protocol(v1·v3·v4·v5) fail-fast를 검증합니다. 여기에 실제 파일
+SQLite를 쓰는 durable Campaign 시나리오가 더해집니다 — 서버 재시작 후 Continue, mid-combat
+정확 복구, 자식 서버를 COMMIT 직전/직후에 강제 종료한 뒤의 복구, 이전 credential 무효화입니다.
+Playwright는 별도 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어,
+2P fallback, 3P 분산 제어와 hash 수렴, 그리고 Continue → Resume Lobby → 정확 재개를 검증하며
+기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
 
 ## UI/UX 리뷰 캡쳐
 
@@ -415,7 +419,7 @@ npm run ui:compare          # docs/ui-review/index.html 좌우 비교 페이지�
 ## M5 범위 밖
 
 계정/OAuth, matchmaking/public room, late join/spectator, host migration/kick, chat,
-hidden-hand/PvP, prediction/rollback/delta protocol, DB·Redis·다중 process·server restart 복구,
+hidden-hand/PvP, prediction/rollback/delta protocol, Redis·다중 process 조정,
 AFK auto-turn/reaction auto-pass/disconnect AI takeover는 후속 범위입니다. 전체 PF2e 규칙,
 branch Adventure, 완성형 VFX/audio와 3인 balance polish도 포함하지 않습니다.
 
@@ -442,9 +446,34 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
 - 비밀번호는 scrypt 해시로만, auth token은 digest로만 저장합니다. 쿠키는
   `HttpOnly`·`SameSite=Lax`이고 `Secure`는 `CARDGUILD_COOKIE_SECURE`로 정합니다.
 - 남의 Campaign은 "권한 없음"이 아니라 "없음"으로 보입니다.
-- gameplay snapshot 저장과 Continue 복구는 M9-3, 서버 재시작 복구는 M9-5입니다.
-  그래서 지금 Continue는 `409 SAVE_NOT_FOUND`이고 목록의 Continue 버튼은 비활성입니다.
 - account/campaign 식별자는 `SessionCoreState`에 들어가지 않으므로 gameplay hash와
-  결정론은 그대로이고, wire protocol도 v5 그대로입니다.
+  결정론은 그대로입니다. M9-2 자체는 wire protocol을 v5에서 바꾸지 않았습니다.
 
 자세한 계약과 검증은 [M9-2 구현문서](docs/m9-2-host-identity-campaign-ownership.md)에 있습니다.
+
+## M9-3 Durable Campaign Save & Resume Lobby
+
+gameplay 진행이 SQLite에 저장되고, Host는 My Campaigns에서 Continue해 마지막으로 **COMMIT된**
+지점부터 이어서 플레이합니다. 저장의 유일한 원본은 서버 DB입니다.
+
+- 저장 payload는 `CampaignSaveV1` gameplay projection입니다. ContentIdentity, slot 순
+  party, AdventureState v3, CombatState v4만 들어가고 sessionId·playerId·guest claim·
+  reconnect credential·presence·request journal은 들어가지 않습니다.
+- 첫 저장은 Adventure 시작 시점입니다. 새 Campaign의 파티 편집만으로는 save가 생기지 않습니다.
+- accepted transition은 `durable COMMIT → 메모리 state 교체 → ACK/snapshot` 순서로만
+  공개됩니다. 저장이 실패하면 그 진행은 아무 클라이언트도 보지 못합니다. Client 명령은
+  `PERSISTENCE_FAILED`로 재시도할 수 있고, 서버 AI 저장 실패는 해당 세션을 종료합니다.
+- Guest 참가/캐릭터 선택, offline guest 제거, presence/control 변화, Resume 전환은
+  gameplay hash를 바꾸지 않으므로 DB를 쓰지 않습니다.
+- Continue는 저장된 세션을 되살리지 않고 **새 라이브 세션을 재수화**합니다. 새 session ID·
+  Host player ID·reconnect token, 빈 guest claim, `revision=0`, `resume-lobby` lifecycle로
+  시작합니다. 한 Campaign에 writer는 하나뿐이라 기존 라이브 세션은 queue barrier 뒤 종료되고
+  (close code `4005`), `campaignRevision` compare-and-swap이 stale writer를 최종 차단합니다.
+- Resume Lobby에서는 Guest 참가·캐릭터 선택·offline guest 제거·Host Resume만 가능하고 파티
+  편집과 모든 gameplay 명령은 차단됩니다. Host는 혼자서도 Resume할 수 있고, 미할당 캐릭터는
+  기존 fallback대로 Host가 제어합니다.
+- 손상·미지원·다른 Content Pack의 save는 자동 보정하지 않고 409로 거절하며 row를 보존합니다.
+- 브라우저 저장소에는 여전히 reconnect credential만 둡니다.
+
+EXP 지급과 Level-Up은 M9-4, 재시작 복구 강화는 M9-5입니다.
+자세한 계약과 검증은 [M9-3 구현문서](docs/m9-3-durable-campaign-save.md)에 있습니다.
