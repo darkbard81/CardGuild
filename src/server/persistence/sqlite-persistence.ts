@@ -1,3 +1,5 @@
+import { mkdirSync } from "node:fs";
+import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { migrate } from "./migrations";
@@ -30,8 +32,13 @@ function hasValue(row: SqlRow, column: string): boolean {
   return value !== null && value !== undefined;
 }
 
-export function openDatabase(path: string): DatabaseSync {
-  const database = new DatabaseSync(path);
+export const MEMORY_DATABASE = ":memory:";
+
+export function openDatabase(filePath: string): DatabaseSync {
+  // Opening a file in a directory that does not exist fails with an opaque SQLite error,
+  // which on a fresh deployment reads as "the server is broken" rather than "make the dir".
+  if (filePath !== MEMORY_DATABASE) mkdirSync(path.dirname(path.resolve(filePath)), { recursive: true });
+  const database = new DatabaseSync(filePath);
   // WAL keeps readers off the single authority writer. It must run outside a transaction,
   // and it is silently a no-op for ":memory:", so only a file database is really in WAL.
   database.exec("PRAGMA journal_mode = WAL");
@@ -161,6 +168,6 @@ export function createPersistence(database: DatabaseSync): Persistence {
   };
 }
 
-export function createSqlitePersistence(path: string): Persistence {
-  return createPersistence(openDatabase(path));
+export function createSqlitePersistence(filePath: string): Persistence {
+  return createPersistence(openDatabase(filePath));
 }
