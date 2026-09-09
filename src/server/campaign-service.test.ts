@@ -2,16 +2,42 @@ import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 
 import { PRODUCTION_CONTENT } from "../content";
-import { hashSessionGameplayState } from "../session";
+import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../session";
+import type { ServerMessage } from "../protocol";
+import { createCampaignDurability } from "./campaign-durability";
 import { INVALID_CAMPAIGN_NAME, createCampaignService, type CampaignService } from "./campaign-service";
 import { digestReconnectToken } from "./credentials";
 import { createPersistence, migrate, type Persistence } from "./persistence";
 import { SessionStore } from "./session-store";
+import type { SessionConnection } from "./session-host";
 
 interface Harness {
   readonly campaigns: CampaignService;
   readonly persistence: Persistence;
   readonly store: SessionStore;
+  readonly database: DatabaseSync;
+}
+
+const PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
+
+/** The harness issues deterministic reconnect tokens, so a test can attach as the host. */
+function reconnectTokenFor(index: number): string {
+  return `reconnect-${String(index)}`;
+}
+
+class TestConnection implements SessionConnection {
+  public readonly messages: ServerMessage[] = [];
+  public readonly closes: number[] = [];
+
+  public constructor(public readonly id: string) {}
+
+  public send(message: ServerMessage): void {
+    this.messages.push(message);
+  }
+
+  public close(code: number): void {
+    this.closes.push(code);
+  }
 }
 
 function harness(): Harness {
@@ -46,6 +72,59 @@ function harness(): Harness {
     }),
     persistence,
     store,
+    database,
+  };
+}
+
+/** Attach a connection and drive intents the way the gateway would. */
+async function driver(
+  harnessed: Harness,
+  sessionId: string,
+  playerId: string,
+  reconnectToken: string,
+): Promise<(requestId: string, intent: SessionIntent) => Promise<void>> {
+  const host = harnessed.store.get(sessionId);
+  if (!host) throw new Error(`Session "${sessionId}" is not open.`);
+  const connection = new TestConnection(`socket-${sessionId}`);
+  const attached = await host.attach(playerId, reconnectToken, host.state.contentIdentity, connection);
+  if (!attached.ok) throw new Error(`Attach failed: ${attached.code}`);
+  return async (requestId, intent) => {
+    await host.handleIntent(playerId, connection.id, {
+      v: 6,
+      type: "intent",
+      requestId,
+      expectedRevision: host.state.revision,
+      intent,
+    });
+  };
+}
+
+interface PlayedCampaign {
+  readonly campaignId: string;
+  readonly sessionId: string;
+  readonly playerId: string;
+  readonly state: SessionCoreState;
+}
+
+/** A campaign taken to a durable mid-combat save through the real intent path. */
+async function playedToCombat(harnessed: Harness, tokenIndex = 1): Promise<PlayedCampaign> {
+  const created = harnessed.campaigns.create("acc_owner", "Goblin Trouble", "Host");
+  const send = await driver(
+    harnessed,
+    created.credential.sessionId,
+    created.credential.playerId,
+    reconnectTokenFor(tokenIndex),
+  );
+  await send("party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
+  await send("begin", { type: "begin-adventure" });
+  await send("encounter", { type: "start-encounter" });
+  const host = harnessed.store.get(created.credential.sessionId);
+  if (!host) throw new Error("Session vanished mid-play.");
+  return {
+    campaignId: created.campaign.campaignId,
+    sessionId: created.credential.sessionId,
+    playerId: created.credential.playerId,
+    state: host.state,
   };
 }
 
@@ -142,5 +221,197 @@ describe("M9-2 campaign ownership", () => {
     const { campaigns, store } = harness();
     const anonymous = store.create("Host");
     expect(campaigns.ownershipOf(anonymous.sessionId)).toBeUndefined();
+  });
+});
+
+describe("M9-3 campaign continue", () => {
+  it("makes Begin Adventure the first durable save and keeps the lobby out of it", async () => {
+    const harnessed = harness();
+    const created = harnessed.campaigns.create("acc_owner", "Goblin Trouble", "Host");
+    const send = await driver(
+      harnessed,
+      created.credential.sessionId,
+      created.credential.playerId,
+      reconnectTokenFor(1),
+    );
+    const owned = (): NonNullable<ReturnType<Persistence["campaigns"]["findOwned"]>> => {
+      const row = harnessed.persistence.campaigns.findOwned(created.campaign.campaignId, "acc_owner");
+      if (!row) throw new Error("Campaign row vanished.");
+      return row;
+    };
+
+    expect(owned()).toMatchObject({ hasSave: false, campaignRevision: 0 });
+    await send("party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
+    // Preparing a party in a new lobby is not durable progress yet.
+    expect(owned()).toMatchObject({ hasSave: false, campaignRevision: 0 });
+
+    await send("begin", { type: "begin-adventure" });
+    expect(owned()).toMatchObject({ hasSave: true, campaignRevision: 1 });
+    await send("encounter", { type: "start-encounter" });
+    expect(owned().campaignRevision).toBeGreaterThan(1);
+    harnessed.persistence.close();
+  });
+
+  it("restores the last committed gameplay into a fresh live session and retires the old writer", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+    const originalHost = harnessed.store.get(played.sessionId);
+    const savedHash = hashSessionGameplayState(played.state);
+
+    const result = await harnessed.campaigns.continue("acc_owner", played.campaignId, "Returning Host");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Continue was expected to succeed.");
+    expect(result.credential.sessionId).not.toBe(played.sessionId);
+    expect(result.credential.playerId).not.toBe(played.playerId);
+    expect(result.credential.seat).toBe(1);
+    // One campaign, one live writer: the previous session is retired and dropped.
+    expect(originalHost?.retired).toBe(true);
+    expect(harnessed.store.get(played.sessionId)).toBeUndefined();
+    expect(harnessed.campaigns.ownershipOf(played.sessionId)).toBeUndefined();
+    expect(harnessed.campaigns.liveSessionOf(played.campaignId)).toBe(result.credential.sessionId);
+
+    const restored = harnessed.store.get(result.credential.sessionId);
+    if (!restored) throw new Error("Continue opened no live session.");
+    expect(restored.state.lifecycle).toBe("resume-lobby");
+    expect(restored.state.revision).toBe(0);
+    expect(restored.state.guestClaims).toEqual({ byMemberId: {} });
+    expect(hashSessionGameplayState(restored.state)).toBe(savedHash);
+    expect(restored.state.combat).toEqual(played.state.combat);
+    harnessed.persistence.close();
+  });
+
+  it("keeps playing whatever was committed while Continue was already waiting", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+    const host = harnessed.store.get(played.sessionId);
+    if (!host) throw new Error("Session vanished.");
+    const connectionId = "socket-" + played.sessionId;
+
+    // A last gameplay intent is enqueued before Continue reaches the store, so Continue's
+    // barrier must let it commit and must then read that newer save, not the older one.
+    const lastPlay = host.handleIntent(played.playerId, connectionId, {
+      v: 6,
+      type: "intent",
+      requestId: "last-play",
+      expectedRevision: host.state.revision,
+      intent: { type: "end-turn", facing: "north" },
+    });
+    const continued = harnessed.campaigns.continue("acc_owner", played.campaignId);
+    await lastPlay;
+    const finalHash = hashSessionGameplayState(host.state);
+    const result = await continued;
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Continue was expected to succeed.");
+    const restored = harnessed.store.get(result.credential.sessionId);
+    expect(hashSessionGameplayState(restored!.state)).toBe(finalHash);
+    expect(finalHash).not.toBe(hashSessionGameplayState(played.state));
+    harnessed.persistence.close();
+  });
+
+  it("leaves the live session and the stored row untouched when the save cannot be resumed", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+    const before = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    harnessed.database
+      .prepare("UPDATE campaigns SET snapshot_json = ? WHERE campaign_id = ?")
+      .run('{"saveSchemaVersion":1,"nope":true}', played.campaignId);
+
+    const result = await harnessed.campaigns.continue("acc_owner", played.campaignId);
+
+    expect(result).toMatchObject({ ok: false, code: "SAVE_CORRUPT" });
+    // The host may still be playing in the session they already have.
+    expect(harnessed.store.get(played.sessionId)?.retired).toBe(false);
+    expect(harnessed.campaigns.liveSessionOf(played.campaignId)).toBe(played.sessionId);
+    const after = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    expect(after.status).toBe("loaded");
+    if (after.status !== "loaded" || before.status !== "loaded") throw new Error("Expected loaded saves.");
+    expect(after.record.campaignRevision).toBe(before.record.campaignRevision);
+    expect(after.record.snapshotHash).toBe(before.record.snapshotHash);
+    harnessed.persistence.close();
+  });
+
+  it("refuses to continue a campaign with no save, another account's campaign, or an unsupported save", async () => {
+    const harnessed = harness();
+    const fresh = harnessed.campaigns.create("acc_owner", "Never played", "Host");
+    const played = await playedToCombat(harnessed, 2);
+
+    expect(await harnessed.campaigns.continue("acc_owner", fresh.campaign.campaignId))
+      .toMatchObject({ ok: false, code: "SAVE_NOT_FOUND" });
+    expect(await harnessed.campaigns.continue("acc_stranger", played.campaignId))
+      .toMatchObject({ ok: false, code: "CAMPAIGN_NOT_FOUND" });
+    expect(await harnessed.campaigns.continue("acc_owner", "campaign-does-not-exist"))
+      .toMatchObject({ ok: false, code: "CAMPAIGN_NOT_FOUND" });
+
+    harnessed.database
+      .prepare("UPDATE campaigns SET save_schema_version = 2, snapshot_json = json_set(snapshot_json, '$.saveSchemaVersion', 2) WHERE campaign_id = ?")
+      .run(played.campaignId);
+    expect(await harnessed.campaigns.continue("acc_owner", played.campaignId))
+      .toMatchObject({ ok: false, code: "SAVE_SCHEMA_UNSUPPORTED" });
+    // Nothing was retired by any of those refusals.
+    expect(harnessed.store.get(played.sessionId)?.retired).toBe(false);
+    harnessed.persistence.close();
+  });
+
+  it("serializes concurrent Continues so only the last one is the campaign's writer", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+
+    const [first, second] = await Promise.all([
+      harnessed.campaigns.continue("acc_owner", played.campaignId),
+      harnessed.campaigns.continue("acc_owner", played.campaignId),
+    ]);
+
+    if (!first.ok || !second.ok) throw new Error("Both Continues were expected to succeed.");
+    expect(first.credential.sessionId).not.toBe(second.credential.sessionId);
+    const writer = harnessed.campaigns.liveSessionOf(played.campaignId);
+    expect(writer).toBe(second.credential.sessionId);
+    // The session the first Continue opened was retired by the second, and its cleanup did
+    // not take the newer mapping with it.
+    expect(harnessed.store.get(first.credential.sessionId)).toBeUndefined();
+    expect(harnessed.store.get(second.credential.sessionId)?.retired).toBe(false);
+    expect(harnessed.campaigns.ownershipOf(second.credential.sessionId)).toEqual({
+      campaignId: played.campaignId,
+      ownerAccountId: "acc_owner",
+    });
+    harnessed.persistence.close();
+  });
+
+  it("refuses a stale writer's save through the compare-and-swap even outside the retire path", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+    const lookup = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    if (lookup.status !== "loaded") throw new Error("Expected a loaded save.");
+    // A writer that somehow survived, still holding the revision it last committed at.
+    const stale = createCampaignDurability({
+      campaigns: harnessed.persistence.campaigns,
+      campaignId: played.campaignId,
+      ownerAccountId: "acc_owner",
+      campaignRevision: lookup.record.campaignRevision - 1,
+      now: () => 6_000,
+    });
+
+    await expect(stale.commitGameplayTransition(
+      { ...played.state, combat: null, adventure: null },
+      played.state,
+    )).rejects.toMatchObject({ name: "CampaignWriterRetiredError", reason: "revision-conflict" });
+    const after = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    expect(after).toEqual(lookup);
+    harnessed.persistence.close();
+  });
+
+  it("stops treating a session as the campaign writer once it retires itself", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+
+    await harnessed.store.retire(played.sessionId, "durable write failed");
+
+    expect(harnessed.campaigns.liveSessionOf(played.campaignId)).toBeUndefined();
+    expect(harnessed.campaigns.ownershipOf(played.sessionId)).toBeUndefined();
+    // Continue still works: the durable save is the authority, not the dead session.
+    const result = await harnessed.campaigns.continue("acc_owner", played.campaignId);
+    expect(result.ok).toBe(true);
+    harnessed.persistence.close();
   });
 });

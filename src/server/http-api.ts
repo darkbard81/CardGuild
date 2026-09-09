@@ -10,10 +10,16 @@ import type { SessionStore } from "./session-store";
 const MAX_HTTP_BODY_BYTES = 16 * 1024;
 
 /**
- * HTTP-only failure codes. They deliberately do not join `ProtocolErrorCode`: the wire
- * protocol is unchanged by M9-2, and adding a member there would be a protocol change.
+ * HTTP-only failure codes joined with the wire codes the API also reports. The save codes
+ * describe a conflict between this build and the durable save, not a malformed request.
  */
-export type ApiErrorCode = ProtocolErrorCode | "CAMPAIGN_NOT_FOUND" | "SAVE_NOT_FOUND";
+export type ApiErrorCode =
+  | ProtocolErrorCode
+  | "CAMPAIGN_NOT_FOUND"
+  | "SAVE_NOT_FOUND"
+  | "SAVE_CORRUPT"
+  | "SAVE_SCHEMA_UNSUPPORTED"
+  | "SAVE_CONTENT_MISMATCH";
 
 export interface HttpApiDependencies {
   readonly store: SessionStore;
@@ -86,11 +92,20 @@ function newCampaign(body: unknown): { readonly name: string; readonly displayNa
   return { name: requiredString(record["name"]), displayName: optionalString(record["displayName"]) };
 }
 
+const SAVE_CONFLICT_CODES = new Set<ApiErrorCode>([
+  "SAVE_NOT_FOUND",
+  "SAVE_CORRUPT",
+  "SAVE_SCHEMA_UNSUPPORTED",
+  "SAVE_CONTENT_MISMATCH",
+]);
+
 function failureStatus(code: ApiErrorCode): number {
   if (code === "UNAUTHENTICATED") return 401;
   if (code === "FORBIDDEN") return 403;
   if (code === "SESSION_NOT_FOUND" || code === "CAMPAIGN_NOT_FOUND") return 404;
-  if (code === "SESSION_FULL" || code === "ROSTER_LOCKED" || code === "SAVE_NOT_FOUND") return 409;
+  if (code === "SESSION_FULL" || code === "ROSTER_LOCKED" || SAVE_CONFLICT_CODES.has(code)) return 409;
+  // The request was fine and the save is fine; the store could not be reached.
+  if (code === "PERSISTENCE_FAILED") return 503;
   return 400;
 }
 
@@ -193,10 +208,28 @@ export function createHttpApi(
         fail(response, "UNAUTHENTICATED", "Continuing a campaign requires signing in.");
         return true;
       }
-      const campaign = campaigns.findOwned(account.accountId, decodeURIComponent(resume[1]));
-      // Another account's campaign is indistinguishable from one that does not exist.
-      if (!campaign) fail(response, "CAMPAIGN_NOT_FOUND", "Campaign was not found.");
-      else fail(response, "SAVE_NOT_FOUND", "This campaign has no saved progress to continue yet.");
+      let requestedName: string | undefined;
+      try {
+        requestedName = displayName(await readJsonBody(request));
+      } catch (error) {
+        badRequest(response, error);
+        return true;
+      }
+      try {
+        const result = await campaigns.continue(account.accountId, decodeURIComponent(resume[1]), requestedName);
+        // A refused Continue leaves the stored save and any live session exactly as they were.
+        if (!result.ok) fail(response, result.code, result.message);
+        else {
+          json(response, 200, {
+            campaign: publicCampaign(result.campaign),
+            ...result.credential,
+            invite: { sessionId: result.credential.sessionId },
+          });
+        }
+      } catch {
+        // The request and the save are both fine; the durable store could not answer.
+        fail(response, "PERSISTENCE_FAILED", "Campaign storage is unavailable. Try again shortly.");
+      }
       return true;
     }
 
