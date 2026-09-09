@@ -16,6 +16,7 @@ import {
 } from "../game/statistics";
 import type {
   ActorSetup,
+  ActorStatProfile,
   ActorState,
   CombatContent,
   EquipmentDefinition,
@@ -204,10 +205,11 @@ export function deriveActorSetup(
   loadout: PartyMemberLoadout,
   content: CombatContent,
   memberId = placement.instanceId,
+  effectiveStatProfile: ActorStatProfile = actor.statProfile,
 ): ActorSetup {
   const deck = deriveTacticalDeck(actor, loadout, content, memberId);
   // Encounters start at full health, and max HP is derived rather than authored.
-  const maxHp = resolveMaxHp(actor.statProfile);
+  const maxHp = resolveMaxHp(effectiveStatProfile);
   return {
     id: placement.instanceId,
     definitionId: actor.id,
@@ -217,7 +219,7 @@ export function deriveActorSetup(
     facing: placement.facing,
     hp: maxHp,
     maxHp,
-    statProfile: cloneActorStatProfile(actor.statProfile),
+    statProfile: cloneActorStatProfile(effectiveStatProfile),
     speedFeet: actor.speedFeet,
     conditions: (actor.initialConditions ?? []).map((condition) => ({ ...condition })),
     traits: actor.traits.map((trait) => ({ ...trait, params: trait.params ? { ...trait.params } : undefined })),
@@ -227,14 +229,14 @@ export function deriveActorSetup(
   };
 }
 
-function actorForRules(actor: ActorDefinition, loadout: PartyMemberLoadout, content: CombatContent): ActorState {
+function actorForRules(actor: ActorDefinition, loadout: PartyMemberLoadout, content: CombatContent, effectiveStatProfile: ActorStatProfile): ActorState {
   const setup = deriveActorSetup(actor, {
     instanceId: actor.id,
     actorDefinitionId: actor.id,
     team: "heroes",
     position: { x: 0, y: 0 },
     facing: "north",
-  }, loadout, content, actor.id);
+  }, loadout, content, actor.id, effectiveStatProfile);
   return { ...setup, reactionAvailable: false, shieldRaised: false, defeated: false };
 }
 
@@ -243,8 +245,9 @@ export function deriveLoadoutSnapshot(
   loadout: PartyMemberLoadout,
   content: CombatContent,
   memberId: string,
+  effectiveStatProfile: ActorStatProfile = actor.statProfile,
 ): DerivedLoadoutSnapshot {
-  const ruleActor = actorForRules(actor, loadout, content);
+  const ruleActor = actorForRules(actor, loadout, content, effectiveStatProfile);
   const contextActionIds = [...new Set(getEquipmentActionGrants(ruleActor, content).map((grant) => grant.actionId))].sort();
   const armor = equippedArmor(ruleActor, { content });
   const resolvedReflex = resolveStatisticModifier(ruleActor, { kind: "save", id: "reflex" }, { content });
@@ -299,6 +302,7 @@ export function previewLoadoutChange(
   content: LoadoutContent,
   memberId: string,
   candidate: PartyMemberLoadout,
+  effectiveStatProfile?: ActorStatProfile,
 ): LoadoutPreview {
   const member = party.members[memberId];
   if (!member) throw new Error(`Party member "${memberId}" is missing.`);
@@ -308,8 +312,8 @@ export function previewLoadoutChange(
     members: { ...party.members, [memberId]: { ...member, loadout: cloneLoadout(candidate) } },
   };
   const validation = validatePartyLoadout(nextParty, collection, content);
-  const before = deriveLoadoutSnapshot(actor, member.loadout, content.combatContent, memberId);
-  const after = validation.valid ? deriveLoadoutSnapshot(actor, candidate, content.combatContent, memberId) : null;
+  const before = deriveLoadoutSnapshot(actor, member.loadout, content.combatContent, memberId, effectiveStatProfile);
+  const after = validation.valid ? deriveLoadoutSnapshot(actor, candidate, content.combatContent, memberId, effectiveStatProfile) : null;
   return {
     legal: validation.valid,
     validation,

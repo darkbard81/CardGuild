@@ -15,6 +15,19 @@ export interface PartyMemberState extends LoadoutPartyMember {
   readonly seat: 1 | 2 | 3;
   readonly actorDefinitionId: ActorDefinitionId;
   readonly loadout: PartyMemberLoadout;
+  readonly progression: CharacterProgressionState;
+}
+
+export interface CharacterProgressionState {
+  readonly level: number;
+  /** EXP toward the next level, not lifetime EXP. */
+  readonly experience: number;
+}
+
+export type PartyMemberSetup = Omit<PartyMemberState, "progression">;
+
+export interface PartySetup extends LoadoutParty {
+  readonly members: Readonly<Record<string, PartyMemberSetup>>;
 }
 
 export interface PartyState extends LoadoutParty {
@@ -39,7 +52,7 @@ export interface RewardOffer {
 }
 
 export interface AdventureState {
-  readonly version: 2;
+  readonly version: 3;
   readonly adventureId: string;
   readonly phase: AdventurePhase;
   readonly currentEncounterId: ScenarioId | null;

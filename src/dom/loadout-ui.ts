@@ -1,4 +1,5 @@
 import type { AdventureState } from "../adventure";
+import { EXPERIENCE_PER_LEVEL, resolveEffectiveCharacterStatProfile } from "../adventure/progression";
 import type { CompiledContentPack } from "../content";
 import type { DeckContributionSource, EquipmentSlotId, ResolvedStrikeProfile } from "../game";
 import {
@@ -131,6 +132,7 @@ export class LoadoutUi {
     const sidebar = element("section", "loadout-panel equipped-panel");
     sidebar.dataset.editable = String(editableMemberIds.has(member.id));
     sidebar.append(element("h2", undefined, actor.name), element("p", "loadout-panel-label", editableMemberIds.has(member.id) ? "Your build" : "Read-only · 다른 플레이어"));
+    sidebar.append(element("p", "character-progression", `Lv. ${member.progression.level} · EXP ${member.progression.experience} / ${EXPERIENCE_PER_LEVEL}`));
     const slots = element("div", view.tab === "cards" ? "prepared-list" : "equipment-slots");
     if (view.tab === "cards") {
       sidebar.append(element("h3", "prepared-heading", `Prepared Cards ${member.loadout.preparedCards.length}/${actor.loadoutProfile.preparedCardCapacity}`));
@@ -151,7 +153,8 @@ export class LoadoutUi {
           action: id ? undefined : () => { view.tab = "equipment"; view.filter = slot; view.pages.equipment = 0; this.refresh(); }, className: "equipment-slot" }));
       }
     }
-    const snapshot = deriveLoadoutSnapshot(actor, member.loadout, this.pack.combatContent, member.id);
+    const snapshot = deriveLoadoutSnapshot(actor, member.loadout, this.pack.combatContent, member.id,
+      resolveEffectiveCharacterStatProfile(actor, member.progression));
     sidebar.append(slots, element("p", "loadout-core-stats", `AC ${snapshot.statistics.ac} · HP ${snapshot.statistics.maxHp} · ATK ${signed(snapshot.strike.attackModifier)}`),
       element("p", "loadout-deck-count", `${snapshot.deck.totalCards} Tactical Cards`));
     const panel = element("section", `loadout-panel collection-panel${view.tab === "deck" ? " deck-panel" : ""}`);
@@ -263,7 +266,11 @@ export class LoadoutUi {
   }
   private preview(candidate: PartyMemberLoadout): LoadoutPreview {
     if (!this.state) throw new Error("Loadout state is missing.");
-    return previewLoadoutChange(this.state.party, this.state.collection, this.pack, this.selectedMemberId, candidate);
+    const member = this.state.party.members[this.selectedMemberId];
+    const actor = member && this.pack.actorDefinitions[member.actorDefinitionId];
+    if (!member || !actor) throw new Error("Loadout character is missing.");
+    return previewLoadoutChange(this.state.party, this.state.collection, this.pack, this.selectedMemberId, candidate,
+      resolveEffectiveCharacterStatProfile(actor, member.progression));
   }
   private apply(tile: Tile): void {
     if (!tile.candidate || this.waiting) return;
@@ -334,7 +341,8 @@ export class LoadoutUi {
     if (!member) return element("div");
     const actor = this.pack.actorDefinitions[member.actorDefinitionId];
     if (!actor) return element("div");
-    const shown = preview?.after ?? deriveLoadoutSnapshot(actor, member.loadout, this.pack.combatContent, member.id);
+    const shown = preview?.after ?? deriveLoadoutSnapshot(actor, member.loadout, this.pack.combatContent, member.id,
+      resolveEffectiveCharacterStatProfile(actor, member.progression));
     const stats = element("div", "loadout-stat-grid");
     const values: Array<[string, string]> = [
       ["AC", preview?.after ? `${preview.before.statistics.ac} → ${preview.after.statistics.ac}` : String(shown.statistics.ac)],

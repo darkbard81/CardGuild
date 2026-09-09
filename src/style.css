@@ -1511,6 +1511,13 @@ button {
   padding: 1.2rem;
 }
 
+/* Keep all eight encounters, three progression rows and the Collection on the
+   supported minimum screen; spend less space on margins before hiding information. */
+@media (min-width: 901px) and (max-height: 800px) {
+  .adventure-screen { padding-block: 1rem; }
+  .adventure-map-card { padding: 1rem; }
+}
+
 .adventure-map-card h2,
 .adventure-content h1 {
   margin: 0;
@@ -1617,6 +1624,28 @@ button {
   gap: 0.45rem;
   align-items: center;
   color: var(--ink);
+}
+
+.adventure-party {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.8rem 0;
+}
+
+.character-progression {
+  color: var(--gold-bright);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.adventure-party .character-progression {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: 0.5rem;
 }
 
 .collection-count {
@@ -1898,6 +1927,9 @@ button {
 .deck-panel .loadout-tile { min-height: 72px; }
 .deck-panel .loadout-stat-grid { overflow: auto; }
 @media (max-width: 900px) {
+  .adventure-screen { grid-template-columns: minmax(0, 1fr); padding: 1rem; }
+  .adventure-content { min-width: 0; padding: 1.2rem; overflow-wrap: anywhere; }
+  .adventure-content h1 { font-size: clamp(1.8rem, 8vw, 3rem); }
   .loadout-screen { height: auto; min-height: 100dvh; padding: 12px; }
   .loadout-header { flex-wrap: wrap; gap: 12px; }
   .loadout-header h1 { font-size: 21px; }

@@ -1,10 +1,11 @@
 import {
   buildAdventureEncounter,
+  assertAdventureInvariants,
   createAdventureSession,
   dispatchAdventureCommand,
   type AdventureRuntimeContext,
   type AdventureState,
-  type PartyState,
+  type PartySetup,
 } from "../adventure";
 import { getContentIdentity } from "../content/compile-content";
 import {
@@ -120,7 +121,7 @@ export function joinSessionCore(
   }, [{ type: "SEAT_JOINED", seat }]);
 }
 
-function partyFromSlots(state: SessionCoreState, context: SessionAuthorityContext): PartyState {
+function partyFromSlots(state: SessionCoreState, context: SessionAuthorityContext): PartySetup {
   return {
     members: Object.fromEntries(state.partySlots.map((partySlot) => {
       const definition = context.pack.actorDefinitions[partySlot.actorDefinitionId];
@@ -393,6 +394,7 @@ export function assertSessionInvariants(state: SessionCoreState): void {
     throw new Error("Active sessions require a prepared party and AdventureState.");
   }
   if (state.adventure) {
+    assertAdventureInvariants(state.adventure);
     const adventureMembers = Object.values(state.adventure.party.members)
       .sort((left, right) => left.seat - right.seat)
       .map((member) => [member.seat, member.id, member.actorDefinitionId]);

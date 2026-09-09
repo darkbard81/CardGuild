@@ -61,10 +61,10 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- wire protocol은 v4입니다. v3의 `end-turn`에는 `facing`이 없고 tile target에는 `facing`이
-  필수였으므로 두 버전은 서로의 payload를 거부합니다. 그래서 같은 `v`를 선언한 채 intent
-  단위로 실패하는 대신 handshake에서 `PROTOCOL_MISMATCH`로 끊습니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v4 control-only
+- wire protocol은 v5입니다. M9-1의 AdventureState v3 snapshot은 모든 PartyMember에
+  runtime Level/EXP를 필수로 포함합니다. 이전 wire version은 `PROTOCOL_MISMATCH`로
+  거절하며, 서버와 클라이언트를 함께 갱신해야 합니다. M8의 Facing 입력 계약은 유지합니다.
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v5 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
   판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. server restart persistence와
   host migration은 지원하지 않습니다.
@@ -175,7 +175,7 @@ content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
 src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
-src/protocol protocol v4 type/schema, gameplay/control revision과 strict Ajv validation
+src/protocol protocol v5 type/schema, gameplay/control revision과 strict Ajv validation
 src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
@@ -410,3 +410,13 @@ npm run ui:compare          # docs/ui-review/index.html 좌우 비교 페이지�
 hidden-hand/PvP, prediction/rollback/delta protocol, DB·Redis·다중 process·server restart 복구,
 AFK auto-turn/reaction auto-pass/disconnect AI takeover는 후속 범위입니다. 전체 PF2e 규칙,
 branch Adventure, 완성형 VFX/audio와 3인 balance polish도 포함하지 않습니다.
+
+## M9-1 Character Progression Foundation
+
+PartyMember의 Level/EXP가 Adventure runtime state에 포함됩니다. 새 Adventure는 authored
+starting Level과 EXP 0으로 시작하며 Adventure와 Loadout에 표시됩니다. 다음 Encounter와
+Loadout preview는 같은 effective Character profile로 수치를 계산합니다. 기존 Combat은
+runtime progression 때문에 다시 계산하지 않습니다.
+
+실제 EXP 지급과 Level-Up은 M9-4, 계정/저장/복구는 M9-2 이후 범위입니다.
+자세한 계약과 검증은 [M9-1 구현문서](docs/m9-1-character-progression-foundation.md)에 있습니다.

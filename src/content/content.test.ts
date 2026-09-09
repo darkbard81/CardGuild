@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import contentPackSchema from "../../content/schema/content-pack.schema.json";
-import type { PartyState } from "../adventure";
+import type { PartySetup } from "../adventure";
 import { createCombat, dispatchCombatCommand } from "../game/engine";
 import { listLegalActions } from "../game/queries";
 import type { CombatCommand } from "../game/types";
@@ -744,7 +744,7 @@ describe("M5 playable character content", () => {
     expect(bromStats.athletics).toBeGreaterThan(aerinStats.athletics);
     expect(brom?.speedFeet).toBeLessThan(aerin?.speedFeet ?? 0);
 
-    const party: PartyState = {
+    const party: PartySetup = {
       members: Object.fromEntries(playable.map((actor, index) => [
         "party.hero-" + String(index + 1),
         {

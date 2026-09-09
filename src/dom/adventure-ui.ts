@@ -1,4 +1,5 @@
 import type { AdventureState } from "../adventure";
+import { EXPERIENCE_PER_LEVEL } from "../adventure/progression";
 import type { CompiledContentPack } from "../content";
 import { placementAppliesToPartySize } from "../content";
 import type { AdventureDefinition, RewardGrant } from "../content";
@@ -84,6 +85,7 @@ export class AdventureUi {
   private readonly progress = required<HTMLOListElement>("#adventure-progress");
   private readonly content = required<HTMLElement>("#adventure-content");
   private readonly collection = required<HTMLElement>("#adventure-collection");
+  private readonly party = required<HTMLElement>("#adventure-party");
 
   public constructor(
     private readonly definition: AdventureDefinition,
@@ -129,6 +131,17 @@ export class AdventureUi {
     }
     this.renderProgress(state);
     this.renderCollection(state);
+    this.party.replaceChildren(...Object.values(state.party.members)
+      .sort((left, right) => left.seat - right.seat)
+      .map((member) => {
+        const row = element("li", "character-progression");
+        row.dataset.memberId = member.id;
+        row.append(
+          element("strong", undefined, this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id),
+          element("span", undefined, `Lv. ${member.progression.level} · EXP ${member.progression.experience} / ${EXPERIENCE_PER_LEVEL}`),
+        );
+        return row;
+      }));
     this.content.replaceChildren();
 
     if (state.phase === "ready") {

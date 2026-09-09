@@ -1,5 +1,6 @@
 import type { RewardGrant } from "../content/content-types";
 import { clonePartyLoadout, createStartingCollection, validatePartyLoadout } from "../loadout";
+import { assertAdventureInvariants, createCharacterProgression } from "./progression";
 import type {
   AdventureCommand,
   AdventureDispatchResult,
@@ -8,6 +9,7 @@ import type {
   AdventureState,
   CollectionState,
   PartyState,
+  PartySetup,
   RewardOffer,
 } from "./types";
 
@@ -51,7 +53,7 @@ export function deriveCombatSeed(adventureSeed: number, encounterId: string): nu
 
 export function createAdventureSession(
   context: AdventureRuntimeContext,
-  party: PartyState,
+  party: PartySetup,
   adventureSeed: number,
 ): AdventureState {
   if (!Number.isInteger(adventureSeed)) throw new Error("Adventure seed must be an integer.");
@@ -69,15 +71,15 @@ export function createAdventureSession(
         .map((member) => {
           const definition = context.actorDefinitions[member.actorDefinitionId];
           if (!definition) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
-          return [member.id, { ...member, loadout: clonePartyLoadout(definition.starterLoadout) }];
+          return [member.id, { ...member, loadout: clonePartyLoadout(definition.starterLoadout), progression: createCharacterProgression(definition) }];
         }),
     ),
   };
   const collection = createStartingCollection(clonedParty, context);
   const validation = validatePartyLoadout(clonedParty, collection, context);
   if (!validation.valid) throw new Error(`Invalid starting loadout: ${validation.issues[0]?.message ?? "unknown error"}`);
-  return {
-    version: 2,
+  const state: AdventureState = {
+    version: 3,
     adventureId: context.definition.id,
     phase: "ready",
     currentEncounterId: null,
@@ -87,6 +89,8 @@ export function createAdventureSession(
     pendingReward: null,
     adventureSeed,
   };
+  assertAdventureInvariants(state);
+  return state;
 }
 
 function startEncounter(state: AdventureState): AdventureDispatchResult {
@@ -106,6 +110,7 @@ export function dispatchAdventureCommand(
   command: AdventureCommand,
   context: AdventureRuntimeContext,
 ): AdventureDispatchResult {
+  assertAdventureInvariants(state);
   const definition = context.definition;
   if (state.adventureId !== definition.id) return reject(state, "Adventure definition does not match state.");
 

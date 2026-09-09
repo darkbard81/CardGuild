@@ -8,7 +8,7 @@ import {
   type AdventureRuntimeContext,
   type AdventureState,
   type EncounterResult,
-  type PartyState,
+  type PartySetup,
 } from "../adventure";
 import { createCombat } from "../game/engine";
 import { listLegalActions } from "../game/queries";
@@ -42,7 +42,7 @@ const STARTERS = Object.values(PACK.actorDefinitions)
   .map((actor) => actor.id)
   .sort();
 
-function party(actorDefinitionIds: readonly string[]): PartyState {
+function party(actorDefinitionIds: readonly string[]): PartySetup {
   return {
     members: Object.fromEntries(actorDefinitionIds.map((actorDefinitionId, index) => {
       const definition = PACK.actorDefinitions[actorDefinitionId];

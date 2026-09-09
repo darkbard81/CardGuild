@@ -196,6 +196,17 @@ export class SessionClient {
   }
 
   private receive(socket: WebSocket, message: ServerMessage): void {
+    if (this.terminallyClosed) return;
+    if (message.v !== PROTOCOL_VERSION) {
+      this.stopTerminal({
+        v: PROTOCOL_VERSION,
+        type: "error",
+        code: "PROTOCOL_MISMATCH",
+        message: `This client requires protocol version ${PROTOCOL_VERSION}.`,
+      }, true);
+      socket.close(1000, "protocol mismatch");
+      return;
+    }
     if (message.type === "error") {
       if (!message.requestId || this.outstanding?.envelope.requestId === message.requestId) this.outstanding = null;
       if (isTerminalHandshakeFailure(message.code)) {

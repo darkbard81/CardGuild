@@ -3,7 +3,7 @@ import path from "node:path";
 
 import { buildAdventureEncounter } from "../../src/adventure/combat-bridge";
 import { createAdventureSession } from "../../src/adventure/runtime";
-import type { AdventureState, PartyState } from "../../src/adventure/types";
+import type { AdventureState, PartySetup } from "../../src/adventure/types";
 import { getContentIdentity } from "../../src/content/compile-content";
 import { PARTY_SIZES } from "../../src/content/content-types";
 import type {
@@ -203,7 +203,7 @@ function equippedLoadout(
   };
 }
 
-function soloParty(starter: ActorDefinition, loadout: PartyMemberLoadout): PartyState {
+function soloParty(starter: ActorDefinition, loadout: PartyMemberLoadout): PartySetup {
   return {
     members: {
       "party.hero-1": {
@@ -449,7 +449,7 @@ function checkStarterLoadouts(
   }
 }
 
-function coverageParty(starters: readonly ActorDefinition[], partySize: PartySizeNumber): PartyState {
+function coverageParty(starters: readonly ActorDefinition[], partySize: PartySizeNumber): PartySetup {
   const members = starters.slice(0, partySize).map((starter, index) => {
     const seat = (index + 1) as 1 | 2 | 3;
     return [

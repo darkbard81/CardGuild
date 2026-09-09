@@ -10,6 +10,7 @@ import type {
   ServerSnapshot,
 } from "../../src/protocol";
 import { digestReconnectToken } from "../../src/server/credentials";
+import { SessionHost } from "../../src/server/session-host";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
 import type { SessionCredentialResponse } from "../../src/server/session-store";
 import { hashSessionGameplayState, type SessionIntent } from "../../src/session";
@@ -33,7 +34,7 @@ class SocketClient {
     origin: string,
     credential: SessionCredentialResponse,
     contentIdentity = PRODUCTION_CONTENT.contentIdentity,
-    version: 1 | 3 | 4 = 4,
+    version: 1 | 3 | 4 | 5 = 5,
   ): Promise<SocketClient> {
     const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
     const client = new SocketClient(socket);
@@ -118,7 +119,7 @@ async function post<T>(
 }
 
 function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
-  return { v: 4, type: "intent", requestId, expectedRevision, intent: value };
+  return { v: 5, type: "intent", requestId, expectedRevision, intent: value };
 }
 
 async function accepted(
@@ -194,6 +195,48 @@ describe("real WebSocket M5 cooperative session", () => {
     if (running) await running.close();
     running = null;
     vi.restoreAllMocks();
+  });
+
+  it("transports nonzero runtime progression and recovers the same gameplay after reconnect", async () => {
+    const server = await start();
+    const credential = await create(server);
+    const original = server.store.get(credential.sessionId)!;
+    const preparing = await SocketClient.connect(server.origin, credential);
+    sockets.push(preparing);
+    await preparing.waitForSnapshot();
+    await accepted(preparing, original, "progression-party", { type: "set-party-composition", actorDefinitionIds: PARTY });
+    await accepted(preparing, original, "progression-begin", { type: "begin-adventure" });
+    await preparing.close();
+    await original.whenIdle();
+    // Inject at the existing constructor seam, never through a product command or debug API.
+    const adventure = original.state.adventure!;
+    const seeded = new SessionHost({ ...original.state, adventure: { ...adventure, party: {
+      members: Object.fromEntries(Object.entries(adventure.party.members).map(([id, member], index) =>
+        [id, { ...member, progression: { level: index + 2, experience: 375 + index } }])),
+    } } }, { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId }, digestReconnectToken(credential.reconnectToken));
+    vi.spyOn(server.store, "get").mockReturnValue(seeded);
+    const client = await SocketClient.connect(server.origin, credential);
+    sockets.push(client);
+    const first = await client.waitForSnapshot();
+    expect(first.v).toBe(5);
+    expect(first.state.adventure?.version).toBe(3);
+    expect(Object.values(first.state.adventure!.party.members).map(member => member.progression)).toEqual([
+      { level: 2, experience: 375 }, { level: 3, experience: 376 }, { level: 4, experience: 377 },
+    ]);
+    await accepted(client, seeded, "progression-encounter", { type: "start-encounter" });
+    const member = seeded.state.adventure!.party.members["party.hero-1"]!;
+    expect(member.progression).toEqual({ level: 2, experience: 375 });
+    expect(seeded.state.combat!.actors[member.id]!.maxHp).toBe(34);
+    const savedHash = hashSessionGameplayState(seeded.state);
+    const savedState = structuredClone(seeded.state);
+    await client.close();
+    await seeded.whenIdle();
+    const reconnected = await SocketClient.connect(server.origin, credential);
+    sockets.push(reconnected);
+    const snapshot = await reconnected.waitForSnapshot();
+    expect(snapshot.state).toEqual(savedState);
+    expect(snapshot.gameplayHash).toBe(savedHash);
+    expect(snapshot.controlRevision).toBeGreaterThan(first.controlRevision);
   });
 
   it("transports atomic final facing and preserves it in a reconnect snapshot", async () => {
@@ -557,13 +600,13 @@ describe("real WebSocket M5 cooperative session", () => {
 
     // v3 spoke a facing-less end-turn and a facing-bearing tile target, so it is turned
     // away at the handshake rather than left to fail one rejected intent at a time.
-    for (const version of [1, 3] as const) {
+    for (const version of [1, 3, 4] as const) {
       const legacy = await SocketClient.connect(server.origin, hostCredential, PRODUCTION_CONTENT.contentIdentity, version);
       sockets.push(legacy);
       const mismatch = await legacy.waitFor(
         (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
       );
-      expect(mismatch.message).toContain("version 4");
+      expect(mismatch.message).toContain("version 5");
     }
   }, 30_000);
 

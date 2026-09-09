@@ -63,7 +63,7 @@ const credential: SessionCredential = {
 
 function snapshot(revision: number, controlRevision = 0, cause: "resync" | "control" = "resync"): ServerSnapshot {
   return {
-    v: 4,
+    v: 5,
     type: "snapshot",
     revision,
     controlRevision,
@@ -163,7 +163,7 @@ describe("SessionClient reconnect handshake", () => {
     const socket = FakeWebSocket.instances[0] as FakeWebSocket;
     socket.open();
     socket.message({
-      v: 4,
+      v: 5,
       type: "error",
       code: "SESSION_NOT_FOUND",
       message: "Session was not found.",
@@ -194,5 +194,27 @@ describe("SessionClient reconnect handshake", () => {
       [4, 2],
       [4, 3],
     ]);
+  });
+
+  it.each(["snapshot", "ack", "error"])("stops on a v4 %s without applying it or retrying", async (type) => {
+    storage.set("cardguild.session.v2", JSON.stringify(credential));
+    const applied: ServerSnapshot[] = [];
+    const errors: ServerError[] = [];
+    const client = new SessionClient(credential, {
+      onSnapshot: value => applied.push(value), onError: value => errors.push(value), onStatus: () => undefined,
+    });
+    client.connect();
+    const socket = FakeWebSocket.instances[0]!;
+    socket.open();
+    socket.message({ ...snapshot(1), type, v: 4 });
+    socket.message(snapshot(2));
+    expect(applied).toEqual([]);
+    expect(client.snapshot).toBeNull();
+    expect(errors.map(error => error.code)).toEqual(["PROTOCOL_MISMATCH"]);
+    expect(storage.size).toBe(0);
+    expect(socket.readyState).toBe(FakeWebSocket.CLOSED);
+    await vi.advanceTimersByTimeAsync(10_000);
+    client.connect();
+    expect(FakeWebSocket.instances).toHaveLength(1);
   });
 });

@@ -3,7 +3,7 @@ import { writeFile } from "node:fs/promises";
 
 import { buildAdventureEncounter } from "../../src/adventure/combat-bridge";
 import { createAdventureSession, dispatchAdventureCommand, deriveCombatSeed } from "../../src/adventure/runtime";
-import type { AdventureState, PartyState } from "../../src/adventure/types";
+import type { AdventureState, PartySetup } from "../../src/adventure/types";
 import type { ActorDefinition, CompiledContentPack } from "../../src/content/content-types";
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
 import { chooseAiCommand } from "../../src/game/ai";
@@ -132,7 +132,7 @@ function starters(pack: CompiledContentPack): readonly ActorDefinition[] {
     .sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function party(pack: CompiledContentPack, starterIds: readonly string[]): PartyState {
+function party(pack: CompiledContentPack, starterIds: readonly string[]): PartySetup {
   return {
     members: Object.fromEntries(
       starterIds.map((actorDefinitionId, index) => {

@@ -4,6 +4,7 @@ import { PRODUCTION_CONTENT } from "../content";
 import { hashCombatState } from "../game";
 import {
   createSessionCoreState,
+  assertSessionInvariants,
   dispatchSessionIntent,
   hashSessionGameplayState,
   joinSessionCore,
@@ -90,6 +91,29 @@ function beginAndStart(state: SessionCoreState): SessionCoreState {
 }
 
 describe("pure M5 Session authority", () => {
+  it("hashes runtime Level and EXP, preserves them through JSON, and rejects invalid Adventure state", () => {
+    const initial = beginAndStart(prepare(lobby()));
+    const memberId = "party.hero-1";
+    const stateWith = (level: number, experience: number): SessionCoreState => ({
+      ...initial,
+      adventure: { ...initial.adventure!, party: { members: {
+        ...initial.adventure!.party.members,
+        [memberId]: { ...initial.adventure!.party.members[memberId]!, progression: { level, experience } },
+      } } },
+    });
+    const hash = hashSessionGameplayState(initial);
+    for (const changed of [stateWith(2, 0), stateWith(1, 375)]) {
+      assertSessionInvariants(changed);
+      expect(hashSessionGameplayState(changed)).not.toBe(hash);
+      const decoded = JSON.parse(JSON.stringify(changed)) as SessionCoreState;
+      assertSessionInvariants(decoded);
+      expect(decoded).toEqual(changed);
+      expect(hashSessionGameplayState(decoded)).toBe(hashSessionGameplayState(changed));
+      expect(hashCombatState(decoded.combat!)).toBe(hashCombatState(initial.combat!));
+    }
+    expect(() => assertSessionInvariants(stateWith(1, 1000))).toThrow("experience");
+    expect(() => assertSessionInvariants({ ...initial, adventure: { ...initial.adventure!, version: 2 } } as unknown as SessionCoreState)).toThrow("version 3");
+  });
   it("authorizes and commits final facing plus End Turn as one revision", () => {
     const state = beginAndStart(readyThreePlayers());
     const combat = state.combat!;
