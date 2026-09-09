@@ -1,7 +1,7 @@
 import process from "node:process";
 
 import { INVALID_PASSWORD, INVALID_USERNAME, USERNAME_TAKEN, createAuthService } from "../../src/server/auth-service";
-import { resolveDatabasePath } from "../../src/server/database-path";
+import { assertDevDatabase, resolveDatabasePath } from "../../src/server/database-path";
 import { createSqlitePersistence } from "../../src/server/persistence";
 
 /**
@@ -9,10 +9,10 @@ import { createSqlitePersistence } from "../../src/server/persistence";
  * open signup would let anyone create Campaign owners. Accounts are made here instead.
  *
  *   npm run account:create -- --username aerin      # password on stdin, never in argv
- *   npm run account:create -- --seed-dev            # fixed local accounts for dev and Playwright
+ *   npm run account:create -- --seed-dev            # fixed local accounts, development database only
  */
 
-/** Known to the dev server and the browser tests. Never reachable on a production database. */
+/** Passwords are public, so seeding is confined to the development database by path. */
 export const DEV_ACCOUNTS = [
   { username: "dev-host-a", password: "dev-password-a" },
   { username: "dev-host-b", password: "dev-password-b" },
@@ -43,14 +43,17 @@ function explain(error: unknown, username: string): string {
 async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const databasePath = resolveDatabasePath();
+  const seedDev = argv.includes("--seed-dev");
+  // Checked before the file is opened, so a refused seed never even migrates the database
+  // it was aimed at. Named by the database it may write to, not by an environment variable
+  // that a deployment can simply not set.
+  if (seedDev) assertDevDatabase(databasePath);
+
   const persistence = createSqlitePersistence(databasePath);
   const auth = createAuthService(persistence);
 
   try {
-    if (argv.includes("--seed-dev")) {
-      if (process.env["NODE_ENV"] === "production") {
-        throw new Error("--seed-dev refuses to run with NODE_ENV=production.");
-      }
+    if (seedDev) {
       for (const { username, password } of DEV_ACCOUNTS) {
         if (persistence.accounts.findByUsername(username)) {
           process.stdout.write(`Development account "${username}" already exists.\n`);
