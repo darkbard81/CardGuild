@@ -4,7 +4,7 @@
   "version": "0.3.0",
   "type": "module",
   "engines": {
-    "node": "^22.13.0 || >=24.0.0",
+    "node": ">=24.0.0",
     "npm": ">=11.0.0"
   },
   "scripts": {
@@ -13,7 +13,7 @@
     "dev:coop": "CARDGUILD_ADVENTURE_SEED=1 tsx tools/dev-coop.ts",
     "build": "npm run build:client && npm run build:server",
     "build:client": "npm run content:check && npm run assets && tsc --noEmit && vite build",
-    "build:server": "esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist-server/main.js --external:ws",
+    "build:server": "esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist-server/main.js --external:ws",
     "check": "npm run content:check && npm run content:production-check && npm run assets:check && npm run typecheck && npm run typecheck:game && npm run typecheck:tools && npm run typecheck:server && npm run lint && npm run test:unit",
     "assets:build": "tsx tools/assets/build-assets.ts",
     "assets:check": "tsx tools/assets/check-assets.ts",

@@ -5,12 +5,28 @@ export interface ReconnectCredential {
   readonly token: string;
   readonly digest: string;
 }
-export function digestReconnectToken(token: string): string {
+
+/** Opaque bearer tokens are stored as digests only, never in the clear. */
+export function digestToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("base64url");
 }
 
+export function createOpaqueToken(): string {
+  return randomBytes(32).toString("base64url");
+}
+
+export function tokenMatchesDigest(token: string, expectedDigest: string): boolean {
+  const received = Buffer.from(digestToken(token));
+  const expected = Buffer.from(expectedDigest);
+  return received.length === expected.length && timingSafeEqual(received, expected);
+}
+
+export function digestReconnectToken(token: string): string {
+  return digestToken(token);
+}
+
 export function createReconnectCredential(): ReconnectCredential {
-  const token = randomBytes(32).toString("base64url");
+  const token = createOpaqueToken();
   return { token, digest: digestReconnectToken(token) };
 }
 
@@ -19,7 +35,5 @@ export function createOpaqueId(prefix: string): string {
 }
 
 export function reconnectTokenMatches(token: string, expectedDigest: string): boolean {
-  const received = Buffer.from(digestReconnectToken(token));
-  const expected = Buffer.from(expectedDigest);
-  return received.length === expected.length && timingSafeEqual(received, expected);
+  return tokenMatchesDigest(token, expectedDigest);
 }
