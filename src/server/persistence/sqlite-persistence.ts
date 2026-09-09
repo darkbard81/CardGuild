@@ -8,6 +8,8 @@ import {
   type AccountRecord,
   type AuthSessionRecord,
   type CampaignRecord,
+  type CampaignSaveLookup,
+  type CampaignSaveRecord,
   type Persistence,
 } from "./types";
 
@@ -77,6 +79,33 @@ function toCampaign(row: SqlRow): CampaignRecord {
   };
 }
 
+/** Every save column is written by one statement, so all of them are set or none are. */
+const SAVE_COLUMNS = [
+  "save_schema_version",
+  "content_pack_id",
+  "content_pack_version",
+  "content_fingerprint",
+  "snapshot_json",
+  "snapshot_hash",
+] as const;
+
+function toCampaignSave(row: SqlRow): CampaignSaveRecord {
+  return {
+    campaignId: readText(row, "campaign_id"),
+    ownerAccountId: readText(row, "owner_account_id"),
+    campaignRevision: readInteger(row, "campaign_revision"),
+    saveSchemaVersion: readInteger(row, "save_schema_version"),
+    contentIdentity: {
+      packId: readText(row, "content_pack_id"),
+      packVersion: readText(row, "content_pack_version"),
+      fingerprint: readText(row, "content_fingerprint"),
+    },
+    snapshotJson: readText(row, "snapshot_json"),
+    snapshotHash: readText(row, "snapshot_hash"),
+    updatedAt: readInteger(row, "updated_at"),
+  };
+}
+
 function isUniqueViolation(error: unknown): boolean {
   return error instanceof Error && /UNIQUE constraint failed/i.test(error.message);
 }
@@ -107,6 +136,23 @@ export function createPersistence(database: DatabaseSync): Persistence {
   );
   const deleteOwnedCampaign = database.prepare(
     "DELETE FROM campaigns WHERE campaign_id = ? AND owner_account_id = ?",
+  );
+  // A single compare-and-swap UPDATE. Splitting this per column would let a crash or a
+  // stale writer leave the snapshot, its hash and its content identity from different
+  // generations in the same row.
+  const commitCampaignSave = database.prepare(
+    `UPDATE campaigns
+     SET campaign_revision    = campaign_revision + 1,
+         save_schema_version  = ?,
+         content_pack_id      = ?,
+         content_pack_version = ?,
+         content_fingerprint  = ?,
+         snapshot_json        = ?,
+         snapshot_hash        = ?,
+         updated_at           = ?
+     WHERE campaign_id = ?
+       AND owner_account_id = ?
+       AND campaign_revision = ?`,
   );
 
   return {
@@ -166,6 +212,34 @@ export function createPersistence(database: DatabaseSync): Persistence {
       },
       delete(campaignId, ownerAccountId) {
         return Number(deleteOwnedCampaign.run(campaignId, ownerAccountId).changes) > 0;
+      },
+      loadOwnedSave(campaignId, ownerAccountId): CampaignSaveLookup {
+        const row = selectOwnedCampaign.get(campaignId, ownerAccountId);
+        if (!row) return { status: "not-found" };
+        const campaignRevision = readInteger(row, "campaign_revision");
+        const present = SAVE_COLUMNS.filter((column) => hasValue(row, column)).length;
+        if (present === 0) return { status: "empty", campaignRevision };
+        if (present !== SAVE_COLUMNS.length) return { status: "partial", campaignRevision };
+        return { status: "loaded", record: toCampaignSave(row) };
+      },
+      commitSave(input) {
+        const changes = Number(commitCampaignSave.run(
+          input.saveSchemaVersion,
+          input.contentIdentity.packId,
+          input.contentIdentity.packVersion,
+          input.contentIdentity.fingerprint,
+          input.snapshotJson,
+          input.snapshotHash,
+          input.updatedAt,
+          input.campaignId,
+          input.ownerAccountId,
+          input.expectedCampaignRevision,
+        ).changes);
+        if (changes === 1) return { committed: true, campaignRevision: input.expectedCampaignRevision + 1 };
+        // Zero changes is either "the campaign is gone" or "somebody else committed first",
+        // and the caller has to tell those apart to know whether to retire or to report.
+        const current = selectOwnedCampaign.get(input.campaignId, input.ownerAccountId);
+        return { committed: false, reason: current ? "revision-conflict" : "not-found" };
       },
     },
     close() {
