@@ -35,6 +35,9 @@ export class SessionLobbyUi {
   private readonly screen: HTMLElement;
   private readonly partyBuilder: PartyBuilderUi;
   private status = "호스트가 방을 만들고 세션 ID를 초대할 플레이어에게 전달합니다.";
+  /** Every Continue button on the current campaign list, so one attempt can disable them all. */
+  private continueButtons: HTMLButtonElement[] = [];
+  private continueInFlight = false;
 
   public constructor(
     private readonly pack: CompiledContentPack,
@@ -146,6 +149,9 @@ export class SessionLobbyUi {
 
     const list = element("ul", "session-seats");
     list.id = "campaign-list";
+    // A freshly rendered list is a fresh chance to continue, whatever the last attempt did.
+    this.continueButtons = [];
+    this.continueInFlight = false;
     for (const campaign of campaigns) {
       const row = element("li", "occupied");
       row.dataset.campaignId = campaign.campaignId;
@@ -153,11 +159,8 @@ export class SessionLobbyUi {
       resume.type = "button";
       // Continue restores the last committed gameplay save; a campaign with none is new.
       resume.disabled = !campaign.hasSave;
-      resume.addEventListener("click", () => {
-        // Two Continues would retire the session the first one just opened.
-        resume.disabled = true;
-        this.handlers.onContinueCampaign(campaign.campaignId);
-      });
+      if (campaign.hasSave) this.continueButtons.push(resume);
+      resume.addEventListener("click", () => this.beginContinue(campaign.campaignId));
       row.append(element("span", undefined, campaign.name), resume);
       list.append(row);
     }
@@ -173,6 +176,30 @@ export class SessionLobbyUi {
     card.append(logout, this.statusLine());
     this.screen.append(card);
     this.setVisible(true);
+  }
+
+  /**
+   * Continue retires whatever live session a campaign has, so only one attempt may be in
+   * flight — and not just per campaign: a second Continue on a *different* campaign would
+   * race the session the first one is opening. So an attempt disables every Continue, and
+   * the in-flight flag lives here rather than in each button.
+   */
+  private beginContinue(campaignId: string): void {
+    if (this.continueInFlight) return;
+    this.continueInFlight = true;
+    for (const button of this.continueButtons) button.disabled = true;
+    this.handlers.onContinueCampaign(campaignId);
+  }
+
+  /**
+   * Re-arm Continue after an attempt that did not open a session. The caller must not leave
+   * this to a campaign-list refetch: the refetch is a network request of its own, and when
+   * the same outage takes both, the host is left with the only retry path disabled until
+   * they reload the page.
+   */
+  public settleContinue(): void {
+    this.continueInFlight = false;
+    for (const button of this.continueButtons) button.disabled = false;
   }
 
   public renderLobby(

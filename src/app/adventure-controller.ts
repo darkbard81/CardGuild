@@ -157,8 +157,10 @@ export class AdventureController {
       this.attach(await SessionClient.continueCampaign(campaignId));
     } catch (error) {
       this.lobbyUi.setStatus(error instanceof Error ? error.message : "Campaign을 이어갈 수 없습니다.");
-      // The campaign row and its save are untouched by a refused Continue, so the host can
-      // go straight back to the list and try again.
+      // Re-arm Continue before anything that can fail on its own. The campaign row and its
+      // save are untouched by a refused Continue, so the retry has to stay reachable even
+      // when the refresh below fails too — otherwise one outage costs a page reload.
+      this.lobbyUi.settleContinue();
       void this.restoreAccount();
     } finally {
       this.continuing = false;

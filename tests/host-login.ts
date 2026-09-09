@@ -18,6 +18,11 @@ export async function openApp(page: Page): Promise<void> {
 /** Signs a host in and leaves the page on their campaign list. */
 export async function signInAsHost(page: Page, account = DEV_HOST_A): Promise<void> {
   await openApp(page);
+  // `data-auth` turns "authenticated" before the campaign list is drawn, so asking whether
+  // the logout button exists is a race: on a page that is already signed in it can answer
+  // "no" from the previous screen, skip the logout, and then wait forever for a sign-in
+  // button that this account is never going to be shown. Settle on a screen first.
+  await expect(page.locator("#host-login, #account-logout").first()).toBeVisible();
   if (await page.locator("#account-logout").count()) await page.locator("#account-logout").click();
   await page.locator("#host-login").click();
   await page.locator("#account-username").fill(account.username);
