@@ -39,7 +39,7 @@ M9-2에는 gameplay snapshot이 없다. 그래서 Continue는 인증과 소유�
 | 항목 | 결정 | 근거 |
 |---|---|---|
 | SQLite driver | 내장 `node:sqlite`(`DatabaseSync`) | 런타임 의존성 0개 추가, 네이티브 빌드·esbuild external 불필요. esbuild는 `node:` 접두 specifier를 `--platform=node`에서 자동 외부화한다 |
-| engines | `>=24.0.0` | 22.13은 `--experimental-sqlite`가 필요하다. `.node-version`과 CI가 이미 24라 실질 손실이 없다 |
+| engines | `>=24.0.0` | 22.13에서도 `node:sqlite`는 플래그 없이 쓸 수 있으나 "1.1 Active development" 단계다. `.node-version`과 CI가 24뿐이라 22.x는 **한 번도 테스트되지 않는다** — 지원한다고 선언하지 않는 편이 정직하다 |
 | 계정 등록 | HTTP 라우트 없음, `npm run account:create` CLI | 서버가 공개 도메인에 배포되어 있어 가입을 열면 누구나 Campaign 소유자가 된다 |
 | password KDF | scrypt N=2^15, r=8, p=1, keylen=32 | 이 하드웨어에서 약 80ms. **`maxmem`을 명시해야 한다** — 기본 32MiB로는 N=2^15가 실패한다 |
 | auth session | 30일 절대 만료, 슬라이딩 없음 | 슬라이딩은 요청마다 쓰기를 만든다. M9-3이 같은 파일에 commit-before-ACK를 얹으므로 그 경로에 경합을 미리 넣지 않는다 |
@@ -73,12 +73,15 @@ src/server/password.ts        scrypt 해시/검증 + decoy 해시
 src/server/cookies.ts         Cookie 파싱, Set-Cookie 생성, Secure 결정
 src/server/auth-service.ts    계정 생성·로그인·인증·로그아웃
 src/server/campaign-service.ts Campaign 생성·목록·소유 조회, 세션 소유권 map
-src/server/database-path.ts   서버와 CLI가 공유하는 DB 경로 해석
+src/server/database-path.ts   서버와 CLI가 공유하는 DB 경로 해석 + 개발 시드 가드
 tools/accounts/create-account.ts 운영자 계정 생성 + --seed-dev
 ```
 
 `Persistence`는 인터페이스이고 `startCardGuildServer`가 주입받는다. 기본값은 in-memory라
-모든 테스트가 자기 DB를 갖는다. M9-3은 이 인터페이스를 바꾸지 않고 snapshot 컬럼만 채운다.
+모든 테스트가 자기 DB를 갖는다. M9-3은 **상위 DI 경계와 `Persistence` 합성은 그대로 두고**
+`CampaignRepository`에 save write/read를 더한다 — 지금 계약에는 `create`/`listByOwner`/
+`findOwned`/`delete`만 있고 `CampaignRecord`도 snapshot payload를 표현하지 않으므로,
+repository 계약 확장은 M9-3에서 반드시 필요하다.
 
 ### 스키마 (migration 1, 모두 `STRICT`)
 
@@ -126,6 +129,17 @@ FK는 `node:sqlite`에서 기본으로 켜져 있다. pragma는 의도를 적어
 로그인 실패는 아이디가 없든 비밀번호가 틀리든 상태·본문·소요시간이 같다. 모르는 아이디에도
 고정 decoy 해시로 KDF를 돌려 응답 시간으로 계정 목록을 훑지 못하게 한다.
 
+### 개발 계정 시드
+
+개발과 Playwright는 `.data/cardguild.dev.sqlite`를 쓰고, 배포는 `CARDGUILD_DB_PATH`(기본
+`.data/cardguild.sqlite`)를 쓴다. **두 경로는 절대 같으면 안 된다.**
+
+`--seed-dev`는 "지금이 어떤 환경인가"가 아니라 **"어느 DB를 여는가"**로 막는다. 시드가
+넣는 계정은 비밀번호까지 공개 저장소에 있으므로, `NODE_ENV`를 설정하지 않은 배포에서
+`npm run dev:coop`을 한 번 돌리는 것만으로 그 계정이 실제 DB에 생기면 안 된다. 환경변수
+누락은 흔하지만 경로는 명시적으로 개발 DB를 가리켜야만 통과한다. 검사는 파일을 열기
+전에 하므로 거절된 시드는 대상 DB를 마이그레이션조차 하지 않는다.
+
 ### 쿠키
 
 `cardguild_auth`, `HttpOnly`, `SameSite=Lax`, `Path=/`, `Max-Age`.
@@ -164,7 +178,8 @@ id와 동작이 그대로다. `#create-session`은 `#host-login`으로 대체되
 |---|---|---|
 | `src/server/persistence/persistence.test.ts` | 마이그레이션 결정성·재실행 no-op·미래 버전 거절, 대소문자 무시 중복 계정 거절, 소유권 격리, 만료가 조회에 포함됨, FK 강제, 비밀번호 평문 미저장·손상 해시가 예외가 아닌 실패 | `test:unit` |
 | `src/server/auth-service.test.ts` | 중복 계정 거절, ASCII 아이디 제한, 짧은 비밀번호 거절, 없는 아이디와 틀린 비밀번호가 같은 답, 만료 경계와 지연 청소, 로그아웃 멱등성, 계정 간 세션 분리 | `test:unit` |
-| `src/server/campaign-service.test.ts` | Campaign 생성이 세션을 열고 소유를 기억, **소유권이 session state와 gameplay hash에 없음**, 남의 Campaign은 404 형태, 이름 검증, durable write 실패 시 세션 미생성 | `test:unit` |
+| `src/server/campaign-service.test.ts` | Campaign 생성이 세션을 열고 소유를 기억, **소유권이 session state와 gameplay hash에 없음**, 남의 Campaign은 404 형태, 이름 검증, **부분 생성 양방향 차단**(durable write 실패 시 세션 미생성 / 세션 생성 실패 시 campaign row 보상 삭제, 앞선 campaign은 보존) | `test:unit` |
+| `src/server/database-path.test.ts` | 개발 시드가 개발 DB 경로에서만 허용되고 배포 기본 경로·임의 경로는 거절, `NODE_ENV`는 관여하지 않음 | `test:unit` |
 | `src/server/cookies.test.ts` | 파싱·이스케이프 왕복, HttpOnly·SameSite=Lax·Domain 없음, Secure 결정 규칙 | `test:unit` |
 | `tests/network/account.integration.test.ts` | 실제 HTTP 로그인/쿠키/me/로그아웃/만료, 미로그인 401, 타 계정 404가 없는 id와 동일, 자기 Campaign Continue 409, 게스트 무계정 참가, **snapshot과 서버 출력에 비밀번호·토큰·해시 없음**, 서로 다른 계정 두 Campaign의 hash 동일 | `test:network` |
 | `tests/account.browser.spec.ts` | 게스트 진입은 무계정, 틀린 비밀번호 UI, Campaign 생성 후 라이브 세션, 재방문 목록, 계정 간 목록 격리, 로그아웃, save 없는 Continue 비활성 | `test:smoke` |
@@ -206,7 +221,28 @@ id와 동작이 그대로다. `#create-session`은 `#host-login`으로 대체되
 7. 계정 화면과 브라우저 테스트 이전
 8. `POST /api/sessions`와 `SessionClient.create` 삭제, 네트워크 테스트 이전
 
-## 6. 남은 작업과 후속 주의점
+## 6. 리뷰 반영
+
+`15593ae..7bbc969` 리뷰에서 P1/P2 두 건을 받아 후속 커밋에서 닫았다.
+
+**P1 — 개발 시드가 배포 DB를 실제로 보호하지 못했다.** 가드가 `NODE_ENV === "production"`만
+보는데 이 저장소의 배포 계약(`deploy/cardguild.production.env`, `npm run start:production`)에는
+`NODE_ENV`가 없다. 게다가 배포 env와 개발 기본값이 **같은 `.data/cardguild.sqlite`를 가리키고**
+있어서, 배포 호스트에서 `npm run dev:coop`을 돌리면 공개된 비밀번호의 계정이 실제 DB에
+생길 수 있었다. 개발 DB를 `.data/cardguild.dev.sqlite`로 분리하고, 가드를 경로 allowlist로
+바꿨다. 거절 경로를 테스트로 고정했고, 이 테스트는 수정 전 코드에서 실패한다.
+
+**P2 — 부분 생성이 한쪽 방향만 막혀 있었다.** campaign row를 INSERT한 뒤 `store.create()`가
+던지면 row가 영구히 남아, 호출자는 실패를 받았는데 목록에는 Campaign이 보였다. 그 row가
+M9-3/M9-5의 durable identity 뿌리가 되므로 보상 삭제를 넣고 **양방향 실패를 모두** 테스트했다.
+두 테스트 모두 수정 전 코드에서 실패한다.
+
+비차단 지적 두 건도 고쳤다. M9-3이 `CampaignRepository`를 확장해야 한다는 점(§4)과, Node
+22.13이 `--experimental-sqlite`를 요구한다는 근거가 사실과 다르다는 점(§2)이다. 22.13
+문서는 플래그 없이 `node:sqlite`를 import한다. Node 24 하한 자체는 유지하되 근거를
+"22.x가 테스트되지 않는다"로 바로잡았다.
+
+## 7. 남은 작업과 후속 주의점
 
 - **KDF 동시성 상한은 넣지 않았다.** scrypt는 async라 이벤트 루프를 막지 않지만 libuv
   스레드풀 4칸을 정적 파일 서빙과 공유한다. 동시 로그인이 몰리면 SPA 로딩이 느려질 수 있다.

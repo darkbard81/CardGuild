@@ -8,7 +8,7 @@ Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Ad
 
 ## 요구 환경과 실행
 
-- Node.js 24 이상. 서버가 내장 `node:sqlite`를 쓰는데, 22.x에서는 실험 플래그가 필요합니다.
+- Node.js 24 이상. `.node-version`과 CI가 24뿐이라 22.x는 테스트되지 않습니다.
 - npm 11 이상
 - 최소 지원 해상도 1024x768. 보드 투영은 HUD gutter를 제외한 영역 안에서 계산되며,
   gutter 크기는 `data-hud-gutter` 패널을 실제로 measure해서 얻습니다. style.css가
@@ -436,7 +436,8 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
 지금까지처럼 계정 없이 Session ID로 참가합니다.
 
 - 계정·auth session·Campaign metadata는 single-file SQLite(`node:sqlite`)에 저장합니다.
-  경로는 `CARDGUILD_DB_PATH`(기본 `.data/cardguild.sqlite`)입니다.
+  경로는 `CARDGUILD_DB_PATH`(기본 `.data/cardguild.sqlite`)입니다. 개발과 Playwright는
+  `.data/cardguild.dev.sqlite`를 따로 쓰며, `--seed-dev`는 그 경로에서만 동작합니다.
 - 가입 라우트는 없습니다. 계정은 `npm run account:create`로 만듭니다.
 - 비밀번호는 scrypt 해시로만, auth token은 digest로만 저장합니다. 쿠키는
   `HttpOnly`·`SameSite=Lax`이고 `Secure`는 `CARDGUILD_COOKIE_SECURE`로 정합니다.
