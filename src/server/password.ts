@@ -65,3 +65,14 @@ export async function verifyPassword(password: string, stored: string): Promise<
     return false;
   }
 }
+
+/**
+ * A real hash of a password nobody knows, at the current default cost. Verifying against it
+ * makes an unknown username cost the same as a known one, so login timing cannot enumerate
+ * accounts. Regenerate it whenever DEFAULT_COST changes.
+ */
+const DECOY_HASH = "scrypt$32768$8$1$5_SQMf_CHRk2N6u0-dnIGQ$MKc_HLafMInJmWC5ekRliuGbJ0MhmVC5zR4pa3V6Rb0";
+
+export async function verifyDecoyPassword(password: string): Promise<void> {
+  await verifyPassword(password, DECOY_HASH);
+}
