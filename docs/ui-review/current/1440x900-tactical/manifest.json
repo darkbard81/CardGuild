@@ -1,0 +1,47 @@
+{
+  "viewport": {
+    "width": 1440,
+    "height": 900,
+    "id": "1440x900-tactical",
+    "label": "Tactical feedback fixture"
+  },
+  "capturedAt": "2026-09-08T06:30:57.800Z",
+  "shots": [
+    {
+      "id": "front",
+      "title": "front",
+      "note": "같은 Strike plan에서 받은 AC·원인·협공 아군 표시",
+      "file": "front.png"
+    },
+    {
+      "id": "rear",
+      "title": "rear",
+      "note": "같은 Strike plan에서 받은 AC·원인·협공 아군 표시",
+      "file": "rear.png"
+    },
+    {
+      "id": "flanking",
+      "title": "flanking",
+      "note": "같은 Strike plan에서 받은 AC·원인·협공 아군 표시",
+      "file": "flanking.png"
+    },
+    {
+      "id": "both",
+      "title": "both",
+      "note": "같은 Strike plan에서 받은 AC·원인·협공 아군 표시",
+      "file": "both.png"
+    },
+    {
+      "id": "both-zoomed",
+      "title": "both-zoomed",
+      "note": "확대해도 보드에는 규칙 설명 overlay가 없고 HUD만 설명한다",
+      "file": "both-zoomed.png"
+    },
+    {
+      "id": "facing-select",
+      "title": "facing-select",
+      "note": "방향 선택 모드: 바라볼 보드 위치를 한 번 고르면 Facing이 정해지고 전송된다",
+      "file": "facing-select.png"
+    }
+  ]
+}

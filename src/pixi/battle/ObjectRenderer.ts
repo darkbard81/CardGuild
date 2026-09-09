@@ -2,15 +2,10 @@ import { Container, Sprite } from "pixi.js";
 
 import type { CombatState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
-import type { BoardViewConfig } from "./BoardViewConfig";
-import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 import type { SortableVisual } from "./TerrainRenderer";
 
 export class ObjectRenderer {
-  public constructor(
-    private readonly catalog: AssetCatalog,
-    private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
-  ) {}
+  public constructor(private readonly catalog: AssetCatalog) {}
 
   public render(state: CombatState): readonly SortableVisual[] {
     return Object.values(state.map.objects).map((object) => {
@@ -27,7 +22,6 @@ export class ObjectRenderer {
       return {
         display,
         position: object.position,
-        footRowOffset: this.config.propFootRowOffset,
         layerPriority: 20,
         stableId: object.id,
       };

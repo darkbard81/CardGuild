@@ -389,7 +389,8 @@ export type ActionTarget =
   | {
       readonly kind: "tile";
       readonly position: GridPosition;
-      readonly facing: Direction;
+      /** Explicit direction only for an in-place Step; ignored for actual movement. */
+      readonly facing?: Direction;
     }
   | { readonly kind: "object"; readonly objectId: ObjectId }
   | { readonly kind: "effect"; readonly effectId: EffectId };
@@ -405,6 +406,7 @@ export type CombatCommand =
     }
   | {
       readonly type: "end-turn";
+      readonly facing: Direction;
       readonly id: string;
       readonly sequence: number;
       readonly actorId: EntityId;
@@ -438,7 +440,6 @@ export interface MoveContinuation {
   readonly source: ActionSource;
   readonly path: readonly GridPosition[];
   readonly destination: GridPosition;
-  readonly facing: Direction;
   readonly movementMode: MovementMode;
 }
 
@@ -776,6 +777,7 @@ export type CombatEvent =
   | { readonly type: "FACING_CHANGED"; readonly actorId: EntityId; readonly facing: Direction }
   | {
       readonly type: "CHECK_ROLLED";
+      readonly tactical?: StrikeTacticalFeedback;
       /** Whose Action this is. */
       readonly actionActorId: EntityId;
       /** Who actually rolled — the same actor for a Strike, the target for a save. */
@@ -880,6 +882,18 @@ export type LegalTarget =
   | { readonly kind: "effect"; readonly effectId: EffectId; readonly label: string }
   | { readonly kind: "none" };
 
+/** Attacker-relative facts resolved before a Strike; shared by preview and execution. */
+export interface StrikeTacticalFeedback {
+  readonly attackerId: EntityId;
+  readonly targetId: EntityId;
+  readonly acBeforeOffGuard: number;
+  readonly ac: number;
+  readonly causes: readonly ("rear" | "flanking")[];
+  readonly partnerIds: readonly EntityId[];
+  readonly penalty: number;
+  readonly penaltyApplied: boolean;
+}
+
 /** Who rolls a previewed check, so a target-side save is never read as the actor's hit. */
 export interface ActionPreviewCheck {
   readonly roller: ActionParticipant;
@@ -889,6 +903,7 @@ export interface ActionPreviewCheck {
 }
 
 export interface ActionPreview {
+  readonly tactical?: StrikeTacticalFeedback;
   readonly legal: boolean;
   readonly reason?: string;
   readonly check?: ActionPreviewCheck;

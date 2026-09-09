@@ -1,12 +1,32 @@
-import { access, mkdir, readFile, writeFile } from "node:fs/promises";
+import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import sharp, { type OverlayOptions } from "sharp";
 
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
+import {
+  ACTOR_SIDES,
+  actorPathSegments,
+  assertDistinctActorPaths,
+  runtimeActorHref,
+  type ActorSide,
+} from "../../src/presentation/actor-asset-path";
+import { assertPointPropFramePlan } from "../../src/presentation/point-prop-contract";
 
 type AssetKind = "actor" | "terrain" | "object" | "ui";
-type SourceMode = "square-terrain" | "web-overlay" | "grounded-object" | "two-sided-actor" | "ui-icon";
+/**
+ * `square-terrain` is anything that *is* a tile — a floor, a wall, a gate in one of its
+ * two states — normalised to the square the board texture composites. A
+ * `grounded-object` is a point prop standing *on* a cell — a chest, a lever — and stays
+ * height-driven. There is no third, upright-structure mode: a thing that occupies the
+ * whole square is that square's picture.
+ */
+type SourceMode =
+  | "square-terrain"
+  | "web-overlay"
+  | "grounded-object"
+  | "two-sided-actor"
+  | "ui-icon";
 
 interface Point {
   readonly x: number;
@@ -20,7 +40,7 @@ interface Size {
 
 interface FramePlan {
   readonly assetId: string;
-  readonly side?: "front" | "back";
+  readonly side?: ActorSide;
   readonly sourceIndex?: number;
   readonly flipX?: boolean;
   readonly kind: AssetKind;
@@ -54,6 +74,15 @@ interface GenerationPlan {
   readonly presentation: {
     readonly terrainVisuals: Readonly<Record<string, string>>;
     readonly objectVisuals: Readonly<Record<string, string>>;
+    /**
+     * Dressing that no gameplay trait asks for — a chest in an empty corner. It lives in
+     * the plan rather than in this file so a scenario id never has to appear in code.
+     */
+    readonly scenery?: readonly {
+      readonly scenarioId: string;
+      readonly visual: string;
+      readonly cells: readonly (readonly [number, number])[];
+    }[];
     readonly equipmentVisuals: Readonly<Record<string, string>>;
     readonly cardVisuals: Readonly<Record<string, string>>;
   };
@@ -73,6 +102,9 @@ interface CleanFrame {
   readonly height: number;
   readonly box: PixelBox;
 }
+
+/** Alpha at or below this is background, not drawing. */
+const INK_ALPHA_FLOOR = 16;
 
 interface ProcessedAsset {
   readonly source: SourcePlan;
@@ -126,6 +158,17 @@ async function readJson<T>(filePath: string): Promise<T> {
   return JSON.parse(await readFile(filePath, "utf8")) as T;
 }
 
+/**
+ * A repository-relative path the way generated JSON records it: always POSIX separators.
+ * These are logical identifiers that a checker string-compares and git tracks, not paths
+ * the local filesystem is ever asked about, so a Windows build must not write
+ * `art\processed\actors\hero\aerin\front.png` and then fail its own checker a second
+ * later. Filesystem paths keep using path.join and the platform separator.
+ */
+function repoRelative(root: string, file: string): string {
+  return path.relative(root, file).split(path.sep).join("/");
+}
+
 async function writeJson(filePath: string, value: unknown): Promise<void> {
   await mkdir(path.dirname(filePath), { recursive: true });
   await writeFile(filePath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
@@ -154,10 +197,36 @@ function validatePlan(plan: GenerationPlan): void {
     }
     if (source.mode === "two-sided-actor") {
       const sides = source.frames.map((frame) => frame.side);
-      if (JSON.stringify(sides) !== JSON.stringify(["front", "back"])) {
+      if (JSON.stringify(sides) !== JSON.stringify(ACTOR_SIDES)) {
         throw new Error(`${source.input} must contain front then back.`);
       }
       if (!source.definitionId) throw new Error(`${source.input} is missing definitionId.`);
+      // Checked before a single pixel is read, so a malformed or colliding namespace
+      // fails at the plan rather than halfway through an export.
+      actorPathSegments(source.definitionId);
+    }
+    // The mode a source declares is what decides how it is processed, so it has to be
+    // what decides the frame contract too. Without this a prop could be normalized one
+    // way and still reach the manifest looking like the other kind, and every downstream
+    // check would quietly skip it.
+    if (source.mode === "grounded-object") {
+      for (const frame of source.frames) assertPointPropFramePlan(frame);
+    }
+  }
+  assertDistinctActorPaths(plan.sources.flatMap((source) =>
+    source.mode === "two-sided-actor" && source.definitionId ? [source.definitionId] : []));
+  assertSceneryTargets(plan);
+}
+
+/** A scenery entry that names a scenario nobody ships would just vanish at build time. */
+function assertSceneryTargets(plan: GenerationPlan): void {
+  const scenarioIds = new Set(Object.keys(PRODUCTION_CONTENT.pack.scenarioSources));
+  for (const dressing of plan.presentation.scenery ?? []) {
+    if (!scenarioIds.has(dressing.scenarioId)) {
+      throw new Error(`Scenery targets unknown scenario "${dressing.scenarioId}".`);
+    }
+    if (plan.presentation.objectVisuals[dressing.visual] === undefined) {
+      throw new Error(`Scenery visual "${dressing.visual}" is not an object visual.`);
     }
   }
 }
@@ -293,9 +362,10 @@ async function extractCleanFrames(root: string, source: SourcePlan): Promise<rea
 
 function processedPath(root: string, source: SourcePlan, frame: FramePlan): string {
   if (frame.kind === "actor") {
-    const actorSlug = source.definitionId?.split(".").slice(1).join("-");
-    if (!actorSlug || !frame.side) throw new Error(`${frame.assetId} has incomplete actor metadata.`);
-    return path.join(root, "art", "processed", "actors", actorSlug, `${frame.side}.png`);
+    if (!source.definitionId || !frame.side) throw new Error(`${frame.assetId} has incomplete actor metadata.`);
+    // The same segments the runtime and QC paths use. The runtime export reads this file
+    // back, so a namespace dropped here would ship one character wearing another's art.
+    return path.join(root, "art", "processed", "actors", ...actorPathSegments(source.definitionId), `${frame.side}.png`);
   }
   if (frame.kind === "object") {
     return path.join(root, "art", "processed", "objects", `${frame.assetId.replace(/^object\./, "").replaceAll(".", "-")}.png`);
@@ -337,7 +407,7 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
     if (frame.plan.flipX) cropPipeline.flop();
     const cropped = await cropPipeline.png().toBuffer();
     let result: Buffer;
-    let processingScale = sharedScale;
+    let processingScale: number;
     if (source.mode === "square-terrain" || source.mode === "web-overlay") {
       result = await sharp(cropped)
         .resize(source.canvas.width, source.canvas.height, { fit: "fill" })
@@ -345,8 +415,10 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
         .toBuffer();
       processingScale = Math.min(source.canvas.width / sourceBox.width, source.canvas.height / sourceBox.height);
     } else {
-      const scaledWidth = Math.max(1, Math.round(frame.box.width * sharedScale));
-      const scaledHeight = Math.max(1, Math.round(frame.box.height * sharedScale));
+      const scale = sharedScale;
+      const scaledWidth = Math.max(1, Math.round(frame.box.width * scale));
+      const scaledHeight = Math.max(1, Math.round(frame.box.height * scale));
+      processingScale = scale;
       const scaled = await sharp(cropped)
         .resize(scaledWidth, scaledHeight, { fit: "fill" })
         .png()
@@ -387,9 +459,46 @@ async function processSource(root: string, source: SourcePlan): Promise<readonly
       sourceBox: frame.box,
       processingScale,
     });
-    process.stdout.write(`Processed ${frame.plan.assetId} -> ${path.relative(root, output)}\n`);
+    process.stdout.write(`Processed ${frame.plan.assetId} -> ${repoRelative(root, output)}\n`);
   }
   return outputs;
+}
+
+interface RuntimeImage {
+  readonly path: string;
+  readonly width: number;
+  readonly height: number;
+}
+
+/**
+ * Standalone runtime files for the actors, exported from the same normalized PNGs the
+ * atlas path packs. The directory is cleared first so a renamed or retired character
+ * cannot leave a file behind that the manifest no longer names.
+ */
+async function buildActorImages(
+  root: string,
+  assets: readonly ProcessedAsset[],
+): Promise<ReadonlyMap<string, RuntimeImage>> {
+  const actorRoot = path.join(root, "public", "assets", "actors");
+  await rm(actorRoot, { recursive: true, force: true });
+  const exported = new Map<string, RuntimeImage>();
+  for (const asset of assets) {
+    const definitionId = asset.source.definitionId;
+    if (!definitionId || !asset.frame.side) {
+      throw new Error(`${asset.frame.assetId} has incomplete actor metadata.`);
+    }
+    const href = runtimeActorHref(definitionId, asset.frame.side);
+    const output = path.join(root, "public", href.slice(1));
+    await mkdir(path.dirname(output), { recursive: true });
+    await sharp(asset.file).webp({ lossless: true, effort: 6 }).toFile(output);
+    const metadata = await sharp(output).metadata();
+    if (metadata.width !== asset.width || metadata.height !== asset.height) {
+      throw new Error(`${asset.frame.assetId} changed size on its way to ${href}.`);
+    }
+    exported.set(asset.frame.assetId, { path: href, width: asset.width, height: asset.height });
+    process.stdout.write(`Exported ${asset.frame.assetId} -> public${href}\n`);
+  }
+  return exported;
 }
 
 function packFrames(assets: readonly ProcessedAsset[], size: number, padding: number): Readonly<Record<string, PixelBox>> {
@@ -412,7 +521,11 @@ function packFrames(assets: readonly ProcessedAsset[], size: number, padding: nu
   return frames;
 }
 
+/** Tiles, props and UI only: an actor never reaches the shared atlas. */
 async function buildAtlas(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
+  if (assets.some((asset) => asset.frame.kind === "actor")) {
+    throw new Error("Actors are standalone runtime images and must not be packed into the atlas.");
+  }
   const packed = packFrames(assets, plan.atlas.size, plan.atlas.padding);
   const byId = new Map(assets.map((asset) => [asset.frame.assetId, asset]));
   const atlasImagePath = path.join(root, plan.atlas.image);
@@ -461,17 +574,73 @@ async function buildAtlas(root: string, plan: GenerationPlan, assets: readonly P
   };
   await writeJson(atlasDataPath, atlasData);
   await writeJson(path.join(root, "presentation", "m3", "atlas-map.json"), atlasData);
-  process.stdout.write(`Packed ${assets.length} sprites -> ${path.relative(root, atlasImagePath)}\n`);
+  process.stdout.write(`Packed ${assets.length} non-actor sprites -> ${repoRelative(root, atlasImagePath)}\n`);
 }
 
-async function buildManifest(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
+/**
+ * Where the drawing actually sits inside its frame, as fractions of the frame. A standee
+ * is normalised to stand on the anchor, but a low, wide creature leaves the top of its
+ * canvas empty, so a portrait cannot assume the art starts at the top edge. Measured here
+ * once rather than guessed at by every consumer.
+ */
+async function measureInk(file: string): Promise<{
+  top: number;
+  left: number;
+  width: number;
+  height: number;
+} | null> {
+  const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  let top = info.height;
+  let bottom = -1;
+  let left = info.width;
+  let right = -1;
+  for (let y = 0; y < info.height; y += 1) {
+    for (let x = 0; x < info.width; x += 1) {
+      if ((data[(y * info.width + x) * info.channels + 3] ?? 0) <= INK_ALPHA_FLOOR) continue;
+      if (y < top) top = y;
+      if (y > bottom) bottom = y;
+      if (x < left) left = x;
+      if (x > right) right = x;
+    }
+  }
+  if (bottom < 0 || right < 0) return null;
+  const round = (value: number): number => Number(value.toFixed(4));
+  return {
+    top: round(top / info.height),
+    left: round(left / info.width),
+    width: round((right + 1 - left) / info.width),
+    height: round((bottom + 1 - top) / info.height),
+  };
+}
+
+async function buildManifest(
+  root: string,
+  plan: GenerationPlan,
+  assets: readonly ProcessedAsset[],
+  runtimeImages: ReadonlyMap<string, RuntimeImage>,
+): Promise<void> {
+  // Only actors get portraits, and scanning every frame's pixels would cost the build.
+  const ink = new Map(await Promise.all(assets
+    .filter((asset) => asset.frame.kind === "actor")
+    .map(async (asset) => [asset.frame.assetId, await measureInk(asset.file)] as const)));
+  // Storage follows the asset kind and nothing else. Prompt wording is no guide: a wall
+  // and a lever are described as standees too, and they stay in the atlas.
+  const storage = (asset: ProcessedAsset): Record<string, unknown> => {
+    if (asset.frame.kind !== "actor") {
+      return { source: { type: "atlas", frame: asset.frame.assetId } };
+    }
+    const image = runtimeImages.get(asset.frame.assetId);
+    if (!image) throw new Error(`Actor "${asset.frame.assetId}" has no standalone runtime image.`);
+    return { source: { type: "image", path: image.path, width: image.width, height: image.height } };
+  };
   const definitions = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
-    frame: asset.frame.assetId,
     kind: asset.frame.kind,
+    ...storage(asset),
     anchor: asset.frame.anchor,
     ...(asset.frame.displaySize.width === undefined ? {} : { displayWidth: asset.frame.displaySize.width }),
     ...(asset.frame.displaySize.height === undefined ? {} : { displayHeight: asset.frame.displaySize.height }),
     ...(asset.frame.footprint === undefined ? {} : { footprint: asset.frame.footprint }),
+    ...(ink.get(asset.frame.assetId) ? { ink: ink.get(asset.frame.assetId) } : {}),
   }]));
   const actorVisuals: Record<string, Record<string, string>> = {};
   for (const source of plan.sources) {
@@ -482,7 +651,7 @@ async function buildManifest(root: string, plan: GenerationPlan, assets: readonl
     }));
   }
   const manifest = {
-    version: 4,
+    version: 5,
     bundle: "m3-encounter",
     atlas: {
       path: "/assets/m3-atlas.json",
@@ -497,7 +666,7 @@ async function buildManifest(root: string, plan: GenerationPlan, assets: readonl
     equipmentVisuals: plan.presentation.equipmentVisuals,
     cardVisuals: plan.presentation.cardVisuals,
   };
-  const sourceMap = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, path.relative(root, asset.file)]));
+  const sourceMap = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, repoRelative(root, asset.file)]));
   await writeJson(path.join(root, "presentation", "m3", "asset-manifest.json"), manifest);
   await writeJson(path.join(root, "presentation", "m3", "asset-sources.json"), sourceMap);
 }
@@ -515,13 +684,15 @@ function semanticType(traits: ReadonlySet<string>): string {
   return "open";
 }
 
-async function buildTilemaps(root: string): Promise<void> {
+async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> {
   // Tilemaps follow the pack the game actually ships (#12), so every production Scenario
   // gets one. The legacy fixture path was left behind when the runtime moved.
   const scenarios: readonly ScenarioSource[] = Object.values(PRODUCTION_CONTENT.pack.scenarioSources);
   const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm"];
   const transitionPalette = ["transition.web"];
-  const objectPalette = ["object.wall", "object.gate.closed", "object.lever", "object.crate"];
+  // Point props only. A wall or a gate is the tile's own state, drawn as board surface
+  // from the tile's traits at runtime, so neither takes a slot on the object layer.
+  const objectPalette = ["object.lever", "object.chest"];
   const maps: Record<string, unknown> = {};
   for (const scenario of scenarios) {
     const { width, height } = scenario.map;
@@ -544,8 +715,6 @@ async function buildTilemaps(root: string): Promise<void> {
       const traits = traitSet(tile);
       ground[index] = traits.has("impassable") ? 2 : traits.has("difficult") ? 1 : 0;
       if (traits.has("web")) transitions[index] = 0;
-      if (traits.has("gate") || traits.has("gate-open")) objects[index] = 1;
-      else if (traits.has("blocked")) objects[index] = 0;
       tileIds[index] = tile.id;
       objectIds[index] = (objects[index] ?? -1) >= 0 ? tile.id : null;
       types[index] = semanticType(traits);
@@ -556,13 +725,21 @@ async function buildTilemaps(root: string): Promise<void> {
     for (const object of scenario.map.objects) {
       const index = object.position.y * width + object.position.x;
       if (index < 0 || index >= length) throw new Error(`${scenario.id} object ${object.id} is outside the map.`);
-      if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 2;
+      if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 0;
       objectIds[index] = object.id;
     }
-    if (scenario.id === "encounter.ruined-gate") {
-      for (const [x, y] of [[2, 2], [2, 3]] as const) {
+    for (const dressing of plan.presentation.scenery ?? []) {
+      if (dressing.scenarioId !== scenario.id) continue;
+      const assetId = plan.presentation.objectVisuals[dressing.visual];
+      const paletteIndex = assetId === undefined ? -1 : objectPalette.indexOf(assetId);
+      if (paletteIndex < 0) throw new Error(`Scenery visual "${dressing.visual}" is not a placeable object.`);
+      for (const [x, y] of dressing.cells) {
+        if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
+          throw new Error(`Scenery for ${scenario.id} sits outside ${width}x${height}.`);
+        }
         const index = y * width + x;
-        if (objects[index] === -1) objects[index] = 3;
+        // Dressing never covers something the scenario itself put there.
+        if (objects[index] === -1) objects[index] = paletteIndex;
       }
     }
     if (tileIds.some((id) => id === null)) throw new Error(`${scenario.id} does not define every tile.`);
@@ -578,7 +755,14 @@ async function buildTilemaps(root: string): Promise<void> {
   process.stdout.write(`Built ${Object.keys(maps).length} layered tilemaps\n`);
 }
 
-async function writePipelineMetadata(root: string, plan: GenerationPlan, assets: readonly ProcessedAsset[]): Promise<void> {
+async function writePipelineMetadata(
+  root: string,
+  plan: GenerationPlan,
+  assets: readonly ProcessedAsset[],
+  runtimeImages: ReadonlyMap<string, RuntimeImage>,
+): Promise<void> {
+  // Both stores named the way the browser asks for them, so one field can be compared.
+  const atlasHref = `/${repoRelative(path.join(root, "public"), path.join(root, plan.atlas.image))}`;
   const metadata = {
     version: 3,
     styleSheet: plan.styleSheet,
@@ -588,9 +772,16 @@ async function writePipelineMetadata(root: string, plan: GenerationPlan, assets:
       outputAlpha: "straight",
     },
     atlas: { size: plan.atlas.size, padding: plan.atlas.padding },
+    /** Which of the two runtime stores each asset ended up in, so QC can see the split. */
+    runtimeStorage: {
+      atlas: assets.filter((asset) => asset.frame.kind !== "actor").length,
+      image: runtimeImages.size,
+    },
+    atlasImage: atlasHref,
     assets: Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
       source: asset.source.input,
-      output: path.relative(root, asset.file),
+      output: repoRelative(root, asset.file),
+      runtime: runtimeImages.get(asset.frame.assetId)?.path ?? atlasHref,
       sourceBox: asset.sourceBox,
       sourceIndex: asset.frame.sourceIndex ?? asset.source.frames.indexOf(asset.frame),
       flipX: asset.frame.flipX ?? false,
@@ -610,11 +801,11 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
     "terrain.rubble",
     "terrain.chasm",
     "transition.web",
-    "object.wall",
-    "object.gate.closed",
-    "object.gate.open",
+    "terrain.wall-block",
+    "terrain.gate.closed",
+    "terrain.gate.open",
     "object.lever",
-    "object.crate",
+    "object.chest",
     "actor.hero.aerin.front",
     "actor.goblin-skirmisher.front",
     "actor.goblin-brute.front",
@@ -693,8 +884,11 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
         top: Math.floor(index / source.grid.cols) * source.canvas.height,
       };
     });
-    const actorSlug = source.definitionId?.split(".").slice(1).join("-");
-    if (!actorSlug) throw new Error(`${source.input} is missing an actor slug.`);
+    if (!source.definitionId) throw new Error(`${source.input} is missing an actor definition.`);
+    // Nested by the same segments rather than flattened into one filename: joining
+    // segments with a hyphen would let `hero.aerin-b` and `hero.aerin.b` collide again.
+    const preview = path.join(qcRoot, "actors", ...actorPathSegments(source.definitionId), "front-back.png");
+    await mkdir(path.dirname(preview), { recursive: true });
     await sharp({
       create: {
         width: source.grid.cols * source.canvas.width,
@@ -702,7 +896,7 @@ async function buildQcPreviews(root: string, assets: readonly ProcessedAsset[]):
         channels: 4,
         background: { r: 17, g: 24, b: 32, alpha: 1 },
       },
-    }).composite(directionComposites).png({ compressionLevel: 9 }).toFile(path.join(qcRoot, `${actorSlug}-front-back.png`));
+    }).composite(directionComposites).png({ compressionLevel: 9 }).toFile(preview);
   }
 }
 
@@ -713,14 +907,26 @@ async function main(): Promise<void> {
   validatePlan(plan);
   await access(path.join(root, plan.styleSheet));
   await access(path.join(root, plan.promptConvention));
+  // Both generated actor trees are cleared first, so a renamed or retired character
+  // cannot leave a file behind that nothing in the manifest names any more.
+  await rm(path.join(root, "art", "processed", "actors"), { recursive: true, force: true });
+  await rm(path.join(root, "art", "processed", "qc", "actors"), { recursive: true, force: true });
   const groups = await Promise.all(plan.sources.map((source) => processSource(root, source)));
   const assets = groups.flat();
-  await buildAtlas(root, plan, assets);
-  await buildManifest(root, plan, assets);
-  await buildTilemaps(root);
-  await writePipelineMetadata(root, plan, assets);
+  // Processing is shared; delivery is not. Everything that is not an actor is packed into
+  // the one atlas, and every actor gets a file of its own.
+  const actors = assets.filter((asset) => asset.frame.kind === "actor");
+  const atlasAssets = assets.filter((asset) => asset.frame.kind !== "actor");
+  await buildAtlas(root, plan, atlasAssets);
+  const runtimeImages = await buildActorImages(root, actors);
+  await buildManifest(root, plan, assets, runtimeImages);
+  await buildTilemaps(root, plan);
+  await writePipelineMetadata(root, plan, assets, runtimeImages);
   await buildQcPreviews(root, assets);
-  process.stdout.write(`Assets built: ${assets.length} frames from ${plan.sources.length} generated sources\n`);
+  process.stdout.write(
+    `Assets built: ${assets.length} frames from ${plan.sources.length} generated sources ` +
+    `(${atlasAssets.length} atlas, ${runtimeImages.size} standalone actors)\n`,
+  );
 }
 
 await main();

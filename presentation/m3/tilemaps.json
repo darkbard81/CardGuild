@@ -14,10 +14,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -165,16 +163,6 @@
           -1,
           -1,
           -1,
-          0,
-          -1,
-          -1,
-          -1,
-          -1,
-          -1,
-          -1,
-          -1,
-          -1,
-          0,
           -1,
           -1,
           -1,
@@ -192,7 +180,6 @@
           -1,
           -1,
           -1,
-          0,
           -1,
           -1,
           -1,
@@ -201,7 +188,18 @@
           -1,
           -1,
           -1,
-          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
           -1,
           -1,
           -1,
@@ -297,16 +295,6 @@
           null,
           null,
           null,
-          "perch-4,1",
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          null,
-          "perch-4,2",
           null,
           null,
           null,
@@ -324,7 +312,6 @@
           null,
           null,
           null,
-          "perch-4,4",
           null,
           null,
           null,
@@ -333,7 +320,18 @@
           null,
           null,
           null,
-          "perch-4,5",
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
           null,
           null,
           null,
@@ -558,10 +556,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -643,7 +639,6 @@
           -1,
           -1,
           -1,
-          0,
           -1,
           -1,
           -1,
@@ -671,7 +666,8 @@
           -1,
           -1,
           -1,
-          0,
+          -1,
+          -1,
           -1,
           -1,
           -1
@@ -719,7 +715,6 @@
           null,
           null,
           null,
-          "cellar-3,0",
           null,
           null,
           null,
@@ -747,7 +742,8 @@
           null,
           null,
           null,
-          "cellar-3,4",
+          null,
+          null,
           null,
           null,
           null
@@ -878,10 +874,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -1422,10 +1416,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -1563,7 +1555,6 @@
           -1,
           -1,
           -1,
-          0,
           -1,
           -1,
           -1,
@@ -1617,7 +1608,8 @@
           -1,
           -1,
           -1,
-          0,
+          -1,
+          -1,
           -1,
           -1,
           -1,
@@ -1695,7 +1687,6 @@
           null,
           null,
           null,
-          "sanctum-3,0",
           null,
           null,
           null,
@@ -1749,7 +1740,8 @@
           null,
           null,
           null,
-          "sanctum-3,6",
+          null,
+          null,
           null,
           null,
           null,
@@ -1966,10 +1958,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -2126,10 +2116,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -2238,10 +2226,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -2380,7 +2366,6 @@
           -1,
           -1,
           -1,
-          0,
           -1,
           -1,
           -1,
@@ -2389,23 +2374,22 @@
           -1,
           -1,
           -1,
-          0,
           -1,
           -1,
           -1,
           -1,
           -1,
-          2,
-          3,
+          -1,
           -1,
           0,
+          1,
           -1,
           -1,
           -1,
           -1,
           -1,
           -1,
-          3,
+          -1,
           -1,
           1,
           -1,
@@ -2416,7 +2400,6 @@
           -1,
           -1,
           -1,
-          0,
           -1,
           -1,
           -1,
@@ -2425,7 +2408,6 @@
           -1,
           -1,
           -1,
-          0,
           -1,
           -1,
           -1,
@@ -2434,7 +2416,11 @@
           -1,
           -1,
           -1,
-          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
           -1,
           -1,
           -1,
@@ -2512,7 +2498,6 @@
           null,
           null,
           null,
-          "tile-4,0",
           null,
           null,
           null,
@@ -2521,7 +2506,8 @@
           null,
           null,
           null,
-          "tile-4,1",
+          null,
+          null,
           null,
           null,
           null,
@@ -2530,7 +2516,6 @@
           "gate-lever",
           null,
           null,
-          "tile-4,2",
           null,
           null,
           null,
@@ -2539,7 +2524,6 @@
           null,
           null,
           null,
-          "tile-4,3",
           null,
           null,
           null,
@@ -2548,7 +2532,6 @@
           null,
           null,
           null,
-          "tile-4,4",
           null,
           null,
           null,
@@ -2557,7 +2540,6 @@
           null,
           null,
           null,
-          "tile-4,5",
           null,
           null,
           null,
@@ -2566,7 +2548,11 @@
           null,
           null,
           null,
-          "tile-4,6",
+          null,
+          null,
+          null,
+          null,
+          null,
           null,
           null,
           null,
@@ -2782,10 +2768,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -2852,9 +2836,6 @@
         "objects": [
           -1,
           -1,
-          0,
-          -1,
-          0,
           -1,
           -1,
           -1,
@@ -2873,9 +2854,12 @@
           -1,
           -1,
           -1,
-          0,
           -1,
-          0,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
           -1,
           -1
         ]
@@ -2914,9 +2898,6 @@
         "objectIds": [
           null,
           null,
-          "line-2,0",
-          null,
-          "line-4,0",
           null,
           null,
           null,
@@ -2935,9 +2916,12 @@
           null,
           null,
           null,
-          "line-2,3",
           null,
-          "line-4,3",
+          null,
+          null,
+          null,
+          null,
+          null,
           null,
           null
         ],
@@ -3046,10 +3030,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {
@@ -3366,10 +3348,8 @@
           "transition.web"
         ],
         "objects": [
-          "object.wall",
-          "object.gate.closed",
           "object.lever",
-          "object.crate"
+          "object.chest"
         ]
       },
       "layers": {

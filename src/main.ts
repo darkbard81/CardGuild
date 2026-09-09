@@ -31,7 +31,7 @@ async function bootstrap(): Promise<void> {
   });
 
   app.canvas.id = "pixi-canvas";
-  app.canvas.setAttribute("aria-label", "CardGuild top-down perspective tactical battle board");
+  app.canvas.setAttribute("aria-label", "CardGuild top-down tactical battle board");
   pixiRoot.append(app.canvas);
   app.resize();
   const catalog = createPresentationCatalog();

@@ -1,25 +1,46 @@
 import { expect, type Page, test } from "@playwright/test";
+import { chooseFacing } from "./facing-input";
+
+// The same pattern the asset build generates actor paths from, so a request-shape
+// assertion here cannot describe a narrower contract than production supports.
+import { ACTOR_RUNTIME_HREF } from "../src/presentation/actor-asset-path";
+
+/** Mirrors `FOCUS_MARGIN` in src/pixi/battle/BattleView.ts: the gap the camera aims for. */
+const FOCUS_MARGIN = 48;
 
 const ROAD_MAP = { width: 3, height: 3 };
 type Corner = { readonly x: number; readonly y: number };
 
+/**
+ * The board is one fixed affine projection, so the published corners — grid (0,0),
+ * (w,0), (w,h) and (0,h) — describe a parallelogram and a grid coordinate is a plain
+ * bilinear blend of them. No perspective divide, and none of the four corners is
+ * privileged: at a quarter turn they read as top, right, bottom and left on screen.
+ */
 function projectCorners(
   corners: readonly [Corner, Corner, Corner, Corner],
   map: { readonly width: number; readonly height: number },
   gridX: number,
   gridY: number,
 ): { readonly x: number; readonly y: number } {
-  const [topLeft, topRight, bottomRight, bottomLeft] = corners;
-  const topWidth = topRight.x - topLeft.x;
-  const bottomWidth = bottomRight.x - bottomLeft.x;
-  const ratio = topWidth / bottomWidth;
+  const [origin, alongX, far, alongY] = corners;
   const u = gridX / map.width;
   const v = gridY / map.height;
-  const denominator = 1 + (ratio - 1) * v;
+  const blend = (a: number, b: number, c: number, d: number): number =>
+    a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v;
   return {
-    x: (topWidth * u + (ratio * bottomLeft.x - topLeft.x) * v + topLeft.x) / denominator,
-    y: ((ratio * bottomRight.y - topLeft.y) * v + topLeft.y) / denominator,
+    x: blend(origin.x, alongX.x, far.x, alongY.x),
+    y: blend(origin.y, alongX.y, far.y, alongY.y),
   };
+}
+
+/** The board's uniform scale, read back from the width its corners span. */
+function boardScale(
+  corners: readonly [Corner, Corner, Corner, Corner],
+  map: { readonly width: number; readonly height: number },
+): number {
+  const span = corners[1].x - corners[3].x;
+  return (span * Math.SQRT2) / ((map.width + map.height) * 128);
 }
 
 function captureRuntimeErrors(page: Page): string[] {
@@ -57,6 +78,13 @@ async function openBattle(page: Page): Promise<void> {
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
 }
 
+/** The character sheet is behind a toggle now, so a test that reads it has to open it. */
+async function openHeroDetails(page: Page): Promise<void> {
+  const toggle = page.locator("#hero-details-toggle");
+  if (await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
+  await expect(page.locator("#hero-details")).toBeVisible();
+}
+
 async function controlledActorId(page: Page): Promise<string> {
   const actorId = await page.locator("#app").getAttribute("data-controlled-actor-id");
   if (!actorId) throw new Error("The client has not published its controlled actor ID.");
@@ -74,15 +102,14 @@ async function boardCorners(page: Page): Promise<[Corner, Corner, Corner, Corner
   return corners as [Corner, Corner, Corner, Corner];
 }
 
-/** Sprite height as a share of the square it stands on, which must not track window size. */
+/** Sprite scale as a share of the board's own scale, which must not track window size. */
 async function heroCellRatio(page: Page): Promise<number> {
   const corners = await boardCorners(page);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; scale: number }>;
   const heroId = await controlledActorId(page);
   const hero = feet.find((entry) => entry.id === heroId);
   if (!hero) throw new Error("The hero has not published its layout.");
-  const bottomWidth = (corners[2].x - corners[3].x) / ROAD_MAP.width;
-  return hero.scale / (bottomWidth / 128);
+  return hero.scale / boardScale(corners, ROAD_MAP);
 }
 
 async function boardPoint(
@@ -159,15 +186,33 @@ async function winRoadAmbush(page: Page): Promise<void> {
     }
     if (await page.locator("#app").getAttribute("data-screen") !== "combat") break;
     if (await page.locator("#result-modal").isVisible()) break;
+    // A turn that spent all three actions hands itself over, so the button is only
+    // needed for the turns this loop leaves unfinished.
+    const spent = await page.locator("#action-pips .available").count() === 0;
     const revision = await page.locator("#app").getAttribute("data-session-revision");
-    await page.getByRole("button", { name: "End Turn" }).click();
+    if (!spent) await page.getByRole("button", { name: "End Turn" }).click();
     await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "");
   }
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
   await expect(page.locator("#adventure-content h1")).toHaveText("Choose one reward");
 }
 
-test("shows the Adventure shell after reusing the lobby actor atlas without loading extra WebP assets", async ({ page }, testInfo) => {
+const ATLAS_PATH = "/assets/m3-atlas.webp";
+
+/**
+ * Presentation art now comes out of two stores: one atlas for tiles, props and UI, and a
+ * file per actor standee. Asserting the shape of the split rather than a request count
+ * keeps this from breaking every time the roster grows.
+ */
+function expectMixedAssetRequests(urls: readonly string[]): void {
+  const paths = [...new Set(urls.map((url) => new URL(url).pathname))];
+  expect(paths).toContain(ATLAS_PATH);
+  const standalone = paths.filter((pathname) => pathname !== ATLAS_PATH);
+  expect(standalone.length).toBeGreaterThan(0);
+  for (const pathname of standalone) expect(pathname).toMatch(ACTOR_RUNTIME_HREF);
+}
+
+test("shows the Adventure shell reusing the lobby art, from the atlas and the standalone actors only", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpRequests: string[] = [];
   page.on("request", (request) => {
@@ -187,7 +232,7 @@ test("shows the Adventure shell after reusing the lobby actor atlas without load
   await expect(owned.filter({ hasText: "Halberd" })).toHaveCount(1);
   await expect(owned.filter({ hasText: "Steel Shield" })).toHaveCount(1);
   await expect(owned.filter({ hasText: "Boots of Fly" })).toHaveCount(1);
-  expect(new Set(webpRequests.map((url) => new URL(url).pathname))).toEqual(new Set(["/assets/m3-atlas.webp"]));
+  expectMixedAssetRequests(webpRequests);
 
   // The whole run has to be readable at the supported minimum. A rail that scrolls hides
   // the finale, which is the one step the player is heading for.
@@ -201,67 +246,73 @@ test("shows the Adventure shell after reusing the lobby actor atlas without load
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-adventure.png"), fullPage: true });
 });
 
-test("previews and atomically applies a responsive loadout change", async ({ page }, testInfo) => {
+test("equips in one click and fits the minimum loadout viewport", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
-  const webpResponses: string[] = [];
-  page.on("response", (response) => {
-    if (response.url().endsWith(".webp") && response.ok()) webpResponses.push(response.url());
-  });
   await page.setViewportSize({ width: 1024, height: 768 });
   await openAdventure(page);
   await page.getByRole("button", { name: "Manage Loadout" }).click();
-  await expect(page.locator("#app")).toHaveAttribute("data-screen", "loadout");
-  // Aerin owns four equipment pieces and starts with two prepared cards.
-  await expect(page.locator(".collection-item")).toHaveCount(6);
-  await expect(page.locator(".deck-contribution")).toHaveCount(6);
-  await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
-  await expect(page.locator('.deck-contribution[data-card-id="card.fly"]')).toContainText("Boots of Fly / Fly");
-  await expect(page.locator('.deck-contribution[data-card-id="card.trip"]')).toContainText("Halberd / Trip");
-  expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
-
-  // The weapon rows are resolved Strike output, not raw weapon authoring.
-  await expect(page.locator("#loadout-detail")).toContainText("Halberd · martial expert");
-  await expect(page.locator("#loadout-detail")).toContainText("1d10+3 slashing");
-  await page.locator('.equipment-slot[data-slot="weapon"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-weapon"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("+8 → +6");
-  await expect(page.locator("#loadout-detail")).toContainText("1d10+3 slashing → 1d4+3 bludgeoning");
-  await expect(page.locator("#loadout-detail")).toContainText("Fist · unarmed trained");
-
-  await expect(page.locator("#loadout-detail")).toContainText("Scale Mail · medium");
-  await expect(page.locator("#loadout-detail")).toContainText("+3 item · DEX cap 2");
-  await page.locator('.equipment-slot[data-slot="armor"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-armor"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("18 → 15");
-  await expect(page.locator("#loadout-detail")).toContainText("Unarmored · unarmored");
-
-  await page.locator('.equipment-slot[data-slot="feet"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-feet"]').click();
+  await expect(page.locator(".loadout-option")).toHaveCount(4);
+  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  const feet = page.locator('.equipment-slot[data-slot="feet"]');
+  await feet.hover();
   await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
   await expect(page.locator("#loadout-detail")).toContainText("Fly ×2");
-  await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("8 Tactical Cards");
-  await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
-  await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
-  await expect(page.locator(".collection-panel")).toContainText("×1");
-
-  await page.locator('.equipment-slot[data-slot="feet"]').click();
-  await page.locator('.loadout-option[data-option-id="boots-of-fly"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("15 → 16");
-  await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("10 Tactical Cards");
-
-  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(overflow).toBeLessThanOrEqual(0);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-loadout-1024.png"), fullPage: true });
-
+  await feet.click();
+  await expect(feet).toContainText("Empty feet");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
+  const boots = page.locator('.loadout-option[data-option-id="boots-of-fly"]');
+  await expect(boots).toContainText("×1");
+  await boots.click();
+  await expect(feet).toContainText("Boots of Fly");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  await page.getByRole("tab", { name: "덱·능력치", exact: true }).click();
+  await expect(page.locator(".deck-contribution")).toHaveCount(6);
+  await expect(page.locator(".deck-panel")).toContainText("Halberd · martial expert");
+  await expect(page.locator(".deck-panel")).toContainText("1d10+3 slashing");
+  for (const tab of ["장비", "준비 카드", "덱·능력치"]) {
+    await page.getByRole("tab", { name: tab, exact: true }).click();
+    await expect(page.locator(".loadout-pagination")).toBeInViewport();
+    expect(await page.evaluate(() => ({ x: document.documentElement.scrollWidth - innerWidth, y: document.documentElement.scrollHeight - innerHeight }))).toEqual({ x: 0, y: 0 });
+  }
+  await page.screenshot({ path: testInfo.outputPath("loadout-1024.png") });
   await page.setViewportSize({ width: 390, height: 844 });
-  const mobileOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
-  expect(mobileOverflow).toBeLessThanOrEqual(0);
-  await page.getByRole("button", { name: "Done" }).focus();
-  await page.keyboard.press("Enter");
-  await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await page.getByRole("button", { name: "Done", exact: true }).click();
   expect(runtimeErrors).toEqual([]);
+});
+
+test("hover, hold and keyboard inspection do not change prepared cards", async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openAdventure(page);
+  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
+  const knockdown = page.locator(".prepared-card").filter({ hasText: "Knockdown" });
+  const revision = await page.locator("#app").getAttribute("data-session-revision");
+  await knockdown.hover();
+  await page.mouse.down();
+  await page.waitForTimeout(550);
+  await expect(page.locator("#loadout-detail")).toBeVisible();
+  await page.mouse.up();
+  await expect(knockdown).toHaveCount(1);
+  await expect(page.locator("#app")).toHaveAttribute("data-session-revision", revision!);
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#loadout-detail")).toBeHidden();
+  await knockdown.click();
+  await expect(page.locator(".prepared-card")).toHaveCount(1);
+  await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
+  const unavailable = page.locator('.loadout-option[data-option-id="card.intimidating-strike"]');
+  await unavailable.focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".prepared-card")).toHaveCount(1);
+  await expect(page.locator(".loadout-status")).toContainText("only 1");
+  await page.locator('.loadout-option[data-option-id="card.knockdown"]').focus();
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".prepared-card")).toHaveCount(2);
+  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await expect(page.getByRole("tab", { name: "준비 카드", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(page.locator(".prepared-card")).toHaveCount(2);
 });
 
 test("carries a reward loadout through the shared resolver into the next encounter", async ({ page }, testInfo) => {
@@ -283,21 +334,15 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator(".encounter-threats")).toContainText("Goblin Spearman");
   await page.getByRole("button", { name: "Manage Loadout" }).click();
 
-  await page.getByRole("button", { name: "+ Add Card" }).click();
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
   await page.locator('.loadout-option[data-option-id="card.brace-behind-cover"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("Brace Behind Cover ×1 (Prepared Card)");
-  await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("11 Tactical Cards");
-
+  await expect(page.locator(".loadout-deck-count")).toHaveText("11 Tactical Cards");
+  await page.getByRole("tab", { name: "장비", exact: true }).click();
   await page.locator('.equipment-slot[data-slot="feet"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-feet"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
-  await page.getByRole("button", { name: "Apply Change" }).click();
+  await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
   await page.locator('.equipment-slot[data-slot="shield"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-shield"]').click();
-  await expect(page.locator("#loadout-detail")).toContainText("− Context: Raise Shield");
-  await page.getByRole("button", { name: "Apply Change" }).click();
-  await expect(page.locator(".deck-panel h2")).toHaveText("9 Tactical Cards");
+  await expect(page.locator('.equipment-slot[data-slot="shield"]')).toContainText("Empty");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
   await expect(page.locator(".collection-panel")).toContainText("Steel Shield");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-reward-loadout.png"), fullPage: true });
@@ -309,14 +354,32 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator(".loadout-nudge")).toHaveCount(0);
   await page.getByRole("button", { name: "Enter Encounter" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.spear-line");
-  await expect(page.locator("#hero-stats")).toContainText("Reflex DC");
-  await expect(page.locator("#hero-stats")).toContainText("15");
   // Aerin acts first in the spear corridor, so she opens on the dealt six rather than
   // having drawn the following turn's card during an enemy turn.
   await expect(page.locator("#hand-count")).toHaveText("6");
   // Nine cards remain after the loadout edits, so three are still undrawn.
   await expect(page.locator("#deck-count")).toHaveText("3");
   await expect(page.locator('.tactical-card[data-card-definition-id="card.brace-behind-cover"][data-card-source-kind="prepared"]')).toHaveCount(1);
+  // The summary carries AC and the three save modifiers; the DCs behind them are
+  // sheet material, so the toggle is the only way to read them.
+  await expect(page.locator("#hero-details")).toBeHidden();
+  await openHeroDetails(page);
+  await expect(page.locator("#hero-details")).toContainText("Reflex DC");
+  await expect(page.locator("#hero-details")).toContainText("15");
+
+  // The spear corridor is walled by four separate blocked squares. A wall is terrain,
+  // painted into the board texture rather than standing on it, so it raises no upright
+  // visual at all and nothing about it can drift when the camera moves. Four lone cells
+  // means four exposed edges each: no seam is ever shared, so all sixteen are drawn.
+  const canvas = page.locator("#pixi-canvas");
+  await expect(canvas).toHaveAttribute("data-solid-region-fit", "4/16");
+  // Walls and gates left the upright plane entirely, and with them the measurement that
+  // only existed to check their width.
+  expect(await canvas.getAttribute("data-structure-fit")).toBeNull();
+  await page.mouse.move(400, 400);
+  await page.mouse.wheel(0, -240);
+  await page.waitForTimeout(300);
+  await expect(canvas).toHaveAttribute("data-solid-region-fit", "4/16");
 
   const nextMap = { width: 7, height: 4 };
   const hero = projectCorners(await boardCorners(page), nextMap, 0.5, 1.5);
@@ -327,6 +390,50 @@ test("carries a reward loadout through the shared resolver into the next encount
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-next-encounter.png"), fullPage: true });
 });
+
+for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024 }]) {
+  test(`explicit facing preserves cancellation and sends one atomic intent at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+    await page.setViewportSize(viewport);
+    const errors = captureRuntimeErrors(page);
+    const intents: Array<{ type: string; facing?: string; target?: unknown }> = [];
+    page.on("websocket", (socket) => socket.on("framesent", ({ payload }) => {
+      const message = JSON.parse(String(payload)) as { type: string; intent?: typeof intents[number] };
+      if (message.type === "intent" && message.intent) intents.push(message.intent);
+    }));
+    await openBattle(page);
+    const app = page.locator("#app");
+    const canvas = page.locator("#pixi-canvas");
+    const hash = await app.getAttribute("data-state-hash");
+    const count = intents.length;
+    // The self-ring offers Step. A Step is targeting, so cancelling its direction picker
+    // restores the ring, with no gameplay mutation or traffic.
+    await pickRingAction(page, 0.5, 1.5, "step");
+    await expect(canvas).toHaveAttribute("data-facing-position", "0,1");
+    await page.keyboard.press("Escape");
+    await expect(page.locator("#ring-root")).toBeVisible();
+    await expect(app).toHaveAttribute("data-state-hash", hash!);
+    expect(intents).toHaveLength(count);
+    await page.locator('#ring-root .ring-option[data-action-id="step"]').click();
+    await page.screenshot({ path: testInfo.outputPath("step-direction.png") });
+    await chooseFacing(page, "north");
+    await expect(page.locator("#action-pips .available")).toHaveCount(2);
+    await expect(page.locator("#combat-log .log-line").first()).toContainText("now facing north");
+    await expect(page.locator("#combat-log .log-line").first()).not.toContainText("moved");
+    expect(intents.slice(count)).toEqual([{ type: "use-action", action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 0, y: 1 }, facing: "north" } }]);
+    const afterStep = await app.getAttribute("data-state-hash");
+    await page.locator("#end-turn").click();
+    // End Turn is the decision and the direction is the rest of it: Esc is not an answer.
+    await page.keyboard.press("Escape");
+    await expect(canvas).toHaveAttribute("data-facing-position", "0,1");
+    await expect(app).toHaveAttribute("data-state-hash", afterStep!);
+    expect(intents).toHaveLength(count + 1);
+    await page.screenshot({ path: testInfo.outputPath("end-turn-direction.png") });
+    await chooseFacing(page, "east");
+    await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");
+    expect(intents.slice(count + 1)).toEqual([{ type: "end-turn", facing: "east" }]);
+    expect(errors).toEqual([]);
+  });
+}
 
 test("loads the 2.5D board and keeps hover, movement, and facing on the square grid", async ({ page }, testInfo) => {
   const runtimeErrors = captureRuntimeErrors(page);
@@ -341,8 +448,43 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#action-pips .available")).toHaveCount(3);
   await expect(page.locator("#hand-cards .tactical-card")).toHaveCount(6);
   await expect(page.locator("#app")).toHaveAttribute("data-state-hash", /^[0-9a-f]{16}$/);
-  expect(new Set(webpResponses).size).toBe(1);
-  expect(webpResponses.some((url) => url.endsWith("/assets/m3-atlas.webp"))).toBe(true);
+  // The board draws its tiles out of the atlas and its standees out of their own files,
+  // and every one of those requests came back OK for the standees to have rendered.
+  expectMixedAssetRequests(webpResponses);
+
+  // Target-first input only works if the player can see where they may go before they
+  // click. The overlay is Graphics, so the canvas reports what it drew.
+  const bands = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-move-bands") ?? "{}") as Record<string, number>;
+  expect(bands.step).toBeGreaterThan(0);
+  expect(bands.stride).toBeGreaterThan(0);
+  // Road Ambush has no impassable ground, so Fly reaches nothing Stride cannot and earns
+  // no squares of its own.
+  expect(bands.fly).toBeUndefined();
+  await expect(page.locator("#move-legend")).toBeVisible();
+  await expect(page.locator("#move-legend")).toContainText("Step");
+  await expect(page.locator("#move-legend")).toContainText("Stride");
+
+  // The board plane turns and squashes. The standee plane does not: every body stands
+  // upright and unsquashed on the diamond, only its own mirror flips it, and the base
+  // under it is the one part that lies down on the plane.
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-board-projection", "affine-45-0.5");
+  type Standee = { id: string; bodyFlip: number; bodyAspect: number; bodyRotation: number; baseSquash: number; badgeFlip: number };
+  const standees = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-standee-plane") ?? "[]") as Standee[];
+  expect(standees.length).toBeGreaterThan(1);
+  for (const standee of standees) {
+    expect(standee.bodyRotation).toBe(0);
+    expect(standee.bodyAspect).toBe(1);
+    expect(standee.baseSquash).toBe(0.5);
+    expect(standee.badgeFlip).toBe(1);
+  }
+  // The lackey opens facing west, so its body is mirrored and nothing else about it is.
+  expect(standees.find((standee) => standee.id === "goblin-lackey")?.bodyFlip).toBe(-1);
+  const openingHeroId = await controlledActorId(page);
+  expect(standees.find((standee) => standee.id === openingHeroId)?.bodyFlip).toBe(1);
+  // No perspective anywhere: two standees at different depths are drawn the same size.
+  const opening = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; y: number; scale: number }>;
+  expect(new Set(opening.map((entry) => entry.scale)).size).toBe(1);
+  expect(new Set(opening.map((entry) => entry.y)).size).toBe(opening.length);
 
   const initialHash = await page.locator("#app").getAttribute("data-state-hash");
   const target = await boardPoint(page, 1.5, 1.5);
@@ -352,18 +494,25 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-hover-cell", "1,1");
   await pickRingAction(page, 1.5, 1.5, "step");
   await expect(page.locator("#ring-root")).toBeHidden();
-  await expect(page.locator("#board-prompt")).toContainText("바라볼 방향");
-  await clickBoardPoint(page, 1.5, 1.7);
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "");
 
-  await expect(page.locator("#hero-stats")).toContainText("south");
+  // Facing changed, and the card reports it on the sheet rather than in the summary.
+  await expect(page.locator("#hero-stats .save-cell")).toHaveCount(3);
+  await expect(page.locator("#hero-details")).toBeHidden();
+  await openHeroDetails(page);
+  await expect(page.locator("#hero-details")).toContainText("east");
   await expect(page.locator("#action-pips .available")).toHaveCount(2);
-  await expect(page.locator("#combat-log")).toContainText("now faces south");
+  // One line per action: what was used and everything it did. The cost and the rolls fold
+  // underneath it.
+  await expect(page.locator("#combat-log .log-line").first())
+    .toContainText("used Step — moved 1 square by land");
+  await expect(page.locator("#combat-log .log-detail").first()).toContainText("Cost 1 action");
   await expect(page.locator("#app")).not.toHaveAttribute("data-state-hash", initialHash ?? "");
   await page.waitForTimeout(500);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const heroId = await controlledActorId(page);
   const heroFoot = feet.find((entry) => entry.id === heroId);
-  const expectedFoot = await boardPoint(page, 1.5, 1.8);
+  const expectedFoot = await boardPoint(page, 1.5, 1.5);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
 
@@ -372,18 +521,58 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await page.keyboard.press("Escape");
   await expect(page.locator("#ring-root")).toBeHidden();
   await pickRingAction(page, 2.5, 1.5, "strike");
-  await expect(page.locator("#combat-log")).toContainText("used strike");
+  // The log names the action, not its id.
+  await expect(page.locator("#combat-log")).toContainText("used Strike");
   await expect(page.locator("#action-pips .available")).toHaveCount(1);
+
+  // A beat keeps its rolls folded away until asked. A tap opens it and it stays open with
+  // the pointer nowhere near it, which is the only way in on a tablet.
+  const foldedBeat = page.locator("#combat-log .log-line-expandable").first();
+  const foldedDetail = page.locator("#combat-log .log-detail").first();
+  await expect(foldedDetail).toBeHidden();
+  await foldedBeat.click();
+  await page.mouse.move(0, 0);
+  await expect(foldedDetail).toBeVisible();
+
+  // The card face carries a name, a cost and a picture. The words behind it are a press
+  // away, which is what a finger has instead of a hover.
+  const tripCard = page.locator('#hand-cards .tactical-card[data-action-id="trip"]').first();
+  await expect(tripCard.locator(".card-art")).toBeVisible();
+  await expect(page.locator("#card-detail")).toBeHidden();
+  const tripBox = await tripCard.boundingBox();
+  if (!tripBox) throw new Error("The Trip card has no bounding box.");
+  await page.mouse.move(tripBox.x + tripBox.width / 2, tripBox.y + tripBox.height / 2);
+  await page.mouse.down();
+  await expect(page.locator("#card-detail")).toBeVisible();
+  await expect(page.locator("#card-detail")).toContainText("Prone");
+  await page.mouse.up();
+  // Reading a card is not playing it.
+  await expect(tripCard).toHaveAttribute("aria-pressed", "false");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#card-detail")).toBeHidden();
 
   // Card-first path: choose the card, then one of the targets it highlights.
   await page.locator('#hand-cards .tactical-card[data-action-id="trip"]:not([disabled])').first().click();
   await expect(page.locator("#board-prompt")).toContainText("강조된 적");
   await clickBoardPoint(page, 2.5, 1.5);
-  await expect(page.locator("#combat-log")).toContainText("used trip");
+  await expect(page.locator("#combat-log")).toContainText("used Trip");
   await expect(page.locator("#action-pips .available")).toHaveCount(0);
+  await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
+  // The last pip spent leaves End Turn as the only move, so the direction mode opens
+  // itself. Opening it is not ending the turn: only the direction aimed at does that, and
+  // Esc is not one.
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", /^\d+,\d+$/);
+  await expect(page.locator("#combat-log")).not.toContainText("Aerin ended the turn.");
+  const beforeEnd = await page.locator("#app").getAttribute("data-state-hash");
+  await page.keyboard.press("Escape");
+  await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", /^\d+,\d+$/);
+  await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
+  await expect(page.locator("#app")).toHaveAttribute("data-state-hash", beforeEnd!);
+  await chooseFacing(page, "east");
+  await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");
 
-  // The mesh maps the whole board texture onto the projected quad, so the texture has to be
-  // exactly its own page. A padded page shrinks the art inside the quad and leaves actors
+  // The board sprite draws the whole texture as the board plane, so the texture has to be
+  // exactly its own page. A padded page shrinks the art inside the plane and leaves actors
   // standing off the drawn board.
   const textureFit = await page.locator("#pixi-canvas").getAttribute("data-board-texture-fit");
   expect(textureFit).toMatch(/^(\d+x\d+)\/\1$/);
@@ -404,7 +593,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(afterPan[0].x).toBeGreaterThan(afterZoom[0].x + 30);
   const zoomedFeet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const zoomedHero = zoomedFeet.find((entry) => entry.id === heroId);
-  const projectedHero = projectCorners(afterPan, ROAD_MAP, 1.5, 1.8);
+  const projectedHero = projectCorners(afterPan, ROAD_MAP, 1.5, 1.5);
   expect(zoomedHero?.x).toBeCloseTo(projectedHero.x, 0);
   expect(zoomedHero?.y).toBeCloseTo(projectedHero.y, 0);
   // Panning is bounded: the board centre stays on screen however far it is dragged.
@@ -425,7 +614,62 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(boardCentre.y).toBeLessThan(canvasBox.height);
 
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-perspective-board.png"), fullPage: true });
+  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-affine-board.png"), fullPage: true });
+});
+
+/**
+ * A tablet has no wheel and no middle button, so two fingers have to reach the same
+ * camera. Chromium only accepts real multi-touch through the DevTools protocol.
+ */
+test.describe("touch camera", () => {
+  test.use({ hasTouch: true, viewport: { width: 1180, height: 820 } });
+
+  test("pinches to zoom and drags with two fingers the way the wheel and drag do", async ({ page }) => {
+    await openBattle(page);
+    const cdp = await page.context().newCDPSession(page);
+    const touch = (type: string, points: readonly { x: number; y: number; id: number }[]): Promise<unknown> =>
+      cdp.send("Input.dispatchTouchEvent", {
+        type,
+        touchPoints: points.map((point) => ({ ...point, radiusX: 12, radiusY: 12, force: 1 })),
+      });
+    const quad = async (): Promise<{ width: number; centerX: number }> => {
+      const corners = await boardCorners(page);
+      return {
+        width: Math.max(...corners.map((corner) => corner.x)) - Math.min(...corners.map((corner) => corner.x)),
+        centerX: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
+      };
+    };
+
+    const start = await quad();
+    let left = { x: 520, y: 380, id: 1 };
+    let right = { x: 620, y: 440, id: 2 };
+    await touch("touchStart", [left, right]);
+    for (let step = 0; step < 8; step += 1) {
+      left = { ...left, x: left.x - 12, y: left.y - 8 };
+      right = { ...right, x: right.x + 12, y: right.y + 8 };
+      await touch("touchMove", [left, right]);
+    }
+    await touch("touchEnd", []);
+    // The camera lays out on the next frame, so measure once it has settled.
+    await expect.poll(async () => (await quad()).width).toBeGreaterThan(start.width * 1.2);
+    const zoomed = await quad();
+
+    left = { x: 520, y: 380, id: 1 };
+    right = { x: 640, y: 460, id: 2 };
+    await touch("touchStart", [left, right]);
+    for (let step = 0; step < 8; step += 1) {
+      left = { ...left, x: left.x - 14 };
+      right = { ...right, x: right.x - 14 };
+      await touch("touchMove", [left, right]);
+    }
+    await touch("touchEnd", []);
+    await expect.poll(async () => (await quad()).centerX).toBeLessThan(zoomed.centerX - 50);
+    const panned = await quad();
+    // Fingers travelling together move the board without changing how big it is.
+    expect(panned.width).toBeCloseTo(zoomed.width, 0);
+    // Lifting out of a gesture is not a pick, so no radial menu opens behind it.
+    await expect(page.locator("#ring-root")).toBeHidden();
+  });
 });
 
 test("fits the 1024x768 minimum and independently resizes the battlefield camera", async ({ page }, testInfo) => {
@@ -509,11 +753,73 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const heroId = await controlledActorId(page);
   const heroFoot = feet.find((entry) => entry.id === heroId);
-  const expectedFoot = await boardPoint(page, 0.5, 1.8);
+  const expectedFoot = await boardPoint(page, 0.5, 1.5);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
   expect(runtimeErrors).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cardguild-m3-responsive.png"), fullPage: true });
+});
+
+/**
+ * A home-screen web app owns the whole screen, and an iPad mini is 744pt on its short
+ * side — under both of the layout's minimums. The board has to stay on the screen anyway.
+ */
+test.describe("iPad mini", () => {
+  for (const [name, width, height] of [["portrait", 744, 1133], ["landscape", 1133, 744]] as const) {
+    test(`keeps the whole board on screen in ${name}`, async ({ page }) => {
+      const runtimeErrors = captureRuntimeErrors(page);
+      await page.setViewportSize({ width, height });
+      await openBattle(page);
+      await page.waitForTimeout(400);
+
+      // Nothing hangs off the bottom or the side: the page is exactly the screen.
+      const overflow = await page.evaluate(() => ({
+        horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        vertical: document.documentElement.scrollHeight - document.documentElement.clientHeight,
+      }));
+      expect(overflow.horizontal).toBeLessThanOrEqual(0);
+      expect(overflow.vertical).toBeLessThanOrEqual(0);
+
+      const canvas = await page.locator("#pixi-canvas").boundingBox();
+      if (!canvas) throw new Error("Pixi canvas does not have a bounding box.");
+      expect(canvas.x).toBeGreaterThanOrEqual(0);
+      expect(canvas.y).toBeGreaterThanOrEqual(0);
+      expect(canvas.x + canvas.width).toBeLessThanOrEqual(width + 0.5);
+      expect(canvas.y + canvas.height).toBeLessThanOrEqual(height + 0.5);
+
+      // And the board inside it is fitted to the gutters the HUD actually reserved,
+      // which is what a rotation used to leave half applied.
+      const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
+        { left: number; top: number; right: number; bottom: number };
+      const corners = await boardCorners(page);
+      expect(Math.min(...corners.map((corner) => corner.y))).toBeGreaterThanOrEqual(safe.top - 0.5);
+      expect(Math.max(...corners.map((corner) => corner.y))).toBeLessThanOrEqual(canvas.height - safe.bottom + 0.5);
+      expect(Math.min(...corners.map((corner) => corner.x))).toBeGreaterThanOrEqual(safe.left - 0.5);
+      expect(Math.max(...corners.map((corner) => corner.x))).toBeLessThanOrEqual(canvas.width - safe.right + 0.5);
+      expect(runtimeErrors).toEqual([]);
+    });
+  }
+
+  test("re-fits the board after a rotation instead of leaving it half applied", async ({ page }) => {
+    const runtimeErrors = captureRuntimeErrors(page);
+    await page.setViewportSize({ width: 744, height: 1133 });
+    await openBattle(page);
+    await page.waitForTimeout(400);
+    await page.setViewportSize({ width: 1133, height: 744 });
+    await page.waitForTimeout(400);
+
+    const canvas = await page.locator("#pixi-canvas").boundingBox();
+    if (!canvas) throw new Error("Pixi canvas does not have a bounding box.");
+    expect(canvas.y + canvas.height).toBeLessThanOrEqual(744.5);
+    const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
+      { left: number; top: number; right: number; bottom: number };
+    const corners = await boardCorners(page);
+    // The old failure put the top edge inside the gutters and the bottom one under the
+    // screen, so both ends are checked against the same measurement.
+    expect(Math.min(...corners.map((corner) => corner.y))).toBeGreaterThanOrEqual(safe.top - 0.5);
+    expect(Math.max(...corners.map((corner) => corner.y))).toBeLessThanOrEqual(canvas.height - safe.bottom + 0.5);
+    expect(runtimeErrors).toEqual([]);
+  });
 });
 
 test("pans an off-screen actor back into view when its turn starts", async ({ page }) => {
@@ -521,13 +827,20 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   await openBattle(page);
   const canvasBox = await page.locator("#pixi-canvas").boundingBox();
   if (!canvasBox) throw new Error("Pixi canvas does not have a bounding box.");
-  const actorFeet = async (id: string): Promise<{ x: number; y: number }> => {
-    const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
+  type ActorLayout = { id: string; x: number; y: number; left: number; right: number; top: number; bottom: number };
+  const actorFeet = async (id: string): Promise<ActorLayout> => {
+    const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as ActorLayout[];
     const actor = feet.find((entry) => entry.id === id);
     if (!actor) throw new Error(`${id} has not published its layout.`);
     return actor;
   };
 
+  // "Visible" means the whole standee inside the gutters the HUD reserved, not merely a
+  // contact point on the canvas: a body whose head and HP badge are behind a panel is
+  // exactly what the camera is supposed to fetch back.
+  const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
+    { left: number; top: number; right: number; bottom: number };
+  expect(safe.right).toBeGreaterThan(0);
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   for (let index = 0; index < 8; index += 1) await page.mouse.wheel(0, -240);
   await page.keyboard.down("Alt");
@@ -536,14 +849,25 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   await page.mouse.up();
   await page.keyboard.up("Alt");
   await page.waitForTimeout(150);
-  expect((await actorFeet("goblin-lackey")).x).toBeGreaterThan(canvasBox.width);
+  expect((await actorFeet("goblin-lackey")).x).toBeGreaterThan(canvasBox.width - safe.right);
 
   await page.locator("#end-turn").click();
+  await chooseFacing(page, "east");
   await page.waitForTimeout(600);
   const goblin = await actorFeet("goblin-lackey");
-  expect(goblin.x).toBeGreaterThan(0);
-  expect(goblin.x).toBeLessThan(canvasBox.width);
-  expect(goblin.y).toBeGreaterThan(0);
-  expect(goblin.y).toBeLessThan(canvasBox.height);
+  // Every edge of the standee, so a head or an HP badge left under the HUD still fails.
+  expect(goblin.left).toBeGreaterThan(safe.left);
+  expect(goblin.right).toBeLessThan(canvasBox.width - safe.right);
+  expect(goblin.top).toBeGreaterThan(safe.top);
+  // Fully zoomed in, a standee can be taller than the window the camera aims for. It
+  // promises the head in that case — the badge and the face — and only promises all four
+  // edges to one that fits.
+  const focusWindow = canvasBox.height - safe.top - safe.bottom - 2 * FOCUS_MARGIN;
+  if (goblin.bottom - goblin.top <= focusWindow) {
+    expect(goblin.bottom).toBeLessThan(canvasBox.height - safe.bottom);
+  }
+  // The contact point comes back with it, and is not the thing that was checked.
+  expect(goblin.x).toBeGreaterThan(safe.left);
+  expect(goblin.x).toBeLessThan(canvasBox.width - safe.right);
   expect(runtimeErrors).toEqual([]);
 });

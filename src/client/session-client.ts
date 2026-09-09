@@ -1,11 +1,12 @@
 import { PRODUCTION_CONTENT } from "../content/production-content";
-import type {
-  ClientHello,
-  ClientIntentEnvelope,
-  ProtocolErrorCode,
-  ServerError,
-  ServerMessage,
-  ServerSnapshot,
+import {
+  PROTOCOL_VERSION,
+  type ClientHello,
+  type ClientIntentEnvelope,
+  type ProtocolErrorCode,
+  type ServerError,
+  type ServerMessage,
+  type ServerSnapshot,
 } from "../protocol";
 import type { SessionIntent } from "../session";
 
@@ -135,7 +136,7 @@ export class SessionClient {
     socket.addEventListener("open", () => {
       if (this.socket !== socket) return;
       const hello: ClientHello = {
-        v: 3,
+        v: PROTOCOL_VERSION,
         type: "hello",
         sessionId: this.credential.sessionId,
         playerId: this.credential.playerId,
@@ -155,7 +156,7 @@ export class SessionClient {
       if (this.destroyed || this.terminallyClosed) return;
       if (event.code === 4001) {
         this.stopTerminal({
-          v: 3,
+          v: PROTOCOL_VERSION,
           type: "error",
           code: "UNAUTHENTICATED",
           message: "This session was opened in a newer connection.",
@@ -164,7 +165,7 @@ export class SessionClient {
       }
       if (event.code === 4003 || event.code === 4004) {
         this.stopTerminal({
-          v: 3,
+          v: PROTOCOL_VERSION,
           type: "error",
           code: event.code === 4004 ? "SESSION_NOT_FOUND" : "UNAUTHENTICATED",
           message: event.reason || "The session handshake was rejected.",
@@ -183,7 +184,7 @@ export class SessionClient {
     const snapshot = this.snapshotValue;
     if (!socket || socket.readyState !== WebSocket.OPEN || !snapshot || this.outstanding) return false;
     const envelope: ClientIntentEnvelope = {
-      v: 3,
+      v: PROTOCOL_VERSION,
       type: "intent",
       requestId: crypto.randomUUID(),
       expectedRevision: snapshot.revision,

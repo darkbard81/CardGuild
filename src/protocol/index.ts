@@ -1,2 +1,2 @@
 export { parseClientMessage, validateClientMessage } from "./validate-message";
-export * from "./v3-types";
+export * from "./v4-types";

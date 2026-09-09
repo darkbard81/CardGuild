@@ -17,7 +17,7 @@ export interface RingEntry {
  * idle   → a board pick opens the ring menu.
  * card   → a card is chosen first; a board pick resolves against its legal targets.
  * ring   → the radial menu is open on `position`; only ring input is accepted.
- * facing → a destination is locked in; the board's four wedges finish the move.
+ * direction → explicit in-place Step or final End Turn orientation.
  */
 export type Interaction =
   | { readonly kind: "idle" }
@@ -28,7 +28,8 @@ export type Interaction =
       readonly entries: readonly RingEntry[];
       readonly hoveredOptionId: string | null;
     }
-  | { readonly kind: "facing"; readonly action: LegalAction; readonly position: GridPosition };
+  | { readonly kind: "direction"; readonly purpose: "step-turn"; readonly action: LegalAction; readonly position: GridPosition }
+  | { readonly kind: "direction"; readonly purpose: "end-turn"; readonly position: GridPosition };
 
 export const IDLE_INTERACTION: Interaction = { kind: "idle" };
 
@@ -36,8 +37,9 @@ export const IDLE_INTERACTION: Interaction = { kind: "idle" };
 export function interactionAction(interaction: Interaction): LegalAction | null {
   switch (interaction.kind) {
     case "card":
-    case "facing":
       return interaction.action;
+    case "direction":
+      return interaction.purpose === "step-turn" ? interaction.action : null;
     case "ring":
       return hoveredRingEntry(interaction)?.action ?? null;
     case "idle":

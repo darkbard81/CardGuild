@@ -61,7 +61,10 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v3 control-only
+- wire protocol은 v4입니다. v3의 `end-turn`에는 `facing`이 없고 tile target에는 `facing`이
+  필수였으므로 두 버전은 서로의 payload를 거부합니다. 그래서 같은 `v`를 선언한 채 intent
+  단위로 실패하는 대신 handshake에서 `PROTOCOL_MISMATCH`로 끊습니다.
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v4 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
   판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. server restart persistence와
   host migration은 지원하지 않습니다.
@@ -83,8 +86,22 @@ port 8787 backend로 proxy합니다.
   클릭으로 닫습니다.
 - `Step`, `Stride`, `Strike`는 손패와 무관한 고정 Basic Action이며 별도 버튼 없이
   링 메뉴에 나타납니다.
-- 이동은 상하좌우만 가능하며 목적지를 고른 뒤 보드 위 4방향 위젯에서 최종 Facing을
-  선택합니다.
+- 이동은 상하좌우만 가능하며 Facing은 GameCore가 실제 경로의 마지막 이동 방향으로
+  결정합니다. 일반 이동에는 방향 확인 단계가 없습니다.
+- 방향성이 있는 Actor/Object/Tile 행동은 현재 Facing으로 합법성을 검사한 뒤 대상 방향으로
+  회전합니다. self/none/Sustain은 방향을 유지하며, 뒤쪽 적을 자동 회전으로 공격할 수 없습니다.
+- 자기 칸의 `Step`은 4방향 위젯으로 방향을 선택하고 1 Action을 소비합니다. 위치 이동,
+  이동 이벤트, Reaction은 발생하지 않으며 Prone/Grabbed 등 Step 제한도 그대로 적용됩니다.
+- `End Turn`을 누르면 자기 칸에 4방향 위젯이 나타나고, 선택한 최종 Facing과 턴 종료를 무료인
+  하나의 명령으로 처리합니다. `Esc` 또는 바깥 클릭은 명령 없이 이전 입력 상태로 돌아갑니다.
+  같은 방향이면 중복 `FACING_CHANGED`는 발생하지 않습니다.
+- Action을 모두 사용하면 같은 위젯이 자동으로 열립니다. 방향을 고르면 그대로 턴이 끝나고,
+  취소하면 턴은 유지되며 그 턴에는 다시 자동으로 열리지 않습니다. 턴을 끝내는 명령은
+  언제나 플레이어가 고른 방향과 함께 나갑니다.
+- AI는 일반 행동의 방향 계산을 GameCore에 맡기며, 턴 종료 시 가장 가까운 살아있는 적을
+  바라봅니다. 동률은 Actor ID 순서, 적이 없으면 현재 방향을 유지합니다.
+- 같은 팀의 살아있는 Actor가 있는 칸은 통과할 수 있지만 이동을 끝낼 수 없습니다.
+  상대 팀의 살아있는 Actor는 통과와 정지를 모두 막으며, defeated Actor는 점유에서 제외됩니다.
 - `Escape`, `Interact`, `Raise Shield`, `Sustain Spell`은 현재 상태가 제공하는
   Context Action이며 해당 대상(자신·오브젝트)을 클릭할 때 링 메뉴에 포함됩니다.
 - 손패 카드는 클릭해서 먼저 고를 수도 있습니다. 이때 합법 대상이 보드에 강조되고
@@ -99,9 +116,55 @@ port 8787 backend로 proxy합니다.
 ### CardGuild Rules Override
 
 Facing은 PF2e Remaster 기본 규칙이 아니라 CardGuild 고유 전술 규칙입니다.
-이동을 마칠 때 네 방향 중 하나를 정하고, Strike와 Reactive Strike는 전방/측면만
-대상으로 삼습니다. 바로 뒤에서 가하는 근접 공격은 대상 AC를 2 낮춥니다. 이는
-PF2e의 Off-Guard/Flanking을 구현한 것이 아니며 이후 rules config로 분리할 규칙입니다.
+이동 Facing은 마지막 이동 구간에서 결정하며, 제자리 Step과 End Turn에서 방향을 선택합니다.
+Strike와 Reactive Strike는 공격자의 전방/측면만 대상으로 삼습니다.
+
+- Rear: 대상 Facing의 정확한 후방 인접 칸에서 가하는 근접 Strike는 그 공격자에게만
+  대상을 Off-Guard로 만듭니다. 이는 CardGuild 고유의 추가 원인입니다.
+- Flanking: 공격자와 아군의 중심을 연결한 선이 대상 칸의 서로 반대인 변 또는 모서리를
+  통과해야 합니다. 대상 Facing과 무관하며, 두 공격자 모두 살아 있고 현재 근접 Strike로
+  대상을 위협해야 합니다(공격자 Facing, 사거리, 시야 및 효과선 적용).
+  현재 행동 불능 판정은 defeated이며, 남은 Action/Reaction이나 현재 턴 소유자는 무관합니다.
+- 기존 Manhattan 거리 규칙을 유지하므로 대각선 인접 칸은 10ft reach가 필요합니다.
+  Character는 현재 선택된 melee 무기 또는 기본 unarmed Strike를 사용합니다.
+  현재 Creature의 fixed Strike는 reach를 포함한 authored 근접 공격으로 취급합니다.
+- Off-Guard는 AC -2 circumstance penalty입니다. Rear와 Flanking의 modifier를 공통
+  stack에 각각 전달하므로 동시에 성립해도 -4가 되지 않습니다. 더 큰 circumstance
+  penalty가 우선하며, circumstance bonus는 별도로 함께 적용됩니다.
+- 기본 Strike, Strike 기반 Card, Reactive Strike 모두 같은 판정을 사용합니다.
+  원거리 Strike나 skill/save check에는 적용하지 않으며, 전역 Actor condition을 추가하지
+  않습니다. Preview와 실행의 공통 plan 및 debug notes에 원인과 적용/억제 여부를 표시합니다.
+
+
+서버는 creature의 턴을 한 tick에 끝내고 명령마다 snapshot을 보내므로 네 개가 한 프레임
+안에 도착할 수 있습니다. 보드는 이것을 순서대로 재생합니다. standee가 걷는 동안 다음
+snapshot은 기다리고, 걸음이 끝나면 넘겨받습니다. authority는 그대로이고 전달 순서만
+늦춰지며, 대기는 걸음 길이·resync·backlog 상한으로 묶여 있습니다.
+
+규칙 설명은 HUD가, 위치와 입력은 보드가 담당합니다. 전투 Preview는 `Target AC`와
+`Off-Guard -2` 효과를 한 번 표시하고, `Rear · Flanking` 원인 및 협공 아군 이름을 별도로
+표시합니다. 더 강한 기존 circumstance 페널티가 있으면 실제 AC와 `추가 AC 감소 없음`을
+표시합니다. 상세 stack은 개발 모드의 접힌 Debug에 둡니다. 보드에는 Rear·Flanking·
+Off-Guard를 설명하는 표식이나 글자를 그리지 않습니다. 이동 후의 가상 공격이나 방향
+추천도 제공하지 않습니다.
+
+End Turn 및 제자리 Step은 바라볼 곳을 보드에서 한 번 클릭/터치하면 Actor 칸에서 그
+지점으로 향하는 Facing이 정해지고 곧바로 전송됩니다. 방향 판정은 GameCore의
+`facingToward()`가 하며 presentation은 복제하지 않고, 화면 사분면이 아니라
+`BoardProjection`이 돌려준 보드 좌표를 씁니다. 좌표는 칸으로 스냅하지 않고 포인터가
+떨어진 연속 좌표 그대로 쓰므로, 맵 가장자리에 선 Actor도 맵 바깥을 가리켜 바깥 방향을
+고를 수 있습니다. 가리킨 곳으로 이동하지는 않으며 그 자리에 tile이 생기지도 않습니다.
+방향 모드에서는 인접 칸이 있어야 할 네 자리에 SVG 화살표를 그려 어떤 답이 있는지 보여주고,
+포인터가 가리키는 방향의 화살표를 밝게 키웁니다. 화살표는 표식일 뿐 버튼이 아니어서 아무
+곳이나 겨눠도 되고, 맵 밖이라 칸이 없는 자리에도 그려집니다. 방향키도 같은 명령을 보냅니다.
+전송 전에는 gameplay state가 변하지 않고, 서버가 거절하면 그대로 다시 고를 수 있습니다.
+
+두 방향 모드는 되돌리기 정책이 다릅니다. End Turn은 버튼을 누른 것이 이미 결정이므로
+답만이 모드를 벗어납니다. Esc도, 카드 선택도, 보드에서 멀리 떨어진 클릭도 취소가 아니며
+모든 pointer 입력은 방향으로 읽힙니다. 제자리 Step은 아직 targeting 단계이므로 Esc가
+취소로 남아 이전 card/ring 선택으로 돌아갑니다. Action 0의 자동 진입과 카드 대상 한 번
+터치 실행은 유지합니다. 터치에서 공격 전 Preview를 읽으려면 기존 링 메뉴에서 첫 터치로
+행동을 선택합니다.
 
 ## 구조
 
@@ -112,16 +175,16 @@ content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
 src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
-src/protocol protocol v3 type/schema, gameplay/control revision과 strict Ajv validation
+src/protocol protocol v4 type/schema, gameplay/control revision과 strict Ajv validation
 src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
-src/pixi   BoardProjection/PerspectiveMesh/camera/depth renderers와 tactical overlay
-src/presentation WebP atlas AssetCatalog와 layered tilemap mapping
+src/pixi   affine BoardProjection/board plane/camera/depth renderers와 tactical overlay
+src/presentation atlas + standalone actor 혼합 저장 AssetCatalog와 layered tilemap mapping
 src/dom    Adventure/Reward/Loadout Builder, 링 컨텍스트 메뉴·카드·HUD·로그·Reaction·결과 UI
 ```
 
-전투 입력은 `battle-interaction.ts`의 `Interaction` union(`idle`/`card`/`ring`/`facing`)이
+전투 입력은 `battle-interaction.ts`의 `Interaction` union(`idle`/`card`/`ring`/`direction`)이
 단계를 소유합니다. 각 단계가 자기 데이터를 들고 있으므로 링 항목이나 확정된 목적지가
 다음 단계로 새지 않으며, 이후 AoE·multi-target·drag 같은 targeting mode도 여기에
 붙입니다.
@@ -133,6 +196,13 @@ server 전용 typecheck는 DOM lib 없이 이 경계를 검증합니다. UI는
 state hash를 만듭니다. CombatState와 replay는 pack ID/version/fingerprint와 Combat
 Setup Fingerprint를 보존하며 콘텐츠나 loadout setup이 다르면 첫 replay command 전에
 실패합니다.
+
+M8 Facing 변경은 과거 command의 의미도 바꿉니다. 과거 `end-turn`에는 `facing`이 없고
+과거 이동 command의 `target.facing`은 플레이어가 고른 최종 방향이었지만, 지금 이동
+Facing은 resolved path의 마지막 segment에서 나옵니다. **M8 이전 replay 호환은 보장하지
+않습니다** — legacy migration이나 version adapter를 두지 않으므로 옛 replay는 거부되거나
+과거와 다른 Facing/state/hash를 냅니다. 결정론 보장은 M8 이후 생성된 replay에만
+적용됩니다.
 
 장비와 Condition은 개별 ID 분기 대신 `TraitDefinition` provider를 통해 카드와
 Context Action을 공급합니다. Condition이 공급한 Stand/Escape 같은 Recovery Action도
@@ -200,19 +270,84 @@ Trait provider는 engine TypeScript를 수정하지 않고 JSON으로 추가할 
 
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
 `art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
-`art/processed`, 4096² runtime WebP atlas는 `public/assets`, atlas·ground/transition/object
-layer 및 Equipment/Card icon mapping은 `presentation/m3`에 있습니다. 보드 위 콘텐츠는 절대 픽셀이 아니라
-투영된 셀 폭 대비(`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다. 창 크기가
-달라져도 스탠디가 칸에서 차지하는 비율은 고정이고 카메라 zoom만 크기를 바꿉니다.
-HP 뱃지는 역스케일해 작은 창에서도 화면 크기를 유지합니다.
+`art/processed`에 있습니다. runtime 저장은 두 갈래입니다 — terrain/object/UI는 4096² WebP
+atlas(`public/assets/m3-atlas.{webp,json}`), actor standee는 파일 한 장씩
+(`public/assets/actors/<namespace>/<name>/{front,back}.webp`). 논리 asset ID는 양쪽에서
+동일하고, atlas·ground/transition/object layer 및 Equipment/Card icon mapping은
+`presentation/m3`에 있습니다.
 
-카메라 zoom은 배율이 아니라 셀 크기로 정의됩니다. zoom 1은 항상 "맵 전체가 안전영역에
-들어오는" 상태이고, 상한은 셀이 `maxCellWidth`(220px)가 될 때까지입니다. 덕분에 9x7
-맵도 3x3과 같은 밀착 뷰에 도달합니다. 기본 상태에서 이미 셀이 목표보다 큰 맵은
-`minZoomHeadroom`(1.5x)만큼은 항상 확대할 수 있습니다. Pan은 보드 중심이 안전영역을
-벗어나지 않도록 제한되며, 턴이 시작될 때 해당 액터가 화면 밖이면 최소 거리만 pan해
-시야에 넣습니다(zoom 1에서는 전체가 보이므로 아무 일도 하지 않습니다). 캐릭터는 front/back 양면 paper standee이며
-north는 back, 나머지 cardinal 방향은 front와 projected facing arrow로 표시합니다.
+보드는 시점이 고정된 **affine diamond**입니다. 하나의 Pixi canvas 안에서 board plane과
+standee plane이 transform을 나눠 가집니다.
+
+```text
+screen = Translate(origin) x UniformScale(s) x ScaleY(0.5) x Rotate(+45°) x board-local
+```
+
+이 순서는 `boardCameraRoot > boardSquashRoot > boardTurnRoot` 컨테이너 계층으로 적혀
+있습니다. 결과로 모든 칸이 크기가 같은 2:1 diamond가 되고, 원근 수렴도 row에 따른 셀
+크기 변화도 없습니다. `BoardProjection`은 이 affine 변환의 forward/inverse만 계산하며
+`gridToScreen`/`screenToGrid`/`getCellCorners`가 picking·overlay·animation의 유일한
+경계입니다. 회전각과 squash는 presentation config(`boardRotationRadians`,
+`boardSquashY`)일 뿐 gameplay content에는 없습니다 — grid·pathfinding·LOS는 그대로
+직교 사각 격자입니다.
+
+무엇이 board plane에 속하는지는 한 가지 질문이 정합니다 — **그 그림이 칸 자체의 상태인가,
+칸 위에 놓인 물건인가.** 바닥·difficult·chasm·web·벽·gate(닫힘/열림)는 칸의 상태이므로 전부
+같은 규격의 정사각 terrain tile로 board texture에 합성되고, 레버·상자 같은 point prop과
+액터만 upright plane에 섭니다. 그 사이의 중간 범주는 없습니다.
+
+Gate의 문짝·문틀·재질은 authored image가 담당하고 Pixi는 그것을 배치할 뿐입니다. 방향이
+다른 벽에는 **같은 texture를 90° 회전**해 쓰므로 방향별 asset을 만들지 않습니다(축은 주변
+`blocked` 이웃 수로 결정). 여는 것은 tile trait이 바뀌는 것뿐이고, 다음 `render(state)`가
+`gate-open → gate → blocked` 순으로 표면을 골라 새 board texture를 만듭니다. Pixi
+`Graphics`의 몫은 외곽선 하나뿐입니다 — 기준이 `blocked`이므로 닫힌 gate는 벽과 한 덩어리로
+이어지고, 열리면 solid region에서 빠지면서 개구부 외곽선이 저절로 생깁니다.
+
+Standee는 board plane의 자식이 아닙니다. 위치만 projection에서 받아 칸 중심에 서고,
+몸은 화면에 대해 항상 upright이며 회전도 Y squash도 받지 않습니다. 원근이 없으므로 같은
+zoom에서는 어느 칸에 서 있든 스탠디 크기가 같습니다. 보드 평면에 눕는 것은 발밑 base
+graphic 하나뿐이고(`scaleY = boardSquashY`), HP 뱃지는 역스케일해 작은 창에서도 화면
+크기를 유지합니다. 보드 위 콘텐츠는 절대 픽셀이 아니라 보드 자체의 uniform scale 대비
+(`referenceCellWidth` 128px, 아트 제작 기준)로 스케일됩니다.
+
+캐릭터는 front/back 양면 paper standee입니다. 45° 회전 때문에 north는 화면 우상,
+west는 좌상으로 멀어지고 east는 우하, south는 좌하로 다가오므로, 방향은 화면에서
+등지는 쌍과 마주보는 쌍으로 묶입니다.
+
+```text
+north -> back            west  -> back를 좌우 반전
+east  -> front           south -> front를 좌우 반전
+```
+
+반전은 몸에만 적용하고 base·HP 뱃지·텍스트는 그대로 둡니다.
+
+카메라 zoom은 배율이 아니라 **화면에 무엇이 들어오는지**로 정의됩니다. zoom 1은 항상 "맵
+전체가 안전영역에 들어오는" 상태이고, 상한은 "`closeUpCells`(1)칸이 안전영역을 채우는"
+상태입니다. 두 끝이 모두 픽셀이 아니라 framing이므로 밀집 맵도 성긴 맵과 같은 밀착 뷰에
+도달하고, 노트북에서든 큰 모니터에서든 최대 확대의 뜻이 같습니다.
+
+```text
+maxZoom = max( boardFitScale(close-up frame) / boardFitScale(frame), minZoomHeadroom )
+```
+
+회전 후 모든 보드가 같은 2:1 모양이라 두 fit이 항상 같은 축에서 걸리고, 결국 비율은 칸
+수의 비(`(cols+rows) / 2`)가 됩니다 — 그래서 창 크기가 바뀌어도 zoom 범위는 그대로입니다
+(3x3=3x, 7x4=5.5x, 9x7=8x). 회전 때문에 fit은 columns와 rows를 함께 보며, 3x9 같은 세로
+맵도 같은 식으로 들어갑니다.
+
+**close-up이 1칸인 이유**는 그것이 맵이 아니라 캐릭터의 밀착 뷰이기 때문입니다. 스탠디는
+셀 다이아몬드 폭보다 조금 작게 authoring되어 있어(`displayHeight` 132–164 대 다이아몬드
+181), 다이아몬드 하나가 프레임을 채우면 스탠디 몸 전체가 안전영역 높이만큼 들어옵니다.
+3칸이던 시절에는 3x3 맵이 이미 3칸을 보고 있어 상한이 1이 되고 임의의 상수
+`minZoomHeadroom`(1.5x)만 남아, 작은 맵에서는 캐릭터에 다가갈 수 없었습니다. 1칸에서는
+스스로가 close-up인 보드가 1x1뿐이라 그 경우에만 headroom이 걸립니다.
+
+Pan은 두 규칙 중 **느슨한 쪽**을 씁니다. 보드가 안전영역보다 작으면 예전처럼 보드 중심이
+안전영역을 벗어나지 못하고, 화면보다 큰 보드는 **어느 끝이든 안전영역 중앙까지 가져올 수
+있는 만큼** 더 움직입니다. 중심만 가두면 9x7을 상한까지 확대했을 때 보드의 1/4밖에 볼 수
+없기 때문입니다. 어느 쪽이든 화면 중앙에는 항상 보드가 남아 있어 되돌아올 수 있습니다.
+턴이 시작될 때 해당 액터가 안전영역 밖이면 최소 거리만 pan해 시야에 넣습니다(zoom 1에서는
+전체가 보이므로 아무 일도 하지 않습니다).
 
 설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M5 구현
 범위와 protocol 정정 사항은 GitHub 이슈 `#6`, M6-1 Character Stat Foundation은
@@ -225,7 +360,7 @@ npm run content:check # 모든 pack의 Schema, references, compile, fingerprint
 npm run content:production-check # 현재 M7 release policy/reachability/1P-3P 구조 coverage
 npm run assets        # raw PNG cleanup -> normalized frames -> atlas/tilemap -> validation
 npm run assets:build  # 위 pipeline 산출물 재생성
-npm run assets:check  # alpha, anchors, 양면 standee, atlas, layered tilemap 검증
+npm run assets:check  # alpha, anchors, 양면 standee, atlas/standalone 저장 파티션, layered tilemap 검증
 npm run check         # Content/asset, TypeScript, core 경계, ESLint, Vitest
 npm run build         # Content/asset 검증 후 production bundle
 npm run typecheck:server # DOM 없는 server/session/protocol type boundary
@@ -239,15 +374,15 @@ Vitest는 Content schema v8 Schema/reference/fingerprint, PF2e proficiency/stati
 typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
 Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
 deck/stat/context, Adventure 8전/Reward/실패/seed/Combat bridge,
-projective BoardProjection/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
+affine BoardProjection/camera fit/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
 직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
 Reaction lifecycle, replay setup identity/hash, victory/defeat를 검증합니다. Playwright는
-Adventure shell, responsive Loadout Builder, 지연 WebP atlas 로딩, 실제 perspective board
+Adventure shell, responsive Loadout Builder, atlas + standalone actor WebP 로딩, 실제 affine diamond board
 hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 → 다음 Encounter 실제
 손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
 Network integration은 실제 `ws` client 3개로 queue/gameplay·control revision/idempotency,
 claim race와 authorization, turn/reaction disconnect fallback·reconnect, server AI,
-newest-wins reconnect와 protocol v1 fail-fast를 검증합니다. Playwright는 별도
+newest-wins reconnect와 legacy protocol(v1·v3) fail-fast를 검증합니다. Playwright는 별도
 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어, 2P fallback,
 3P 분산 제어와 hash 수렴을 검증하며 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
 

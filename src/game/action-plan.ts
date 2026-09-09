@@ -1,5 +1,5 @@
 import { attacksForMap, resolveMapPenalty, resolveStrike } from "./offense";
-import { isDirectlyBehind } from "./rules";
+import { resolveOffGuardTo } from "./off-guard";
 import {
   formatStatisticSources,
   proficiencyRankAtLeast,
@@ -30,6 +30,7 @@ import type {
   ResolvedStrikeProfile,
   StatisticContextModifier,
   StatisticSource,
+  StrikeTacticalFeedback,
 } from "./types";
 
 /** The two actors a resolution may refer to. `target` is absent for self-targeted Actions. */
@@ -58,6 +59,7 @@ export type ResolvedActionResolution =
       readonly kind: "strike";
       readonly check: ResolvedActionCheck;
       readonly strike: ResolvedStrikeProfile;
+      readonly tactical: StrikeTacticalFeedback;
       readonly damageMultiplier: number;
       readonly outcomes: DegreeOutcomeMap;
     }
@@ -208,30 +210,41 @@ function resolveStrikeCheck(
   context: StatisticResolutionContext,
   attacksThisTurn: number,
   extraWeaponDice: number,
-): { readonly check: ResolvedActionCheck; readonly strike: ResolvedStrikeProfile } | null {
+  state: Pick<CombatState, "actors" | "map">,
+): { readonly check: ResolvedActionCheck; readonly strike: ResolvedStrikeProfile; readonly tactical: StrikeTacticalFeedback } | null {
   const { actor, target } = participants;
   if (!target) return null;
   const strike = resolveStrike(actor, context, { attacksThisTurn, extraWeaponDice });
-  const armorClass = resolveArmorClass(target, context);
-  const rearAdjustment = isDirectlyBehind(actor.position, target) ? -2 : 0;
-  const rearSources: readonly StatisticSource[] = rearAdjustment
-    ? [{ kind: "position", sourceId: "rear-attack", label: "Rear attack: target AC", value: rearAdjustment, applied: true }]
-    : [];
+  const offGuard = resolveOffGuardTo(state, actor, target, context);
+  const armorClass = resolveArmorClass(target, {
+    ...context,
+    modifiers: [...(context.modifiers ?? []), ...offGuard.modifiers],
+  });
   return {
     strike,
+    tactical: {
+      attackerId: actor.id, targetId: target.id,
+      acBeforeOffGuard: resolveArmorClass(target, context).value,
+      ac: armorClass.value, causes: offGuard.causes, partnerIds: offGuard.partnerIds,
+      penalty: offGuard.modifiers[0]?.value ?? 0,
+      penaltyApplied: armorClass.sources.some((source) => source.applied && source.sourceId.startsWith("off-guard:")),
+    },
     check: {
       roller: "actor",
       rollerActorId: actor.id,
       modifier: strike.attackModifier,
-      dc: armorClass.value + rearAdjustment,
+      dc: armorClass.value,
       modifierSources: strike.sources,
-      dcSources: [...armorClass.sources, ...rearSources],
+      dcSources: armorClass.sources,
     },
   };
 }
 
 function checkNotes(check: ResolvedActionCheck, prefix: readonly string[] = []): readonly string[] {
-  return [...prefix, ...formatStatisticSources(check.modifierSources), ...formatStatisticSources(check.dcSources)];
+  return [...prefix, ...formatStatisticSources(check.modifierSources), ...formatStatisticSources(check.dcSources),
+    ...check.dcSources.filter((source) => !source.applied && source.sourceId.startsWith("off-guard:"))
+      .map((source) => `${source.label} ${String(source.value)} (suppressed by circumstance stacking)`),
+  ];
 }
 
 /**
@@ -244,7 +257,7 @@ export function buildResolvedActionPlan(
   actor: ActorState,
   target: ActionTarget,
   source: ActionSource,
-  state: Pick<CombatState, "actors">,
+  state: Pick<CombatState, "actors" | "map">,
   content: CombatContent,
   mapContext: ActionMapContext,
 ): ResolvedActionPlan | null {
@@ -266,14 +279,16 @@ export function buildResolvedActionPlan(
 
   const resolution = definition.resolution;
   if (resolution.kind === "move") {
-    return { ...base, resolution, notes: [`Face ${target.kind === "tile" ? target.facing : actor.facing} after moving.`] };
+    return { ...base, resolution, notes: [target.kind === "tile" && target.position.x === actor.position.x && target.position.y === actor.position.y
+      ? `Face ${target.facing ?? actor.facing} in place (1 Action).`
+      : "Face the final segment of the resolved movement path."] };
   }
   if (resolution.kind === "direct") {
     return { ...base, resolution, notes: [] };
   }
   if (resolution.kind === "strike") {
     const extraWeaponDice = resolution.extraWeaponDice ?? 0;
-    const resolved = resolveStrikeCheck(participants, context, attacksThisTurn, extraWeaponDice);
+    const resolved = resolveStrikeCheck(participants, context, attacksThisTurn, extraWeaponDice, state);
     if (!resolved) return null;
     const extraDiceNote = extraWeaponDice > 0
       ? [`+${String(extraWeaponDice)}d${String(resolved.strike.damage.sides)} weapon damage`]
@@ -284,6 +299,7 @@ export function buildResolvedActionPlan(
         kind: "strike",
         check: resolved.check,
         strike: resolved.strike,
+        tactical: resolved.tactical,
         damageMultiplier: resolution.damageMultiplier,
         outcomes: resolution.outcomes,
       },

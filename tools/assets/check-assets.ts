@@ -3,6 +3,19 @@ import path from "node:path";
 
 import sharp from "sharp";
 
+import {
+  ACTOR_SIDES,
+  actorPathSegments,
+  assertDistinctActorPaths,
+  runtimeActorHref,
+} from "../../src/presentation/actor-asset-path";
+import { assertPointPropContract } from "../../src/presentation/point-prop-contract";
+import {
+  assertRequiredTileVisuals,
+  assertTileVisualContract,
+  type TileCanvas,
+} from "../../src/presentation/tile-visual-contract";
+
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
 
 interface Point {
@@ -10,14 +23,26 @@ interface Point {
   readonly y: number;
 }
 
+/**
+ * Storage is a property of the asset, not of the pipeline stage that made it. The policy
+ * is `kind === "actor" -> image`, everything else `-> atlas`, and nothing else — prompt
+ * wording is no guide, since a wall and a lever are described as standees too.
+ */
+type AssetSource =
+  | { readonly type: "atlas"; readonly frame: string }
+  | { readonly type: "image"; readonly path: string; readonly width: number; readonly height: number };
+
 interface AssetEntry {
-  readonly frame: string;
   readonly kind: "actor" | "terrain" | "object" | "ui";
+  readonly source: AssetSource;
   readonly anchor: Point;
   readonly displayWidth?: number;
   readonly displayHeight?: number;
   readonly footprint?: { readonly width: number; readonly height: number };
 }
+
+/** The 256x384 standee canvas, carried from the processed PNG to its runtime file. */
+const ACTOR_CANVAS = { width: 256, height: 384 } as const;
 
 interface AssetManifest {
   readonly version: number;
@@ -29,6 +54,8 @@ interface AssetManifest {
   };
   readonly assets: Readonly<Record<string, AssetEntry>>;
   readonly actorVisuals: Readonly<Record<string, Readonly<Record<string, string>>>>;
+  readonly terrainVisuals: Readonly<Record<string, string>>;
+  readonly objectVisuals: Readonly<Record<string, string>>;
   readonly equipmentVisuals: Readonly<Record<string, string>>;
   readonly cardVisuals: Readonly<Record<string, string>>;
 }
@@ -89,13 +116,18 @@ function assertAtlasFrame(id: string, frame: AtlasFrame, atlas: AtlasData): void
   assertUnitPoint(id, frame.anchor);
 }
 
-async function assertCleanAlpha(id: string, filePath: string, kind: AssetEntry["kind"]): Promise<void> {
+async function assertCleanAlpha(
+  id: string,
+  filePath: string,
+  kind: AssetEntry["kind"],
+): Promise<TileCanvas> {
   const image = sharp(filePath, { failOn: "error" });
   const metadata = await image.metadata();
   if (metadata.format !== "png" || !metadata.width || !metadata.height || !metadata.hasAlpha) {
     throw new Error(`Processed asset "${id}" must be a readable straight-alpha PNG.`);
   }
   const { data, info } = await image.ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+  // A tile visual fills its square, so only the things standing on one need empty corners.
   const cornerOffsets = [
     3,
     (info.width - 1) * 4 + 3,
@@ -126,6 +158,27 @@ async function assertCleanAlpha(id: string, filePath: string, kind: AssetEntry["
   }
   if (kind === "ui" && (metadata.width !== 256 || metadata.height !== 256)) {
     throw new Error(`Processed UI icon "${id}" must use a 256x256 canvas.`);
+  }
+  return { width: metadata.width, height: metadata.height };
+}
+
+/**
+ * The standalone file an actor is actually served from. The processed PNG next to it is
+ * the source of truth for the canvas, so this checks the runtime copy did not lose the
+ * alpha or the size on its way out of the build.
+ */
+async function assertRuntimeActorImage(id: string, filePath: string, declared: AssetSource): Promise<void> {
+  if (declared.type !== "image") throw new Error(`Actor "${id}" must be a standalone runtime image.`);
+  await access(filePath);
+  const metadata = await sharp(filePath, { failOn: "error" }).metadata();
+  if (metadata.format !== "webp" || !metadata.hasAlpha || !metadata.width || !metadata.height) {
+    throw new Error(`Runtime actor "${id}" must be a readable alpha WebP image.`);
+  }
+  if (metadata.width !== ACTOR_CANVAS.width || metadata.height !== ACTOR_CANVAS.height) {
+    throw new Error(`Runtime actor "${id}" must use the ${ACTOR_CANVAS.width}x${ACTOR_CANVAS.height} standee canvas.`);
+  }
+  if (declared.width !== metadata.width || declared.height !== metadata.height) {
+    throw new Error(`Actor "${id}" declares a runtime size its image does not have.`);
   }
 }
 
@@ -159,7 +212,13 @@ function assertTilemapPack(pack: TilemapPack, manifest: AssetManifest): void {
       const layer = map.layers[layerName];
       if (layer.length !== length) throw new Error(`Tilemap "${scenarioId}" layer "${layerName}" has the wrong length.`);
       for (const assetId of palette) {
-        if (!manifest.assets[assetId]) throw new Error(`Tilemap "${scenarioId}" references missing asset "${assetId}".`);
+        const asset = manifest.assets[assetId];
+        if (!asset) throw new Error(`Tilemap "${scenarioId}" references missing asset "${assetId}".`);
+        // A tilemap paints the board out of the atlas. An actor is neither a tile nor a
+        // prop, so one appearing in a palette means the storage split went wrong.
+        if (asset.source.type !== "atlas") {
+          throw new Error(`Tilemap "${scenarioId}" references non-atlas asset "${assetId}".`);
+        }
       }
       for (const value of layer) {
         const minimum = layerName === "ground" ? 0 : -1;
@@ -184,7 +243,7 @@ async function main(): Promise<void> {
   // legacy fixture the presentation directory is still named after.
   const equipment: readonly ContentDefinition[] = Object.values(PRODUCTION_CONTENT.pack.combatContent.equipment);
   const cards: readonly ContentDefinition[] = Object.values(PRODUCTION_CONTENT.pack.combatContent.cards);
-  if (manifest.version !== 4) throw new Error("Presentation asset manifest version must be 4.");
+  if (manifest.version !== 5) throw new Error("Presentation asset manifest version must be 5.");
   if (manifest.atlas.path !== "/assets/m3-atlas.json" || manifest.atlas.imagePath !== "/assets/m3-atlas.webp") {
     throw new Error("Presentation atlas paths are not canonical.");
   }
@@ -207,44 +266,97 @@ async function main(): Promise<void> {
     throw new Error("Presentation manifest atlas dimensions do not match its image.");
   }
 
+  const tileVisuals = new Set<string>();
   const ids = Object.keys(manifest.assets).sort();
   if (JSON.stringify(ids) !== JSON.stringify(Object.keys(sources).sort())) {
     throw new Error("Asset source IDs and manifest asset IDs must match exactly.");
   }
-  if (JSON.stringify(ids) !== JSON.stringify(Object.keys(atlas.frames).sort())) {
-    throw new Error("Atlas frame IDs and manifest asset IDs must match exactly.");
+  // Generated JSON records repository-relative paths with POSIX separators whatever
+  // platform built it. Said here so a Windows build that wrote "art\processed\..."
+  // fails on the cause, rather than on a path comparison below that cannot explain why.
+  for (const [id, source] of Object.entries(sources)) {
+    if (source.includes("\\")) throw new Error(`Asset source path for "${id}" must use "/" separators.`);
   }
+
+  // The manifest is one logical namespace over two physical stores, so the split is
+  // stated as a partition rather than as an equality. This is what fails if an actor
+  // drifts back into the atlas, or a tile quietly becomes a standalone file.
+  const actorIds = ids.filter((id) => manifest.assets[id]?.kind === "actor");
+  const atlasIds = ids.filter((id) => manifest.assets[id]?.kind !== "actor");
+  // Named before the set comparison, because "an actor is back in the atlas" is the way
+  // this partition is most likely to break and deserves to say so rather than to read as
+  // two lists that happen to differ.
+  for (const id of actorIds) {
+    if (atlas.frames[id]) throw new Error(`Actor "${id}" is a standalone image and must not be packed into the atlas.`);
+  }
+  if (JSON.stringify(atlasIds) !== JSON.stringify(Object.keys(atlas.frames).sort())) {
+    throw new Error("Atlas frame IDs and non-actor manifest asset IDs must match exactly.");
+  }
+
   for (const id of ids) {
     const asset = manifest.assets[id];
-    const frame = atlas.frames[id];
     const source = sources[id];
-    if (!asset || !frame || !source) throw new Error(`Asset "${id}" is incomplete.`);
-    if (asset.frame !== id) throw new Error(`Asset "${id}" must use its ID as the atlas frame name.`);
+    if (!asset || !source) throw new Error(`Asset "${id}" is incomplete.`);
     assertUnitPoint(id, asset.anchor);
-    assertAtlasFrame(id, frame, atlas);
-    if (JSON.stringify(asset.anchor) !== JSON.stringify(frame.anchor)) {
-      throw new Error(`Asset "${id}" anchor drifted between manifest and atlas.`);
+    if (asset.kind === "actor") {
+      if (asset.source.type !== "image") throw new Error(`Actor "${id}" must declare an image source.`);
+      await assertRuntimeActorImage(id, path.join(root, "public", asset.source.path.slice(1)), asset.source);
+    } else {
+      if (asset.source.type !== "atlas") throw new Error(`Non-actor asset "${id}" must declare an atlas source.`);
+      if (asset.source.frame !== id) throw new Error(`Asset "${id}" must use its ID as the atlas frame name.`);
+      const frame = atlas.frames[id];
+      if (!frame) throw new Error(`Asset "${id}" has no atlas frame.`);
+      assertAtlasFrame(id, frame, atlas);
+      if (JSON.stringify(asset.anchor) !== JSON.stringify(frame.anchor)) {
+        throw new Error(`Asset "${id}" anchor drifted between manifest and atlas.`);
+      }
     }
     if (asset.displayWidth !== undefined && asset.displayWidth <= 0) throw new Error(`Asset "${id}" displayWidth must be positive.`);
     if (asset.displayHeight !== undefined && asset.displayHeight <= 0) throw new Error(`Asset "${id}" displayHeight must be positive.`);
     if (asset.footprint && (asset.footprint.width !== 128 || asset.footprint.height !== 128)) {
-      throw new Error(`Terrain asset "${id}" must declare the 128x128 square footprint.`);
+      throw new Error(`Cell-bound asset "${id}" must declare the 128x128 square footprint.`);
     }
-    await assertCleanAlpha(id, path.join(root, source), asset.kind);
+    const canvas = await assertCleanAlpha(id, path.join(root, source), asset.kind);
+    if (asset.kind === "terrain") {
+      assertTileVisualContract(id, asset, canvas);
+      tileVisuals.add(id);
+    }
+    if (asset.kind === "object") assertPointPropContract(id, asset);
   }
 
+  // Every state a tile can be in needs a picture, both halves of the gate pair included.
+  // Saying it here rather than inferring it from the manifest means a gate that fell out
+  // of the terrain path fails loudly instead of leaving a square with nothing to draw.
+  assertRequiredTileVisuals(manifest.terrainVisuals, tileVisuals);
+
+  // An actor's identity has to survive every generated destination, not just the final
+  // URL. Two definitions sharing a path would make the runtime export read one
+  // character's processed PNG and ship it under the other's name.
+  assertDistinctActorPaths(Object.keys(manifest.actorVisuals));
   for (const [definitionId, visual] of Object.entries(manifest.actorVisuals)) {
-    for (const side of ["front", "back"]) {
+    const segments = actorPathSegments(definitionId).join("/");
+    for (const side of ACTOR_SIDES) {
       const id = visual[side];
-      if (!id || manifest.assets[id]?.kind !== "actor") {
+      const asset = id === undefined ? undefined : manifest.assets[id];
+      if (!id || asset?.kind !== "actor") {
         throw new Error(`Actor visual "${definitionId}" is missing a valid ${side} asset.`);
+      }
+      if (asset.source.type !== "image" || asset.source.path !== runtimeActorHref(definitionId, side)) {
+        throw new Error(`Actor "${id}" is not served from the path "${definitionId}" derives.`);
+      }
+      const processed = sources[id];
+      if (processed !== `art/processed/actors/${segments}/${side}.png`) {
+        throw new Error(`Actor "${id}" is not normalized under the namespace "${definitionId}" derives.`);
       }
     }
   }
   assertVisualMap("Equipment", equipment, manifest.equipmentVisuals, manifest);
   assertVisualMap("Card", cards, manifest.cardVisuals, manifest);
   assertTilemapPack(tilemaps, manifest);
-  process.stdout.write(`Assets OK: ${ids.length} atlas frames, ${Object.keys(manifest.actorVisuals).length} two-sided actors, ${Object.keys(tilemaps.maps).length} layered tilemaps\n`);
+  process.stdout.write(
+    `Assets OK: ${atlasIds.length} atlas frames, ${actorIds.length} standalone actor images, ` +
+    `${Object.keys(manifest.actorVisuals).length} two-sided actors, ${Object.keys(tilemaps.maps).length} layered tilemaps\n`,
+  );
 }
 
 await main();

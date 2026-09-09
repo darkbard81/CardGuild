@@ -25,7 +25,7 @@ export {
   validateActionIntent,
 } from "./queries";
 export { createCombatReplay, hashCombatState, replayCombat } from "./replay";
-export { equipmentTraits, facingToward, isDirectlyBehind, isInFrontOrSide } from "./rules";
+export { DIRECTION_VECTORS, equipmentTraits, facingToward, isDirectlyBehind, isInFrontOrSide } from "./rules";
 export {
   WEAPON_CATEGORIES,
   equippedWeapon,

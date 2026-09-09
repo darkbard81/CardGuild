@@ -1,4 +1,5 @@
-import { mkdir, writeFile } from "node:fs/promises";
+import { chooseFacing } from "./facing-input";
+import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import sharp from "sharp";
@@ -31,21 +32,24 @@ type ShotEntry = {
 
 type Corner = { readonly x: number; readonly y: number };
 
+/**
+ * The board is a fixed affine projection, so its published corners — grid (0,0), (w,0),
+ * (w,h) and (0,h) — form a parallelogram and a grid coordinate is a bilinear blend of
+ * them, with no perspective divide.
+ */
 function projectCorners(
   corners: readonly [Corner, Corner, Corner, Corner],
   gridX: number,
   gridY: number,
 ): { readonly x: number; readonly y: number } {
-  const [topLeft, topRight, bottomRight, bottomLeft] = corners;
-  const topWidth = topRight.x - topLeft.x;
-  const bottomWidth = bottomRight.x - bottomLeft.x;
-  const ratio = topWidth / bottomWidth;
+  const [origin, alongX, far, alongY] = corners;
   const u = gridX / ROAD_MAP.width;
   const v = gridY / ROAD_MAP.height;
-  const denominator = 1 + (ratio - 1) * v;
+  const blend = (a: number, b: number, c: number, d: number): number =>
+    a * (1 - u) * (1 - v) + b * u * (1 - v) + c * u * v + d * (1 - u) * v;
   return {
-    x: (topWidth * u + (ratio * bottomLeft.x - topLeft.x) * v + topLeft.x) / denominator,
-    y: ((ratio * bottomRight.y - topLeft.y) * v + topLeft.y) / denominator,
+    x: blend(origin.x, alongX.x, far.x, alongY.x),
+    y: blend(origin.y, alongX.y, far.y, alongY.y),
   };
 }
 
@@ -68,6 +72,20 @@ class ScreenAlbum {
 
   private get directory(): string {
     return path.join(SHOT_ROOT, this.viewport.id);
+  }
+
+  /**
+   * Shots are numbered by capture order, so a set that gains or loses a screen
+   * renumbers the ones after it. Clearing first keeps the orphans from the previous
+   * run out of the folder the review page reads.
+   */
+  async open(): Promise<void> {
+    await mkdir(this.directory, { recursive: true });
+    for (const entry of await readdir(this.directory, { withFileTypes: true })) {
+      if (entry.isFile() && (entry.name.endsWith(".png") || entry.name === "manifest.json")) {
+        await rm(path.join(this.directory, entry.name));
+      }
+    }
   }
 
   async shot(id: string, title: string, note: string, fullPage = true): Promise<void> {
@@ -134,25 +152,24 @@ async function captureLoadout(page: Page, album: ScreenAlbum): Promise<void> {
   await album.shot(
     "loadout-builder",
     "Loadout Builder (기본 상태)",
-    "장비 슬롯 · Collection · 덱 기여 카드가 한 화면에 있는 편성 화면.",
+    "장비 탭의 장착 슬롯과 보유 장비 아이콘 그리드.",
   );
 
-  // The weapon slot is already open on entry, so the second distinct state worth
-  // reviewing is the prepared-card picker, not another equipment list.
-  await page.getByRole("button", { name: "+ Add Card" }).click();
+  // Capture the separate prepared-card tab before inspecting a removal.
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
   await album.shot(
     "loadout-card-picker",
     "Loadout · 준비 카드 추가",
-    "Prepared Cards 슬롯에 넣을 카드 후보 목록. 덱 미리보기와 나란히 놓인다.",
+    "준비 카드 슬롯과 클릭 한 번으로 추가하는 보유 카드 그리드.",
   );
 
-  await page.locator('.equipment-slot[data-slot="weapon"]').click();
-  await page.locator('.loadout-option[data-option-id="empty-weapon"]').click();
+  await page.getByRole("tab", { name: "장비", exact: true }).click();
+  await page.locator('.equipment-slot[data-slot="weapon"]').hover();
   await expect(page.locator("#loadout-detail")).toContainText("+8 → +6");
   await album.shot(
     "loadout-preview-diff",
     "Loadout · 적용 전 변화 미리보기",
-    "무기를 비웠을 때 명중/피해가 어떻게 바뀌는지 Apply 전에 diff로 보여주는 상태.",
+    "무기 아이콘 hover로 해제 시 명중/피해 변화를 보여주는 팝오버.",
   );
 
   await page.getByRole("button", { name: "Done" }).click();
@@ -189,6 +206,16 @@ async function captureCombat(page: Page, album: ScreenAlbum): Promise<void> {
       "적 칸 클릭에서 라디얼 메뉴가 열리지 않았습니다.",
     );
   }
+
+  await page.locator("#hero-details-toggle").click();
+  await expect(page.locator("#hero-details")).toBeVisible();
+  await album.shot(
+    "combat-hero-sheet",
+    "전투 화면 · 캐릭터 상세 시트",
+    "상세 버튼으로 펼친 시트. 요약 카드가 덜어낸 세이브 DC, Strike, 장비 수치가 여기 모인다.",
+    false,
+  );
+  await page.locator("#hero-details-toggle").click();
 }
 
 /** A screen that only shows up mid-fight, tracked so it can be reported when it never did. */
@@ -268,8 +295,11 @@ async function winRoadAmbush(page: Page, album: ScreenAlbum, interrupts: Interru
     }
     if (await page.locator("#app").getAttribute("data-screen") !== "combat") break;
     if (await captureResult(page, album, interrupts)) break;
+    // A spent turn opens the selector; either entry path still needs confirmation.
+    const spent = await page.locator("#action-pips .available").count() === 0;
     const revision = await page.locator("#app").getAttribute("data-session-revision");
-    await page.getByRole("button", { name: "End Turn" }).click();
+    if (!spent) await page.getByRole("button", { name: "End Turn" }).click();
+    await chooseFacing(page, "east");
     await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "");
   }
 }
@@ -294,6 +324,7 @@ async function captureInterrupts(page: Page, album: ScreenAlbum, interrupts: Int
     if ((await page.locator("#initiative-list .active").textContent())?.includes("Aerin")) {
       const revision = await page.locator("#app").getAttribute("data-session-revision");
       await page.getByRole("button", { name: "End Turn" }).click().catch(() => undefined);
+      await chooseFacing(page, "east");
       await expect(page.locator("#app")).not.toHaveAttribute("data-session-revision", revision ?? "")
         .catch(() => undefined);
       continue;
@@ -330,6 +361,7 @@ for (const [index, viewport] of VIEWPORTS.entries()) {
     test.setTimeout(300_000);
     const album = new ScreenAlbum(page, viewport);
     const interrupts: Interrupts = { reaction: false, result: false };
+    await album.open();
     await page.setViewportSize({ width: viewport.width, height: viewport.height });
 
     await openSoloAdventure(page, album);

@@ -138,7 +138,7 @@ function movementTargets(
     moveEffect.movementMode,
   );
 
-  return [...reachable.values()]
+  const targets: LegalTarget[] = [...reachable.values()]
     .filter((node) => {
       if (!moveEffect.step) return true;
       const tile = getTile(state.map, node.position);
@@ -146,6 +146,8 @@ function movementTargets(
     })
     .sort((left, right) => left.cost - right.cost || left.position.y - right.position.y || left.position.x - right.position.x)
     .map((node) => ({ kind: "tile" as const, position: node.position, costFeet: node.cost }));
+  if (moveEffect.step) targets.unshift({ kind: "tile", position: actor.position, costFeet: 0 });
+  return targets;
 }
 
 function enemyTargets(
@@ -205,6 +207,15 @@ function listCandidateTargets(
   content: CombatContent,
 ): readonly LegalTarget[] {
   if (definition.resolution.kind === "move") return movementTargets(state, actor, definition);
+  if (definition.targeting === "tile") {
+    const range = actionRangeFeet(definition, actor, { content });
+    return Object.values(state.map.tiles)
+      .filter((tile) => gridDistance(actor.position, tile.position) <= range &&
+        hasLineOfSight(state.map, actor.position, tile.position) &&
+        hasLineOfEffect(state.map, actor.position, tile.position))
+      .sort((left, right) => left.position.y - right.position.y || left.position.x - right.position.x)
+      .map((tile) => ({ kind: "tile" as const, position: tile.position, costFeet: 0 }));
+  }
   if (definition.targeting === "enemy") return enemyTargets(state, actor, definition, content);
   if (definition.targeting === "ally" || definition.targeting === "creature") {
     return actorScopeTargets(state, actor, definition, content, definition.targeting);
@@ -302,8 +313,19 @@ export function validateActionIntent(
   const base = validateActionBase(state, actorId, source, content);
   if (!base.legal || !base.actor || !base.resolved) return { legal: false, reason: base.reason };
   const targets = listCandidateTargets(state, base.actor, base.resolved.definition, content);
+  if (target.kind === "actor" && base.resolved.definition.resolution.kind === "strike") {
+    const defender = state.actors[target.actorId];
+    if (defender && !isInFrontOrSide(base.actor, defender.position)) {
+      return { legal: false, reason: "Target is outside the front/side facing arc." };
+    }
+  }
   if (targets.length === 0) return { legal: false, reason: "No legal target." };
   if (!targetIsLegal(targets, target)) return { legal: false, reason: "Target is not legal." };
+  if (base.resolved.definition.resolution.kind === "move" && target.kind === "tile" &&
+      positionKey(target.position) === positionKey(base.actor.position) &&
+      !["north", "east", "south", "west"].includes(target.facing ?? "")) {
+    return { legal: false, reason: "In-place Step requires a direction." };
+  }
   if (!buildIntentPlan(state, base.actor, base.resolved, source, target, content)) {
     return { legal: false, reason: ACTION_CANNOT_RESOLVE };
   }
@@ -317,7 +339,8 @@ function targetIntent(target: LegalTarget, actor: ActorState): ActionTarget {
     case "actor":
       return { kind: "actor", actorId: target.actorId };
     case "tile":
-      return { kind: "tile", position: target.position, facing: actor.facing };
+      return { kind: "tile", position: target.position,
+        ...(positionKey(target.position) === positionKey(actor.position) ? { facing: actor.facing } : {}) };
     case "object":
       return { kind: "object", objectId: target.objectId };
     case "effect":
@@ -441,6 +464,7 @@ export function previewAction(
   const strike = resolution.strike;
   return {
     ...checkPreview,
+    tactical: resolution.tactical,
     hitChance: probabilities.success + probabilities["critical-success"],
     criticalChance: probabilities["critical-success"],
     damageRange: [

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { M6_COMBAT_DEFINITION } from "./load-m6-content";
 
 import { buildResolvedActionPlan } from "../game/action-plan";
 import { createCombat, dispatchCombatCommand } from "../game/engine";
@@ -155,6 +156,7 @@ describe("starter build identity", () => {
       for (let guard = 0; guard < 8 && current.turn.activeActorId !== "hero"; guard += 1) {
         const result = dispatchCombatCommand(current, {
           type: "end-turn",
+          facing: current.actors[current.turn.activeActorId]!.facing,
           id: `end-${String(current.sequence + 1)}`,
           sequence: current.sequence + 1,
           actorId: current.turn.activeActorId,
@@ -240,7 +242,7 @@ const TARGET_ENEMY: ActorState = (() => {
 function planOf(actor: ActorState, actionId: string, target: ActionTarget) {
   const definition = CONTENT.actions[actionId];
   if (!definition) throw new Error(`Action "${actionId}" is missing.`);
-  const state = { actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } } as unknown as CombatState;
+  const state = { map: createCombat(M6_COMBAT_DEFINITION, 33).state.map, actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } };
   return buildResolvedActionPlan(
     definition, actor, target, { kind: "card", id: "unused" }, state, CONTENT, { kind: "turn", attacksThisTurn: 0 },
   );

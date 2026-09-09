@@ -1,5 +1,5 @@
 {
-  "version": 4,
+  "version": 5,
   "bundle": "m3-encounter",
   "atlas": {
     "path": "/assets/m3-atlas.json",
@@ -9,8 +9,11 @@
   },
   "assets": {
     "terrain.stone-floor": {
-      "frame": "terrain.stone-floor",
       "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.stone-floor"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -23,8 +26,11 @@
       }
     },
     "terrain.rubble": {
-      "frame": "terrain.rubble",
       "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.rubble"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -37,8 +43,62 @@
       }
     },
     "terrain.chasm": {
-      "frame": "terrain.chasm",
       "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.chasm"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.wall-block": {
+      "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.wall-block"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.gate.closed": {
+      "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.gate.closed"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.gate.open": {
+      "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.gate.open"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -51,8 +111,11 @@
       }
     },
     "transition.web": {
-      "frame": "transition.web",
       "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "transition.web"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -64,18 +127,12 @@
         "height": 128
       }
     },
-    "object.wall": {
-      "frame": "object.wall",
+    "object.chest": {
       "kind": "object",
-      "anchor": {
-        "x": 0.5,
-        "y": 1
+      "source": {
+        "type": "atlas",
+        "frame": "object.chest"
       },
-      "displayHeight": 108
-    },
-    "object.crate": {
-      "frame": "object.crate",
-      "kind": "object",
       "anchor": {
         "x": 0.5,
         "y": 1
@@ -83,161 +140,303 @@
       "displayHeight": 92
     },
     "object.lever": {
-      "frame": "object.lever",
       "kind": "object",
+      "source": {
+        "type": "atlas",
+        "frame": "object.lever"
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
       "displayHeight": 88
     },
-    "object.gate.closed": {
-      "frame": "object.gate.closed",
-      "kind": "object",
-      "anchor": {
-        "x": 0.5,
-        "y": 1
-      },
-      "displayHeight": 156
-    },
-    "object.gate.open": {
-      "frame": "object.gate.open",
-      "kind": "object",
-      "anchor": {
-        "x": 0.5,
-        "y": 1
-      },
-      "displayHeight": 156
-    },
     "actor.hero.aerin.front": {
-      "frame": "actor.hero.aerin.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/hero/aerin/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 152
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2383,
+        "width": 0.5234,
+        "height": 0.9401
+      }
     },
     "actor.hero.aerin.back": {
-      "frame": "actor.hero.aerin.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/hero/aerin/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 152
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0677,
+        "left": 0.2383,
+        "width": 0.5234,
+        "height": 0.9323
+      }
     },
     "actor.hero.lyra.front": {
-      "frame": "actor.hero.lyra.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/hero/lyra/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 148
+      "displayHeight": 148,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2422,
+        "width": 0.5195,
+        "height": 0.9401
+      }
     },
     "actor.hero.lyra.back": {
-      "frame": "actor.hero.lyra.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/hero/lyra/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 148
+      "displayHeight": 148,
+      "ink": {
+        "top": 0.0781,
+        "left": 0.2539,
+        "width": 0.4922,
+        "height": 0.9219
+      }
     },
     "actor.hero.brom.front": {
-      "frame": "actor.hero.brom.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/hero/brom/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 158
+      "displayHeight": 158,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2148,
+        "width": 0.5742,
+        "height": 0.9401
+      }
     },
     "actor.hero.brom.back": {
-      "frame": "actor.hero.brom.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/hero/brom/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 158
+      "displayHeight": 158,
+      "ink": {
+        "top": 0.0729,
+        "left": 0.2148,
+        "width": 0.5742,
+        "height": 0.9271
+      }
     },
     "actor.hero.nera.front": {
-      "frame": "actor.hero.nera.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/hero/nera/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2617,
+        "width": 0.4805,
+        "height": 0.9401
+      }
     },
     "actor.hero.nera.back": {
-      "frame": "actor.hero.nera.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/hero/nera/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2656,
+        "width": 0.4688,
+        "height": 0.9401
+      }
     },
     "actor.goblin-skirmisher.front": {
-      "frame": "actor.goblin-skirmisher.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-skirmisher/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2109,
+        "width": 0.5781,
+        "height": 0.9401
+      }
     },
     "actor.goblin-skirmisher.back": {
-      "frame": "actor.goblin-skirmisher.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-skirmisher/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0781,
+        "left": 0.2188,
+        "width": 0.5664,
+        "height": 0.9219
+      }
     },
     "actor.goblin-brute.front": {
-      "frame": "actor.goblin-brute.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-brute/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 152
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.0977,
+        "width": 0.8047,
+        "height": 0.9401
+      }
     },
     "actor.goblin-brute.back": {
-      "frame": "actor.goblin-brute.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-brute/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 152
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0833,
+        "left": 0.1016,
+        "width": 0.8008,
+        "height": 0.9167
+      }
     },
     "actor.goblin-chief.front": {
-      "frame": "actor.goblin-chief.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-chief/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 164
+      "displayHeight": 164,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2617,
+        "width": 0.4805,
+        "height": 0.9401
+      }
     },
     "actor.goblin-chief.back": {
-      "frame": "actor.goblin-chief.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-chief/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 164
+      "displayHeight": 164,
+      "ink": {
+        "top": 0.1536,
+        "left": 0.2617,
+        "width": 0.4805,
+        "height": 0.8464
+      }
     },
     "ui.equipment.halberd": {
-      "frame": "ui.equipment.halberd",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.halberd"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -246,8 +445,11 @@
       "displayHeight": 64
     },
     "ui.equipment.shield": {
-      "frame": "ui.equipment.shield",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.shield"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -256,8 +458,11 @@
       "displayHeight": 64
     },
     "ui.equipment.boots-of-fly": {
-      "frame": "ui.equipment.boots-of-fly",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.boots-of-fly"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -266,8 +471,11 @@
       "displayHeight": 64
     },
     "ui.card.trip": {
-      "frame": "ui.card.trip",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.trip"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -276,8 +484,11 @@
       "displayHeight": 64
     },
     "ui.card.fly": {
-      "frame": "ui.card.fly",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.fly"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -286,8 +497,11 @@
       "displayHeight": 64
     },
     "ui.card.spirit-beacon": {
-      "frame": "ui.card.spirit-beacon",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.spirit-beacon"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -296,8 +510,11 @@
       "displayHeight": 64
     },
     "ui.card.reactive-strike": {
-      "frame": "ui.card.reactive-strike",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.reactive-strike"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -306,278 +523,611 @@
       "displayHeight": 64
     },
     "actor.skeleton-rabble.front": {
-      "frame": "actor.skeleton-rabble.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/skeleton-rabble/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2383,
+        "width": 0.5273,
+        "height": 0.9401
+      }
     },
     "actor.skeleton-rabble.back": {
-      "frame": "actor.skeleton-rabble.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/skeleton-rabble/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2539,
+        "width": 0.4961,
+        "height": 0.9401
+      }
     },
     "actor.skeleton-guard.front": {
-      "frame": "actor.skeleton-guard.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/skeleton-guard/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2656,
+        "width": 0.4727,
+        "height": 0.9401
+      }
     },
     "actor.skeleton-guard.back": {
-      "frame": "actor.skeleton-guard.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/skeleton-guard/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0625,
+        "left": 0.2617,
+        "width": 0.4766,
+        "height": 0.9375
+      }
     },
     "actor.skeleton-archer.front": {
-      "frame": "actor.skeleton-archer.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/skeleton-archer/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.25,
+        "width": 0.5039,
+        "height": 0.9401
+      }
     },
     "actor.skeleton-archer.back": {
-      "frame": "actor.skeleton-archer.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/skeleton-archer/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0703,
+        "left": 0.2344,
+        "width": 0.5313,
+        "height": 0.9297
+      }
     },
     "actor.bone-hulk.front": {
-      "frame": "actor.bone-hulk.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/bone-hulk/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2148,
+        "width": 0.5703,
+        "height": 0.9401
+      }
     },
     "actor.bone-hulk.back": {
-      "frame": "actor.bone-hulk.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/bone-hulk/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0625,
+        "left": 0.2188,
+        "width": 0.5625,
+        "height": 0.9375
+      }
     },
     "actor.bone-priest.front": {
-      "frame": "actor.bone-priest.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/bone-priest/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2266,
+        "width": 0.5469,
+        "height": 0.9401
+      }
     },
     "actor.bone-priest.back": {
-      "frame": "actor.bone-priest.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/bone-priest/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0677,
+        "left": 0.2266,
+        "width": 0.5469,
+        "height": 0.9323
+      }
     },
     "actor.wolf-yearling.front": {
-      "frame": "actor.wolf-yearling.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/wolf-yearling/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0625,
+        "left": 0.2852,
+        "width": 0.4297,
+        "height": 0.9375
+      }
     },
     "actor.wolf-yearling.back": {
-      "frame": "actor.wolf-yearling.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/wolf-yearling/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2852,
+        "width": 0.4297,
+        "height": 0.9401
+      }
     },
     "actor.dire-wolf.front": {
-      "frame": "actor.dire-wolf.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dire-wolf/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.1992,
+        "width": 0.6055,
+        "height": 0.9401
+      }
     },
     "actor.dire-wolf.back": {
-      "frame": "actor.dire-wolf.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dire-wolf/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.1953,
+        "width": 0.6094,
+        "height": 0.9401
+      }
     },
     "actor.cave-spider.front": {
-      "frame": "actor.cave-spider.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/cave-spider/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.5339,
+        "left": 0.0313,
+        "width": 0.9414,
+        "height": 0.4661
+      }
     },
     "actor.cave-spider.back": {
-      "frame": "actor.cave-spider.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/cave-spider/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.5365,
+        "left": 0.0391,
+        "width": 0.9258,
+        "height": 0.4635
+      }
     },
     "actor.giant-spider.front": {
-      "frame": "actor.giant-spider.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/giant-spider/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.0664,
+        "width": 0.8711,
+        "height": 0.9401
+      }
     },
     "actor.giant-spider.back": {
-      "frame": "actor.giant-spider.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/giant-spider/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0625,
+        "left": 0.0703,
+        "width": 0.8594,
+        "height": 0.9375
+      }
     },
     "actor.cult-initiate.front": {
-      "frame": "actor.cult-initiate.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/cult-initiate/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2656,
+        "width": 0.4688,
+        "height": 0.9401
+      }
     },
     "actor.cult-initiate.back": {
-      "frame": "actor.cult-initiate.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/cult-initiate/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0729,
+        "left": 0.2617,
+        "width": 0.4766,
+        "height": 0.9271
+      }
     },
     "actor.cult-firebrand.front": {
-      "frame": "actor.cult-firebrand.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/cult-firebrand/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2656,
+        "width": 0.4688,
+        "height": 0.9401
+      }
     },
     "actor.cult-firebrand.back": {
-      "frame": "actor.cult-firebrand.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/cult-firebrand/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0651,
+        "left": 0.25,
+        "width": 0.5039,
+        "height": 0.9349
+      }
     },
     "actor.cult-hierophant.front": {
-      "frame": "actor.cult-hierophant.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/cult-hierophant/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2461,
+        "width": 0.5078,
+        "height": 0.9401
+      }
     },
     "actor.cult-hierophant.back": {
-      "frame": "actor.cult-hierophant.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/cult-hierophant/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0651,
+        "left": 0.2539,
+        "width": 0.4922,
+        "height": 0.9349
+      }
     },
     "actor.goblin-lackey.front": {
-      "frame": "actor.goblin-lackey.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-lackey/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2539,
+        "width": 0.4922,
+        "height": 0.9401
+      }
     },
     "actor.goblin-lackey.back": {
-      "frame": "actor.goblin-lackey.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-lackey/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0781,
+        "left": 0.2578,
+        "width": 0.4883,
+        "height": 0.9219
+      }
     },
     "actor.goblin-spearman.front": {
-      "frame": "actor.goblin-spearman.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-spearman/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.293,
+        "width": 0.418,
+        "height": 0.9401
+      }
     },
     "actor.goblin-spearman.back": {
-      "frame": "actor.goblin-spearman.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-spearman/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0729,
+        "left": 0.3008,
+        "width": 0.3984,
+        "height": 0.9271
+      }
     },
     "actor.goblin-slinger.front": {
-      "frame": "actor.goblin-slinger.front",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-slinger/front.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2461,
+        "width": 0.5078,
+        "height": 0.9401
+      }
     },
     "actor.goblin-slinger.back": {
-      "frame": "actor.goblin-slinger.back",
       "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/goblin-slinger/back.webp",
+        "width": 256,
+        "height": 384
+      },
       "anchor": {
         "x": 0.5,
         "y": 1
       },
-      "displayHeight": 132
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.1094,
+        "left": 0.2422,
+        "width": 0.5195,
+        "height": 0.8906
+      }
     },
     "ui.equipment.light-blade": {
-      "frame": "ui.equipment.light-blade",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.light-blade"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -586,8 +1136,11 @@
       "displayHeight": 64
     },
     "ui.equipment.guardian-mace": {
-      "frame": "ui.equipment.guardian-mace",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.guardian-mace"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -596,8 +1149,11 @@
       "displayHeight": 64
     },
     "ui.equipment.composite-shortbow": {
-      "frame": "ui.equipment.composite-shortbow",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.composite-shortbow"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -606,8 +1162,11 @@
       "displayHeight": 64
     },
     "ui.equipment.leather-armor": {
-      "frame": "ui.equipment.leather-armor",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.leather-armor"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -616,8 +1175,11 @@
       "displayHeight": 64
     },
     "ui.equipment.scale-mail": {
-      "frame": "ui.equipment.scale-mail",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.scale-mail"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -626,8 +1188,11 @@
       "displayHeight": 64
     },
     "ui.equipment.half-plate": {
-      "frame": "ui.equipment.half-plate",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.half-plate"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -636,8 +1201,11 @@
       "displayHeight": 64
     },
     "ui.equipment.dueling-rapier": {
-      "frame": "ui.equipment.dueling-rapier",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.dueling-rapier"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -646,8 +1214,11 @@
       "displayHeight": 64
     },
     "ui.equipment.throwing-axes": {
-      "frame": "ui.equipment.throwing-axes",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.throwing-axes"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -656,8 +1227,11 @@
       "displayHeight": 64
     },
     "ui.equipment.greatsword": {
-      "frame": "ui.equipment.greatsword",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.greatsword"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -666,8 +1240,11 @@
       "displayHeight": 64
     },
     "ui.equipment.boar-spear": {
-      "frame": "ui.equipment.boar-spear",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.boar-spear"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -676,8 +1253,11 @@
       "displayHeight": 64
     },
     "ui.equipment.executioner-axe": {
-      "frame": "ui.equipment.executioner-axe",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.executioner-axe"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -686,8 +1266,11 @@
       "displayHeight": 64
     },
     "ui.equipment.flick-mace": {
-      "frame": "ui.equipment.flick-mace",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.flick-mace"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -696,8 +1279,11 @@
       "displayHeight": 64
     },
     "ui.equipment.scout-leather": {
-      "frame": "ui.equipment.scout-leather",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.scout-leather"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -706,8 +1292,11 @@
       "displayHeight": 64
     },
     "ui.equipment.brigandine": {
-      "frame": "ui.equipment.brigandine",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.brigandine"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -716,8 +1305,11 @@
       "displayHeight": 64
     },
     "ui.equipment.buckler": {
-      "frame": "ui.equipment.buckler",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.buckler"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -726,8 +1318,11 @@
       "displayHeight": 64
     },
     "ui.equipment.tower-shield": {
-      "frame": "ui.equipment.tower-shield",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.tower-shield"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -736,8 +1331,11 @@
       "displayHeight": 64
     },
     "ui.equipment.spiked-shield": {
-      "frame": "ui.equipment.spiked-shield",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.spiked-shield"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -746,8 +1344,11 @@
       "displayHeight": 64
     },
     "ui.equipment.striders-boots": {
-      "frame": "ui.equipment.striders-boots",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.striders-boots"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -756,8 +1357,11 @@
       "displayHeight": 64
     },
     "ui.equipment.medics-kit": {
-      "frame": "ui.equipment.medics-kit",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.medics-kit"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -766,8 +1370,11 @@
       "displayHeight": 64
     },
     "ui.equipment.warding-charm": {
-      "frame": "ui.equipment.warding-charm",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.warding-charm"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -776,8 +1383,11 @@
       "displayHeight": 64
     },
     "ui.equipment.hexers-focus": {
-      "frame": "ui.equipment.hexers-focus",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.hexers-focus"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -786,8 +1396,11 @@
       "displayHeight": 64
     },
     "ui.equipment.bloodied-talisman": {
-      "frame": "ui.equipment.bloodied-talisman",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.bloodied-talisman"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -796,8 +1409,11 @@
       "displayHeight": 64
     },
     "ui.card.knockdown": {
-      "frame": "ui.card.knockdown",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.knockdown"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -806,8 +1422,11 @@
       "displayHeight": 64
     },
     "ui.card.vicious-swing": {
-      "frame": "ui.card.vicious-swing",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.vicious-swing"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -816,8 +1435,11 @@
       "displayHeight": 64
     },
     "ui.card.intimidating-strike": {
-      "frame": "ui.card.intimidating-strike",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.intimidating-strike"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -826,8 +1448,11 @@
       "displayHeight": 64
     },
     "ui.card.combat-grab": {
-      "frame": "ui.card.combat-grab",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.combat-grab"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -836,8 +1461,11 @@
       "displayHeight": 64
     },
     "ui.card.aimed-shot": {
-      "frame": "ui.card.aimed-shot",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.aimed-shot"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -846,8 +1474,11 @@
       "displayHeight": 64
     },
     "ui.card.shield-press": {
-      "frame": "ui.card.shield-press",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.shield-press"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -856,8 +1487,11 @@
       "displayHeight": 64
     },
     "ui.card.grapple": {
-      "frame": "ui.card.grapple",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.grapple"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -866,8 +1500,11 @@
       "displayHeight": 64
     },
     "ui.card.demoralize": {
-      "frame": "ui.card.demoralize",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.demoralize"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -876,8 +1513,11 @@
       "displayHeight": 64
     },
     "ui.card.slip-free": {
-      "frame": "ui.card.slip-free",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.slip-free"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -886,8 +1526,11 @@
       "displayHeight": 64
     },
     "ui.card.battle-medicine": {
-      "frame": "ui.card.battle-medicine",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.battle-medicine"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -896,8 +1539,11 @@
       "displayHeight": 64
     },
     "ui.card.frostbite": {
-      "frame": "ui.card.frostbite",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.frostbite"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -906,8 +1552,11 @@
       "displayHeight": 64
     },
     "ui.card.fear": {
-      "frame": "ui.card.fear",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.fear"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -916,8 +1565,11 @@
       "displayHeight": 64
     },
     "ui.card.harm": {
-      "frame": "ui.card.harm",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.harm"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -926,8 +1578,11 @@
       "displayHeight": 64
     },
     "ui.card.daze": {
-      "frame": "ui.card.daze",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.daze"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -936,8 +1591,11 @@
       "displayHeight": 64
     },
     "ui.card.iron-presence": {
-      "frame": "ui.card.iron-presence",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.iron-presence"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -946,8 +1604,11 @@
       "displayHeight": 64
     },
     "ui.card.telekinetic-projectile": {
-      "frame": "ui.card.telekinetic-projectile",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.telekinetic-projectile"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -956,8 +1617,11 @@
       "displayHeight": 64
     },
     "ui.card.ember-lash": {
-      "frame": "ui.card.ember-lash",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.ember-lash"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -966,8 +1630,11 @@
       "displayHeight": 64
     },
     "ui.card.force-barrage": {
-      "frame": "ui.card.force-barrage",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.force-barrage"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -976,8 +1643,11 @@
       "displayHeight": 64
     },
     "ui.card.heal": {
-      "frame": "ui.card.heal",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.heal"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -986,8 +1656,11 @@
       "displayHeight": 64
     },
     "ui.card.soothe": {
-      "frame": "ui.card.soothe",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.soothe"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -996,8 +1669,11 @@
       "displayHeight": 64
     },
     "ui.card.lay-on-hands": {
-      "frame": "ui.card.lay-on-hands",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.lay-on-hands"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -1006,8 +1682,11 @@
       "displayHeight": 64
     },
     "ui.card.spirit-edge": {
-      "frame": "ui.card.spirit-edge",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.spirit-edge"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -1016,8 +1695,11 @@
       "displayHeight": 64
     },
     "ui.card.brace-behind-cover": {
-      "frame": "ui.card.brace-behind-cover",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.brace-behind-cover"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -1026,8 +1708,11 @@
       "displayHeight": 64
     },
     "ui.card.dueling-parry": {
-      "frame": "ui.card.dueling-parry",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.dueling-parry"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -1036,8 +1721,11 @@
       "displayHeight": 64
     },
     "ui.card.arcane-ward": {
-      "frame": "ui.card.arcane-ward",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.arcane-ward"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -1046,8 +1734,11 @@
       "displayHeight": 64
     },
     "ui.card.careful-advance": {
-      "frame": "ui.card.careful-advance",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.careful-advance"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -1056,8 +1747,11 @@
       "displayHeight": 64
     },
     "ui.card.hover-step": {
-      "frame": "ui.card.hover-step",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.hover-step"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -1066,8 +1760,11 @@
       "displayHeight": 64
     },
     "ui.card.spirit-lance": {
-      "frame": "ui.card.spirit-lance",
       "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.card.spirit-lance"
+      },
       "anchor": {
         "x": 0.5,
         "y": 0.5
@@ -1171,14 +1868,13 @@
     "difficult": "terrain.rubble",
     "impassable": "terrain.chasm",
     "web": "transition.web",
-    "blocked": "object.wall"
+    "blocked": "terrain.wall-block",
+    "gateClosed": "terrain.gate.closed",
+    "gateOpen": "terrain.gate.open"
   },
   "objectVisuals": {
-    "wall": "object.wall",
-    "crate": "object.crate",
-    "lever": "object.lever",
-    "gateClosed": "object.gate.closed",
-    "gateOpen": "object.gate.open"
+    "chest": "object.chest",
+    "lever": "object.lever"
   },
   "equipmentVisuals": {
     "halberd": "ui.equipment.halberd",

@@ -7,3 +7,4 @@ test-results/
 *.tsbuildinfo
 *.log
 .DS_Store
+docs/ui-review/mockup/

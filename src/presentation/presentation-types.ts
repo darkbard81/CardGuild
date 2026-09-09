@@ -8,13 +8,35 @@ export interface AssetPoint {
   readonly y: number;
 }
 
+/**
+ * Where an asset's pixels physically live. Logical asset identity is deliberately
+ * independent of this: a caller asks for `actor.hero.aerin.front` and never learns
+ * whether that came out of the shared atlas or its own file. Only the pipeline and the
+ * loader read it, so adding a standee cannot force the tile/object atlas to be repacked.
+ */
+export type PresentationAssetSource =
+  | { readonly type: "atlas"; readonly frame: string }
+  /** Width and height are the file's own, so DOM backgrounds can place it without loading it. */
+  | { readonly type: "image"; readonly path: string; readonly width: number; readonly height: number };
+
 export interface PresentationAssetDefinition {
-  readonly frame: string;
   readonly kind: PresentationAssetKind;
+  readonly source: PresentationAssetSource;
   readonly anchor: AssetPoint;
   readonly displayWidth?: number;
   readonly displayHeight?: number;
   readonly footprint?: { readonly width: number; readonly height: number };
+  /**
+   * Where the drawing sits inside its frame, as fractions of the frame. Measured by the
+   * asset build so a portrait can frame the top of the art instead of the top of the
+   * canvas — a low, wide creature leaves that empty.
+   */
+  readonly ink?: {
+    readonly top: number;
+    readonly left: number;
+    readonly width: number;
+    readonly height: number;
+  };
 }
 
 export interface ActorVisualDefinition {
@@ -23,7 +45,7 @@ export interface ActorVisualDefinition {
 }
 
 export interface PresentationAssetManifest {
-  readonly version: 4;
+  readonly version: 5;
   readonly bundle: string;
   readonly atlas: {
     readonly path: string;
@@ -33,19 +55,24 @@ export interface PresentationAssetManifest {
   };
   readonly assets: Readonly<Record<PresentationAssetId, PresentationAssetDefinition>>;
   readonly actorVisuals: Readonly<Record<ActorDefinitionId, ActorVisualDefinition>>;
+  /**
+   * What a tile's own state looks like. The last three are surfaces a square can be in
+   * rather than things standing on it — a wall, and a gate in each of its two states —
+   * so they are square terrain tiles like the floors, not standees.
+   */
   readonly terrainVisuals: {
     readonly open: PresentationAssetId;
     readonly difficult: PresentationAssetId;
     readonly impassable: PresentationAssetId;
     readonly web: PresentationAssetId;
     readonly blocked: PresentationAssetId;
-  };
-  readonly objectVisuals: {
-    readonly wall: PresentationAssetId;
-    readonly crate: PresentationAssetId;
-    readonly lever: PresentationAssetId;
     readonly gateClosed: PresentationAssetId;
     readonly gateOpen: PresentationAssetId;
+  };
+  /** Point props: things standing on a tile that the tile would still be there without. */
+  readonly objectVisuals: {
+    readonly chest: PresentationAssetId;
+    readonly lever: PresentationAssetId;
   };
   readonly equipmentVisuals: Readonly<Record<string, PresentationAssetId>>;
   readonly cardVisuals: Readonly<Record<string, PresentationAssetId>>;
@@ -60,12 +87,19 @@ export interface PresentationAtlasMap {
   readonly meta: { readonly size: { readonly w: number; readonly h: number } };
 }
 
-export interface DomAtlasStyle {
+export interface DomAssetStyle {
   readonly backgroundImage: string;
   readonly backgroundPosition: string;
   readonly backgroundSize: string;
   readonly width: string;
   readonly height: string;
+}
+
+/** The same frame expressed in percentages, so it scales with whatever element holds it. */
+export interface DomFillStyle {
+  readonly backgroundImage: string;
+  readonly backgroundPosition: string;
+  readonly backgroundSize: string;
 }
 
 export function groundSemantic(traits: readonly TraitInstance[]): "open" | "difficult" | "impassable" {
@@ -101,6 +135,27 @@ export interface PresentationTilemapPack {
   readonly maps: Readonly<Record<string, PresentationTilemap>>;
 }
 
-export function facingAsset(visual: ActorVisualDefinition, direction: Direction): PresentationAssetId {
-  return direction === "north" ? visual.back : visual.front;
+/** Which drawing a standee shows, and whether it is mirrored to get there. */
+export interface StandeeFacing {
+  readonly assetId: PresentationAssetId;
+  readonly flipX: boolean;
+}
+
+/**
+ * Four facings out of the two drawings that exist, paired by which way they point on the
+ * turned board. A quarter turn puts north up-right and west up-left, so both face away
+ * from the player and take the back drawing; east runs down-right and south down-left,
+ * so both face towards the player and take the front. Within each pair the second is the
+ * first seen in a mirror, which is what carries the pose to the other side of the screen.
+ *
+ *   north -> back            west  -> back mirrored
+ *   east  -> front           south -> front mirrored
+ *
+ * Only the body is ever mirrored. A base, an HP badge or any text above a standee is
+ * screen furniture and reads the same way whichever way the character looks.
+ */
+export function facingStandee(visual: ActorVisualDefinition, direction: Direction): StandeeFacing {
+  if (direction === "north") return { assetId: visual.back, flipX: false };
+  if (direction === "west") return { assetId: visual.back, flipX: true };
+  return { assetId: visual.front, flipX: direction === "south" };
 }

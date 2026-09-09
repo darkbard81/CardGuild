@@ -33,7 +33,7 @@ class SocketClient {
     origin: string,
     credential: SessionCredentialResponse,
     contentIdentity = PRODUCTION_CONTENT.contentIdentity,
-    version: 1 | 3 = 3,
+    version: 1 | 3 | 4 = 4,
   ): Promise<SocketClient> {
     const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
     const client = new SocketClient(socket);
@@ -118,7 +118,7 @@ async function post<T>(
 }
 
 function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
-  return { v: 3, type: "intent", requestId, expectedRevision, intent: value };
+  return { v: 4, type: "intent", requestId, expectedRevision, intent: value };
 }
 
 async function accepted(
@@ -194,6 +194,37 @@ describe("real WebSocket M5 cooperative session", () => {
     if (running) await running.close();
     running = null;
     vi.restoreAllMocks();
+  });
+
+  it("transports atomic final facing and preserves it in a reconnect snapshot", async () => {
+    const server = await start();
+    const credential = await create(server);
+    const client = await SocketClient.connect(server.origin, credential);
+    sockets.push(client);
+    await client.waitForSnapshot();
+    const host = server.store.get(credential.sessionId)!;
+    await accepted(client, host, "party-facing", { type: "set-party-composition", actorDefinitionIds: PARTY });
+    await accepted(client, host, "begin-facing", { type: "begin-adventure" });
+    await accepted(client, host, "encounter-facing", { type: "start-encounter" });
+    const before = host.state;
+    const actorId = before.combat!.turn.activeActorId;
+    const facing = before.combat!.actors[actorId]!.facing === "west" ? "east" : "west";
+    const mark = client.mark();
+    const ack = await accepted(client, host, "end-facing", { type: "end-turn", facing });
+    expect(ack.committedRevision).toBe(before.revision + 1);
+    const snapshot = await client.waitForSnapshot(mark, (message) => message.cause?.requestId === "end-facing");
+    expect(snapshot.state.combat!.actors[actorId]!.facing).toBe(facing);
+    expect(snapshot.state.combat!.turn.activeActorId).not.toBe(actorId);
+    expect(snapshot.state.combat!.commandLog.at(-1)).toMatchObject({ type: "end-turn", facing, actorId });
+    expect(snapshot.events.findIndex((event) => event.type === "FACING_CHANGED"))
+      .toBeLessThan(snapshot.events.findIndex((event) => event.type === "TURN_ENDED"));
+    expect(snapshot.events.some((event) => event.type === "ACTION_SPENT")).toBe(false);
+    await client.close();
+    const reconnected = await SocketClient.connect(server.origin, credential);
+    sockets.push(reconnected);
+    const recovered = await reconnected.waitForSnapshot();
+    expect(recovered.state.combat!.actors[actorId]!.facing).toBe(facing);
+    expect(recovered.gameplayHash).toBe(hashSessionGameplayState(host.state));
   });
 
   it("runs a 1P session with the host controlling and editing all three characters", async () => {
@@ -383,7 +414,7 @@ describe("real WebSocket M5 cooperative session", () => {
       const ownerClient = controller === hostCredential.playerId ? hostClient : guestClient;
       await accepted(ownerClient, host, "advance-" + String(index), combat.pendingReaction
         ? { type: "pass-reaction", triggerId: combat.pendingReaction.triggerId }
-        : { type: "end-turn" });
+        : { type: "end-turn", facing: combat.actors[combat.turn.activeActorId]!.facing });
     }
     const boundaryCombat = host.state.combat;
     const boundaryReaction = boundaryCombat?.pendingReaction;
@@ -524,12 +555,16 @@ describe("real WebSocket M5 cooperative session", () => {
     expect(new Set(snapshots.map((snapshot) => snapshot.gameplayHash)).size).toBe(1);
     expect(snapshots.every((snapshot) => snapshot.state.revision === host.state.revision)).toBe(true);
 
-    const v1 = await SocketClient.connect(server.origin, hostCredential, PRODUCTION_CONTENT.contentIdentity, 1);
-    sockets.push(v1);
-    const mismatch = await v1.waitFor(
-      (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
-    );
-    expect(mismatch.code).toBe("PROTOCOL_MISMATCH");
+    // v3 spoke a facing-less end-turn and a facing-bearing tile target, so it is turned
+    // away at the handshake rather than left to fail one rejected intent at a time.
+    for (const version of [1, 3] as const) {
+      const legacy = await SocketClient.connect(server.origin, hostCredential, PRODUCTION_CONTENT.contentIdentity, version);
+      sockets.push(legacy);
+      const mismatch = await legacy.waitFor(
+        (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
+      );
+      expect(mismatch.message).toContain("version 4");
+    }
   }, 30_000);
 
   it("preserves request, credential, payload, and newest-connection transport boundaries", async () => {

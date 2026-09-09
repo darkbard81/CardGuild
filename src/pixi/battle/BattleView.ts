@@ -3,10 +3,10 @@ import {
   Container,
   type FederatedPointerEvent,
   Graphics,
-  PerspectiveMesh,
   Point,
   Rectangle,
   RenderLayer,
+  Sprite,
   type Ticker,
   Texture,
 } from "pixi.js";
@@ -19,14 +19,30 @@ import { BoardProjection } from "./BoardProjection";
 import type { BoardFrame, BoardSafeArea, BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG, ZERO_BOARD_SAFE_AREA } from "./BoardViewConfig";
 import { ObjectRenderer } from "./ObjectRenderer";
-import { facingPolygon, pointInPolygon, TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
+import { TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
 import { TerrainRenderer, type SortableVisual } from "./TerrainRenderer";
 
+/**
+ * Which movement reaches a square. Bands are ordered cheapest first: a square Step can
+ * reach is a Step square even though Stride reaches it too.
+ */
+export type MoveBand = "step" | "stride" | "fly";
+
+export interface MoveBandTile {
+  readonly position: GridPosition;
+  readonly band: MoveBand;
+  readonly costFeet: number;
+}
+
 export interface BoardHighlights {
+  /** Which of the four arrows the pointer is currently answering, if any. */
+  readonly aimedFacing?: Direction;
   readonly tiles: readonly GridPosition[];
   readonly actorIds: readonly string[];
   readonly objectIds: readonly string[];
   readonly facingPosition: GridPosition | null;
+  /** Where this actor could move, drawn under the target highlights as ambient information. */
+  readonly moveBands: readonly MoveBandTile[];
 }
 
 export type BoardPick =
@@ -42,8 +58,13 @@ export interface ScreenPoint {
 export interface BattleViewHandlers {
   /** A board target was picked; the screen point anchors the radial action menu. */
   readonly onPick: (pick: BoardPick, screen: ScreenPoint) => void;
-  readonly onFacing: (facing: Direction) => void;
+  /** A facing is aimed at a board coordinate, not chosen from a direction widget. */
+  readonly onFacingPoint: (point: { readonly x: number; readonly y: number }) => void;
+  /** The same coordinate under a hovering pointer, for showing what it would answer. */
+  readonly onFacingAim: (point: { readonly x: number; readonly y: number }) => void;
   readonly onHoverCell: (position: GridPosition | null) => void;
+  /** Fires when the last movement finishes, so a paced caller can hand over the next one. */
+  readonly onMovementSettled?: () => void;
   /** Current HUD gutters, re-read whenever the board is rebuilt or the canvas resizes. */
   readonly safeArea: () => BoardSafeArea;
 }
@@ -55,6 +76,9 @@ interface AnimationRecord {
 interface PositionedVisual extends SortableVisual {
   currentPosition: { x: number; y: number };
 }
+
+/** Below this the two points are effectively one and the ratio is noise. */
+const MIN_PINCH_SPREAD = 24;
 
 function clearLayer(layer: Container): void {
   for (const child of layer.removeChildren()) child.destroy({ children: true });
@@ -74,6 +98,19 @@ function lerp(left: number, right: number, progress: number): number {
 export class BattleView {
   private readonly scene = new Container({ label: "BattleScene" });
   private readonly boardFloorLayer = new Container({ label: "boardFloorLayer" });
+  /**
+   * The board plane, split so the transform order is written down rather than left to a
+   * single container's composition rules:
+   *
+   *   camera root (origin + uniform scale) > squash root (scaleY) > turn root (rotation)
+   *
+   * The turn happens first and the squash acts on its result, which is what makes a
+   * square cell a 2:1 diamond instead of a rotated rectangle. Only the board is in here;
+   * standees are laid out against the same projection but stay upright on their own layer.
+   */
+  private readonly boardCameraRoot = new Container({ label: "boardCameraRoot" });
+  private readonly boardSquashRoot = new Container({ label: "boardSquashRoot" });
+  private readonly boardTurnRoot = new Container({ label: "boardTurnRoot" });
   private readonly boardOverlayLayer = new Container({ label: "boardOverlayLayer" });
   private readonly propLayer = new Container({ label: "propLayer" });
   private readonly actorLayer = new Container({ label: "actorLayer" });
@@ -81,6 +118,12 @@ export class BattleView {
     sortableChildren: true,
     sortFunction: (left, right) => left.zIndex - right.zIndex || left.label.localeCompare(right.label),
   });
+  /**
+   * The facing arrows are input, not decoration, and the squares they mark are exactly the
+   * ones a standee is most likely to be standing on. They therefore sit above the actors —
+   * an affordance hidden behind the thing it is offered about is no affordance at all.
+   */
+  private readonly facingAimLayer = new Container({ label: "facingAimLayer", eventMode: "none" });
   private readonly effectLayer = new Container({ label: "effectLayer" });
   private readonly projection: BoardProjection;
   private readonly terrainRenderer: TerrainRenderer;
@@ -89,6 +132,8 @@ export class BattleView {
   private readonly tacticalRenderer = new TacticalOverlayRenderer();
   private readonly camera: BattleCamera;
   private readonly animations: AnimationRecord[] = [];
+  /** Movement only. A damage flash is feedback about a snapshot, not a reason to hold one. */
+  private movementCount = 0;
   private readonly pointerTapHandler = (event: FederatedPointerEvent): void => this.handlePointerTap(event);
   private readonly pointerMoveStageHandler = (event: FederatedPointerEvent): void => this.handleHover(event);
   private readonly pointerLeaveHandler = (): void => this.setHover(null);
@@ -105,6 +150,16 @@ export class BattleView {
     this.layoutScene();
   };
   private readonly pointerDownHandler = (event: PointerEvent): void => {
+    if (event.pointerType !== "mouse") {
+      this.touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      // A fresh touch after a gesture is a real tap again.
+      if (this.touchPoints.size === 1) this.gestureBlocksTap = false;
+      if (this.touchPoints.size === 2) {
+        this.gesture = this.readGesture();
+        this.setHover(null);
+      }
+      return;
+    }
     if (event.button === 1 || (event.button === 0 && event.altKey)) {
       this.panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
       this.app.canvas.setPointerCapture(event.pointerId);
@@ -112,6 +167,12 @@ export class BattleView {
     }
   };
   private readonly pointerMoveHandler = (event: PointerEvent): void => {
+    if (event.pointerType !== "mouse") {
+      if (!this.touchPoints.has(event.pointerId)) return;
+      this.touchPoints.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      this.applyTouchGesture();
+      return;
+    }
     if (!this.panPointer || this.panPointer.id !== event.pointerId) return;
     this.camera.panBy(event.clientX - this.panPointer.x, event.clientY - this.panPointer.y, this.boardFrame());
     this.panPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
@@ -119,15 +180,26 @@ export class BattleView {
   };
   private readonly pointerUpHandler = (event: PointerEvent): void => {
     if (this.panPointer?.id === event.pointerId) this.panPointer = null;
+    if (event.pointerType !== "mouse") {
+      this.touchPoints.delete(event.pointerId);
+      if (this.touchPoints.size < 2) this.gesture = null;
+      // A finger leaves its last hover behind: no later move will take the pointer off the
+      // square, so the board would keep a square lit under a hand that is long gone.
+      this.setHover(null);
+    }
   };
   private resizeFrame: number | null = null;
   private panPointer: { readonly id: number; readonly x: number; readonly y: number } | null = null;
+  /** Live touch points, so two of them can drive the camera the way a wheel does. */
+  private readonly touchPoints = new Map<number, { x: number; y: number }>();
+  private gesture: { readonly x: number; readonly y: number; readonly spread: number } | null = null;
+  private gestureBlocksTap = false;
   private state: CombatState | null = null;
   private boardKey = "";
-  private currentHighlights: BoardHighlights = { tiles: [], actorIds: [], objectIds: [], facingPosition: null };
+  private currentHighlights: BoardHighlights = { tiles: [], actorIds: [], objectIds: [], facingPosition: null, moveBands: [] };
   private hoverPosition: GridPosition | null = null;
   private safeArea: BoardSafeArea = ZERO_BOARD_SAFE_AREA;
-  private boardMesh: PerspectiveMesh | null = null;
+  private boardSprite: Sprite | null = null;
   private visuals: PositionedVisual[] = [];
   private actorVisuals = new Map<string, PositionedVisual>();
 
@@ -140,14 +212,20 @@ export class BattleView {
     this.projection = new BoardProjection(config);
     this.camera = new BattleCamera(config);
     this.terrainRenderer = new TerrainRenderer(app, catalog, config);
-    this.objectRenderer = new ObjectRenderer(catalog, config);
+    this.objectRenderer = new ObjectRenderer(catalog);
     this.actorRenderer = new ActorRenderer(catalog, config);
+    this.boardTurnRoot.rotation = config.boardRotationRadians;
+    this.boardSquashRoot.scale.set(1, config.boardSquashY);
+    this.boardSquashRoot.addChild(this.boardTurnRoot);
+    this.boardCameraRoot.addChild(this.boardSquashRoot);
+    this.boardFloorLayer.addChild(this.boardCameraRoot);
     this.scene.addChild(
       this.boardFloorLayer,
       this.boardOverlayLayer,
       this.propLayer,
       this.actorLayer,
       this.depthRenderLayer,
+      this.facingAimLayer,
       this.effectLayer,
     );
     this.app.stage.addChild(this.scene);
@@ -160,6 +238,7 @@ export class BattleView {
     this.app.canvas.addEventListener("pointerdown", this.pointerDownHandler);
     this.app.canvas.addEventListener("pointermove", this.pointerMoveHandler);
     this.app.canvas.addEventListener("pointerup", this.pointerUpHandler);
+    this.app.canvas.addEventListener("pointercancel", this.pointerUpHandler);
     this.resizeObserver = new ResizeObserver(() => {
       if (this.resizeFrame !== null) window.cancelAnimationFrame(this.resizeFrame);
       this.resizeFrame = window.requestAnimationFrame(() => {
@@ -175,14 +254,29 @@ export class BattleView {
   }
 
   public render(state: CombatState, highlights: BoardHighlights, events: readonly CombatEvent[] = []): void {
+    const nextBoardKey = `${state.scenarioId}:${state.map.width}x${state.map.height}`;
+    // Choosing a phase is not a new snapshot. Rebuilding the scene for one would cancel a
+    // movement still playing from the snapshot that opened the phase -- which is exactly
+    // when a final facing gets aimed -- so an interaction-only render repaints the overlay
+    // and leaves the board, the standees and their animations where they are.
+    if (this.state === state && events.length === 0 && this.boardKey === nextBoardKey) {
+      this.currentHighlights = highlights;
+      this.app.canvas.dataset.facingPosition = highlights.facingPosition
+        ? `${highlights.facingPosition.x},${highlights.facingPosition.y}` : "";
+      this.safeArea = this.handlers.safeArea();
+      if (highlights.facingPosition) this.ensureDirectionVisible(highlights.facingPosition);
+      this.renderOverlay();
+      return;
+    }
     const previousPositions = new Map(
       Object.values(this.state?.actors ?? {}).map((actor) => [actor.id, { ...actor.position }]),
     );
     this.cancelAnimations();
     this.state = state;
     this.currentHighlights = highlights;
+    this.app.canvas.dataset.facingPosition = highlights.facingPosition
+      ? `${highlights.facingPosition.x},${highlights.facingPosition.y}` : "";
     this.safeArea = this.handlers.safeArea();
-    const nextBoardKey = `${state.scenarioId}:${state.map.width}x${state.map.height}`;
     if (this.boardKey !== nextBoardKey) {
       this.boardKey = nextBoardKey;
       this.camera.reset();
@@ -190,26 +284,21 @@ export class BattleView {
     }
 
     this.depthRenderLayer.detachAll();
-    if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
-    for (const layer of [this.boardFloorLayer, this.boardOverlayLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
+    // The board texture is destroyed and rebuilt when the map changes size, so let go of
+    // it before asking for the new one rather than leaving a sprite bound to a dead page.
+    if (this.boardSprite) this.boardSprite.texture = Texture.EMPTY;
+    for (const layer of [this.boardOverlayLayer, this.facingAimLayer, this.propLayer, this.actorLayer, this.effectLayer]) clearLayer(layer);
     const boardTexture = this.terrainRenderer.renderBoard(state);
-    const corners = this.camera.corners(this.boardFrame());
-    this.projection.update(state.map.width, state.map.height, corners);
-    this.boardMesh = new PerspectiveMesh({
-      texture: boardTexture,
-      verticesX: this.config.meshVerticesX,
-      verticesY: this.config.meshVerticesY,
-      x0: corners[0].x,
-      y0: corners[0].y,
-      x1: corners[1].x,
-      y1: corners[1].y,
-      x2: corners[2].x,
-      y2: corners[2].y,
-      x3: corners[3].x,
-      y3: corners[3].y,
-    });
-    this.boardMesh.eventMode = "none";
-    this.boardFloorLayer.addChild(this.boardMesh);
+    if (!this.boardSprite) {
+      this.boardSprite = new Sprite({ label: "boardPlane" });
+      this.boardSprite.anchor.set(0.5, 0.5);
+      this.boardSprite.eventMode = "none";
+      this.boardTurnRoot.addChild(this.boardSprite);
+    }
+    this.boardSprite.texture = boardTexture;
+    // Place the plane before anything is laid out against it, so the first frame of a new
+    // encounter reads the projection it will actually be drawn with.
+    this.projection.update(state.map.width, state.map.height, this.camera.placement(this.boardFrame()));
 
     const props = [...this.terrainRenderer.renderProps(state), ...this.objectRenderer.render(state)];
     const actors = this.actorRenderer.render(state);
@@ -223,26 +312,51 @@ export class BattleView {
     this.layoutScene();
     const turnStarted = [...events].reverse().find((event) => event.type === "TURN_STARTED");
     if (turnStarted) this.ensureActorVisible(turnStarted.actorId);
+    if (highlights.facingPosition) this.ensureDirectionVisible(highlights.facingPosition);
     this.renderFeedback(events);
     this.animateMovement(events, previousPositions);
     this.app.canvas.dataset.boardSize = `${state.map.width}x${state.map.height}`;
   }
 
   /**
-   * Pans the minimum distance that brings an actor back inside the safe area. At fit
-   * zoom the whole board is already visible, so this is a no-op and the board does not
-   * jump around at the start of every turn.
+   * Pans the minimum distance that brings a whole standee back inside the safe area. The
+   * feet are not enough: a standee is taller than its cell and carries an HP badge above
+   * its head, so an actor whose contact point has just cleared the HUD can still be a
+   * body with no face on it. At fit zoom everything is already visible, so this is a
+   * no-op and the board does not jump around at the start of every turn.
    */
   public ensureActorVisible(actorId: string): void {
-    const actor = this.state?.actors[actorId];
-    if (!actor) return;
-    const point = this.projection.gridToScreen(actor.position.x + 0.5, actor.position.y + this.config.actorFootRowOffset);
+    const visual = this.actorVisuals.get(actorId);
+    if (!visual) return;
+    const bounds = visual.display.getBounds();
     const left = this.safeArea.left + FOCUS_MARGIN;
     const right = this.app.screen.width - this.safeArea.right - FOCUS_MARGIN;
     const top = this.safeArea.top + FOCUS_MARGIN;
     const bottom = this.app.screen.height - this.safeArea.bottom - FOCUS_MARGIN;
-    const dx = point.x < left ? left - point.x : point.x > right ? right - point.x : 0;
-    const dy = point.y < top ? top - point.y : point.y > bottom ? bottom - point.y : 0;
+    // A standee too tall for the gap gets its head, which is where the badge and the
+    // face are; the feet stand on a square the player can already see the shape of.
+    const dx = bounds.left < left ? left - bounds.left : bounds.right > right ? right - bounds.right : 0;
+    const dy = bounds.top < top ? top - bounds.top : bounds.bottom > bottom ? bottom - bounds.bottom : 0;
+    if (dx === 0 && dy === 0) return;
+    this.camera.panBy(dx, dy, this.boardFrame());
+    this.layoutScene();
+  }
+
+  /**
+   * There is no widget to frame any more — the answer is a square anywhere on the board —
+   * so entering the mode keeps the camera the player set and only pans when the actor
+   * being turned is not on screen to begin with. Nothing is zoomed.
+   */
+  private ensureDirectionVisible(position: GridPosition): void {
+    const points = this.projection.getCellCorners(position.x, position.y);
+    const cell = { left: Math.min(...points.map((point) => point.x)), right: Math.max(...points.map((point) => point.x)),
+      top: Math.min(...points.map((point) => point.y)), bottom: Math.max(...points.map((point) => point.y)) };
+    const left = this.safeArea.left + FOCUS_MARGIN;
+    const right = this.app.screen.width - this.safeArea.right - FOCUS_MARGIN;
+    const top = this.safeArea.top + FOCUS_MARGIN;
+    const bottom = this.app.screen.height - this.safeArea.bottom - FOCUS_MARGIN;
+    const dx = cell.left < left ? left - cell.left : cell.right > right ? right - cell.right : 0;
+    const dy = cell.top < top ? top - cell.top : cell.bottom > bottom ? bottom - cell.bottom : 0;
     if (dx === 0 && dy === 0) return;
     this.camera.panBy(dx, dy, this.boardFrame());
     this.layoutScene();
@@ -253,6 +367,7 @@ export class BattleView {
       viewportWidth: this.app.screen.width,
       viewportHeight: this.app.screen.height,
       columns: this.state?.map.width ?? 1,
+      rows: this.state?.map.height ?? 1,
       safeArea: this.safeArea,
     };
   }
@@ -266,28 +381,26 @@ export class BattleView {
     return positioned;
   }
 
+  /**
+   * A standee's contact point is the centre of its cell, and its size is the board's own
+   * uniform scale. There is no row term in either: in a fixed affine projection a
+   * character on the far edge is drawn exactly as large as one on the near edge.
+   */
   private placeVisual(visual: PositionedVisual): void {
-    const row = visual.currentPosition.y + visual.footRowOffset;
-    const foot = this.projection.gridToScreen(visual.currentPosition.x + 0.5, row);
-    visual.display.position.copyFrom(foot);
-    // Content is sized against the projected cell, so its share of a square is fixed
-    // at every window size; the camera zoom already lives in the projected width.
-    const scale = this.projection.getCellScale(row);
+    const contact = this.projection.gridToScreen(visual.currentPosition.x + 0.5, visual.currentPosition.y + 0.5);
+    visual.display.position.copyFrom(contact);
+    const scale = this.projection.getContentScale();
     visual.display.scale.set(scale);
     if (visual.screenSpace) visual.screenSpace.scale.set(scale > 0 ? 1 / scale : 1);
-    visual.display.zIndex = Math.round(foot.y * 100) + visual.layerPriority;
+    visual.display.zIndex = Math.round(contact.y * 100) + visual.layerPriority;
   }
 
   private layoutScene(): void {
     if (!this.state || this.app.screen.width <= 0 || this.app.screen.height <= 0) return;
-    const corners = this.camera.corners(this.boardFrame());
-    this.projection.update(this.state.map.width, this.state.map.height, corners);
-    this.boardMesh?.setCorners(
-      corners[0].x, corners[0].y,
-      corners[1].x, corners[1].y,
-      corners[2].x, corners[2].y,
-      corners[3].x, corners[3].y,
-    );
+    const placement = this.camera.placement(this.boardFrame());
+    this.projection.update(this.state.map.width, this.state.map.height, placement);
+    this.boardCameraRoot.position.set(placement.originX, placement.originY);
+    this.boardCameraRoot.scale.set(placement.scale);
     for (const visual of this.visuals) this.placeVisual(visual);
     this.depthRenderLayer.sortRenderLayerChildren();
     this.renderOverlay();
@@ -295,8 +408,21 @@ export class BattleView {
     this.app.stage.hitArea = new Rectangle(0, 0, this.app.screen.width, this.app.screen.height);
   }
 
+  public updateHighlights(highlights: BoardHighlights): void {
+    this.currentHighlights = highlights;
+    this.renderOverlay();
+  }
+
   private renderOverlay(): void {
     clearLayer(this.boardOverlayLayer);
+    clearLayer(this.facingAimLayer);
+    // The bands are Graphics, so a test can only see them through what the canvas reports.
+    this.app.canvas.dataset.moveBands = JSON.stringify(
+      this.currentHighlights.moveBands.reduce<Record<string, number>>((counts, tile) => {
+        counts[tile.band] = (counts[tile.band] ?? 0) + 1;
+        return counts;
+      }, {}),
+    );
     if (!this.state) return;
     this.tacticalRenderer.render(
       this.state,
@@ -304,6 +430,7 @@ export class BattleView {
       this.hoverPosition,
       this.projection,
       this.boardOverlayLayer,
+      this.facingAimLayer,
     );
   }
 
@@ -362,8 +489,10 @@ export class BattleView {
           visual.currentPosition = { ...path[path.length - 1] as GridPosition };
           this.placeVisual(visual);
           this.app.ticker.remove(callback);
+          this.endMovement();
         }
       };
+      this.movementCount += 1;
       this.animations.push({ callback });
       this.app.ticker.add(callback);
     }
@@ -371,6 +500,10 @@ export class BattleView {
 
   private handleHover(event: FederatedPointerEvent): void {
     if (this.panPointer) return;
+    if (this.currentHighlights.facingPosition) {
+      const aimed = this.facingPointAt(event.global.x, event.global.y);
+      if (aimed) this.handlers.onFacingAim(aimed);
+    }
     this.setHover(this.gridAt(event.global.x, event.global.y));
   }
 
@@ -390,17 +523,60 @@ export class BattleView {
     return position;
   }
 
+  /**
+   * A facing is aimed, not selected off a list, so the pointer is kept as the continuous
+   * board coordinate it lands on rather than snapped to a square. Nothing is out of range:
+   * an actor on the edge looks off the map by aiming there, and a direction is the only
+   * thing a pointer can mean while the mode is open.
+   */
+  private facingPointAt(screenX: number, screenY: number): { x: number; y: number } | null {
+    if (!this.state) return null;
+    const board = this.projection.screenToGrid(screenX, screenY);
+    return { x: board.x, y: board.y };
+  }
+
+  /** Midpoint and spread of the two live touch points, in client coordinates. */
+  private readGesture(): { x: number; y: number; spread: number } | null {
+    const [first, second] = [...this.touchPoints.values()];
+    if (!first || !second) return null;
+    return {
+      x: (first.x + second.x) / 2,
+      y: (first.y + second.y) / 2,
+      spread: Math.hypot(second.x - first.x, second.y - first.y),
+    };
+  }
+
+  /**
+   * Two fingers do on a tablet what the wheel and the middle-button drag do on a desk:
+   * moving them together pans, spreading or pinching them zooms about the point between
+   * them. Both feed the same camera, so the board stays inside the HUD safe area either way.
+   */
+  private applyTouchGesture(): void {
+    const previous = this.gesture;
+    const next = this.readGesture();
+    if (!previous || !next) return;
+    this.gesture = next;
+    this.gestureBlocksTap = true;
+    const frame = this.boardFrame();
+    this.camera.panBy(next.x - previous.x, next.y - previous.y, frame);
+    if (previous.spread > MIN_PINCH_SPREAD && next.spread > MIN_PINCH_SPREAD) {
+      const bounds = this.app.canvas.getBoundingClientRect();
+      this.camera.zoomBy(next.spread / previous.spread, next.x - bounds.left, next.y - bounds.top, frame);
+    }
+    this.layoutScene();
+  }
+
   private handlePointerTap(event: FederatedPointerEvent): void {
     if (!this.state || this.panPointer) return;
+    // The lift that ends a pinch is not a pick.
+    if (this.gestureBlocksTap) return;
     const point = new Point(event.global.x, event.global.y);
-    const facingPosition = this.currentHighlights.facingPosition;
-    if (facingPosition) {
-      for (const direction of ["north", "east", "south", "west"] as const) {
-        if (pointInPolygon(point, facingPolygon(this.projection, facingPosition, direction))) {
-          this.handlers.onFacing(direction);
-          return;
-        }
-      }
+    if (this.currentHighlights.facingPosition) {
+      // Where the pointer is on the board is the whole answer; which direction that makes
+      // is the rules' business, not the projection's.
+      const aimed = this.facingPointAt(point.x, point.y);
+      if (aimed) this.handlers.onFacingPoint(aimed);
+      return;
     }
     const position = this.gridAt(point.x, point.y);
     if (!position) return;
@@ -428,24 +604,72 @@ export class BattleView {
     return { x: point.x, y: point.y };
   }
 
+  /** Whether a standee is still walking, and so whether the board is mid-sentence. */
+  public get isMoving(): boolean {
+    return this.movementCount > 0;
+  }
+
+  private endMovement(): void {
+    if (this.movementCount === 0) return;
+    this.movementCount -= 1;
+    if (this.movementCount === 0) this.handlers.onMovementSettled?.();
+  }
+
   private cancelAnimations(): void {
     for (const animation of this.animations) this.app.ticker.remove(animation.callback);
     this.animations.length = 0;
+    const wasMoving = this.movementCount > 0;
+    this.movementCount = 0;
+    // A cancelled walk still ends the sentence: whoever was waiting on it must be released,
+    // or a paced queue would sit behind an animation that is never going to finish.
+    if (wasMoving) this.handlers.onMovementSettled?.();
   }
 
   private publishLayout(): void {
+    this.app.canvas.dataset.boardProjection = `affine-${String(Math.round((this.config.boardRotationRadians * 180) / Math.PI))}-${String(this.config.boardSquashY)}`;
+    // The gutters the HUD measured for itself: the board is fitted inside this rectangle
+    // and an actor outside it is the thing `ensureActorVisible` exists to pan back.
+    this.app.canvas.dataset.safeArea = JSON.stringify(this.safeArea);
     this.app.canvas.dataset.boardTextureFit = this.terrainRenderer.boardTextureFit;
+    this.app.canvas.dataset.solidRegionFit = this.terrainRenderer.solidRegionFit;
     this.app.canvas.dataset.boardCorners = JSON.stringify(
       this.projection.corners.map((point) => ({ x: Number(point.x.toFixed(2)), y: Number(point.y.toFixed(2)) })),
     );
     this.app.canvas.dataset.actorFeet = JSON.stringify(
-      [...this.actorVisuals.entries()].map(([id, visual]) => ({
-        id,
-        x: Number(visual.display.x.toFixed(2)),
-        y: Number(visual.display.y.toFixed(2)),
-        scale: Number(visual.display.scale.x.toFixed(4)),
-        zIndex: visual.display.zIndex,
-      })),
+      [...this.actorVisuals.entries()].map(([id, visual]) => {
+        // The contact point is where the actor stands; the bounds are what the player has
+        // to be able to see, and the two are far apart on a standee.
+        const bounds = visual.display.getBounds();
+        return {
+          id,
+          x: Number(visual.display.x.toFixed(2)),
+          y: Number(visual.display.y.toFixed(2)),
+          scale: Number(visual.display.scale.x.toFixed(4)),
+          zIndex: visual.display.zIndex,
+          top: Number(bounds.top.toFixed(2)),
+          bottom: Number(bounds.bottom.toFixed(2)),
+          left: Number(bounds.left.toFixed(2)),
+          right: Number(bounds.right.toFixed(2)),
+        };
+      }),
+    );
+    // The standee plane's contract, which is invisible from outside once it is drawn: a
+    // body is upright and unsquashed whatever the board does under it, only its own
+    // mirror flips it, and the base is the one part that lies down on the plane.
+    this.app.canvas.dataset.standeePlane = JSON.stringify(
+      [...this.actorVisuals.entries()].map(([id, visual]) => {
+        const body = visual.display.getChildByLabel("standee-body");
+        const base = visual.display.getChildByLabel("standee-base");
+        const badge = visual.screenSpace;
+        return {
+          id,
+          bodyFlip: body ? Math.sign(body.scale.x) : 0,
+          bodyAspect: body ? Number((body.scale.y / Math.abs(body.scale.x)).toFixed(4)) : 0,
+          bodyRotation: body ? Number(body.rotation.toFixed(4)) : 0,
+          baseSquash: base ? Number(base.scale.y.toFixed(4)) : 0,
+          badgeFlip: badge ? Math.sign(badge.scale.x) : 0,
+        };
+      }),
     );
     this.app.canvas.dataset.depthOrder = [...this.visuals]
       .sort((left, right) => left.display.zIndex - right.display.zIndex || left.stableId.localeCompare(right.stableId))
@@ -465,8 +689,9 @@ export class BattleView {
     this.app.canvas.removeEventListener("pointerdown", this.pointerDownHandler);
     this.app.canvas.removeEventListener("pointermove", this.pointerMoveHandler);
     this.app.canvas.removeEventListener("pointerup", this.pointerUpHandler);
-    if (this.boardMesh) this.boardMesh.texture = Texture.EMPTY;
-    // Draw once with the mesh still on stage so its bind group actually rebuilds against
+    this.app.canvas.removeEventListener("pointercancel", this.pointerUpHandler);
+    if (this.boardSprite) this.boardSprite.texture = Texture.EMPTY;
+    // Draw once with the board still on stage so its bind group actually rebuilds against
     // the empty texture; the board texture is freed below and a stale binding to it warns.
     this.app.renderer.render({ container: this.app.stage, clear: true });
     this.scene.removeFromParent();

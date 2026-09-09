@@ -23,6 +23,10 @@ function mapWith(overrides: Readonly<Record<string, readonly TraitInstance[]>> =
   return { width: 4, height: 4, tiles, objects: {} };
 }
 
+function corridorWith(overrides: Readonly<Record<string, readonly TraitInstance[]>> = {}): BattleMapState {
+  return { ...mapWith(overrides), height: 1 };
+}
+
 const actor: ActorState = {
   id: "actor",
   definitionId: "test.actor",
@@ -92,5 +96,95 @@ describe("orthogonal grid rules", () => {
 
     const impassable = mapWith({ "1,1": [trait("impassable")] });
     expect(hasLineOfSight(impassable, { x: 0, y: 0 }, { x: 2, y: 2 })).toBe(true);
+  });
+});
+
+describe("movement occupancy", () => {
+  it.each([
+    ["heroes", "land"],
+    ["heroes", "fly"],
+    ["enemies", "land"],
+    ["enemies", "fly"],
+  ] as const)("lets %s traverse allies by %s without stopping on them", (team, mode) => {
+    const mover = { ...actor, team };
+    const ally = { ...mover, id: "ally", position: { x: 1, y: 0 } };
+    const nextAlly = { ...mover, id: "next-ally", position: { x: 2, y: 0 } };
+    const actors = { [mover.id]: mover, [ally.id]: ally, [nextAlly.id]: nextAlly };
+    const map = corridorWith();
+    const destination = { x: 3, y: 0 };
+
+    const reachable = findReachableTiles(map, actors, mover.id, mover.position, 15, mode);
+    expect([...reachable.keys()]).toEqual(["3,0"]);
+    expect(findPath(map, actors, mover.id, mover.position, destination, 15, mode)).toEqual({
+      position: destination,
+      cost: 15,
+      path: [ally.position, nextAlly.position, destination],
+    });
+    expect(findPath(map, actors, mover.id, mover.position, ally.position, 15, mode)).toBeNull();
+    expect(findPath(map, actors, mover.id, mover.position, nextAlly.position, 15, mode)).toBeNull();
+    expect(findReachableTiles(map, actors, mover.id, mover.position, 5, mode).size).toBe(0);
+    expect(findReachableTiles(map, actors, mover.id, mover.position, 10, mode).size).toBe(0);
+  });
+
+  it.each([
+    ["heroes", "enemies", "land"],
+    ["heroes", "enemies", "fly"],
+    ["enemies", "heroes", "land"],
+    ["enemies", "heroes", "fly"],
+  ] as const)("blocks %s from traversing or stopping on %s by %s", (team, opposingTeam, mode) => {
+    const mover = { ...actor, team };
+    const enemy = { ...actor, id: "enemy", team: opposingTeam, position: { x: 1, y: 0 } };
+    const actors = { [mover.id]: mover, [enemy.id]: enemy };
+    const map = corridorWith();
+
+    expect(findReachableTiles(map, actors, mover.id, mover.position, 25, mode).size).toBe(0);
+    expect(findPath(map, actors, mover.id, mover.position, enemy.position, 25, mode)).toBeNull();
+    expect(findPath(map, actors, mover.id, mover.position, { x: 2, y: 0 }, 25, mode)).toBeNull();
+  });
+
+  it.each(["heroes", "enemies"] as const)("ignores defeated %s for traversal and stopping", (team) => {
+    const defeated = { ...actor, id: "defeated", team, defeated: true, hp: 0, position: { x: 1, y: 0 } };
+    const actors = { actor, [defeated.id]: defeated };
+    const map = corridorWith();
+
+    expect(findPath(map, actors, actor.id, actor.position, defeated.position, 5, "land")?.cost).toBe(5);
+    expect(findPath(map, actors, actor.id, actor.position, { x: 2, y: 0 }, 10, "land")?.path)
+      .toEqual([defeated.position, { x: 2, y: 0 }]);
+  });
+
+  it("ignores the mover itself when checking occupancy", () => {
+    // A path query may start from a hypothetical position before the actor is moved.
+    const from = { x: 2, y: 0 };
+    expect(findPath(corridorWith(), { actor }, actor.id, from, actor.position, 10, "land")?.path)
+      .toEqual([{ x: 1, y: 0 }, actor.position]);
+  });
+
+  it("keeps an enemy blocking even when an ally shares its square", () => {
+    const ally = { ...actor, id: "ally", position: { x: 1, y: 0 } };
+    const enemy = { ...ally, id: "enemy", team: "enemies" as const };
+    const actors = { actor, ally, enemy };
+    expect(findReachableTiles(corridorWith(), actors, actor.id, actor.position, 25, "land").size).toBe(0);
+  });
+
+  it.each([
+    ["difficult", "land", 15],
+    ["difficult", "fly", 10],
+    ["impassable", "land", null],
+    ["impassable", "fly", 10],
+    ["blocked", "land", null],
+    ["blocked", "fly", null],
+  ] as const)("preserves %s terrain rules while traversing an ally by %s", (terrain, mode, cost) => {
+    const ally = { ...actor, id: "ally", position: { x: 1, y: 0 } };
+    const actors = { actor, ally };
+    const map = corridorWith({ "1,0": [trait(terrain)] });
+    const destination = { x: 2, y: 0 };
+    const path = findPath(map, actors, actor.id, actor.position, destination, 15, mode);
+
+    if (cost === null) {
+      expect(path).toBeNull();
+    } else {
+      expect(path).toEqual({ position: destination, cost, path: [ally.position, destination] });
+      expect(findPath(map, actors, actor.id, actor.position, destination, cost - 5, mode)).toBeNull();
+    }
   });
 });

@@ -175,7 +175,7 @@ function combatCommandForIntent(
     case "use-action":
       return { ...base, type: intent.type, action: intent.action, target: intent.target };
     case "end-turn":
-      return { ...base, type: intent.type };
+      return { ...base, type: intent.type, facing: intent.facing };
     case "use-reaction":
       return { ...base, type: intent.type, triggerId: intent.triggerId, cardInstanceId: intent.cardInstanceId };
     case "pass-reaction":

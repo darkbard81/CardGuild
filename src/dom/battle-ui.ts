@@ -1,7 +1,12 @@
 import {
+  SAVE_IDS,
+  equippedArmor,
   listLegalActions,
   resolveArmorClass,
+  resolveClassDC,
+  resolveInitiative,
   resolveStatisticDC,
+  resolveStatisticModifier,
   resolveStrike,
 } from "../game";
 import type {
@@ -12,9 +17,12 @@ import type {
   CombatState,
   LegalAction,
   ResolvedStrikeProfile,
+  SaveId,
   ScenarioDefinition,
 } from "../game";
+import { buildCombatLog, type CombatLogEntry } from "./combat-log";
 import type { AssetCatalog } from "../presentation";
+import type { MoveBand } from "../pixi/BattleView";
 
 export interface BattleUiHandlers {
   readonly onCard: (action: LegalAction) => void;
@@ -27,6 +35,8 @@ export interface BattleUiHandlers {
 
 export interface BattleUiPresentation {
   readonly selectedAction: LegalAction | null;
+  /** Which move bands the board is showing, so the legend can name their colours. */
+  readonly moveBands: readonly MoveBand[];
   readonly prompt: string;
   readonly stateHash: string;
   readonly controlledActorId: string;
@@ -66,75 +76,75 @@ function strikeLabel(strike: ResolvedStrikeProfile): string {
   return `${strike.weaponName} ${signed(strike.attackModifier)} · ${count}d${sides}${signed(flatModifier)}`;
 }
 
+/** Rule terms, so they match the action names in the ring menu and the hand. */
+const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
+  step: "Step",
+  stride: "Stride",
+  fly: "Fly",
+};
+
+/**
+ * Portrait window sizes in pixels. The crop itself comes from the measured ink box in the
+ * asset manifest, so it lands on the drawing whatever shape the creature is.
+ */
+const HERO_PORTRAIT_SIZE = 50;
+
+/** Past this a name needs the smaller type to stay on one line beside its cost. */
+const LONG_CARD_NAME = 12;
+
+/** Long enough not to fire on a tap that means "pick this card". */
+const LONG_PRESS_MS = 380;
+const INITIATIVE_PORTRAIT_SIZE = 34;
+
+/** The grid has room for three columns, the sheet has room for the whole word. */
+const SAVE_LABELS: Readonly<Record<SaveId, string>> = {
+  fortitude: "Fort",
+  reflex: "Ref",
+  will: "Will",
+};
+
+const SAVE_SHEET_LABELS: Readonly<Record<SaveId, string>> = {
+  fortitude: "Fortitude DC",
+  reflex: "Reflex DC",
+  will: "Will DC",
+};
+
+function hpBlock(actor: ActorState): readonly HTMLElement[] {
+  const hpRow = element("div", "hp-row");
+  hpRow.append(element("span", undefined, "HP"), element("strong", undefined, `${actor.hp}/${actor.maxHp}`));
+  const bar = element("div", "hp-bar");
+  const fill = element("span", "hp-fill");
+  fill.style.width = `${Math.max(0, Math.min(100, (actor.hp / actor.maxHp) * 100))}%`;
+  bar.append(fill);
+  return [hpRow, bar];
+}
+
+/** Two or three labelled numbers on one line, for the values read at a glance. */
+function statPair(entries: readonly (readonly [string, string])[]): HTMLElement {
+  const row = element("div", "stat-pair");
+  for (const [label, value] of entries) {
+    const cell = element("div", "stat-cell");
+    cell.append(element("span", "stat-label", label), element("strong", undefined, value));
+    row.append(cell);
+  }
+  return row;
+}
+
+function conditionLine(actor: ActorState): HTMLElement {
+  const conditions = actor.conditions.map((condition) => condition.id);
+  return element(
+    "p",
+    conditions.length ? "condition-line" : "condition-line empty",
+    conditions.length ? conditions.join(" · ") : "상태 이상 없음",
+  );
+}
+
 function percentage(value: number | undefined): string {
   return value === undefined ? "—" : `${Math.round(value * 100)}%`;
 }
 
 function actorName(state: CombatState, actorId: string): string {
   return state.actors[actorId]?.name ?? actorId;
-}
-
-function formatEvent(state: CombatState, event: CombatEvent): string | null {
-  switch (event.type) {
-    case "COMBAT_STARTED":
-      return `Encounter started · seed ${event.seed}`;
-    case "INITIATIVE_ROLLED":
-      return `${actorName(state, event.actorId)} initiative ${event.roll} + ${event.modifier} = ${event.total}`;
-    case "TURN_STARTED":
-      return `Round ${event.round} · ${actorName(state, event.actorId)} turn`;
-    case "TURN_ENDED":
-      return `${actorName(state, event.actorId)} ended the turn.`;
-    case "ACTION_SPENT":
-      return `${actorName(state, event.actorId)} used ${event.actionId} (${event.remaining} actions left).`;
-    case "CARD_PLAYED":
-      return `${actorName(state, event.actorId)} played a tactical card.`;
-    case "ACTOR_MOVED":
-      return `${actorName(state, event.actorId)} moved ${event.path.length} squares by ${event.movementMode}.`;
-    case "FACING_CHANGED":
-      return `${actorName(state, event.actorId)} now faces ${event.facing}.`;
-    case "CHECK_ROLLED":
-      return `${event.label}: d20 ${event.roll} + ${event.modifier} vs DC ${event.dc} → ${event.degree}.`;
-    case "DAMAGE_DEALT":
-      return `${actorName(state, event.targetActorId)} took ${event.amount} ${event.damageType} damage (${event.remainingHp} HP).`;
-    case "HP_RESTORED":
-      return `${actorName(state, event.targetActorId)} recovered ${event.amount} HP (${event.remainingHp} HP).`;
-    case "CONDITION_APPLIED":
-      return event.value === undefined
-        ? `${actorName(state, event.actorId)} gained ${event.condition}.`
-        : `${actorName(state, event.actorId)} gained ${event.condition} ${event.value}.`;
-    case "CONDITION_VALUE_CHANGED":
-      return `${actorName(state, event.actorId)} is now ${event.condition} ${event.value}.`;
-    case "CONDITION_REMOVED":
-      return `${actorName(state, event.actorId)} removed ${event.condition}.`;
-    case "ACTION_LOCKED":
-      return `${actorName(state, event.actorId)} cannot use ${event.actionId} again this turn.`;
-    case "SHIELD_RAISED":
-      return `${actorName(state, event.actorId)} raised a shield (AC +${event.bonus}).`;
-    case "EFFECT_CREATED":
-      return `${actorName(state, event.actorId)} created ${event.name}.`;
-    case "EFFECT_SUSTAINED":
-      return `${actorName(state, event.actorId)} sustained an effect.`;
-    case "EFFECT_EXPIRED":
-      return `${actorName(state, event.actorId)} let an effect expire.`;
-    case "OBJECT_INTERACTED":
-      return `${actorName(state, event.actorId)} operated ${event.objectId}.`;
-    case "TERRAIN_CHANGED":
-      return `${event.tileId} changed to ${event.traits.join(", ")}.`;
-    case "CARD_DRAWN":
-      return null;
-    case "DISCARD_RESHUFFLED":
-      return `${actorName(state, event.actorId)} reshuffled the discard pile.`;
-    case "REACTION_OPENED":
-      return `Reaction window opened against ${actorName(state, event.sourceActorId)}.`;
-    case "REACTION_USED":
-      return `${actorName(state, event.actorId)} used ${event.actionId}.`;
-    case "REACTION_PASSED":
-      return `${actorName(state, event.actorId)} passed the reaction.`;
-    case "ACTOR_DEFEATED":
-      return `${actorName(state, event.actorId)} was defeated.`;
-    case "COMBAT_ENDED":
-      return `Combat ended: ${event.outcome}.`;
-  }
 }
 
 export class BattleUi {
@@ -145,6 +155,9 @@ export class BattleUi {
   private readonly initiative = required<HTMLOListElement>("#initiative-list");
   private readonly heroHeading = required<HTMLElement>("#hero-heading");
   private readonly heroStats = required<HTMLElement>("#hero-stats");
+  private readonly heroPortrait = required<HTMLElement>("#hero-portrait");
+  private readonly heroDetails = required<HTMLElement>("#hero-details");
+  private readonly heroDetailsToggle = required<HTMLButtonElement>("#hero-details-toggle");
   private readonly actionPips = required<HTMLElement>("#action-pips");
   private readonly endTurn = required<HTMLButtonElement>("#end-turn");
   private readonly selectedDetail = required<HTMLElement>("#selected-detail");
@@ -154,6 +167,12 @@ export class BattleUi {
   private readonly discardCount = required<HTMLElement>("#discard-count");
   private readonly handCards = required<HTMLElement>("#hand-cards");
   private readonly boardPrompt = required<HTMLElement>("#board-prompt");
+  private readonly moveLegend = required<HTMLElement>("#move-legend");
+  private readonly cardDetail = required<HTMLElement>("#card-detail");
+  /** The last history array rendered, so an unrelated re-render leaves the log alone. */
+  private lastHistory: readonly CombatEvent[] | null = null;
+  private longPressTimer: number | null = null;
+  private longPressFired = false;
   private readonly reactionModal = required<HTMLElement>("#reaction-modal");
   private readonly reactionDescription = required<HTMLElement>("#reaction-description");
   private readonly reactionUse = required<HTMLButtonElement>("#reaction-use");
@@ -163,6 +182,10 @@ export class BattleUi {
   private readonly resultDescription = required<HTMLElement>("#result-description");
   private readonly resultAction = required<HTMLButtonElement>("#restart-battle");
 
+  /** The character sheet stays where the player left it across snapshots. */
+  private heroDetailsOpen = false;
+  private portraitDefinitionId: string | null = null;
+
   public constructor(
     private readonly content: CombatContent,
     private readonly scenario: ScenarioDefinition,
@@ -171,6 +194,17 @@ export class BattleUi {
   ) {
     this.resultAction.textContent = "Return to Adventure";
     const listenerOptions = { signal: this.abortController.signal };
+    // Anything that is not the card being pressed puts its detail away again.
+    document.addEventListener("pointerdown", (event) => {
+      if (!(event.target instanceof Node) || !this.handCards.contains(event.target)) this.hideCardDetail();
+    }, listenerOptions);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") this.hideCardDetail();
+    }, listenerOptions);
+    this.heroDetailsToggle.addEventListener("click", () => {
+      this.heroDetailsOpen = !this.heroDetailsOpen;
+      this.applyHeroDetailsState();
+    }, listenerOptions);
     this.endTurn.addEventListener("click", handlers.onEndTurn, listenerOptions);
     this.reactionUse.addEventListener("click", handlers.onUseReaction, listenerOptions);
     this.reactionPass.addEventListener("click", handlers.onPassReaction, listenerOptions);
@@ -178,6 +212,7 @@ export class BattleUi {
   }
 
   public destroy(): void {
+    this.hideCardDetail();
     this.abortController.abort();
     this.reactionModal.hidden = true;
     this.resultModal.hidden = true;
@@ -202,9 +237,10 @@ export class BattleUi {
     this.round.textContent = String(state.round);
     this.heroHeading.textContent = hero.name;
     this.boardPrompt.textContent = presentation.prompt;
+    this.renderMoveLegend(presentation.moveBands);
 
     this.renderInitiative(state);
-    this.renderStats(hero);
+    this.renderHeroCard(hero);
     this.renderPips(presentation.canControl ? state.turn.actionsRemaining : 0);
     this.renderCards(
       actions.filter((action) => action.source.kind === "card"),
@@ -224,51 +260,133 @@ export class BattleUi {
     this.renderResult(state);
   }
 
+  /**
+   * Faces, not names: the order is read at a glance mid-turn, and the same standee is
+   * what the player is looking at on the board. The name rides along for screen readers
+   * and as the tooltip, so nothing that needs the text loses it.
+   */
   private renderInitiative(state: CombatState): void {
     this.initiative.replaceChildren();
     for (const actorId of state.turn.initiativeOrder) {
       const actor = state.actors[actorId];
       if (!actor) continue;
-      const item = element("li", actor.id === state.turn.activeActorId ? "active" : undefined);
-      item.dataset.actorId = actor.id;
-      item.textContent = actor.name;
+      const item = element("li", "initiative-chip");
+      if (actor.id === state.turn.activeActorId) item.classList.add("active");
       if (actor.defeated) item.classList.add("defeated");
+      item.dataset.actorId = actor.id;
+      item.dataset.team = actor.team;
+      item.title = actor.name;
+      const portrait = element("span", "initiative-portrait");
+      portrait.setAttribute("aria-hidden", "true");
+      this.paintPortrait(portrait, actor, INITIATIVE_PORTRAIT_SIZE);
+      item.append(portrait, element("span", "sr-only", actor.name));
       this.initiative.append(item);
     }
   }
 
-  private renderStats(hero: ActorState): void {
-    this.heroStats.replaceChildren();
-    this.heroStats.append(...this.statBlock(hero, [
-      ["AC", resolveArmorClass(hero, { content: this.content }).value],
-      ["Reflex DC", resolveStatisticDC(hero, { kind: "save", id: "reflex" }, { content: this.content }).value],
-      ["Speed", `${hero.speedFeet}ft`],
+  /**
+   * The card answers "can I act, and am I in trouble" at a glance: portrait, HP,
+   * the two numbers every attack is read against, and the three saves. Everything
+   * a player only consults deliberately lives behind the toggle instead.
+   */
+  private renderHeroCard(hero: ActorState): void {
+    this.renderPortrait(hero);
+    const context = { content: this.content };
+    const savesRow = element("div", "save-grid");
+    for (const id of SAVE_IDS) {
+      const cell = element("div", "save-cell");
+      cell.dataset.saveId = id;
+      cell.append(
+        element("span", "stat-label", SAVE_LABELS[id]),
+        element("strong", undefined, signed(resolveStatisticModifier(hero, { kind: "save", id }, context).value)),
+      );
+      savesRow.append(cell);
+    }
+    this.heroStats.replaceChildren(
+      ...hpBlock(hero),
+      statPair([
+        ["AC", String(resolveArmorClass(hero, context).value)],
+        ["Speed", `${hero.speedFeet}ft`],
+      ]),
+      savesRow,
+      conditionLine(hero),
+    );
+    this.renderHeroDetails(hero);
+    this.applyHeroDetailsState();
+  }
+
+  /** A bust crop of the same standee the board draws, so a panel can name a face. */
+  private paintPortrait(window: HTMLElement, actor: ActorState, size: number): void {
+    window.replaceChildren();
+    const visual = this.catalog.manifest.actorVisuals[actor.definitionId];
+    if (!visual) {
+      window.classList.add("missing");
+      window.textContent = actor.name.slice(0, 1);
+      return;
+    }
+    window.classList.remove("missing");
+    Object.assign(window.style, this.catalog.domPortraitStyle(visual.front, size));
+  }
+
+  private renderPortrait(hero: ActorState): void {
+    if (this.portraitDefinitionId === hero.definitionId) return;
+    this.portraitDefinitionId = hero.definitionId;
+    this.paintPortrait(this.heroPortrait, hero, HERO_PORTRAIT_SIZE);
+  }
+
+  private renderHeroDetails(hero: ActorState): void {
+    const context = { content: this.content };
+    const strike = resolveStrike(hero, context);
+    const armor = equippedArmor(hero, context);
+    const sheet = element("dl", "stats-grid");
+    const rows: readonly (readonly [string, string])[] = [
+      ["Perception", signed(resolveStatisticModifier(hero, { kind: "perception" }, context).value)],
+      ["Initiative", signed(resolveInitiative(hero, context).value)],
+      ["Class DC", String(resolveClassDC(hero, context).value)],
+      ...SAVE_IDS.map((id) => [
+        SAVE_SHEET_LABELS[id],
+        String(resolveStatisticDC(hero, { kind: "save", id }, context).value),
+      ] as const),
       ["Facing", hero.facing],
-      ["Strike", strikeLabel(resolveStrike(hero, { content: this.content }))],
-    ]));
+      ["Strike", strikeLabel(strike)],
+      ["Damage", `${strike.damage.damageType}`],
+      ["Reach", `${strike.rangeFeet}ft`],
+      ["Traits", strike.traits.length ? strike.traits.join(" · ") : "—"],
+      ["Armor", armor?.name ?? "Unarmored"],
+    ];
+    for (const [label, value] of rows) {
+      sheet.append(element("dt", undefined, label), element("dd", undefined, value));
+    }
+    this.heroDetails.replaceChildren(sheet);
+  }
+
+  private applyHeroDetailsState(): void {
+    this.heroDetails.hidden = !this.heroDetailsOpen;
+    this.heroDetailsToggle.setAttribute("aria-expanded", String(this.heroDetailsOpen));
+    this.heroDetailsToggle.textContent = this.heroDetailsOpen ? "닫기" : "상세";
   }
 
   private statBlock(
     actor: ActorState,
     rows: readonly (readonly [string, string | number])[],
   ): readonly HTMLElement[] {
-    const hpRow = element("div", "hp-row");
-    hpRow.append(element("span", undefined, "HP"), element("strong", undefined, `${actor.hp}/${actor.maxHp}`));
-    const bar = element("div", "hp-bar");
-    const fill = element("span", "hp-fill");
-    fill.style.width = `${Math.max(0, Math.min(100, (actor.hp / actor.maxHp) * 100))}%`;
-    bar.append(fill);
     const stats = element("dl", "stats-grid");
     for (const [label, value] of rows) {
       stats.append(element("dt", undefined, label), element("dd", undefined, String(value)));
     }
-    const conditions = actor.conditions.map((condition) => condition.id);
-    const status = element(
-      "p",
-      conditions.length ? "condition-line" : "condition-line empty",
-      conditions.length ? conditions.join(" · ") : "No conditions",
-    );
-    return [hpRow, bar, stats, status];
+    return [...hpBlock(actor), stats, conditionLine(actor)];
+  }
+
+  /** Colour alone does not say what a band means, so it is named while it is on screen. */
+  private renderMoveLegend(bands: readonly MoveBand[]): void {
+    this.moveLegend.hidden = bands.length === 0;
+    this.moveLegend.replaceChildren(...bands.map((band) => {
+      const item = element("span", "move-legend-item");
+      const dot = element("span", "move-legend-dot");
+      dot.dataset.band = band;
+      item.append(dot, element("span", undefined, MOVE_BAND_LABELS[band]));
+      return item;
+    }));
   }
 
   private renderPips(remaining: number): void {
@@ -286,6 +404,7 @@ export class BattleUi {
     state: CombatState,
     actorId: string,
   ): void {
+    this.hideCardDetail();
     this.handCards.replaceChildren();
     if (actions.length === 0) {
       this.handCards.append(element("p", "empty-message", "손패가 비었습니다."));
@@ -318,25 +437,96 @@ export class BattleUi {
     if (selected?.source.id === action.source.id) button.classList.add("selected");
     button.title = action.reason ?? action.description;
 
-    const top = element("span", "card-top");
-    top.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
+    const title = element("span", action.name.length > LONG_CARD_NAME ? "card-title long" : "card-title");
+    title.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
     const visual = card ? this.catalog.cardVisual(card.definitionId) : null;
-    const icon = element("span", visual ? "tactical-card-icon" : "tactical-card-icon missing");
-    icon.setAttribute("aria-hidden", "true");
-    if (visual) Object.assign(icon.style, this.catalog.domAtlasStyle(visual, 32));
-    button.append(
-      top,
-      icon,
-      element("span", "card-description", action.description),
-      element("span", "card-source", action.sourceLabel ?? "Character"),
-    );
-    button.addEventListener("click", () => this.handlers.onCard(action));
+    const art = element("span", visual ? "card-art" : "card-art missing");
+    art.setAttribute("aria-hidden", "true");
+    if (visual) {
+      const image = element("span", "card-art-image");
+      // Percentage-placed, so the picture takes whatever room the frame has.
+      Object.assign(image.style, this.catalog.domFillStyle(visual));
+      art.append(image);
+    } else {
+      art.textContent = action.name.slice(0, 1);
+    }
+    button.append(title, art);
+    button.addEventListener("click", () => {
+      // The press that opened the detail is not the press that plays the card.
+      if (this.longPressFired) {
+        this.longPressFired = false;
+        return;
+      }
+      this.handlers.onCard(action);
+    });
+    button.addEventListener("pointerdown", () => this.startLongPress(button, action, card));
+    for (const type of ["pointerup", "pointerleave", "pointercancel"] as const) {
+      button.addEventListener(type, () => this.cancelLongPress());
+    }
     button.addEventListener("mouseenter", () => this.handlers.onCardHover(action));
     button.addEventListener("mouseleave", () => this.handlers.onCardHover(null));
     return button;
   }
 
-  public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null): void {
+  /**
+   * The card face carries a name, a cost and a picture — enough to pick from. The words
+   * behind it are a press away, which is what a finger has instead of a hover.
+   */
+  private startLongPress(
+    button: HTMLElement,
+    action: LegalAction,
+    card: CombatState["cardZones"][string]["hand"][number] | undefined,
+  ): void {
+    this.cancelLongPress();
+    this.longPressTimer = window.setTimeout(() => {
+      this.longPressTimer = null;
+      this.longPressFired = true;
+      this.showCardDetail(button, action, card);
+    }, LONG_PRESS_MS);
+  }
+
+  private cancelLongPress(): void {
+    if (this.longPressTimer === null) return;
+    window.clearTimeout(this.longPressTimer);
+    this.longPressTimer = null;
+  }
+
+  private showCardDetail(
+    button: HTMLElement,
+    action: LegalAction,
+    card: CombatState["cardZones"][string]["hand"][number] | undefined,
+  ): void {
+    const heading = element("div", "detail-heading");
+    heading.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
+    this.cardDetail.replaceChildren(
+      heading,
+      element("p", undefined, action.description),
+      element("p", "detail-traits", action.traits.join(" · ")),
+      element("p", "detail-source", `Source: ${action.sourceLabel ?? card?.source.kind ?? "Character"}`),
+    );
+    if (action.reason) this.cardDetail.append(element("p", "detail-warning", action.reason));
+    this.cardDetail.hidden = false;
+    const stage = button.closest(".combat-stage")?.getBoundingClientRect();
+    const anchor = button.getBoundingClientRect();
+    if (!stage) return;
+    // Above the card it belongs to, kept inside the stage on both sides.
+    const half = this.cardDetail.offsetWidth / 2;
+    const centre = anchor.left + anchor.width / 2 - stage.left;
+    this.cardDetail.style.left = `${Math.min(Math.max(centre, half + 8), stage.width - half - 8)}px`;
+    this.cardDetail.style.bottom = `${stage.bottom - anchor.top + 10}px`;
+  }
+
+  public hideCardDetail(): void {
+    this.cancelLongPress();
+    this.cardDetail.hidden = true;
+  }
+
+  /** Replaces the inspector with one line, for a phase that has nothing to inspect. */
+  public renderHint(text: string): void {
+    this.selectedDetail.replaceChildren(element("p", "detail-hint", text));
+  }
+
+  public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null, state?: CombatState): void {
     this.selectedDetail.replaceChildren();
     if (!action) {
       this.selectedDetail.append(element("p", "detail-hint", DETAIL_HINT));
@@ -352,6 +542,10 @@ export class BattleUi {
     if (action.sourceLabel) this.selectedDetail.append(element("p", "detail-source", `Source: ${action.sourceLabel}`));
     if (action.reason) this.selectedDetail.append(element("p", "detail-warning", action.reason));
     if (!preview) return;
+    if (!preview.legal) {
+      this.selectedDetail.append(element("p", "detail-warning", preview.reason ?? "Target is not legal."));
+      return;
+    }
     const previewGrid = element("dl", "preview-grid");
     if (preview.hitChance !== undefined) {
       previewGrid.append(element("dt", undefined, "Hit"), element("dd", undefined, percentage(preview.hitChance)));
@@ -368,8 +562,29 @@ export class BattleUi {
     if (preview.pathCostFeet !== undefined) {
       previewGrid.append(element("dt", undefined, "Move cost"), element("dd", undefined, `${preview.pathCostFeet}ft`));
     }
+    const tactical = preview.tactical;
+    if (tactical) {
+      previewGrid.append(element("dt", undefined, "Target AC"), element("dd", "target-ac",
+        tactical.acBeforeOffGuard === tactical.ac ? String(tactical.ac) : `${tactical.acBeforeOffGuard} → ${tactical.ac}`));
+    } else if (preview.check) {
+      previewGrid.append(element("dt", undefined, "Check / DC"), element("dd", undefined, `${preview.check.modifier >= 0 ? "+" : ""}${preview.check.modifier} / ${preview.check.dc}`));
+    }
     this.selectedDetail.append(previewGrid);
-    for (const note of preview.notes) this.selectedDetail.append(element("p", "preview-note", note));
+    if (tactical?.causes.length) {
+      const effect = element("div", "off-guard-summary");
+      effect.append(element("strong", "off-guard-effect", `Off-Guard ${tactical.penalty}`),
+        element("span", "off-guard-causes", tactical.causes.map((cause) => cause === "rear" ? "Rear" : "Flanking").join(" · ")));
+      if (tactical.acBeforeOffGuard === tactical.ac) effect.append(element("span", undefined, "기존 페널티 적용 · 추가 AC 감소 없음"));
+      if (tactical.partnerIds.length) effect.append(element("span", "flanking-partners", `협공 아군: ${tactical.partnerIds.map((id) => state?.actors[id]?.name ?? "아군").join(", ")}`));
+      this.selectedDetail.append(effect);
+    }
+    if (import.meta.env.DEV) {
+      const diagnostics = element("details", "preview-diagnostics");
+      diagnostics.append(element("summary", undefined, "Debug"));
+      for (const note of preview.notes) diagnostics.append(element("p", "preview-note", note));
+      if (tactical) diagnostics.append(element("pre", undefined, JSON.stringify(tactical, null, 2)));
+      this.selectedDetail.append(diagnostics);
+    }
   }
 
   /** Inspector view for an actor the pointer is hovering on the board. */
@@ -388,13 +603,38 @@ export class BattleUi {
     if (actor.defeated) this.selectedDetail.append(element("p", "detail-warning", "Defeated"));
   }
 
+  /**
+   * One line per action — what was used and what it did — with the arithmetic folded
+   * away. A turn used to cost the player ten flat lines to read.
+   */
   private renderLog(state: CombatState, history: readonly CombatEvent[]): void {
+    // The controller hands over the same array until new events arrive, so an unrelated
+    // re-render (a card picked, a ring dismissed) must not rebuild and re-announce it.
+    if (history === this.lastHistory) return;
+    this.lastHistory = history;
     this.combatLog.replaceChildren();
-    const messages = history.flatMap((event) => {
-      const message = formatEvent(state, event);
-      return message ? [message] : [];
+    const entries = buildCombatLog(history, (actorId) => actorName(state, actorId), this.content);
+    for (const entry of entries.slice(-40).reverse()) this.combatLog.append(this.logEntry(entry));
+  }
+
+  private logEntry(entry: CombatLogEntry): HTMLElement {
+    const item = element("li", "log-entry");
+    if (entry.details.length === 0) {
+      item.append(element("p", "log-line", entry.summary));
+      return item;
+    }
+    const line = element("button", "log-line log-line-expandable", entry.summary);
+    line.type = "button";
+    line.setAttribute("aria-expanded", "false");
+    const detail = element("ul", "log-detail");
+    for (const message of entry.details) detail.append(element("li", undefined, message));
+    // Hover opens it on a mouse (CSS); a tap is the only way in on a tablet.
+    line.addEventListener("click", () => {
+      const open = item.classList.toggle("open");
+      line.setAttribute("aria-expanded", String(open));
     });
-    for (const message of messages.slice(-40).reverse()) this.combatLog.append(element("li", undefined, message));
+    item.append(line, detail);
+    return item;
   }
 
   private renderReaction(state: CombatState, controlledActorId: string): void {

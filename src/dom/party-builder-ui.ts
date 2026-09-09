@@ -220,7 +220,7 @@ export class PartyBuilderUi {
     const portrait = element("span", "party-character-art");
     portrait.setAttribute("role", "img");
     portrait.setAttribute("aria-label", actor.name + " front standee");
-    Object.assign(portrait.style, this.catalog.domAtlasPortraitStyle(visual.front, 132));
+    Object.assign(portrait.style, this.catalog.domStandeeStyle(visual.front, 132));
     const details = element("div", "party-character-copy");
     const statistics = actorStatistics(actor, this.pack);
     details.append(
@@ -263,7 +263,7 @@ export class PartyBuilderUi {
       if (mine) button.classList.add("selected");
       const visual = this.catalog.actorVisual(actor.id);
       const portrait = element("span", "guest-character-art");
-      Object.assign(portrait.style, this.catalog.domAtlasPortraitStyle(visual.front, 92));
+      Object.assign(portrait.style, this.catalog.domStandeeStyle(visual.front, 92));
       button.append(
         portrait,
         element("strong", undefined, "Slot " + String(partySlot.slot) + " · " + actor.name),

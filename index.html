@@ -2,7 +2,7 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta
       name="description"
       content="CardGuild deterministic PF2e tactical combat vertical slice"
@@ -37,18 +37,32 @@
           id="pixi-root"
           class="pixi-root"
           data-ready="false"
-          aria-label="CardGuild top-down perspective tactical battlefield"
+          aria-label="CardGuild top-down tactical battlefield"
         ></div>
         <div id="ring-root" class="ring-root" hidden></div>
+        <div id="card-detail" class="card-detail" role="note" hidden></div>
         <span id="pixi-status" class="sr-only" role="status" aria-live="polite">Starting…</span>
 
         <div class="combat-hud">
           <section class="hud-card hero-card" data-hud-gutter="left" aria-labelledby="hero-heading">
             <div class="hero-id">
-              <h2 id="hero-heading">Aerin</h2>
-              <div id="action-pips" class="action-pips" aria-label="Actions remaining"></div>
+              <span id="hero-portrait" class="hero-portrait" aria-hidden="true"></span>
+              <div class="hero-name">
+                <h2 id="hero-heading">Aerin</h2>
+                <div id="action-pips" class="action-pips" aria-label="Actions remaining"></div>
+              </div>
+              <button
+                id="hero-details-toggle"
+                class="hero-details-toggle"
+                type="button"
+                aria-expanded="false"
+                aria-controls="hero-details"
+              >
+                상세
+              </button>
             </div>
             <div id="hero-stats" class="actor-stats"></div>
+            <div id="hero-details" class="hero-details" hidden></div>
           </section>
 
           <div class="hud-status" data-hud-gutter="top">
@@ -76,7 +90,10 @@
             </section>
           </aside>
 
-          <p id="board-prompt" class="board-prompt" data-hud-gutter="bottom" aria-live="polite">행동을 선택하세요.</p>
+          <div class="board-prompt-dock" data-hud-gutter="bottom">
+            <p id="move-legend" class="move-legend" aria-label="이동 범위 색 안내" hidden></p>
+            <p id="board-prompt" class="board-prompt" aria-live="polite">행동을 선택하세요.</p>
+          </div>
 
           <footer class="hand-dock" data-hud-gutter="bottom">
             <div id="hand-cards" class="hand-cards"></div>

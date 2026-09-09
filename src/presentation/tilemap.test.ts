@@ -11,10 +11,13 @@ describe("M3 presentation tilemaps", () => {
     expect(tilemapAssetAt(map, "ground", at(2, 2))).toBe("terrain.rubble");
     expect(tilemapAssetAt(map, "ground", at(3, 4))).toBe("terrain.chasm");
     expect(tilemapAssetAt(map, "transitions", at(5, 3))).toBe("transition.web");
-    expect(tilemapAssetAt(map, "objects", at(4, 3))).toBe("object.gate.closed");
+    // The object layer carries point props only. A gate is the state of its tile, so the
+    // board reads it from the tile's traits at runtime and it takes no slot here.
+    expect(tilemapAssetAt(map, "objects", at(4, 3))).toBeNull();
+    expect(map.palettes.objects).not.toContain("terrain.gate.closed");
     expect(tilemapAssetAt(map, "objects", at(1, 2))).toBe("object.lever");
-    expect(tilemapAssetAt(map, "objects", at(2, 2))).toBe("object.crate");
-    expect(tilemapAssetAt(map, "objects", at(2, 3))).toBe("object.crate");
+    expect(tilemapAssetAt(map, "objects", at(2, 2))).toBe("object.chest");
+    expect(tilemapAssetAt(map, "objects", at(2, 3))).toBe("object.chest");
     expect(tilemapAssetAt(map, "transitions", at(0, 0))).toBeNull();
   });
 
@@ -25,5 +28,15 @@ describe("M3 presentation tilemaps", () => {
     expect(map.meta.type[1]).toBe("difficult");
     expect(map.meta.walkable[1]).toBe(true);
     expect(map.meta.cost[1]).toBe(2);
+  });
+
+  it("keeps the gate's gameplay semantics in the metadata it always had", () => {
+    // Moving the gate off the object layer is a presentation change: the tile is still a
+    // gate, still unwalkable, and still costs nothing to enter because nobody can.
+    const map = createPresentationCatalog().tilemap("encounter.ruined-gate");
+    const gate = 3 * map.width + 4;
+    expect(map.meta.type[gate]).toBe("gate");
+    expect(map.meta.walkable[gate]).toBe(false);
+    expect(map.meta.cost[gate]).toBeNull();
   });
 });

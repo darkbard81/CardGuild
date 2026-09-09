@@ -117,7 +117,7 @@ export class AdventureUi {
       wrapper.textContent = label.slice(0, 1);
       return wrapper;
     }
-    Object.assign(wrapper.style, this.catalog.domAtlasStyle(assetId, 48));
+    Object.assign(wrapper.style, this.catalog.domAssetStyle(assetId, 48));
     return wrapper;
   }
 

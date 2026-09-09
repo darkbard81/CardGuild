@@ -5,94 +5,69 @@ import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 
 export type BoardCorners = readonly [Point, Point, Point, Point];
 
-type Matrix3 = readonly [number, number, number, number, number, number, number, number, number];
-
-function solveLinearSystem(matrix: number[][], values: number[]): number[] {
-  const size = values.length;
-  const augmented = matrix.map((row, index) => [...row, values[index] ?? 0]);
-  for (let column = 0; column < size; column += 1) {
-    let pivot = column;
-    for (let row = column + 1; row < size; row += 1) {
-      if (Math.abs(augmented[row]?.[column] ?? 0) > Math.abs(augmented[pivot]?.[column] ?? 0)) pivot = row;
-    }
-    const pivotRow = augmented[pivot];
-    const currentRow = augmented[column];
-    if (!pivotRow || !currentRow || Math.abs(pivotRow[column] ?? 0) < 1e-10) {
-      throw new Error("Board perspective quadrilateral is degenerate.");
-    }
-    augmented[pivot] = currentRow;
-    augmented[column] = pivotRow;
-    const divisor = pivotRow[column] ?? 1;
-    for (let index = column; index <= size; index += 1) pivotRow[index] = (pivotRow[index] ?? 0) / divisor;
-    for (let row = 0; row < size; row += 1) {
-      if (row === column) continue;
-      const target = augmented[row];
-      if (!target) continue;
-      const factor = target[column] ?? 0;
-      for (let index = column; index <= size; index += 1) {
-        target[index] = (target[index] ?? 0) - factor * (pivotRow[index] ?? 0);
-      }
-    }
-  }
-  return augmented.map((row) => row[size] ?? 0);
+/**
+ * Where the board plane sits on screen: its centre, and the one uniform scale the whole
+ * plane is drawn at. The turn and the squash are fixed by the config, so these three
+ * numbers are everything the camera decides.
+ */
+export interface BoardPlacement {
+  readonly originX: number;
+  readonly originY: number;
+  readonly scale: number;
 }
 
-function homography(from: readonly Point[], to: readonly Point[]): Matrix3 {
-  const matrix: number[][] = [];
-  const values: number[] = [];
-  for (let index = 0; index < 4; index += 1) {
-    const source = from[index];
-    const target = to[index];
-    if (!source || !target) throw new Error("A homography needs four point pairs.");
-    matrix.push(
-      [source.x, source.y, 1, 0, 0, 0, -target.x * source.x, -target.x * source.y],
-      [0, 0, 0, source.x, source.y, 1, -target.y * source.x, -target.y * source.y],
-    );
-    values.push(target.x, target.y);
-  }
-  const result = solveLinearSystem(matrix, values);
-  return [
-    result[0] ?? 0, result[1] ?? 0, result[2] ?? 0,
-    result[3] ?? 0, result[4] ?? 0, result[5] ?? 0,
-    result[6] ?? 0, result[7] ?? 0, 1,
-  ];
-}
+const IDENTITY_PLACEMENT: BoardPlacement = { originX: 0, originY: 0, scale: 1 };
 
-function transform(matrix: Matrix3, x: number, y: number): Point {
-  const denominator = matrix[6] * x + matrix[7] * y + matrix[8];
-  if (Math.abs(denominator) < 1e-10) return new Point(Number.NaN, Number.NaN);
-  return new Point(
-    (matrix[0] * x + matrix[1] * y + matrix[2]) / denominator,
-    (matrix[3] * x + matrix[4] * y + matrix[5]) / denominator,
-  );
-}
-
+/**
+ * The board is one fixed affine projection, not a camera looking at a plane:
+ *
+ *   screen = Translate(origin) x UniformScale(s) x ScaleY(squash) x Rotate(turn) x local
+ *
+ * applied in that order, with the grid centred on its own middle. Every cell is
+ * therefore the same 2:1 diamond wherever it sits — a square on the far edge is drawn
+ * exactly as large as one on the near edge, and parallel grid lines stay parallel.
+ * There is no vanishing point and no row-dependent size anywhere in this file.
+ *
+ * The grid this projects is still the orthogonal square grid the rules use. Nothing
+ * here is visible to movement, line of sight or facing.
+ */
 export class BoardProjection {
-  private forward: Matrix3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
-  private inverse: Matrix3 = [1, 0, 0, 0, 1, 0, 0, 0, 1];
   private columns = 1;
   private rows = 1;
-  private boardCorners: BoardCorners = [new Point(), new Point(1, 0), new Point(1, 1), new Point(0, 1)];
+  private placement: BoardPlacement = IDENTITY_PLACEMENT;
 
   public constructor(private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG) {}
 
-  public update(columns: number, rows: number, corners: BoardCorners): void {
+  public update(columns: number, rows: number, placement: BoardPlacement): void {
     if (columns <= 0 || rows <= 0) throw new Error("Board dimensions must be positive.");
+    if (!(placement.scale > 0)) throw new Error("Board scale must be positive.");
     this.columns = columns;
     this.rows = rows;
-    this.boardCorners = [corners[0].clone(), corners[1].clone(), corners[2].clone(), corners[3].clone()];
-    const normalized: readonly Point[] = [new Point(0, 0), new Point(1, 0), new Point(1, 1), new Point(0, 1)];
-    this.forward = homography(normalized, corners);
-    this.inverse = homography(corners, normalized);
+    this.placement = placement;
   }
 
   public gridToScreen(col: number, row: number): Point {
-    return transform(this.forward, col / this.columns, row / this.rows);
+    const cell = this.config.boardTextureCellSize;
+    const localX = (col - this.columns / 2) * cell;
+    const localY = (row - this.rows / 2) * cell;
+    const { cosine, sine } = this.turn;
+    const { originX, originY, scale } = this.placement;
+    return new Point(
+      originX + (localX * cosine - localY * sine) * scale,
+      originY + (localX * sine + localY * cosine) * this.config.boardSquashY * scale,
+    );
   }
 
   public screenToGrid(x: number, y: number): Point {
-    const normalized = transform(this.inverse, x, y);
-    return new Point(normalized.x * this.columns, normalized.y * this.rows);
+    const cell = this.config.boardTextureCellSize;
+    const { cosine, sine } = this.turn;
+    const { originX, originY, scale } = this.placement;
+    const turnedX = (x - originX) / scale;
+    const turnedY = (y - originY) / (scale * this.config.boardSquashY);
+    return new Point(
+      (turnedX * cosine + turnedY * sine) / cell + this.columns / 2,
+      (turnedY * cosine - turnedX * sine) / cell + this.rows / 2,
+    );
   }
 
   public getCellCorners(col: number, row: number): Point[] {
@@ -105,21 +80,34 @@ export class BoardProjection {
   }
 
   /**
-   * Scale for content standing on `row`: the projected cell width over the width the
-   * art was authored for. Perspective foreshortening and camera zoom are already in
-   * the projected width, so board content never needs a separate depth factor.
+   * Scale for anything standing on the board: the plane's own uniform scale, restated
+   * against the cell width the art was authored for. It takes no row, because in a fixed
+   * affine projection a standee is the same size wherever it stands.
    */
-  public getCellScale(row: number): number {
-    return this.getProjectedCellWidth(row) / this.config.referenceCellWidth;
+  public getContentScale(): number {
+    return this.placement.scale * this.config.boardTextureCellSize / this.config.referenceCellWidth;
   }
 
-  public getProjectedCellWidth(row: number): number {
-    const left = this.gridToScreen(0, row);
-    const next = this.gridToScreen(1, row);
-    return Math.hypot(next.x - left.x, next.y - left.y);
+  /** Screen width of one cell's left-to-right diagonal; its height is that times the squash. */
+  public getCellDiamondWidth(): number {
+    const { cosine, sine } = this.turn;
+    return this.config.boardTextureCellSize * (Math.abs(cosine) + Math.abs(sine)) * this.placement.scale;
   }
 
+  /** The board's own four corners, in grid order: (0,0), (columns,0), (columns,rows), (0,rows). */
   public get corners(): BoardCorners {
-    return this.boardCorners;
+    return [
+      this.gridToScreen(0, 0),
+      this.gridToScreen(this.columns, 0),
+      this.gridToScreen(this.columns, this.rows),
+      this.gridToScreen(0, this.rows),
+    ];
+  }
+
+  private get turn(): { readonly cosine: number; readonly sine: number } {
+    return {
+      cosine: Math.cos(this.config.boardRotationRadians),
+      sine: Math.sin(this.config.boardRotationRadians),
+    };
   }
 }
