@@ -72,6 +72,12 @@ Level은 1 이상 정수, EXP는 0 이상 1000 미만 정수여야 한다. 누�
 잘못된 내부 상태는 예외로 드러내며 v2를 조용히 v3로 보정하지 않는다. 이는 전체 unknown Save를
 검증하는 decoder가 아니다. Save validator와 명시적 migration entry point는 M9-3의 책임이다.
 
+`SessionHost` constructor도 같은 경계에 포함한다. `attach()`는 받은 state를 gameplay commit
+없이 곧바로 snapshot으로 전송하므로, commit 시점의 `assertSessionInvariants()`만으로는
+constructor seam으로 들어온 state를 막지 못한다. progression이 wire snapshot의 필수 계약이 된
+이상 constructor에서 먼저 검증하여, SessionHost가 invalid gameplay state를 한 번도 publish하지
+못하게 한다. M9-3의 Campaign rehydration이 이 seam을 그대로 사용한다.
+
 ## 3. Effective profile과 전투 수명
 
 ```text
@@ -166,7 +172,7 @@ Guest claim/presence/control metadata의 gameplay hash 제외 계약은 유지�
 | `src/session/session.test.ts` | Level/EXP hash 반영, JSON 왕복, Combat hash 보존, Session의 Adventure invariant 위임, 기존 control 회귀 |
 | `src/protocol/validate-message.test.ts` | v5 수용, v4 포함 미지원 버전 거절, 기존 Facing 계약 |
 | `src/client/session-client.test.ts` | v4 snapshot/ACK/error 수신 시 미적용·연결 종료·재시도 중단 |
-| `tests/network/coop.integration.test.ts` | 실제 WebSocket에서 nonzero Level/EXP 전송, Level 2 전투 생성, disconnect/reconnect 후 동일 state/hash, 기존 1P/2P/3P 회귀 |
+| `tests/network/coop.integration.test.ts` | 실제 WebSocket에서 nonzero Level/EXP 전송, Level 2 전투 생성, disconnect/reconnect 후 동일 state/hash, `SessionHost` constructor의 invalid state 거절, 기존 1P/2P/3P 회귀 |
 | `tests/progression.browser.spec.ts` | 실제 Host 시작/reload, 양쪽 표시, Level 2/EXP 375 fixture, preview 수치, 캐릭터 전환, 읽기 전용, 재렌더링, desktop/mobile screenshot |
 
 테스트의 runtime Level/EXP 주입은 생성된 상태의 불변 교체 또는 기존 SessionHost constructor
@@ -211,7 +217,7 @@ npm run test:smoke
 |---|---|
 | `npm run check` | 통과 — content/production/assets check, typecheck 4종, lint, unit 38개 파일·469개 테스트 |
 | `npm run build` | 통과 — client bundle과 `dist-server/main.js` 생성, 기존 chunk size 경고만 유지 |
-| `npm run test:network` | 통과 — 2개 파일·10개 테스트 (`coop` 9개, 전체 Adventure 완주 1개) |
+| `npm run test:network` | 통과 — 2개 파일·11개 테스트 (`coop` 10개, 전체 Adventure 완주 1개) |
 | `npm run test:smoke` | 통과 — Playwright 45개 테스트 |
 
 브라우저 검증은 `tests/progression.browser.spec.ts` 2개 테스트가 smoke gate 안에서 함께 돈다.
@@ -219,6 +225,18 @@ npm run test:smoke
 캐릭터 전환·읽기 전용 조회를 확인하고 1024×768 Adventure/Loadout/runtime Level screenshot 3장과
 390×844 mobile screenshot 1장을 남긴다. 1024×768에서는 마지막 encounter 항목과 Collection이
 viewport 안에 들어오고 `.adventure-map-card`가 잘리지 않는 것을 단언으로 고정했다.
+
+### 리뷰 반영
+
+`121ef7a` 리뷰에서 `SessionHost` constructor의 invariant 경계 1건을 지적받아 후속 커밋에서 닫았다.
+constructor가 `assertSessionInvariants()`를 먼저 호출하고, `tests/network/coop.integration.test.ts`가
+valid Level 2/EXP 375 복원 성공과 EXP 1000·progression 누락·Adventure v2 거절, 그리고 거절된 state가
+`attach()` snapshot에 도달하지 않음을 함께 고정한다. 이 테스트는 수정 전 코드에서 실패한다.
+
+`assertAdventureInvariants()`는 content context가 없어 `actorDefinitionId`가 실제 Character profile인지
+검증하지 않는다. 새 Adventure 생성과 encounter build가 각각 막으므로 M9-1 범위에서는 문제가 없지만,
+M9-3의 Save restore validator에는 `PartyMember.actorDefinitionId → Character profile` semantic
+검증을 포함해야 한다.
 
 ### 남은 작업
 

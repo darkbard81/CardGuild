@@ -13,7 +13,8 @@ import { digestReconnectToken } from "../../src/server/credentials";
 import { SessionHost } from "../../src/server/session-host";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
 import type { SessionCredentialResponse } from "../../src/server/session-store";
-import { hashSessionGameplayState, type SessionIntent } from "../../src/session";
+import { EXPERIENCE_PER_LEVEL } from "../../src/adventure/progression";
+import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../../src/session";
 
 const TEST_ORIGIN = "http://cardguild.test";
 const PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
@@ -237,6 +238,50 @@ describe("real WebSocket M5 cooperative session", () => {
     expect(snapshot.state).toEqual(savedState);
     expect(snapshot.gameplayHash).toBe(savedHash);
     expect(snapshot.controlRevision).toBeGreaterThan(first.controlRevision);
+  });
+
+  it("rejects an invalid restored state at the SessionHost seam, so attach never publishes it", async () => {
+    const server = await start();
+    const credential = await create(server);
+    const original = server.store.get(credential.sessionId)!;
+    const preparing = await SocketClient.connect(server.origin, credential);
+    sockets.push(preparing);
+    await preparing.waitForSnapshot();
+    await accepted(preparing, original, "restore-party", { type: "set-party-composition", actorDefinitionIds: PARTY });
+    await accepted(preparing, original, "restore-begin", { type: "begin-adventure" });
+    await preparing.close();
+    await original.whenIdle();
+
+    const adventure = original.state.adventure!;
+    const context = { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId };
+    const digest = digestReconnectToken(credential.reconnectToken);
+    const restoredWith = (progression: unknown): SessionCoreState => ({
+      ...original.state,
+      adventure: {
+        ...adventure,
+        party: {
+          members: Object.fromEntries(Object.entries(adventure.party.members)
+            .map(([id, member]) => [id, { ...member, progression }])),
+        },
+      },
+    } as SessionCoreState);
+
+    const restored = new SessionHost(restoredWith({ level: 2, experience: 375 }), context, digest);
+    expect(restored.state.adventure!.party.members["party.hero-1"]!.progression).toEqual({ level: 2, experience: 375 });
+    expect(() => new SessionHost(restoredWith({ level: 2, experience: EXPERIENCE_PER_LEVEL }), context, digest))
+      .toThrow("experience");
+    expect(() => new SessionHost(restoredWith(undefined), context, digest)).toThrow("progression is required");
+    expect(() => new SessionHost(
+      { ...original.state, adventure: { ...adventure, version: 2 } } as unknown as SessionCoreState, context, digest,
+    )).toThrow("version 3");
+
+    // No rejected state ever became a host, so the live session still publishes the authored progression.
+    const reconnected = await SocketClient.connect(server.origin, credential);
+    sockets.push(reconnected);
+    const snapshot = await reconnected.waitForSnapshot();
+    expect(snapshot.state.adventure?.version).toBe(3);
+    expect(Object.values(snapshot.state.adventure!.party.members).map((member) => member.progression))
+      .toEqual([{ level: 1, experience: 0 }, { level: 1, experience: 0 }, { level: 1, experience: 0 }]);
   });
 
   it("transports atomic final facing and preserves it in a reconnect snapshot", async () => {

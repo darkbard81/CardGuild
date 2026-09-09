@@ -11,6 +11,7 @@ import {
   type ServerSnapshot,
 } from "../protocol";
 import {
+  assertSessionInvariants,
   dispatchServerCombatCommand,
   dispatchSessionIntent,
   hashSessionGameplayState,
@@ -54,6 +55,9 @@ export class SessionHost {
     private readonly context: SessionAuthorityContext,
     hostReconnectDigest: string,
   ) {
+    // attach() publishes this state as a snapshot before any commit runs, so the
+    // constructor is the only place left to reject a restored state.
+    assertSessionInvariants(state);
     this.stateValue = state;
     this.reconnectDigests.set(state.hostPlayerId, hostReconnectDigest);
   }
