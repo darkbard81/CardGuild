@@ -3,10 +3,11 @@ import { describe, expect, it } from "vitest";
 import { PRODUCTION_CONTENT } from "../content";
 import { validateClientMessage } from "./validate-message";
 
-describe("protocol v5 structural validation", () => {
+describe("protocol v6 structural validation", () => {
   /**
-   * v5 snapshots require Adventure v3 progression. v3 also used the old Facing inputs.
-   * Reject incompatible peers at the envelope boundary, before consuming their state.
+   * v6 adds the `resume-adventure` intent and the `resume-lobby` lifecycle a restored
+   * Campaign publishes. Reject incompatible peers at the envelope boundary, before
+   * consuming their state.
    */
   it("rejects legacy and future envelopes outright, whatever its payload", () => {
     const hello = {
@@ -16,16 +17,16 @@ describe("protocol v5 structural validation", () => {
       reconnectToken: "secret",
       contentIdentity: PRODUCTION_CONTENT.contentIdentity,
     };
-    expect(validateClientMessage({ v: 5, ...hello }).ok).toBe(true);
-    for (const v of [1, 2, 3, 4, 6, "5", null]) {
+    expect(validateClientMessage({ v: 6, ...hello }).ok).toBe(true);
+    for (const v of [1, 2, 3, 4, 5, 7, "6", null]) {
       expect(validateClientMessage({ v, ...hello }).ok).toBe(false);
       expect(validateClientMessage({
         v, type: "intent", requestId: "legacy", expectedRevision: 3, intent: { type: "end-turn", facing: "east" },
       }).ok).toBe(false);
     }
-    // Retain the M8 Facing contract while enforcing the new v5 envelope.
+    // Retain the M8 Facing contract while enforcing the new v6 envelope.
     expect(validateClientMessage({
-      v: 5, type: "intent", requestId: "v3-end-turn", expectedRevision: 3, intent: { type: "end-turn" },
+      v: 6, type: "intent", requestId: "v3-end-turn", expectedRevision: 3, intent: { type: "end-turn" },
     }).ok).toBe(false);
     expect(validateClientMessage({
       v: 3, type: "intent", requestId: "v4-move", expectedRevision: 3,
@@ -34,7 +35,7 @@ describe("protocol v5 structural validation", () => {
   });
 
   it("requires one valid final direction on end-turn, but not on movement targets", () => {
-    const message = (intent: unknown) => ({ v: 5, type: "intent", requestId: "facing", expectedRevision: 1, intent });
+    const message = (intent: unknown) => ({ v: 6, type: "intent", requestId: "facing", expectedRevision: 1, intent });
     for (const facing of [undefined, null, "northeast", 1]) {
       expect(validateClientMessage(message({ type: "end-turn", facing })).ok).toBe(false);
     }
@@ -45,7 +46,7 @@ describe("protocol v5 structural validation", () => {
   });
   it("accepts hello, party/claim intents, and actor-id-free combat intents", () => {
     expect(validateClientMessage({
-      v: 5,
+      v: 6,
       type: "hello",
       sessionId: "session-a",
       playerId: "player-a",
@@ -53,14 +54,14 @@ describe("protocol v5 structural validation", () => {
       contentIdentity: PRODUCTION_CONTENT.contentIdentity,
     }).ok).toBe(true);
     expect(validateClientMessage({
-      v: 5,
+      v: 6,
       type: "intent",
       requestId: "request-a",
       expectedRevision: 3,
       intent: { type: "end-turn", facing: "west" },
     }).ok).toBe(true);
     expect(validateClientMessage({
-      v: 5,
+      v: 6,
       type: "intent",
       requestId: "request-party",
       expectedRevision: 3,
@@ -70,7 +71,7 @@ describe("protocol v5 structural validation", () => {
       },
     }).ok).toBe(true);
     expect(validateClientMessage({
-      v: 5,
+      v: 6,
       type: "intent",
       requestId: "request-loadout",
       expectedRevision: 4,
@@ -81,46 +82,54 @@ describe("protocol v5 structural validation", () => {
       },
     }).ok).toBe(true);
     expect(validateClientMessage({
-      v: 5,
+      v: 6,
       type: "intent",
       requestId: "remove-orphan",
       expectedRevision: 5,
       intent: { type: "remove-offline-guest", playerId: "player-orphan" },
     }).ok).toBe(true);
+    // Resume carries no payload: it only unlocks a restored campaign.
+    expect(validateClientMessage({
+      v: 6, type: "intent", requestId: "resume", expectedRevision: 0, intent: { type: "resume-adventure" },
+    }).ok).toBe(true);
+    expect(validateClientMessage({
+      v: 6, type: "intent", requestId: "resume-injection", expectedRevision: 0,
+      intent: { type: "resume-adventure", lifecycle: "active" },
+    }).ok).toBe(false);
   });
 
   it("rejects client authority fields, invalid party shapes, unknown properties, and protocol v1", () => {
     for (const value of [
       {
-        v: 5,
+        v: 6,
         type: "intent",
         requestId: "actor-injection",
         expectedRevision: 3,
         intent: { type: "end-turn", facing: "east", actorId: "enemy.goblin" },
       },
       {
-        v: 5,
+        v: 6,
         type: "intent",
         requestId: "state-injection",
         expectedRevision: 3,
         intent: { type: "begin-adventure", adventureState: {} },
       },
       {
-        v: 5,
+        v: 6,
         type: "intent",
         requestId: "outcome-injection",
         expectedRevision: 3,
         intent: { type: "accept-combat-result", outcome: "victory" },
       },
       {
-        v: 5,
+        v: 6,
         type: "intent",
         requestId: "seed-injection",
         expectedRevision: 3,
         intent: { type: "begin-adventure", seed: 1234 },
       },
       {
-        v: 5,
+        v: 6,
         type: "intent",
         requestId: "command-order-injection",
         expectedRevision: 3,
@@ -135,21 +144,21 @@ describe("protocol v5 structural validation", () => {
         contentIdentity: PRODUCTION_CONTENT.contentIdentity,
       },
       {
-        v: 5,
+        v: 6,
         type: "intent",
         requestId: "duplicate-party",
         expectedRevision: 3,
         intent: { type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.aerin"] },
       },
       {
-        v: 5,
+        v: 6,
         type: "intent",
         requestId: "implicit-loadout-owner",
         expectedRevision: 3,
         intent: { type: "set-loadout", loadout: { equipment: {}, preparedCards: [] } },
       },
       {
-        v: 5,
+        v: 6,
         type: "intent",
         requestId: "implicit-orphan",
         expectedRevision: 3,

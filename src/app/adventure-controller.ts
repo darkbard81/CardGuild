@@ -56,6 +56,7 @@ export class AdventureController {
   private readonly lobbyUi: SessionLobbyUi;
   private encounterBundle: Promise<void> | null = null;
   private view: "adventure" | "loadout" = "adventure";
+  private continuing = false;
 
   public constructor(
     private readonly app: Application,
@@ -85,6 +86,7 @@ export class AdventureController {
       onSelectCharacter: (memberId) => this.sendIntent({ type: "select-character", memberId }),
       onRemoveOfflineGuest: (playerId) => this.sendIntent({ type: "remove-offline-guest", playerId }),
       onBegin: () => this.sendIntent({ type: "begin-adventure" }),
+      onResume: () => this.sendIntent({ type: "resume-adventure" }),
     });
     this.root.dataset.ready = "true";
     this.root.dataset.screen = "session";
@@ -146,11 +148,20 @@ export class AdventureController {
   }
 
   private async continueCampaign(campaignId: string): Promise<void> {
+    // Continue retires whatever live session the campaign has, so a second in-flight call
+    // would tear down the session the first one just opened.
+    if (this.continuing) return;
+    this.continuing = true;
     this.lobbyUi.setStatus("Campaign을 이어가는 중입니다…");
     try {
       this.attach(await SessionClient.continueCampaign(campaignId));
     } catch (error) {
       this.lobbyUi.setStatus(error instanceof Error ? error.message : "Campaign을 이어갈 수 없습니다.");
+      // The campaign row and its save are untouched by a refused Continue, so the host can
+      // go straight back to the list and try again.
+      void this.restoreAccount();
+    } finally {
+      this.continuing = false;
     }
   }
 
@@ -202,6 +213,7 @@ export class AdventureController {
     delete this.root.dataset.sessionRevision;
     delete this.root.dataset.controlRevision;
     delete this.root.dataset.sessionHash;
+    delete this.root.dataset.lifecycle;
     delete this.root.dataset.viewerMemberId;
     delete this.root.dataset.controlledActorIds;
     delete this.root.dataset.viewerRole;
@@ -240,13 +252,19 @@ export class AdventureController {
     this.root.dataset.controlledActorIds = [...controlledMemberIds].sort().join(",");
     this.root.dataset.viewerRole = state.hostPlayerId === viewer.playerId ? "host" : "guest";
 
+    this.root.dataset.lifecycle = state.lifecycle;
     if (state.lifecycle === "lobby") {
-      this.battle?.destroy();
-      this.battle = null;
-      this.root.dataset.screen = "session";
-      this.lobbyUi.renderLobby(state, viewer.playerId, snapshot.control);
-      this.ui.setVisible(false);
-      this.loadoutUi.setVisible(false);
+      this.renderSessionLobby(state, viewer.playerId, snapshot.control);
+      return;
+    }
+
+    // A restored campaign already carries saved Adventure and Combat state. Rendering it
+    // before Resume would drop the host straight into a battle they have not resumed, and
+    // would arm combat input the server is going to refuse.
+    if (state.lifecycle === "resume-lobby") {
+      delete this.root.dataset.adventurePhase;
+      delete this.root.dataset.encounterId;
+      this.renderSessionLobby(state, viewer.playerId, snapshot.control);
       return;
     }
 
@@ -265,6 +283,19 @@ export class AdventureController {
     this.battle?.destroy();
     this.battle = null;
     this.renderAdventure(adventure, viewer);
+  }
+
+  private renderSessionLobby(
+    state: ServerSnapshot["state"],
+    viewerPlayerId: string,
+    control: ServerSnapshot["control"],
+  ): void {
+    this.battle?.destroy();
+    this.battle = null;
+    this.root.dataset.screen = "session";
+    this.lobbyUi.renderLobby(state, viewerPlayerId, control);
+    this.ui.setVisible(false);
+    this.loadoutUi.setVisible(false);
   }
 
   private renderCombat(snapshot: ServerSnapshot, viewer: SessionSeat, combat: CombatState): void {

@@ -63,7 +63,7 @@ const credential: SessionCredential = {
 
 function snapshot(revision: number, controlRevision = 0, cause: "resync" | "control" = "resync"): ServerSnapshot {
   return {
-    v: 5,
+    v: 6,
     type: "snapshot",
     revision,
     controlRevision,
@@ -163,7 +163,7 @@ describe("SessionClient reconnect handshake", () => {
     const socket = FakeWebSocket.instances[0] as FakeWebSocket;
     socket.open();
     socket.message({
-      v: 5,
+      v: 6,
       type: "error",
       code: "SESSION_NOT_FOUND",
       message: "Session was not found.",
@@ -196,7 +196,7 @@ describe("SessionClient reconnect handshake", () => {
     ]);
   });
 
-  it.each(["snapshot", "ack", "error"])("stops on a v4 %s without applying it or retrying", async (type) => {
+  it.each(["snapshot", "ack", "error"])("stops on a v5 %s without applying it or retrying", async (type) => {
     storage.set("cardguild.session.v2", JSON.stringify(credential));
     const applied: ServerSnapshot[] = [];
     const errors: ServerError[] = [];
@@ -206,7 +206,7 @@ describe("SessionClient reconnect handshake", () => {
     client.connect();
     const socket = FakeWebSocket.instances[0]!;
     socket.open();
-    socket.message({ ...snapshot(1), type, v: 4 });
+    socket.message({ ...snapshot(1), type, v: 5 });
     socket.message(snapshot(2));
     expect(applied).toEqual([]);
     expect(client.snapshot).toBeNull();

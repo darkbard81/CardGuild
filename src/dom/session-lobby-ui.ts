@@ -28,6 +28,7 @@ export interface SessionLobbyHandlers {
   readonly onSelectCharacter: (memberId: string) => void;
   readonly onRemoveOfflineGuest: (playerId: string) => void;
   readonly onBegin: () => void;
+  readonly onResume: () => void;
 }
 
 export class SessionLobbyUi {
@@ -36,8 +37,8 @@ export class SessionLobbyUi {
   private status = "호스트가 방을 만들고 세션 ID를 초대할 플레이어에게 전달합니다.";
 
   public constructor(
-    pack: CompiledContentPack,
-    catalog: AssetCatalog,
+    private readonly pack: CompiledContentPack,
+    private readonly catalog: AssetCatalog,
     private readonly handlers: SessionLobbyHandlers,
   ) {
     const screen = document.querySelector<HTMLElement>("#session-screen");
@@ -150,9 +151,13 @@ export class SessionLobbyUi {
       row.dataset.campaignId = campaign.campaignId;
       const resume = element("button", "session-secondary", "Continue");
       resume.type = "button";
-      // M9-2 stores no gameplay snapshot yet, so there is never anything to resume.
+      // Continue restores the last committed gameplay save; a campaign with none is new.
       resume.disabled = !campaign.hasSave;
-      resume.addEventListener("click", () => this.handlers.onContinueCampaign(campaign.campaignId));
+      resume.addEventListener("click", () => {
+        // Two Continues would retire the session the first one just opened.
+        resume.disabled = true;
+        this.handlers.onContinueCampaign(campaign.campaignId);
+      });
       row.append(element("span", undefined, campaign.name), resume);
       list.append(row);
     }
@@ -176,17 +181,25 @@ export class SessionLobbyUi {
     control: ServerControlView,
   ): void {
     const host = state.hostPlayerId === viewerPlayerId;
+    const resuming = state.lifecycle === "resume-lobby";
     const connected = new Set(control.connectedPlayerIds);
     this.screen.dataset.sessionId = state.sessionId;
     this.screen.dataset.viewerRole = host ? "host" : "guest";
+    this.screen.dataset.lobbyKind = resuming ? "resume" : "new";
     this.screen.replaceChildren();
     const card = element("section", "session-card lobby-card");
     card.append(
-      element("p", "eyebrow", host ? "You are the host" : "Host invitation accepted"),
-      element("h1", undefined, "Party Lobby"),
-      element("p", "session-description", host
-        ? "Players와 출전 Party를 따로 준비합니다. Session ID만 게스트에게 공유하세요."
-        : "호스트가 준비한 잔여 캐릭터 중 하나를 선택하세요."),
+      element("p", "eyebrow", resuming
+        ? host ? "Saved campaign restored" : "Host invitation accepted"
+        : host ? "You are the host" : "Host invitation accepted"),
+      element("h1", undefined, resuming ? "Resume Lobby" : "Party Lobby"),
+      element("p", "session-description", resuming
+        ? host
+          ? "저장된 Party로 이어서 진행합니다. 새 Session ID를 게스트에게 다시 공유하세요."
+          : "호스트가 저장했던 캐릭터 중 하나를 선택하고 Resume을 기다리세요."
+        : host
+          ? "Players와 출전 Party를 따로 준비합니다. Session ID만 게스트에게 공유하세요."
+          : "호스트가 준비한 잔여 캐릭터 중 하나를 선택하세요."),
     );
 
     const invite = element("div", "invite-code");
@@ -250,39 +263,92 @@ export class SessionLobbyUi {
     const everyGuestClaimed = state.seats
       .filter((seat) => seat.playerId !== state.hostPlayerId)
       .every((seat) => Boolean(claimedMemberForPlayer(state, seat.playerId)));
-    const canBegin = host &&
-      state.lifecycle === "lobby" &&
-      state.partyPrepared &&
-      state.partySlots.length >= state.seats.length &&
-      everyGuestClaimed;
-    const begin = element("button", "session-primary", host ? "Begin Adventure" : "Waiting for Host");
-    begin.id = "begin-adventure";
+    // A restored campaign resumes with whoever is present: unclaimed saved characters fall
+    // back to the host under the existing control rules.
+    const canBegin = host && state.partyPrepared && (resuming
+      ? true
+      : state.lifecycle === "lobby" && state.partySlots.length >= state.seats.length && everyGuestClaimed);
+    const begin = element(
+      "button",
+      "session-primary",
+      resuming
+        ? host ? "Resume" : "Waiting for Host"
+        : host ? "Begin Adventure" : "Waiting for Host",
+    );
+    begin.id = resuming ? "resume-adventure" : "begin-adventure";
     begin.type = "button";
     begin.disabled = !canBegin;
-    begin.addEventListener("click", this.handlers.onBegin);
+    begin.addEventListener("click", resuming ? this.handlers.onResume : this.handlers.onBegin);
     const beginGate = element(
       "p",
       canBegin ? "party-gate" : "party-gate invalid",
-      !state.partyPrepared
-        ? "Apply a party before beginning."
-        : state.partySlots.length < state.seats.length
-          ? "Party size must cover every player."
-          : !everyGuestClaimed
-            ? "Every guest must choose exactly one character."
-            : host
-              ? "Party and guest claims are ready."
-              : "Waiting for the host to begin.",
+      resuming
+        ? host
+          ? "Saved progress is ready to resume."
+          : "Waiting for the host to resume."
+        : !state.partyPrepared
+          ? "Apply a party before beginning."
+          : state.partySlots.length < state.seats.length
+            ? "Party size must cover every player."
+            : !everyGuestClaimed
+              ? "Every guest must choose exactly one character."
+              : host
+                ? "Party and guest claims are ready."
+                : "Waiting for the host to begin.",
     );
     card.append(
       invite,
       playersPanel,
-      this.partyBuilder.render(state, viewerPlayerId),
+      // The saved party is fixed, so the host sees it read-only instead of an editor.
+      resuming && host ? this.savedPartyPanel(state, control) : this.partyBuilder.render(state, viewerPlayerId),
       begin,
       beginGate,
       this.statusLine(),
     );
     this.screen.append(card);
     this.setVisible(true);
+  }
+
+  /** Read-only view of a restored party: no composition editing exists in a resume lobby. */
+  private savedPartyPanel(state: SessionCoreState, control: ServerControlView): HTMLElement {
+    const root = element("section", "party-builder");
+    root.dataset.partyPrepared = "true";
+    root.dataset.partyFixed = "true";
+    root.append(
+      element("p", "party-builder-label", "SAVED PARTY"),
+      element("h2", undefined, "Restored Company"),
+    );
+    const list = element("div", "guest-character-choices");
+    for (const slot of state.partySlots) {
+      const member = state.adventure?.party.members[slot.memberId];
+      const actor = this.pack.actorDefinitions[slot.actorDefinitionId];
+      const claimant = state.guestClaims.byMemberId[slot.memberId];
+      const entry = element("article", "guest-character-choice");
+      entry.dataset.memberId = slot.memberId;
+      entry.dataset.partySlot = String(slot.slot);
+      entry.dataset.claimState = slot.slot === 1 ? "host" : claimant ? "taken" : "available";
+      const visual = actor ? this.catalog.actorVisual(actor.id) : null;
+      if (visual) {
+        const portrait = element("span", "guest-character-art");
+        Object.assign(portrait.style, this.catalog.domStandeeStyle(visual.front, 92));
+        entry.append(portrait);
+      }
+      const controller = control.effectiveControllerByMemberId[slot.memberId];
+      entry.append(
+        element("strong", undefined, "Slot " + String(slot.slot) + " · " + (actor?.name ?? slot.actorDefinitionId)),
+        element("small", undefined, member
+          ? "Lv " + String(member.progression.level) +
+            (slot.slot === 1
+              ? " · Host Character"
+              : claimant
+                ? controller === claimant ? " · Guest control" : " · Claimed, offline"
+                : " · Host control")
+          : "Saved character"),
+      );
+      list.append(entry);
+    }
+    root.append(list);
+    return root;
   }
 
   public setStatus(status: string): void {

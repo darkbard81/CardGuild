@@ -20,10 +20,12 @@ import { authorizeSessionIntent, seatForPlayer } from "./authorization";
 import { sameContentIdentity } from "./session-hash";
 import type {
   CreateSessionOptions,
+  ResumeSessionOptions,
   SessionAuthorityContext,
   SessionControlContext,
   SessionCoreState,
   SessionEvent,
+  SessionGameplayProjection,
   SessionIntent,
   SessionPartySlot,
   SessionPlayerIdentity,
@@ -81,7 +83,7 @@ export function createSessionCoreState(
   if (!Number.isInteger(options.adventureSeed)) throw new Error("Adventure seed must be an integer.");
   adventureContext(context);
   const state: SessionCoreState = {
-    version: 2,
+    version: 3,
     sessionId: options.sessionId,
     revision: 0,
     contentIdentity: getContentIdentity(context.pack),
@@ -99,12 +101,44 @@ export function createSessionCoreState(
   return state;
 }
 
+/**
+ * Rehydrate a durable Campaign save into a brand new live session. Only the gameplay
+ * projection survives: the session gets a fresh ID, a fresh host player, an empty guest
+ * claim map and revision 0, and it starts in `resume-lobby` so nothing plays until the
+ * host presses Resume.
+ */
+export function createResumedSessionCoreState(
+  options: ResumeSessionOptions,
+  projection: SessionGameplayProjection,
+  context: SessionAuthorityContext,
+): SessionCoreState {
+  adventureContext(context);
+  const state: SessionCoreState = {
+    version: 3,
+    sessionId: options.sessionId,
+    revision: 0,
+    contentIdentity: projection.contentIdentity,
+    lifecycle: "resume-lobby",
+    hostPlayerId: options.playerId,
+    // The seed is not stored twice: the saved Adventure already carries the one it ran with.
+    adventureSeed: projection.adventure.adventureSeed,
+    seats: [makeSeat(1, options)],
+    partyPrepared: true,
+    partySlots: projection.partySlots.map((slot) => ({ ...slot })),
+    guestClaims: { byMemberId: {} },
+    adventure: projection.adventure,
+    combat: projection.combat,
+  };
+  assertSessionInvariants(state);
+  return state;
+}
+
 export function joinSessionCore(
   state: SessionCoreState,
   player: SessionPlayerIdentity,
   context: SessionAuthorityContext,
 ): SessionTransitionResult {
-  if (state.lifecycle !== "lobby") return reject(state, "ROSTER_LOCKED", "Adventure roster is already locked.");
+  if (state.lifecycle === "active") return reject(state, "ROSTER_LOCKED", "Adventure roster is already locked.");
   if (seatForPlayer(state, player.playerId)) return reject(state, "FORBIDDEN", "Player already owns a seat.");
   const adventureMaximum = adventureContext(context).definition.partySize.max;
   const maximum = state.partyPrepared ? Math.min(adventureMaximum, state.partySlots.length) : adventureMaximum;
@@ -288,6 +322,10 @@ export function dispatchSessionIntent(
       if (!started.accepted) return reject(state, "DOMAIN_REJECTED", started.error ?? "Adventure rejected begin.");
       return commit(state, { ...state, lifecycle: "active", adventure: started.state }, started.events);
     }
+    case "resume-adventure":
+      // Resume only unlocks the session. Party, Adventure and Combat are untouched, so the
+      // gameplay hash is identical and the durable save does not need rewriting.
+      return commit(state, { ...state, lifecycle: "active" }, []);
     case "start-encounter": {
       const started = dispatchAdventureCommand(state.adventure as AdventureState, { type: "start-encounter" }, runtime);
       if (!started.accepted) return reject(state, "DOMAIN_REJECTED", started.error ?? "Adventure rejected encounter start.");
@@ -346,7 +384,7 @@ export function dispatchServerCombatCommand(
 }
 
 export function assertSessionInvariants(state: SessionCoreState): void {
-  if (state.version !== 2) throw new Error("SessionCoreState must use version 2.");
+  if (state.version !== 3) throw new Error("SessionCoreState must use version 3.");
   const seatNumbers = state.seats.map((seat) => seat.seat);
   const playerIds = state.seats.map((seat) => seat.playerId);
   if (new Set(seatNumbers).size !== seatNumbers.length || new Set(playerIds).size !== playerIds.length) {
@@ -390,8 +428,8 @@ export function assertSessionInvariants(state: SessionCoreState): void {
   if (state.lifecycle === "lobby" && (state.adventure || state.combat)) {
     throw new Error("Lobby sessions cannot expose AdventureState or CombatState.");
   }
-  if (state.lifecycle === "active" && (!state.partyPrepared || !state.adventure)) {
-    throw new Error("Active sessions require a prepared party and AdventureState.");
+  if (state.lifecycle !== "lobby" && (!state.partyPrepared || !state.adventure)) {
+    throw new Error("Active and restored sessions require a prepared party and AdventureState.");
   }
   if (state.adventure) {
     assertAdventureInvariants(state.adventure);

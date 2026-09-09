@@ -11,12 +11,16 @@ import {
 import type { SessionIntent } from "../session";
 
 const STORAGE_KEY = "cardguild.session.v2";
+/** Reconnect credentials only. Gameplay is never durable in the browser. */
 const TERMINAL_HANDSHAKE_FAILURES = new Set<ProtocolErrorCode>([
   "SESSION_NOT_FOUND",
   "UNAUTHENTICATED",
   "CONTENT_MISMATCH",
   "PROTOCOL_MISMATCH",
+  "SESSION_RETIRED",
 ]);
+/** The server retired this live session: reconnecting would only fail again. */
+const SESSION_RETIRED_CLOSE_CODE = 4005;
 
 export function isTerminalHandshakeFailure(code: ProtocolErrorCode): boolean {
   return TERMINAL_HANDSHAKE_FAILURES.has(code);
@@ -152,8 +156,17 @@ export class SessionClient {
     }
   }
 
-  public static clearCredential(): void {
+  /**
+   * Only drops the stored credential when it is still the one this client was using. A
+   * retired session closing late must not delete the credential a fresh Continue just
+   * issued to the same tab.
+   */
+  public static clearCredential(credential?: SessionCredential): void {
     try {
+      if (credential) {
+        const stored = SessionClient.loadCredential();
+        if (stored && (stored.sessionId !== credential.sessionId || stored.playerId !== credential.playerId)) return;
+      }
       sessionStorage.removeItem(STORAGE_KEY);
     } catch {
       // Storage may be unavailable in privacy-restricted contexts.
@@ -210,6 +223,15 @@ export class SessionClient {
           code: "UNAUTHENTICATED",
           message: "This session was opened in a newer connection.",
         }, false);
+        return;
+      }
+      if (event.code === SESSION_RETIRED_CLOSE_CODE) {
+        this.stopTerminal({
+          v: PROTOCOL_VERSION,
+          type: "error",
+          code: "SESSION_RETIRED",
+          message: event.reason || "This live session was retired. Continue the campaign again.",
+        }, true);
         return;
       }
       if (event.code === 4003 || event.code === 4004) {
@@ -318,7 +340,7 @@ export class SessionClient {
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
-    if (clearCredential) SessionClient.clearCredential();
+    if (clearCredential) SessionClient.clearCredential(this.credential);
     this.handlers.onStatus("closed");
     this.handlers.onError(error);
   }

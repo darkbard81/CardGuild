@@ -167,7 +167,7 @@ class SocketClient {
       socket.once("error", reject);
     });
     socket.send(JSON.stringify({
-      v: 5,
+      v: 6,
       type: "hello",
       sessionId: credential.sessionId,
       playerId: credential.playerId,
@@ -260,7 +260,7 @@ describe("the production adventure completes over a real co-op session", () => {
     const send = async (intent: SessionIntent): Promise<void> => {
       const requestId = `run-${String(++requestSequence)}`;
       const mark = client.mark();
-      client.send({ v: 5, type: "intent", requestId, expectedRevision: host.state.revision, intent });
+      client.send({ v: 6, type: "intent", requestId, expectedRevision: host.state.revision, intent });
       const ack = await client.waitForAck(requestId, mark);
       expect(`${intent.type}:${String(ack.accepted)}`).toBe(`${intent.type}:true`);
       // The host pumps enemy turns and stops at every human boundary before going idle.

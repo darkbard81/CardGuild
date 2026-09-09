@@ -36,7 +36,7 @@ class SocketClient {
     origin: string,
     credential: SessionCredentialResponse,
     contentIdentity = PRODUCTION_CONTENT.contentIdentity,
-    version: 1 | 3 | 4 | 5 = 5,
+    version: 1 | 3 | 4 | 5 | 6 = 6,
   ): Promise<SocketClient> {
     const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
     const client = new SocketClient(socket);
@@ -121,7 +121,7 @@ async function post<T>(
 }
 
 function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
-  return { v: 5, type: "intent", requestId, expectedRevision, intent: value };
+  return { v: 6, type: "intent", requestId, expectedRevision, intent: value };
 }
 
 async function accepted(
@@ -216,7 +216,7 @@ describe("real WebSocket M5 cooperative session", () => {
     const client = await SocketClient.connect(server.origin, credential);
     sockets.push(client);
     const first = await client.waitForSnapshot();
-    expect(first.v).toBe(5);
+    expect(first.v).toBe(6);
     expect(first.state.adventure?.version).toBe(3);
     expect(Object.values(first.state.adventure!.party.members).map(member => member.progression)).toEqual([
       { level: 2, experience: 375 }, { level: 3, experience: 376 }, { level: 4, experience: 377 },
@@ -642,13 +642,13 @@ describe("real WebSocket M5 cooperative session", () => {
 
     // v3 spoke a facing-less end-turn and a facing-bearing tile target, so it is turned
     // away at the handshake rather than left to fail one rejected intent at a time.
-    for (const version of [1, 3, 4] as const) {
+    for (const version of [1, 3, 4, 5] as const) {
       const legacy = await SocketClient.connect(server.origin, hostCredential, PRODUCTION_CONTENT.contentIdentity, version);
       sockets.push(legacy);
       const mismatch = await legacy.waitFor(
         (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
       );
-      expect(mismatch.message).toContain("version 5");
+      expect(mismatch.message).toContain("version 6");
     }
   }, 30_000);
 

@@ -1,11 +1,11 @@
 import type { ContentIdentity } from "../game";
 import type { SessionCoreState, SessionEvent, SessionIntent } from "../session";
 
-export const PROTOCOL_VERSION = 5 as const;
+export const PROTOCOL_VERSION = 6 as const;
 export const MAX_WS_PAYLOAD_BYTES = 64 * 1024;
 
 export interface ClientHello {
-  readonly v: 5;
+  readonly v: 6;
   readonly type: "hello";
   readonly sessionId: string;
   readonly playerId: string;
@@ -14,7 +14,7 @@ export interface ClientHello {
 }
 
 export interface ClientIntentEnvelope {
-  readonly v: 5;
+  readonly v: 6;
   readonly type: "intent";
   readonly requestId: string;
   readonly expectedRevision: number;
@@ -36,7 +36,11 @@ export type ProtocolErrorCode =
   | "FORBIDDEN"
   | "STALE_REVISION"
   | "REQUEST_ID_REUSE"
-  | "DOMAIN_REJECTED";
+  | "DOMAIN_REJECTED"
+  /** The durable Campaign write failed. Transient: the same request may be retried. */
+  | "PERSISTENCE_FAILED"
+  /** Terminal. This live session was replaced or lost its durable authority. */
+  | "SESSION_RETIRED";
 
 export interface ServerControlView {
   readonly connectedPlayerIds: readonly string[];
@@ -44,7 +48,7 @@ export interface ServerControlView {
 }
 
 export interface ServerSnapshot {
-  readonly v: 5;
+  readonly v: 6;
   readonly type: "snapshot";
   readonly revision: number;
   readonly controlRevision: number;
@@ -59,7 +63,7 @@ export interface ServerSnapshot {
 }
 
 export interface ServerAck {
-  readonly v: 5;
+  readonly v: 6;
   readonly type: "ack";
   readonly requestId: string;
   readonly accepted: boolean;
@@ -67,7 +71,7 @@ export interface ServerAck {
 }
 
 export interface ServerError {
-  readonly v: 5;
+  readonly v: 6;
   readonly type: "error";
   readonly code: ProtocolErrorCode;
   readonly message: string;
