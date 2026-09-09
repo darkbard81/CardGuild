@@ -668,38 +668,57 @@ test.describe("touch camera", () => {
       return previous;
     };
 
+    const spread = async (): Promise<void> => {
+      let left = { x: 520, y: 380, id: 1 };
+      let right = { x: 620, y: 440, id: 2 };
+      await touch("touchStart", [left, right]);
+      for (let step = 0; step < 8; step += 1) {
+        left = { ...left, x: left.x - 12, y: left.y - 8 };
+        right = { ...right, x: right.x + 12, y: right.y + 8 };
+        await touch("touchMove", [left, right]);
+      }
+      await touch("touchEnd", []);
+    };
+
     const start = await settled();
-    let left = { x: 520, y: 380, id: 1 };
-    let right = { x: 620, y: 440, id: 2 };
-    await touch("touchStart", [left, right]);
-    for (let step = 0; step < 8; step += 1) {
-      left = { ...left, x: left.x - 12, y: left.y - 8 };
-      right = { ...right, x: right.x + 12, y: right.y + 8 };
-      await touch("touchMove", [left, right]);
-    }
-    await touch("touchEnd", []);
-    const zoomed = await settled();
+    await spread();
+    const zoomedOnce = await settled();
     // Spreading two fingers zooms in, the way turning the wheel away does, and the board
     // really is drawn larger for it.
-    expect(zoomed.zoom).toBeGreaterThan(start.zoom * 1.2);
-    expect(zoomed.width).toBeGreaterThan(start.width * 1.2);
+    expect(zoomedOnce.zoom).toBeGreaterThan(start.zoom * 1.2);
+    expect(zoomedOnce.width).toBeGreaterThan(start.width * 1.2);
 
-    left = { x: 520, y: 380, id: 1 };
-    right = { x: 640, y: 460, id: 2 };
+    // Pinch on until the camera is pinned against its ceiling before the drag. That is the
+    // state a two-finger drag used to zoom out of: at the ceiling the half-step that zooms
+    // in is clamped away, leaving only the half that zooms out.
+    await spread();
+    const zoomed = await settled();
+    expect(zoomed.zoom).toBeGreaterThanOrEqual(zoomedOnce.zoom);
+    await spread();
+    // A further pinch changes nothing, which is how this knows it is at the ceiling.
+    expect((await settled()).zoom).toBe(zoomed.zoom);
+
+    let left = { x: 520, y: 380, id: 1 };
+    let right = { x: 640, y: 460, id: 2 };
     await touch("touchStart", [left, right]);
     for (let step = 0; step < 8; step += 1) {
+      // One finger at a time, trailing finger first, which is how the browser delivers a
+      // two-finger move anyway: a `pointermove` each. Taking the step that widens the gap
+      // first is the order that used to lose zoom at the ceiling, and real hardware does
+      // not promise the harmless order.
       left = { ...left, x: left.x - 14 };
+      await touch("touchMove", [left, right]);
       right = { ...right, x: right.x - 14 };
       await touch("touchMove", [left, right]);
     }
     await touch("touchEnd", []);
     const panned = await settled();
     expect(panned.centerX).toBeLessThan(zoomed.centerX - 50);
-    // Fingers travelling together move the board without zooming. This reads the camera
-    // rather than the board's on-screen width, because the width is the camera multiplied
-    // by the fit: a HUD that reflows between the two readings resizes the board on its own,
-    // which is not the gesture doing anything.
-    expect(panned.zoom).toBeCloseTo(zoomed.zoom, 4);
+    // Fingers travelling together move the board without zooming, exactly. This reads the
+    // camera rather than the board's on-screen width, because the width is the camera
+    // multiplied by the fit: a HUD that reflows between the two readings resizes the board
+    // on its own, which is not the gesture doing anything.
+    expect(panned.zoom).toBe(zoomed.zoom);
     // Lifting out of a gesture is not a pick, so no radial menu opens behind it.
     await expect(page.locator("#ring-root")).toBeHidden();
   });

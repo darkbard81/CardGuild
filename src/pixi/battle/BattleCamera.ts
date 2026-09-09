@@ -74,8 +74,21 @@ export class BattleCamera {
   }
 
   public zoomBy(factor: number, pointerX: number, pointerY: number, frame: BoardFrame): void {
+    this.zoomTo(this.zoom * factor, pointerX, pointerY, frame);
+  }
+
+  /**
+   * Zoom to an absolute framing, holding the square under the pointer still.
+   *
+   * Absolute rather than relative because the range is clamped: a caller that multiplies the
+   * live zoom loses whatever the clamp cut off, so an increase that hits the ceiling followed
+   * by the matching decrease does not come back to where it started. A pinch is a ratio
+   * against where the fingers began, so it can ask for a framing directly and let the clamp
+   * be idempotent.
+   */
+  public zoomTo(zoom: number, pointerX: number, pointerY: number, frame: BoardFrame): void {
     const oldZoom = this.zoom;
-    const nextZoom = Math.max(this.defaultZoom, Math.min(this.maxZoom(frame), oldZoom * factor));
+    const nextZoom = Math.max(this.defaultZoom, Math.min(this.maxZoom(frame), zoom));
     if (nextZoom === oldZoom) return;
     // The board's centre is the safe area's centre plus the pan, and everything else on
     // the plane is that centre plus an offset that scales with the zoom. Holding the

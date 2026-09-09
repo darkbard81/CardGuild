@@ -155,7 +155,7 @@ export class BattleView {
       // A fresh touch after a gesture is a real tap again.
       if (this.touchPoints.size === 1) this.gestureBlocksTap = false;
       if (this.touchPoints.size === 2) {
-        this.gesture = this.readGesture();
+        this.gesture = this.beginGesture();
         this.setHover(null);
       }
       return;
@@ -192,7 +192,13 @@ export class BattleView {
   private panPointer: { readonly id: number; readonly x: number; readonly y: number } | null = null;
   /** Live touch points, so two of them can drive the camera the way a wheel does. */
   private readonly touchPoints = new Map<number, { x: number; y: number }>();
-  private gesture: { readonly x: number; readonly y: number; readonly spread: number } | null = null;
+  /** The live centroid, plus the spread and zoom the gesture started from. */
+  private gesture: {
+    readonly x: number;
+    readonly y: number;
+    readonly startSpread: number;
+    readonly startZoom: number;
+  } | null = null;
   private gestureBlocksTap = false;
   private state: CombatState | null = null;
   private boardKey = "";
@@ -536,6 +542,17 @@ export class BattleView {
   }
 
   /** Midpoint and spread of the two live touch points, in client coordinates. */
+  /** Anchors a fresh gesture: every later zoom is a ratio against this spread and zoom. */
+  private beginGesture(): NonNullable<BattleView["gesture"]> | null {
+    const opening = this.readGesture();
+    return opening && {
+      x: opening.x,
+      y: opening.y,
+      startSpread: opening.spread,
+      startZoom: this.camera.scale,
+    };
+  }
+
   private readGesture(): { x: number; y: number; spread: number } | null {
     const [first, second] = [...this.touchPoints.values()];
     if (!first || !second) return null;
@@ -550,18 +567,31 @@ export class BattleView {
    * Two fingers do on a tablet what the wheel and the middle-button drag do on a desk:
    * moving them together pans, spreading or pinching them zooms about the point between
    * them. Both feed the same camera, so the board stays inside the HUD safe area either way.
+   *
+   * The zoom is a ratio against where the fingers started, not a product of per-event
+   * factors, because a two-finger move arrives as a `pointermove` per finger: each event
+   * sees a spread with only half the gesture in it, so a straight two-finger drag reads as
+   * a pinch out and back. Those halves cancel only while nothing is clamped. Against the
+   * zoom ceiling the outward half is clamped away and the inward half applies in full, so
+   * multiplying per event made dragging at full zoom quietly zoom out — by about 8% a step,
+   * and only when the fingers' events happened to arrive in that order.
    */
   private applyTouchGesture(): void {
     const previous = this.gesture;
     const next = this.readGesture();
     if (!previous || !next) return;
-    this.gesture = next;
+    this.gesture = { x: next.x, y: next.y, startSpread: previous.startSpread, startZoom: previous.startZoom };
     this.gestureBlocksTap = true;
     const frame = this.boardFrame();
     this.camera.panBy(next.x - previous.x, next.y - previous.y, frame);
-    if (previous.spread > MIN_PINCH_SPREAD && next.spread > MIN_PINCH_SPREAD) {
+    if (previous.startSpread > MIN_PINCH_SPREAD && next.spread > MIN_PINCH_SPREAD) {
       const bounds = this.app.canvas.getBoundingClientRect();
-      this.camera.zoomBy(next.spread / previous.spread, next.x - bounds.left, next.y - bounds.top, frame);
+      this.camera.zoomTo(
+        previous.startZoom * (next.spread / previous.startSpread),
+        next.x - bounds.left,
+        next.y - bounds.top,
+        frame,
+      );
     }
     this.layoutScene();
   }

@@ -219,6 +219,42 @@ describe("BattleCamera", () => {
     expect(center(camera, wide).x).toBeCloseTo(stopped, 6);
   });
 
+  it("comes back to the same framing when a pinch is undone against the ceiling", () => {
+    // A pinch is a ratio against where the fingers started, so the camera takes absolute
+    // framings. If it multiplied the live zoom instead, the clamp would eat the overshoot:
+    // spreading past the ceiling and pinching the same amount back would end zoomed *out*,
+    // which is what a two-finger drag at full zoom used to do to itself.
+    const board = frame(9);
+    const area = boardSafeBox(board);
+    const camera = new BattleCamera();
+    camera.zoomTo(camera.maxZoom(board), area.centerX, area.centerY, board);
+    const ceiling = camera.scale;
+    expect(ceiling).toBe(camera.maxZoom(board));
+
+    for (const overshoot of [1.05, 1.5, 4]) {
+      camera.zoomTo(ceiling * overshoot, area.centerX, area.centerY, board);
+      expect(camera.scale).toBe(ceiling);
+      camera.zoomTo(ceiling, area.centerX, area.centerY, board);
+      expect(camera.scale).toBe(ceiling);
+    }
+    // The same at the floor, which a pinch reaches by closing the fingers.
+    camera.zoomTo(0.1, area.centerX, area.centerY, board);
+    expect(camera.scale).toBe(camera.defaultZoom);
+    camera.zoomTo(camera.defaultZoom, area.centerX, area.centerY, board);
+    expect(camera.scale).toBe(camera.defaultZoom);
+  });
+
+  it("never changes the zoom while panning", () => {
+    const board = frame(9);
+    const camera = zoomedIn(board);
+    const zoomed = camera.scale;
+
+    for (const [dx, dy] of [[-14, 0], [-120, -80], [900, 600], [-9000, 0], [0, 9000]] as const) {
+      camera.panBy(dx, dy, board);
+      expect(camera.scale).toBe(zoomed);
+    }
+  });
+
   it("ends on a close-up of a character: one square, and a standee about that tall", () => {
     // Why the close-up is one square. A standee is authored a little under a cell diamond
     // wide, so once a single diamond fills the frame the body spans about the whole of it
