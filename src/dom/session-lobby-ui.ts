@@ -1,3 +1,4 @@
+import type { AccountIdentity, CampaignSummary } from "../client";
 import type { CompiledContentPack } from "../content";
 import type { AssetCatalog } from "../presentation";
 import type { ServerControlView } from "../protocol";
@@ -16,7 +17,12 @@ function element<K extends keyof HTMLElementTagNameMap>(
 }
 
 export interface SessionLobbyHandlers {
-  readonly onCreate: (displayName: string) => void;
+  readonly onShowLogin: () => void;
+  readonly onShowLanding: () => void;
+  readonly onLogin: (username: string, password: string) => void;
+  readonly onLogout: () => void;
+  readonly onCreateCampaign: (name: string, displayName: string) => void;
+  readonly onContinueCampaign: (campaignId: string) => void;
   readonly onJoin: (sessionId: string, displayName: string) => void;
   readonly onSetParty: (actorDefinitionIds: readonly string[]) => void;
   readonly onSelectCharacter: (memberId: string) => void;
@@ -56,11 +62,6 @@ export class SessionLobbyUi {
     displayName.placeholder = "Display name";
     displayName.maxLength = 40;
     displayName.autocomplete = "name";
-    const create = element("button", "session-primary", "Create & Host");
-    create.id = "create-session";
-    create.type = "button";
-    create.addEventListener("click", () => this.handlers.onCreate(displayName.value));
-
     const joinCode = element("input", "session-input");
     joinCode.id = "join-session-id";
     joinCode.placeholder = "Session ID from host";
@@ -70,8 +71,101 @@ export class SessionLobbyUi {
     join.type = "button";
     join.addEventListener("click", () => this.handlers.onJoin(joinCode.value, displayName.value));
     const form = element("div", "session-form");
-    form.append(displayName, create, joinCode, join);
+    form.append(displayName, join, joinCode, element("span"));
+
+    // Hosting needs an account; joining never does.
+    const host = element("button", "session-primary", "Host sign in");
+    host.id = "host-login";
+    host.type = "button";
+    host.addEventListener("click", () => this.handlers.onShowLogin());
+    card.append(form, element("p", "party-builder-label", "HOST"), host, this.statusLine());
+    this.screen.append(card);
+    this.setVisible(true);
+  }
+
+  public renderLogin(): void {
+    this.screen.replaceChildren();
+    const card = element("section", "session-card");
+    card.append(
+      element("p", "eyebrow", "Host account"),
+      element("h1", undefined, "Host Sign In"),
+      element("p", "session-description", "Campaign은 계정이 소유합니다. 계정은 서버 운영자가 만들어 줍니다."),
+    );
+    const username = element("input", "session-input");
+    username.id = "account-username";
+    username.placeholder = "Username";
+    username.autocomplete = "username";
+    const password = element("input", "session-input");
+    password.id = "account-password";
+    password.type = "password";
+    password.placeholder = "Password";
+    password.autocomplete = "current-password";
+
+    const submit = element("button", "session-primary", "Sign in");
+    submit.id = "account-login";
+    submit.type = "button";
+    submit.addEventListener("click", () => this.handlers.onLogin(username.value, password.value));
+    const back = element("button", "session-secondary", "Back");
+    back.id = "account-back";
+    back.type = "button";
+    back.addEventListener("click", () => this.handlers.onShowLanding());
+
+    const form = element("div", "session-form");
+    form.append(username, submit, password, back);
     card.append(form, this.statusLine());
+    this.screen.append(card);
+    this.setVisible(true);
+  }
+
+  public renderCampaigns(account: AccountIdentity, campaigns: readonly CampaignSummary[]): void {
+    this.screen.replaceChildren();
+    const card = element("section", "session-card");
+    card.append(
+      element("p", "eyebrow", "Host account"),
+      element("h1", undefined, "My Campaigns"),
+      element("p", "session-description", `${account.username} 계정이 소유한 Campaign입니다.`),
+    );
+
+    const name = element("input", "session-input");
+    name.id = "new-campaign-name";
+    name.placeholder = "New campaign name";
+    name.maxLength = 60;
+    const displayName = element("input", "session-input");
+    displayName.id = "campaign-display-name";
+    displayName.placeholder = "Display name";
+    displayName.maxLength = 40;
+    displayName.autocomplete = "name";
+    const create = element("button", "session-primary", "New Campaign");
+    create.id = "new-campaign";
+    create.type = "button";
+    create.addEventListener("click", () => this.handlers.onCreateCampaign(name.value, displayName.value));
+    const form = element("div", "session-form");
+    form.append(name, create, displayName, element("span"));
+    card.append(form);
+
+    const list = element("ul", "session-seats");
+    list.id = "campaign-list";
+    for (const campaign of campaigns) {
+      const row = element("li", "occupied");
+      row.dataset.campaignId = campaign.campaignId;
+      const resume = element("button", "session-secondary", "Continue");
+      resume.type = "button";
+      // M9-2 stores no gameplay snapshot yet, so there is never anything to resume.
+      resume.disabled = !campaign.hasSave;
+      resume.addEventListener("click", () => this.handlers.onContinueCampaign(campaign.campaignId));
+      row.append(element("span", undefined, campaign.name), resume);
+      list.append(row);
+    }
+    if (!campaigns.length) {
+      list.append(element("li", "open", "아직 Campaign이 없습니다."));
+    }
+    card.append(element("p", "party-builder-label", "CAMPAIGNS"), list);
+
+    const logout = element("button", "session-secondary", "Sign out");
+    logout.id = "account-logout";
+    logout.type = "button";
+    logout.addEventListener("click", () => this.handlers.onLogout());
+    card.append(logout, this.statusLine());
     this.screen.append(card);
     this.setVisible(true);
   }

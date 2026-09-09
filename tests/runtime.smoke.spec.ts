@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { createCampaignAsHost } from "./host-login";
 import { chooseFacing } from "./facing-input";
 
 // The same pattern the asset build generates actor paths from, so a request-shape
@@ -56,11 +57,7 @@ function captureRuntimeErrors(page: Page): string[] {
 }
 
 async function openAdventure(page: Page): Promise<void> {
-  await page.goto("/");
-  await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
-  await expect(page.locator("#app")).toHaveAttribute("data-screen", "session");
-  await page.locator("#session-display-name").fill("Solo Host");
-  await page.locator("#create-session").click();
+  await createCampaignAsHost(page, "Solo Host");
   await expect(page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "host");
   await page.locator("#party-slot-2").selectOption("");
   await page.locator("#party-slot-3").selectOption("");

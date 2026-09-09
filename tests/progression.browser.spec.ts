@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { createCampaignAsHost, openApp } from "./host-login";
 import type { AdventureState } from "../src/adventure";
 import type { AdventureUi } from "../src/dom/adventure-ui";
 import type { LoadoutUi } from "../src/dom/loadout-ui";
@@ -11,10 +12,7 @@ declare global {
 
 test("shows authoritative starting progression through the real Host flow", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1024, height: 768 });
-  await page.goto("/");
-  await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
-  await page.locator("#session-display-name").fill("Progression Host");
-  await page.locator("#create-session").click();
+  await createCampaignAsHost(page, "Progression Host");
   await page.locator("#apply-party").click();
   await page.locator("#begin-adventure").click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
@@ -43,8 +41,7 @@ test("shows authoritative starting progression through the real Host flow", asyn
 
 test("renders runtime Level/EXP in both views, including previews and read-only characters", async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 1024, height: 768 });
-  await page.goto("/");
-  await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
+  await openApp(page);
   await page.evaluate(async () => {
     const adventurePath = "/src/dom/adventure-ui.ts";
     const loadoutPath = "/src/dom/loadout-ui.ts";

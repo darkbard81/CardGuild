@@ -1,8 +1,10 @@
 import { expect, type Browser, type BrowserContext, type Page, test } from "@playwright/test";
+import { createCampaignAsHost, openApp } from "./host-login";
 
 interface BrowserPlayer {
   readonly context: BrowserContext;
   readonly page: Page;
+  readonly name: string;
   readonly errors: string[];
 }
 
@@ -18,14 +20,14 @@ async function createPlayer(
   page.on("console", (message) => {
     if (message.type() === "error") errors.push(message.text());
   });
-  await page.goto("/");
+  await openApp(page);
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "session");
   await page.locator("#session-display-name").fill(name);
-  return { context, page, errors };
+  return { context, page, name, errors };
 }
 
 async function createHost(player: BrowserPlayer): Promise<string> {
-  await player.page.locator("#create-session").click();
+  await createCampaignAsHost(player.page, player.name);
   await expect(player.page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "host");
   const sessionId = await player.page.locator("#invite-session-id").innerText();
   expect(sessionId).toMatch(/^session_[A-Za-z0-9_-]+$/);
@@ -123,7 +125,7 @@ test("clears a stale v2 stored credential, returns to landing, and stops reconne
     await page.goto("/");
     await expect(page.locator("#app")).toHaveAttribute("data-session-error", "SESSION_NOT_FOUND");
     await expect(page.locator("#app")).toHaveAttribute("data-session-status", "closed");
-    await expect(page.locator("#create-session")).toBeVisible();
+    await expect(page.locator("#host-login")).toBeVisible();
     await expect.poll(() => page.evaluate(() => sessionStorage.getItem("cardguild.session.v2"))).toBeNull();
     await page.waitForTimeout(900);
     expect(connectionAttempts).toBe(1);

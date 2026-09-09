@@ -1,5 +1,5 @@
 import type { AdventureState } from "../adventure";
-import { isTerminalHandshakeFailure, SessionClient, type SessionCredential } from "../client";
+import { isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
 import { PRODUCTION_CONTENT } from "../content/production-content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
@@ -74,7 +74,12 @@ export class AdventureController {
       onDone: () => this.closeLoadout(),
     });
     this.lobbyUi = new SessionLobbyUi(PRODUCTION_CONTENT.pack, this.catalog, {
-      onCreate: (displayName) => void this.createSession(displayName),
+      onShowLogin: () => this.lobbyUi.renderLogin(),
+      onShowLanding: () => this.lobbyUi.renderLanding(),
+      onLogin: (username, password) => void this.signIn(username, password),
+      onLogout: () => void this.signOut(),
+      onCreateCampaign: (name, displayName) => void this.createCampaign(name, displayName),
+      onContinueCampaign: (campaignId) => void this.continueCampaign(campaignId),
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
       onSetParty: (actorDefinitionIds) => this.sendIntent({ type: "set-party-composition", actorDefinitionIds }),
       onSelectCharacter: (memberId) => this.sendIntent({ type: "select-character", memberId }),
@@ -83,17 +88,69 @@ export class AdventureController {
     });
     this.root.dataset.ready = "true";
     this.root.dataset.screen = "session";
+    // data-auth starts as "unknown" synchronously, so nothing has to race the /api/auth/me
+    // round trip to know whether the landing it is looking at is the final one.
+    this.root.dataset.auth = "unknown";
     this.lobbyUi.renderLanding();
     const stored = SessionClient.loadCredential();
-    if (stored) this.attach(stored);
+    if (stored) {
+      this.root.dataset.auth = "resumed";
+      this.attach(stored);
+    } else {
+      void this.restoreAccount();
+    }
   }
 
-  private async createSession(displayName: string): Promise<void> {
-    this.lobbyUi.setStatus("세션을 만드는 중입니다…");
+  private async restoreAccount(): Promise<void> {
     try {
-      this.attach(await SessionClient.create(displayName));
+      const account = await SessionClient.currentAccount();
+      this.root.dataset.auth = account ? "authenticated" : "anonymous";
+      if (account) await this.showCampaigns(account);
+    } catch {
+      // A server that cannot answer is treated as signed out, not as a broken page.
+      this.root.dataset.auth = "anonymous";
+    }
+  }
+
+  private async showCampaigns(account: AccountIdentity): Promise<void> {
+    this.lobbyUi.renderCampaigns(account, await SessionClient.listCampaigns());
+  }
+
+  private async signIn(username: string, password: string): Promise<void> {
+    this.lobbyUi.setStatus("로그인하는 중입니다…");
+    try {
+      const account = await SessionClient.login(username, password);
+      this.root.dataset.auth = "authenticated";
+      await this.showCampaigns(account);
     } catch (error) {
-      this.lobbyUi.setStatus(error instanceof Error ? error.message : "세션을 만들 수 없습니다.");
+      this.lobbyUi.setStatus(error instanceof Error ? error.message : "로그인할 수 없습니다.");
+    }
+  }
+
+  private async signOut(): Promise<void> {
+    try {
+      await SessionClient.logout();
+    } finally {
+      this.root.dataset.auth = "anonymous";
+      this.lobbyUi.renderLanding();
+    }
+  }
+
+  private async createCampaign(name: string, displayName: string): Promise<void> {
+    this.lobbyUi.setStatus("Campaign을 만드는 중입니다…");
+    try {
+      this.attach(await SessionClient.createCampaign(name, displayName));
+    } catch (error) {
+      this.lobbyUi.setStatus(error instanceof Error ? error.message : "Campaign을 만들 수 없습니다.");
+    }
+  }
+
+  private async continueCampaign(campaignId: string): Promise<void> {
+    this.lobbyUi.setStatus("Campaign을 이어가는 중입니다…");
+    try {
+      this.attach(await SessionClient.continueCampaign(campaignId));
+    } catch (error) {
+      this.lobbyUi.setStatus(error instanceof Error ? error.message : "Campaign을 이어갈 수 없습니다.");
     }
   }
 
@@ -152,6 +209,9 @@ export class AdventureController {
     this.loadoutUi.setVisible(false);
     this.lobbyUi.renderLanding();
     this.lobbyUi.setStatus(message);
+    // A signed-in host whose session died belongs back at their campaigns, not at the
+    // guest landing; a guest stays where they are.
+    void this.restoreAccount().then(() => this.lobbyUi.setStatus(message));
   }
 
   private viewerSeat(snapshot: ServerSnapshot): SessionSeat | undefined {
