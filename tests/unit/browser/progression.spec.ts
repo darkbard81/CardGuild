@@ -12,7 +12,7 @@ declare global {
   }
 }
 
-test("renders runtime Level/EXP in both views, including previews and read-only characters", async ({ page }, testInfo) => {
+test("renders runtime Level/EXP in both views, including previews and read-only characters", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await mountComponent(page);
   await page.evaluate(async () => {
@@ -80,7 +80,6 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
     fixture.adventureUi.render(fixture.state);
   });
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 3 · EXP 999 / 1000");
-  await page.screenshot({ path: testInfo.outputPath("m9-1-runtime-levels-1024.png") });
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await expect(page.locator('#adventure-party [data-member-id="party.hero-2"]')).toContainText("Lv. 3 · EXP 999 / 1000");
   for (const phase of ["between-encounters", "reward", "complete", "failed"] as const) {
@@ -93,10 +92,9 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.locator("#adventure-party li").first()).toContainText("Lv. 2 · EXP 375 / 1000");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-  await page.screenshot({ path: testInfo.outputPath("m9-1-progression-mobile.png"), fullPage: true });
 });
 
-test("shows the victory growth summary on every screen after the battle and keeps the meters readable", async ({ page }, testInfo) => {
+test("shows the victory growth summary on every screen after the battle and keeps the meters readable", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await mountComponent(page);
   await page.evaluate(async () => {
@@ -205,7 +203,6 @@ test("shows the victory growth summary on every screen after the battle and keep
   await expect(meter).toHaveAttribute("aria-valuemax", "1000");
   await expect(meter).toHaveAttribute("aria-valuenow", "100");
   await expect(meter).toHaveAttribute("aria-valuetext", /Lv\. 2 · EXP 100 \/ 1000/);
-  await page.screenshot({ path: testInfo.outputPath("m9-4-growth-1440.png") });
 
   await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
   await expect(page.locator('#loadout-screen [role="progressbar"]')).toHaveAttribute("aria-valuenow", "100");
@@ -236,6 +233,5 @@ test("shows the victory growth summary on every screen after the battle and keep
     }
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     await render("reward", growth);
-    await page.screenshot({ path: testInfo.outputPath(`m9-4-growth-${String(viewport.width)}.png`), fullPage: true });
   }
 });

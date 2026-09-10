@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }, { width: 768, height: 1024 }]) {
-  test(`reads each relationship in the HUD alone at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
+  test(`reads each relationship in the HUD alone at ${viewport.width}x${viewport.height}`, async ({ page }) => {
     await page.setViewportSize(viewport);
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -31,7 +31,6 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
       expect(await page.evaluate(() => window.tacticalFixture.bounds("facing-arrow-north"))).toBeNull();
       const text = await page.evaluate(() => window.tacticalFixture.boardText());
       expect(text.filter((value) => ["Rear", "Flanking", "뒤"].includes(value))).toEqual([]);
-      await page.screenshot({ path: testInfo.outputPath(`${mode}.png`) });
     }
     await page.keyboard.press("Escape");
     await page.locator("#end-turn").click();
@@ -40,7 +39,6 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
     await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "1,1");
     await expect(page.locator("#app")).toHaveAttribute("data-state-hash", hash!);
     expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
-    await page.screenshot({ path: testInfo.outputPath("facing-select.png") });
     // Looking at the square below the actor is what "south" means.
     await page.locator("#pixi-canvas").click({ position: await boardPoint(page, 1.5, 2.5) });
     expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([{ type: "end-turn", facing: "south" }]);

@@ -6,9 +6,9 @@
 | 계층 | 붙잡는 것 | 실행 환경 | 케이스 | 비용 |
 |---|---|---|---:|---|
 | Unit / Node | 순수 규칙·변환·컴포넌트 계약 | Node, 외부 자원은 fake | 549 | ~8초 |
-| Unit / Browser | 실제 DOM·PixiJS 컴포넌트에 상태와 콜백을 주입 | Chromium + Vite만 | 27 | ~1분 |
-| Integration | 실제 SQLite·HTTP·WebSocket과 source 서버 장애 주입 | Node, 파일 DB와 자식 프로세스 | 100 | ~1.5분 |
-| E2E | 실제 앱 진입부터 로그인·캠페인·협동 플레이까지 | Chromium + 개발 서버 묶음 | 30 | ~1.5분 |
+| Unit / Browser | 실제 DOM·PixiJS 컴포넌트에 상태와 콜백을 주입 | Chromium + Vite만 | 31 | ~1.2분 |
+| Integration | 실제 SQLite·HTTP·WebSocket과 source 서버 장애 주입 | Node, 파일 DB와 자식 프로세스 | 100 | ~1.1분 |
+| E2E | 실제 앱 진입부터 로그인·캠페인·협동 플레이까지 | Chromium + 개발 서버 묶음 | 25 | ~1.1분 |
 | Recovery | 배포 artifact와 파일 DB의 실제 재시작·강제 종료 | `dist-server` + `dist` | 4 | ~30초 |
 
 `npm test`가 다섯 계층을 위 순서대로 전부 돌립니다. 앞 계층이 실패하면 뒤는 실행되지
@@ -70,6 +70,11 @@ tests/fixtures/      테스트 데이터와 상태 builder
 아닙니다.
 
 **E2E** — 실제 앱을 실제 사용자처럼 씁니다. 화면이나 게임 상태를 직접 주입하지 않습니다.
+같은 UI 세부 동작을 두 계층이 permutation만 바꿔 되풀이하지는 않습니다: 카메라 제스처, 뷰포트
+회전, HUD 안쪽 board fit처럼 기하와 입력만 걸린 것은 Browser Unit이 여러 조합으로 검사하고,
+E2E에는 실제 배선을 붙잡는 대표 사례 하나만 둡니다. 1024x768 최소 해상도의 board/HUD fit,
+전송되는 intent의 정확한 모양, 3P 협동·로그인·campaign 소유·재접속처럼 서버 authority가
+본질인 흐름은 E2E에 남습니다.
 
 **Recovery** — 배포 산출물이 대상입니다. 테스트마다 전용 포트·임시 DB·전용 프로세스를 갖고,
 재시작 전후로 같은 origin·포트·DB를 유지합니다. worker는 1입니다.
@@ -77,6 +82,22 @@ tests/fixtures/      테스트 데이터와 상태 builder
 같은 기능을 여러 계층이 검사하는 것은 중복이 아닙니다. Continue는 Unit에서 순서를,
 Integration에서 CAS를, Recovery에서 진짜 재시작을 붙잡습니다 — 셋 중 하나가 깨지면 나머지
 둘이 어디가 깨졌는지 말해줍니다.
+
+## 기다리는 방법
+
+브라우저 테스트는 **관측되는 상태**를 기다립니다. `data-board-corners`,
+`data-state-hash`, `data-session-revision`, `data-actor-feet`, `data-safe-area`, 그리고 화면과
+컨트롤의 상태가 그 신호입니다. 고정 sleep은 빠른 러너에서 낭비이고 느린 러너에서 flaky인데,
+`expect.poll`은 둘 다 아닙니다 — 준비되면 바로 가고, 안 되면 기다립니다.
+
+남아 있는 고정 시간은 두 곳뿐이고 둘 다 **없음을 증명하는** 자리입니다: 취소된 touch hold가
+그 뒤로도 패널을 열지 않는다는 것, 폐기된 credential이 재접속을 다시 시도하지 않는다는 것.
+없음은 관측할 상태가 없으므로 타이머보다 오래 살아남는 수밖에 없습니다.
+
+성공한 테스트는 그림을 만들지 않습니다. screenshot은 `only-on-failure`이고, trace는 꺼져
+있습니다 — `retain-on-failure`는 실패한 것만 남기지만 **모든** 테스트의 screencast를 먼저
+찍고, 여기서 재보니 두 브라우저 suite 벽시계의 약 30%였습니다. 실패를 재현할 때는
+`--trace on`을 직접 붙입니다. UI 리뷰 캡쳐는 `playwright.capture.config.ts`가 따로 소유합니다.
 
 ## 자원 격리
 
@@ -91,6 +112,30 @@ Integration에서 CAS를, Recovery에서 진짜 재시작을 붙잡습니다 —
 - E2E는 `npm run dev` 묶음을 씁니다. 로컬에서는 이미 떠 있는 서버를 재사용하지만 CI에서는
   재사용하지 않습니다 — CI에는 재사용할 것이 없고, 그 포트의 낯선 서버를 받아들이면 이
   체크아웃이 아닌 무언가를 테스트하게 됩니다.
+
+#### 측정 기록 — 브라우저와 staging (2026-09-10)
+
+기준 SHA `f37e22d`, `feat/misc-test`, Node 24.18.1 / Linux, 로컬 실행. 같은 세션에서
+stash 전후로 번갈아 잰 값입니다.
+
+| | 전 | 후 |
+|---|---:|---:|
+| Unit / Browser | 57.5초 / 27개 | 72초 / 31개 |
+| E2E | 84초 / 30개 | 66초 / 25개 |
+| Integration | 84.4초 / 100개 | 66.2초 / 100개 |
+| `restart-matrix` | 50.3초 | 37.1초 |
+
+Browser Unit이 늘어난 것은 옮겨 왔기 때문입니다. 카메라 제스처와 iPad 회전 4개는 예전에
+로그인하고 캠페인을 만들고 encounter에 들어간 뒤에야 기하 질문을 던졌습니다. 지금은 서버 없이
+컴포넌트만 올리고 묻습니다. 브라우저 두 계층을 합치면 141.5초 → 138초로 거의 같고, 줄어든
+것은 **무엇을 켜 두고 물어야 하는가**입니다.
+
+`restart-matrix`는 checkpoint에서 시작합니다. 네 번째·여덟 번째 승리의 crash는 매번 Adventure
+처음부터 그 자리까지 다시 플레이했습니다 — 같은 encounter를 세 번 이겼습니다. 이제 정상
+플레이가 한 번 만든 durable save를 파일로 복사해 각 crash의 출발점으로 씁니다. 조립한 상태가
+아니라 **진짜 플레이가 남긴 저장**이고, production save 경로를 우회하지 않습니다. 실제
+SIGKILL·fault marker·COMMIT 전후 의미·0회/1회 계약은 그대로입니다. 처음부터 끝까지 도는
+전체 Adventure 검증은 `adventure-progression`이 계속 따로 갖고 있습니다.
 
 ## support와 fixtures
 
@@ -118,7 +163,7 @@ timeout은 그대로 실패시킵니다.
 계약은 `tests/integration/socket-client.test.ts`가 실제 임시 WebSocket 서버로 고정합니다 —
 이벤트 순서를 테스트가 직접 정하고, timeout 검증에만 fake timer를 씁니다.
 
-#### 측정 기록 (2026-09-10)
+#### 측정 기록 — 대기 계약 (2026-09-10)
 
 기준 SHA `0a012e0`, `feat/misc-test`, Node 24.18.1 / Linux, 로컬 실행.
 명령은 `npx vitest run --config vitest.integration.config.ts`입니다.

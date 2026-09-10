@@ -25,5 +25,11 @@ export default defineConfig({
     headless: true,
     actionTimeout: 30_000,
     navigationTimeout: 60_000,
+    // Diagnosis costs nothing until something goes wrong: a screenshot is taken only for a
+    // test that failed. Tracing is deliberately left off. `retain-on-failure` sounds free —
+    // it throws the trace away when a test passes — but it records a screencast and DOM
+    // snapshots for every test first, and measuring it here cost about 30% of the wall clock
+    // of both browser suites. Reproduce a failure with `--trace on` instead.
+    screenshot: "only-on-failure",
   },
 });

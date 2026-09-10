@@ -153,22 +153,26 @@ async function strikeRoadEnemy(page: Page): Promise<boolean> {
   return false;
 }
 
+/**
+ * Wait for the enemies to finish, by watching what the screen says rather than by sleeping
+ * between looks. The probe starts tight and backs off, so a fast server is noticed almost
+ * at once and a slow one is still given a full half minute.
+ */
 async function waitForRoadTurn(page: Page): Promise<void> {
-  for (let step = 0; step < 20; step += 1) {
-    if (await page.locator("#app").getAttribute("data-screen") !== "combat") return;
-    if (await page.locator("#result-modal").isVisible()) return;
+  await expect.poll(async () => {
+    if (await page.locator("#app").getAttribute("data-screen") !== "combat") return "settled";
+    if (await page.locator("#result-modal").isVisible()) return "settled";
     if (await page.locator("#reaction-modal").isVisible()) {
       // The authoritative server can resolve the window between the visibility check and
       // the click, so a vanished button means the reaction is already settled, not a
       // failure. Take it when it is still there and keep waiting either way.
       await page.getByRole("button", { name: "Use Reaction" }).click({ timeout: 2_000 })
         .catch(() => undefined);
-      continue;
+      return "reaction";
     }
-    if ((await page.locator("#initiative-list .active").textContent())?.includes("Aerin")) return;
-    await page.waitForTimeout(300);
-  }
-  throw new Error("Road Ambush did not return control to Aerin.");
+    if ((await page.locator("#initiative-list .active").textContent())?.includes("Aerin")) return "settled";
+    return "enemies";
+  }, { timeout: 30_000, intervals: [50, 100, 200, 400] }).toBe("settled");
 }
 
 async function winRoadAmbush(page: Page): Promise<void> {
@@ -209,7 +213,7 @@ function expectMixedAssetRequests(urls: readonly string[]): void {
   for (const pathname of standalone) expect(pathname).toMatch(ACTOR_RUNTIME_HREF);
 }
 
-test("shows the Adventure shell reusing the lobby art, from the atlas and the standalone actors only", async ({ page }, testInfo) => {
+test("shows the Adventure shell reusing the lobby art, from the atlas and the standalone actors only", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpRequests: string[] = [];
   page.on("request", (request) => {
@@ -240,10 +244,9 @@ test("shows the Adventure shell reusing the lobby art, from the atlas and the st
   await expect(steps.last()).toBeInViewport();
   await expect(page.locator("#adventure-collection")).toBeInViewport();
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-adventure.png"), fullPage: true });
 });
 
-test("equips in one click and fits the minimum loadout viewport", async ({ page }, testInfo) => {
+test("equips in one click and fits the minimum loadout viewport", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
   await page.setViewportSize({ width: 1024, height: 768 });
   await openAdventure(page);
@@ -271,7 +274,6 @@ test("equips in one click and fits the minimum loadout viewport", async ({ page 
     await expect(page.locator(".loadout-pagination")).toBeInViewport();
     expect(await page.evaluate(() => ({ x: document.documentElement.scrollWidth - innerWidth, y: document.documentElement.scrollHeight - innerHeight }))).toEqual({ x: 0, y: 0 });
   }
-  await page.screenshot({ path: testInfo.outputPath("loadout-1024.png") });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
   await page.getByRole("button", { name: "Done", exact: true }).click();
@@ -287,7 +289,7 @@ test("hover, hold and keyboard inspection do not change prepared cards", async (
   const revision = await page.locator("#app").getAttribute("data-session-revision");
   await knockdown.hover();
   await page.mouse.down();
-  await page.waitForTimeout(550);
+  // The hold opens it on its own timer; waiting for the panel is waiting exactly that long.
   await expect(page.locator("#loadout-detail")).toBeVisible();
   await page.mouse.up();
   await expect(knockdown).toHaveCount(1);
@@ -312,7 +314,7 @@ test("hover, hold and keyboard inspection do not change prepared cards", async (
   await expect(page.locator(".prepared-card")).toHaveCount(2);
 });
 
-test("carries a reward loadout through the shared resolver into the next encounter", async ({ page }, testInfo) => {
+test("carries a reward loadout through the shared resolver into the next encounter", async ({ page }) => {
   test.setTimeout(45_000);
   const runtimeErrors = captureRuntimeErrors(page);
   await openBattle(page);
@@ -342,7 +344,6 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
   await expect(page.locator(".collection-panel")).toContainText("Steel Shield");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-reward-loadout.png"), fullPage: true });
 
   await page.getByRole("button", { name: "Done" }).click();
   // The reward card is prepared now, and the only things left sitting in the collection are the
@@ -373,9 +374,12 @@ test("carries a reward loadout through the shared resolver into the next encount
   // Walls and gates left the upright plane entirely, and with them the measurement that
   // only existed to check their width.
   expect(await canvas.getAttribute("data-structure-fit")).toBeNull();
+  const beforeWheel = await canvas.getAttribute("data-board-corners");
   await page.mouse.move(400, 400);
   await page.mouse.wheel(0, -240);
-  await page.waitForTimeout(300);
+  // The camera republishes its corners when the zoom lands, which is the signal that there
+  // is a new frame to re-read the seams from.
+  await expect(canvas).not.toHaveAttribute("data-board-corners", beforeWheel!);
   await expect(canvas).toHaveAttribute("data-solid-region-fit", "4/16");
 
   const nextMap = { width: 7, height: 4 };
@@ -385,12 +389,16 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator('#ring-root .ring-option[data-action-id="raise-shield"]')).toHaveCount(0);
   await expect(page.locator('#ring-root .ring-option[data-action-id="brace-behind-cover"]')).toBeVisible();
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-next-encounter.png"), fullPage: true });
 });
 
-for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024 }]) {
-  test(`explicit facing preserves cancellation and sends one atomic intent at ${viewport.width}x${viewport.height}`, async ({ page }, testInfo) => {
-    await page.setViewportSize(viewport);
+/**
+ * One viewport, because what this case owns is the wire: the exact intent the app sends and
+ * the fact that cancelling sends nothing. How the direction picker behaves at each screen
+ * size is a component contract, and Browser Unit runs it across three of them.
+ */
+{
+  test("explicit facing preserves cancellation and sends one atomic intent", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 720 });
     const errors = captureRuntimeErrors(page);
     const intents: Array<{ type: string; facing?: string; target?: unknown }> = [];
     page.on("websocket", (socket) => socket.on("framesent", ({ payload }) => {
@@ -411,7 +419,6 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024
     await expect(app).toHaveAttribute("data-state-hash", hash!);
     expect(intents).toHaveLength(count);
     await page.locator('#ring-root .ring-option[data-action-id="step"]').click();
-    await page.screenshot({ path: testInfo.outputPath("step-direction.png") });
     await chooseFacing(page, "north");
     await expect(page.locator("#action-pips .available")).toHaveCount(2);
     await expect(page.locator("#combat-log .log-line").first()).toContainText("now facing north");
@@ -424,7 +431,6 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024
     await expect(canvas).toHaveAttribute("data-facing-position", "0,1");
     await expect(app).toHaveAttribute("data-state-hash", afterStep!);
     expect(intents).toHaveLength(count + 1);
-    await page.screenshot({ path: testInfo.outputPath("end-turn-direction.png") });
     await chooseFacing(page, "east");
     await expect(page.locator("#combat-log")).toContainText("Aerin ended the turn.");
     expect(intents.slice(count + 1)).toEqual([{ type: "end-turn", facing: "east" }]);
@@ -432,7 +438,7 @@ for (const viewport of [{ width: 1280, height: 720 }, { width: 768, height: 1024
   });
 }
 
-test("loads the 2.5D board and keeps hover, movement, and facing on the square grid", async ({ page }, testInfo) => {
+test("loads the 2.5D board and keeps hover, movement, and facing on the square grid", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpResponses: string[] = [];
   page.on("response", (response) => {
@@ -505,9 +511,17 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
     .toContainText("used Step — moved 1 square by land");
   await expect(page.locator("#combat-log .log-detail").first()).toContainText("Cost 1 action");
   await expect(page.locator("#app")).not.toHaveAttribute("data-state-hash", initialHash ?? "");
-  await page.waitForTimeout(500);
-  const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const heroId = await controlledActorId(page);
+  // The standee walks there; the wait is for it to arrive, not for a guess at how long the
+  // walk takes.
+  await expect.poll(async () => {
+    const standing = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
+    const walker = standing.find((entry) => entry.id === heroId);
+    const destination = await boardPoint(page, 1.5, 1.5);
+    if (!walker) return false;
+    return Math.hypot(walker.x - destination.x, walker.y - destination.y) < 1;
+  }, { intervals: [50, 100, 200] }).toBe(true);
+  const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
   const heroFoot = feet.find((entry) => entry.id === heroId);
   const expectedFoot = await boardPoint(page, 1.5, 1.5);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
@@ -574,18 +588,20 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   const textureFit = await page.locator("#pixi-canvas").getAttribute("data-board-texture-fit");
   expect(textureFit).toMatch(/^(\d+x\d+)\/\1$/);
 
+  const beforeZoomAttribute = await page.locator("#pixi-canvas").getAttribute("data-board-corners");
   const beforeZoom = await boardCorners(page);
   await page.mouse.move(canvasBox.x + canvasBox.width / 2, canvasBox.y + canvasBox.height / 2);
   await page.mouse.wheel(0, -240);
-  await page.waitForTimeout(100);
+  await expect(page.locator("#pixi-canvas")).not.toHaveAttribute("data-board-corners", beforeZoomAttribute!);
   const afterZoom = await boardCorners(page);
   expect(afterZoom[1].x - afterZoom[0].x).toBeGreaterThan(beforeZoom[1].x - beforeZoom[0].x);
+  const beforePanAttribute = await page.locator("#pixi-canvas").getAttribute("data-board-corners");
   await page.keyboard.down("Alt");
   await page.mouse.down();
   await page.mouse.move(canvasBox.x + canvasBox.width / 2 + 36, canvasBox.y + canvasBox.height / 2 + 22, { steps: 3 });
   await page.mouse.up();
   await page.keyboard.up("Alt");
-  await page.waitForTimeout(100);
+  await expect(page.locator("#pixi-canvas")).not.toHaveAttribute("data-board-corners", beforePanAttribute!);
   const afterPan = await boardCorners(page);
   expect(afterPan[0].x).toBeGreaterThan(afterZoom[0].x + 30);
   const zoomedFeet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
@@ -594,12 +610,13 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(zoomedHero?.x).toBeCloseTo(projectedHero.x, 0);
   expect(zoomedHero?.y).toBeCloseTo(projectedHero.y, 0);
   // Panning is bounded: the board centre stays on screen however far it is dragged.
+  const beforeDragAttribute = await page.locator("#pixi-canvas").getAttribute("data-board-corners");
   await page.keyboard.down("Alt");
   await page.mouse.down();
   await page.mouse.move(canvasBox.x + canvasBox.width * 2, canvasBox.y + canvasBox.height * 2, { steps: 6 });
   await page.mouse.up();
   await page.keyboard.up("Alt");
-  await page.waitForTimeout(100);
+  await expect(page.locator("#pixi-canvas")).not.toHaveAttribute("data-board-corners", beforeDragAttribute!);
   const dragged = await boardCorners(page);
   const boardCentre = {
     x: dragged.reduce((total, corner) => total + corner.x, 0) / dragged.length,
@@ -611,121 +628,9 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   expect(boardCentre.y).toBeLessThan(canvasBox.height);
 
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-affine-board.png"), fullPage: true });
 });
 
-/**
- * A tablet has no wheel and no middle button, so two fingers have to reach the same
- * camera. Chromium only accepts real multi-touch through the DevTools protocol.
- */
-test.describe("touch camera", () => {
-  test.use({ hasTouch: true, viewport: { width: 1180, height: 820 } });
-
-  test("pinches to zoom and drags with two fingers the way the wheel and drag do", async ({ page }) => {
-    await openBattle(page);
-    const cdp = await page.context().newCDPSession(page);
-    type TouchPhase = "touchStart" | "touchMove" | "touchEnd" | "touchCancel";
-    const touch = (type: TouchPhase, points: readonly { x: number; y: number; id: number }[]): Promise<unknown> =>
-      cdp.send("Input.dispatchTouchEvent", {
-        type,
-        touchPoints: points.map((point) => ({ ...point, radiusX: 12, radiusY: 12, force: 1 })),
-      });
-    interface BoardReading {
-      readonly width: number;
-      readonly centerX: number;
-      readonly zoom: number;
-      readonly safeArea: string;
-    }
-    const quad = async (): Promise<BoardReading> => {
-      const canvas = page.locator("#pixi-canvas");
-      const [corners, zoom, safeArea] = await Promise.all([
-        boardCorners(page),
-        canvas.getAttribute("data-board-zoom"),
-        canvas.getAttribute("data-safe-area"),
-      ]);
-      return {
-        width: Math.max(...corners.map((corner) => corner.x)) - Math.min(...corners.map((corner) => corner.x)),
-        centerX: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
-        zoom: Number(zoom),
-        safeArea: safeArea ?? "",
-      };
-    };
-    /**
-     * CDP resolves a touch dispatch before the page has handled it, and the HUD can still
-     * be settling into its safe area, so a single read may come from a board that is still
-     * moving. Only accept a reading the page has stopped changing.
-     */
-    const settled = async (): Promise<BoardReading> => {
-      let previous = await quad();
-      await expect.poll(async () => {
-        const current = await quad();
-        const quiet = current.width === previous.width &&
-          current.centerX === previous.centerX &&
-          current.zoom === previous.zoom &&
-          current.safeArea === previous.safeArea;
-        previous = current;
-        return quiet;
-      }, { timeout: 15_000 }).toBe(true);
-      return previous;
-    };
-
-    const spread = async (): Promise<void> => {
-      let left = { x: 520, y: 380, id: 1 };
-      let right = { x: 620, y: 440, id: 2 };
-      await touch("touchStart", [left, right]);
-      for (let step = 0; step < 8; step += 1) {
-        left = { ...left, x: left.x - 12, y: left.y - 8 };
-        right = { ...right, x: right.x + 12, y: right.y + 8 };
-        await touch("touchMove", [left, right]);
-      }
-      await touch("touchEnd", []);
-    };
-
-    const start = await settled();
-    await spread();
-    const zoomedOnce = await settled();
-    // Spreading two fingers zooms in, the way turning the wheel away does, and the board
-    // really is drawn larger for it.
-    expect(zoomedOnce.zoom).toBeGreaterThan(start.zoom * 1.2);
-    expect(zoomedOnce.width).toBeGreaterThan(start.width * 1.2);
-
-    // Pinch on until the camera is pinned against its ceiling before the drag. That is the
-    // state a two-finger drag used to zoom out of: at the ceiling the half-step that zooms
-    // in is clamped away, leaving only the half that zooms out.
-    await spread();
-    const zoomed = await settled();
-    expect(zoomed.zoom).toBeGreaterThanOrEqual(zoomedOnce.zoom);
-    await spread();
-    // A further pinch changes nothing, which is how this knows it is at the ceiling.
-    expect((await settled()).zoom).toBe(zoomed.zoom);
-
-    let left = { x: 520, y: 380, id: 1 };
-    let right = { x: 640, y: 460, id: 2 };
-    await touch("touchStart", [left, right]);
-    for (let step = 0; step < 8; step += 1) {
-      // One finger at a time, trailing finger first, which is how the browser delivers a
-      // two-finger move anyway: a `pointermove` each. Taking the step that widens the gap
-      // first is the order that used to lose zoom at the ceiling, and real hardware does
-      // not promise the harmless order.
-      left = { ...left, x: left.x - 14 };
-      await touch("touchMove", [left, right]);
-      right = { ...right, x: right.x - 14 };
-      await touch("touchMove", [left, right]);
-    }
-    await touch("touchEnd", []);
-    const panned = await settled();
-    expect(panned.centerX).toBeLessThan(zoomed.centerX - 50);
-    // Fingers travelling together move the board without zooming, exactly. This reads the
-    // camera rather than the board's on-screen width, because the width is the camera
-    // multiplied by the fit: a HUD that reflows between the two readings resizes the board
-    // on its own, which is not the gesture doing anything.
-    expect(panned.zoom).toBe(zoomed.zoom);
-    // Lifting out of a gesture is not a pick, so no radial menu opens behind it.
-    await expect(page.locator("#ring-root")).toBeHidden();
-  });
-});
-
-test("fits the 1024x768 minimum and independently resizes the battlefield camera", async ({ page }, testInfo) => {
+test("fits the 1024x768 minimum and independently resizes the battlefield camera", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
   await openBattle(page);
 
@@ -792,14 +697,13 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
       `${await panel.getAttribute("class")} overlaps the board quad: ${JSON.stringify({ box, board })}`,
     ).toBe(false);
   }
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-minimum.png"), fullPage: true });
 
   const minimumRatio = await heroCellRatio(page);
 
   await page.setViewportSize({ width: 1600, height: 900 });
-  await page.waitForTimeout(250);
-  const wideWidth = await page.locator("#pixi-canvas").evaluate((canvas) => canvas.clientWidth);
-  expect(wideWidth).toBeGreaterThan(850);
+  // The canvas following the window is the resize landing; nothing else needs timing.
+  await expect.poll(() => page.locator("#pixi-canvas").evaluate((canvas) => canvas.clientWidth),
+    { intervals: [50, 100, 200] }).toBeGreaterThan(850);
   // Board content is sized against its square, so widening the window enlarges the
   // squares and the standees together instead of leaving sprites oversized.
   expect(await heroCellRatio(page)).toBeCloseTo(minimumRatio, 2);
@@ -810,69 +714,6 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);
   expect(heroFoot?.y).toBeCloseTo(expectedFoot.y, 0);
   expect(runtimeErrors).toEqual([]);
-  await page.screenshot({ path: testInfo.outputPath("cardguild-m3-responsive.png"), fullPage: true });
-});
-
-/**
- * A home-screen web app owns the whole screen, and an iPad mini is 744pt on its short
- * side — under both of the layout's minimums. The board has to stay on the screen anyway.
- */
-test.describe("iPad mini", () => {
-  for (const [name, width, height] of [["portrait", 744, 1133], ["landscape", 1133, 744]] as const) {
-    test(`keeps the whole board on screen in ${name}`, async ({ page }) => {
-      const runtimeErrors = captureRuntimeErrors(page);
-      await page.setViewportSize({ width, height });
-      await openBattle(page);
-      await page.waitForTimeout(400);
-
-      // Nothing hangs off the bottom or the side: the page is exactly the screen.
-      const overflow = await page.evaluate(() => ({
-        horizontal: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-        vertical: document.documentElement.scrollHeight - document.documentElement.clientHeight,
-      }));
-      expect(overflow.horizontal).toBeLessThanOrEqual(0);
-      expect(overflow.vertical).toBeLessThanOrEqual(0);
-
-      const canvas = await page.locator("#pixi-canvas").boundingBox();
-      if (!canvas) throw new Error("Pixi canvas does not have a bounding box.");
-      expect(canvas.x).toBeGreaterThanOrEqual(0);
-      expect(canvas.y).toBeGreaterThanOrEqual(0);
-      expect(canvas.x + canvas.width).toBeLessThanOrEqual(width + 0.5);
-      expect(canvas.y + canvas.height).toBeLessThanOrEqual(height + 0.5);
-
-      // And the board inside it is fitted to the gutters the HUD actually reserved,
-      // which is what a rotation used to leave half applied.
-      const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
-        { left: number; top: number; right: number; bottom: number };
-      const corners = await boardCorners(page);
-      expect(Math.min(...corners.map((corner) => corner.y))).toBeGreaterThanOrEqual(safe.top - 0.5);
-      expect(Math.max(...corners.map((corner) => corner.y))).toBeLessThanOrEqual(canvas.height - safe.bottom + 0.5);
-      expect(Math.min(...corners.map((corner) => corner.x))).toBeGreaterThanOrEqual(safe.left - 0.5);
-      expect(Math.max(...corners.map((corner) => corner.x))).toBeLessThanOrEqual(canvas.width - safe.right + 0.5);
-      expect(runtimeErrors).toEqual([]);
-    });
-  }
-
-  test("re-fits the board after a rotation instead of leaving it half applied", async ({ page }) => {
-    const runtimeErrors = captureRuntimeErrors(page);
-    await page.setViewportSize({ width: 744, height: 1133 });
-    await openBattle(page);
-    await page.waitForTimeout(400);
-    await page.setViewportSize({ width: 1133, height: 744 });
-    await page.waitForTimeout(400);
-
-    const canvas = await page.locator("#pixi-canvas").boundingBox();
-    if (!canvas) throw new Error("Pixi canvas does not have a bounding box.");
-    expect(canvas.y + canvas.height).toBeLessThanOrEqual(744.5);
-    const safe = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-safe-area") ?? "{}") as
-      { left: number; top: number; right: number; bottom: number };
-    const corners = await boardCorners(page);
-    // The old failure put the top edge inside the gutters and the bottom one under the
-    // screen, so both ends are checked against the same measurement.
-    expect(Math.min(...corners.map((corner) => corner.y))).toBeGreaterThanOrEqual(safe.top - 0.5);
-    expect(Math.max(...corners.map((corner) => corner.y))).toBeLessThanOrEqual(canvas.height - safe.bottom + 0.5);
-    expect(runtimeErrors).toEqual([]);
-  });
 });
 
 test("pans an off-screen actor back into view when its turn starts", async ({ page }) => {
@@ -901,12 +742,17 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   await page.mouse.move(canvasBox.x + canvasBox.width * 1.5, canvasBox.y + canvasBox.height / 2, { steps: 6 });
   await page.mouse.up();
   await page.keyboard.up("Alt");
-  await page.waitForTimeout(150);
-  expect((await actorFeet("goblin-lackey")).x).toBeGreaterThan(canvasBox.width - safe.right);
+  await expect.poll(async () => (await actorFeet("goblin-lackey")).x > canvasBox.width - safe.right,
+    { intervals: [50, 100, 200] }).toBe(true);
 
   await page.locator("#end-turn").click();
   await chooseFacing(page, "east");
-  await page.waitForTimeout(600);
+  // The camera travels back to it. Wait for the standee to be inside the reserved area
+  // rather than for a fixed number of frames.
+  await expect.poll(async () => {
+    const arriving = await actorFeet("goblin-lackey");
+    return arriving.left > safe.left && arriving.right < canvasBox.width - safe.right;
+  }, { intervals: [50, 100, 200], timeout: 15_000 }).toBe(true);
   const goblin = await actorFeet("goblin-lackey");
   // Every edge of the standee, so a head or an HP badge left under the HUD still fails.
   expect(goblin.left).toBeGreaterThan(safe.left);

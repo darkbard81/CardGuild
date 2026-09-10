@@ -1,9 +1,9 @@
-import { mkdtempSync, rmSync } from "node:fs";
+import { copyFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { afterAll, afterEach, describe, expect, it } from "vitest";
 
 import { PRODUCTION_CONTENT } from "../../src/content";
 import type { ServerSnapshot } from "../../src/protocol";
@@ -52,6 +52,19 @@ function progressOf(adventure: AdventureState | null | undefined): Progress {
   };
 }
 
+/**
+ * A durable save that real play produced, kept so several crash cases can start from it.
+ *
+ * Nothing here is assembled by hand. The checkpoint is the file a normal session left
+ * behind after winning its way to a point, written through the same save path production
+ * uses — copying it is the only shortcut, and what it skips is replaying encounters the
+ * crash under test is not about.
+ */
+interface Checkpoint {
+  readonly file: string;
+  readonly campaignId: string;
+}
+
 describe("crash recovery across every durable transition", () => {
   const directories: string[] = [];
   const servers: RunningCardGuildServer[] = [];
@@ -63,6 +76,11 @@ describe("crash recovery across every durable transition", () => {
     for (const child of children.splice(0)) await child.stop(["SIGKILL"]);
     for (const server of servers.splice(0)) await server.close().catch(() => undefined);
     for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
+  });
+
+  const checkpointDirectories: string[] = [];
+  afterAll(() => {
+    for (const directory of checkpointDirectories.splice(0)) rmSync(directory, { recursive: true, force: true });
   });
 
   function workspace(): { readonly file: string; readonly marker: string } {
@@ -179,6 +197,84 @@ describe("crash recovery across every durable transition", () => {
   }
 
   /**
+   * Play forward on a clean server and leave the save behind as a file.
+   *
+   * `previous` is another checkpoint to start from, so the run that reaches the seventh
+   * victory is the same run that reached the third rather than a second trip through the
+   * same encounters. The server is closed and the write-ahead log folded in before the file
+   * is handed over, so a copy of it is the whole database.
+   */
+  async function checkpointAfter(encounters: number, previous?: Checkpoint): Promise<Checkpoint> {
+    const directory = mkdtempSync(path.join(tmpdir(), "cardguild-m10-5-checkpoint-"));
+    checkpointDirectories.push(directory);
+    const file = path.join(directory, "campaigns.sqlite");
+    if (previous) copyFileSync(previous.file, file);
+    else await seedAccount(file);
+
+    const persistence = createSqlitePersistence(file);
+    const server = await startCardGuildServer({
+      context: CONTEXT,
+      allowedOrigins: new Set([TEST_ORIGIN]),
+      heartbeatMs: 60_000,
+      persistence,
+      sources: {
+        sessionId: () => "session-" + Math.random().toString(36).slice(2, 10),
+        playerId: () => "player-" + Math.random().toString(36).slice(2, 10),
+        reconnectCredential: () => {
+          const token = "reconnect-" + Math.random().toString(36).slice(2, 12);
+          return { token, digest: digestReconnectToken(token) };
+        },
+        adventureSeed: () => 1,
+      },
+    });
+    let campaignId = previous?.campaignId ?? "";
+    try {
+      const cookie = await signIn(server.origin);
+      let snapshot: ServerSnapshot;
+      let client: SocketClient;
+      if (previous) {
+        const continued = await api<SessionCredentialResponse>(
+          server.origin, cookie, "POST", `/api/campaigns/${campaignId}/continue`, {});
+        expect(continued.status, JSON.stringify(continued.body)).toBe(200);
+        client = await SocketClient.connect(server.origin, continued.body);
+        snapshot = await play(client, await client.snapshot(), "resume", { type: "resume-adventure" });
+      } else {
+        const opened = await openCampaign(server.origin, cookie);
+        campaignId = opened.campaignId;
+        client = await SocketClient.connect(server.origin, opened.credential);
+        snapshot = await client.snapshot();
+        snapshot = await play(client, snapshot, "party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
+        snapshot = await play(client, snapshot, "begin", { type: "begin-adventure" });
+      }
+      const staged = await drive(client, {
+        until: (published) => (published.state.adventure?.completedEncounterIds.length ?? 0) >= encounters,
+        prefix: "checkpoint",
+        from: snapshot.revision,
+      });
+      if (staged.died || !staged.snapshot) throw new Error("The checkpoint run died before it got there.");
+      expect(staged.snapshot.state.adventure?.completedEncounterIds).toHaveLength(encounters);
+      await client.close();
+    } finally {
+      await server.close();
+    }
+    // Fold the write-ahead log into the file, so one copy carries everything committed.
+    const folded = new DatabaseSync(file);
+    folded.exec("PRAGMA wal_checkpoint(TRUNCATE)");
+    folded.close();
+    return { file, campaignId };
+  }
+
+  /** Built once and shared: the same play-through supplies both. */
+  let afterThird: Checkpoint | undefined;
+  let afterSeventh: Checkpoint | undefined;
+  async function checkpoint(encounters: 3 | 7): Promise<Checkpoint> {
+    afterThird ??= await checkpointAfter(3);
+    if (encounters === 3) return afterThird;
+    afterSeventh ??= await checkpointAfter(7, afterThird);
+    return afterSeventh;
+  }
+
+  /**
    * Play a fresh campaign on a crash-testable server until `until`, then arm the fault and
    * keep playing until the process dies at the named transition.
    *
@@ -188,6 +284,8 @@ describe("crash recovery across every durable transition", () => {
    */
   async function crashAt(target: FaultTarget, when: "before" | "after", options: {
     readonly until?: (snapshot: ServerSnapshot) => boolean;
+    /** Start from a save real play already produced instead of from an empty campaign. */
+    readonly from?: Checkpoint;
   } = {}): Promise<{
     readonly file: string;
     readonly campaignId: string;
@@ -198,16 +296,33 @@ describe("crash recovery across every durable transition", () => {
     readonly faultRevision: number;
   }> {
     const { file, marker } = workspace();
-    await seedAccount(file);
+    if (options.from) copyFileSync(options.from.file, file);
+    else await seedAccount(file);
     const child = await startChild(file, marker);
     const cookie = await signIn(child.origin);
-    const opened = await openCampaign(child.origin, cookie);
-    const client = await SocketClient.connect(child.origin, opened.credential);
-    sockets.push(client);
-
-    let snapshot = await client.snapshot();
-    snapshot = await play(client, snapshot, "party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
-    snapshot = await play(client, snapshot, "begin", { type: "begin-adventure" });
+    let campaignId: string;
+    let client: SocketClient;
+    let snapshot: ServerSnapshot;
+    if (options.from) {
+      // The same door a player comes back through, on a database a real session filled in.
+      campaignId = options.from.campaignId;
+      const continued = await api<SessionCredentialResponse>(
+        child.origin, cookie, "POST", `/api/campaigns/${campaignId}/continue`, {});
+      expect(continued.status, JSON.stringify(continued.body)).toBe(200);
+      client = await SocketClient.connect(child.origin, continued.body);
+      sockets.push(client);
+      const restored = await client.snapshot();
+      expect(restored.state.lifecycle).toBe("resume-lobby");
+      snapshot = await play(client, restored, "resume", { type: "resume-adventure" });
+    } else {
+      const opened = await openCampaign(child.origin, cookie);
+      campaignId = opened.campaignId;
+      client = await SocketClient.connect(child.origin, opened.credential);
+      sockets.push(client);
+      snapshot = await client.snapshot();
+      snapshot = await play(client, snapshot, "party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
+      snapshot = await play(client, snapshot, "begin", { type: "begin-adventure" });
+    }
     if (options.until) {
       const staged = await drive(client, { until: options.until, prefix: "stage", from: snapshot.revision });
       if (staged.died || !staged.snapshot) throw new Error("The staging run died before the fault was armed.");
@@ -228,7 +343,7 @@ describe("crash recovery across every durable transition", () => {
     if (!lastSeen || !faulted) throw new Error("The doomed run published nothing to compare against.");
     return {
       file,
-      campaignId: opened.campaignId,
+      campaignId,
       lastSeen,
       seen: progressOf(lastSeen.state.adventure),
       faultRevision: faulted.campaignRevision,
@@ -291,7 +406,8 @@ describe("crash recovery across every durable transition", () => {
   }, 180_000);
 
   it("keeps Lv.1 / EXP 700 when the fourth victory dies before its write, and Lv.2 / EXP 100 when it dies after", async () => {
-    const beforeCrash = await crashAt("level-up", "before");
+    const staged = await checkpoint(3);
+    const beforeCrash = await crashAt("level-up", "before", { from: staged });
     const beforeRecovered = await recover(beforeCrash.file, beforeCrash.campaignId);
     const beforeProgress = progressOf(beforeRecovered.snapshot.state.adventure);
     expect(beforeProgress.completed).toHaveLength(3);
@@ -300,7 +416,7 @@ describe("crash recovery across every durable transition", () => {
     expect(beforeRecovered.snapshot.gameplayHash).toBe(beforeCrash.lastSeen.gameplayHash);
     expect(beforeRecovered.campaignRevision).toBe(beforeCrash.faultRevision);
 
-    const afterCrash = await crashAt("level-up", "after");
+    const afterCrash = await crashAt("level-up", "after", { from: staged });
     const afterRecovered = await recover(afterCrash.file, afterCrash.campaignId);
     const afterProgress = progressOf(afterRecovered.snapshot.state.adventure);
     // The fourth victory, the carried EXP and the new Level all land together.
@@ -407,7 +523,8 @@ describe("crash recovery across every durable transition", () => {
     const last = ADVENTURE.encounterIds.at(-1);
     const totalExperience = ADVENTURE.experienceAwards.reduce((sum, award) => sum + award.amount, 0);
 
-    const beforeCrash = await crashAt("adventure-complete", "before");
+    const staged = await checkpoint(7);
+    const beforeCrash = await crashAt("adventure-complete", "before", { from: staged });
     // The run is one victory short: still fighting, still Lv.3 from the seventh win.
     expect(beforeCrash.seen.completed).toHaveLength(ADVENTURE.encounterIds.length - 1);
     const beforeRecovered = await recover(beforeCrash.file, beforeCrash.campaignId);
@@ -428,7 +545,7 @@ describe("crash recovery across every durable transition", () => {
     expect(finished.died).toBe(false);
     expect(progressOf(finished.snapshot?.state.adventure).completed).toHaveLength(ADVENTURE.encounterIds.length);
 
-    const afterCrash = await crashAt("adventure-complete", "after");
+    const afterCrash = await crashAt("adventure-complete", "after", { from: staged });
     const afterRecovered = await recover(afterCrash.file, afterCrash.campaignId);
     const afterProgress = progressOf(afterRecovered.snapshot.state.adventure);
     // Completion, the final Encounter and its EXP land together, and only once.

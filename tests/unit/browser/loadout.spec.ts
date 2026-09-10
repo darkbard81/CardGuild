@@ -83,7 +83,8 @@ test("guards pending changes, recovers from rejection and keeps read-only detail
 test("touch hold and cancelled gestures inspect without submitting", async ({ page }) => {
   const weapon = page.locator('.equipment-slot[data-slot="weapon"]');
   await weapon.dispatchEvent("pointerdown", { pointerType: "touch", button: 0, clientX: 100, clientY: 270 });
-  await page.waitForTimeout(500);
+  // The hold pins the panel on its own timer, so waiting for the panel is the hold.
+  await expect(page.locator("#loadout-detail")).toBeVisible();
   await weapon.dispatchEvent("pointerup", { pointerType: "touch" });
   await weapon.dispatchEvent("click", { detail: 1 });
   await expect(page.locator("#loadout-detail")).toBeVisible();
@@ -95,6 +96,8 @@ test("touch hold and cancelled gestures inspect without submitting", async ({ pa
   await weapon.dispatchEvent("pointerdown", { pointerType: "touch", button: 0, clientX: 100, clientY: 270 });
   await weapon.dispatchEvent("pointermove", { pointerType: "touch", clientX: 100, clientY: 320 });
   await weapon.dispatchEvent("pointercancel", { pointerType: "touch" });
+  // Kept as real time on purpose: the claim is that the hold timer never fires after a
+  // cancel, and only outliving that timer can show it.
   await page.waitForTimeout(500);
   await expect(page.locator("#loadout-detail")).toBeHidden();
   expect(await page.evaluate(() => window.loadoutFixture.requests.length)).toBe(0);

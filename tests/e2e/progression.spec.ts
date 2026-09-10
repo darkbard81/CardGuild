@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { createCampaignAsHost } from "../support/browser/host-login";
 
-test("shows authoritative starting progression through the real Host flow", async ({ page }, testInfo) => {
+test("shows authoritative starting progression through the real Host flow", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await createCampaignAsHost(page, "Progression Host");
   await page.locator("#apply-party").click();
@@ -18,12 +18,10 @@ test("shows authoritative starting progression through the real Host flow", asyn
   const mapBounds = await page.locator(".adventure-map-card").boundingBox();
   expect(mapBounds!.y).toBeGreaterThanOrEqual(0);
   expect(mapBounds!.y + mapBounds!.height).toBeLessThanOrEqual(768);
-  await page.screenshot({ path: testInfo.outputPath("m9-1-adventure-1024.png") });
   await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 1 · EXP 0 / 1000");
   await expect(page.locator(".loadout-pagination")).toBeInViewport();
   await expect(page.getByRole("button", { name: "Done", exact: true })).toBeInViewport();
-  await page.screenshot({ path: testInfo.outputPath("m9-1-loadout-1024.png") });
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.reload();
   await expect(page.locator("#adventure-party li")).toHaveCount(3);

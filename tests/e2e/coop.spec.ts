@@ -127,6 +127,8 @@ test("clears a stale v2 stored credential, returns to landing, and stops reconne
     await expect(page.locator("#app")).toHaveAttribute("data-session-status", "closed");
     await expect(page.locator("#host-login")).toBeVisible();
     await expect.poll(() => page.evaluate(() => sessionStorage.getItem("cardguild.session.v2"))).toBeNull();
+    // Kept as real time on purpose: the claim is that no second connection is ever made,
+    // and only outliving the reconnect backoff can show it.
     await page.waitForTimeout(900);
     expect(connectionAttempts).toBe(1);
   } finally {
@@ -156,7 +158,7 @@ test("shows a non-contiguous party draft as invalid instead of already applied",
   }
 });
 
-test("single host prepares three women heroes and controls every changing combat HUD", async ({ browser }, testInfo) => {
+test("single host prepares three women heroes and controls every changing combat HUD", async ({ browser }) => {
   test.setTimeout(60_000);
   const host = await createPlayer(browser, "Solo Host");
   try {
@@ -168,7 +170,6 @@ test("single host prepares three women heroes and controls every changing combat
     await host.page.setViewportSize({ width: 390, height: 844 });
     expect(await host.page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-    await host.page.screenshot({ path: testInfo.outputPath("cardguild-m5-party-builder-390.png"), fullPage: true });
     await host.page.setViewportSize({ width: 1024, height: 768 });
 
     await applyThreeCharacterParty(host.page);
@@ -185,7 +186,6 @@ test("single host prepares three women heroes and controls every changing combat
     await host.page.setViewportSize({ width: 390, height: 844 });
     expect(await host.page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-    await host.page.screenshot({ path: testInfo.outputPath("cardguild-m5-orphan-cleanup-390.png"), fullPage: true });
     const orphanRevision = await host.page.locator("#app").getAttribute("data-session-revision");
     await orphanSeat.locator(".session-seat-remove").click();
     await expect(orphanSeat).toHaveClass(/open/);
@@ -222,13 +222,12 @@ test("single host prepares three women heroes and controls every changing combat
     }
     expect(seen).toEqual(new Set(["Aerin", "Lyra", "Brom"]));
     expect(host.errors).toEqual([]);
-    await host.page.screenshot({ path: testInfo.outputPath("cardguild-m5-single-three-1024.png"), fullPage: true });
   } finally {
     await host.context.close();
   }
 });
 
-test("2P guest disconnect transfers the live character to host and reconnect restores it", async ({ browser }, testInfo) => {
+test("2P guest disconnect transfers the live character to host and reconnect restores it", async ({ browser }) => {
   test.setTimeout(90_000);
   const host = await createPlayer(browser, "Host");
   const guest = await createPlayer(browser, "Guest B");
@@ -290,13 +289,12 @@ test("2P guest disconnect transfers the live character to host and reconnect res
     await expectConvergence([host.page, guest.page]);
     expect(host.errors).toEqual([]);
     expect(guest.errors).toEqual([]);
-    await host.page.screenshot({ path: testInfo.outputPath("cardguild-m5-2p-reconnected.png"), fullPage: true });
   } finally {
     await Promise.all([host.context.close(), guest.context.close()]);
   }
 });
 
-test("3P guests choose distinct remaining characters and only their effective actor is actionable", async ({ browser }, testInfo) => {
+test("3P guests choose distinct remaining characters and only their effective actor is actionable", async ({ browser }) => {
   test.setTimeout(90_000);
   const players = await Promise.all([
     createPlayer(browser, "Host"),
@@ -316,7 +314,6 @@ test("3P guests choose distinct remaining characters and only their effective ac
     await expect(host.page.locator("#begin-adventure")).toBeEnabled();
     expect(await guestC.page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
-    await guestC.page.screenshot({ path: testInfo.outputPath("cardguild-m5-guest-picker-390.png"), fullPage: true });
     await guestC.page.setViewportSize({ width: 1024, height: 768 });
     await expectConvergence(pages);
 
@@ -353,7 +350,6 @@ test("3P guests choose distinct remaining characters and only their effective ac
     await expect(guestC.page.locator("#app")).toHaveAttribute("data-session-hash", guestCHash ?? "");
     await expectConvergence(pages);
     expect(players.flatMap((player) => player.errors)).toEqual([]);
-    await host.page.screenshot({ path: testInfo.outputPath("cardguild-m5-3p-1024.png"), fullPage: true });
   } finally {
     await Promise.all(players.map((player) => player.context.close()));
   }
