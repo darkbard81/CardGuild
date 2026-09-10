@@ -35,7 +35,19 @@ npm test        # 동적 검증: 위 다섯 계층
 
 세 명령은 겹치지 않습니다. `check`는 파일을 만들지 않고 테스트를 돌리지 않으며, `build`는
 검사하지 않고, `test`는 빌드하지 않습니다. 그래서 전체 gate에서 TypeScript도 client build도
-정확히 한 번씩만 돕니다. CI가 실행하는 것도 이 셋뿐입니다.
+정확히 한 번씩만 돕니다.
+
+CI는 이 셋을 두 시점에 나눠 씁니다.
+
+| workflow | 언제 | 무엇 | 묻는 것 |
+|---|---|---|---|
+| `CI Quick` | main이 아닌 branch로의 push | `check` → `build` → `npx vitest run` | 기본적으로 깨졌는가 |
+| `CI Full` | main을 향한 PR | `check` → `build` → `npm test` | main에 합쳐도 되는가 |
+
+Quick은 Chromium을 설치조차 하지 않습니다. 브라우저·포트·DB가 필요한 네 계층은 몇 분이
+걸리고, 그것은 오타를 잡는 신호가 아니라 merge를 결정하는 gate의 몫입니다. **회귀 보호를
+증명하는 것은 `CI Full` 하나뿐**이고, main의 필수 check로 쓸 것도 그것입니다. 두 workflow
+모두 같은 branch/PR의 이전 실행을 새 commit이 들어오면 취소합니다.
 
 `check`의 자산 검사는 **추적된 산출물을 검증**할 뿐 다시 만들지 않습니다. 자산 입력이나
 생성 대상 콘텐츠를 바꿨다면 `npx tsx tools/assets/build-assets.ts`를 직접 돌리고 생성물을 함께

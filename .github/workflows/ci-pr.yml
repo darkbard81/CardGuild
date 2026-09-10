@@ -1,11 +1,23 @@
-name: CI
+# Full: "may this go into main?"
+#
+# The merge gate. Everything Quick runs, plus the four layers that need a real browser, real
+# ports, a real database and the deployment build — Browser Unit, Integration, E2E and
+# Recovery. This is the run to make a required check on `main`.
+name: CI Full
 
 on:
-  push:
   pull_request:
+    branches:
+      - main
+
+concurrency:
+  # A new commit on the PR replaces the previous verdict, so the old run can go.
+  group: full-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 jobs:
-  verify:
+  full:
+    name: Full
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

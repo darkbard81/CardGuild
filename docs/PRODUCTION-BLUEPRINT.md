@@ -1130,7 +1130,9 @@ npm test                              # 다섯 계층 전부, Recovery가 위 bu
 ```
 
 세 명령은 겹치지 않습니다. 그래서 전체 gate에서 TypeScript도 client build도 한 번씩만 돕니다.
-CI가 실행하는 것도 이 셋입니다.
+CI는 이 셋을 나눠 씁니다: feature branch push는 `CI Quick`(`check` → `build` → Unit/Node),
+main을 향한 PR은 `CI Full`(`check` → `build` → `npm test`)입니다. merge 가능성을 증명하는
+것은 `CI Full`뿐입니다.
 
 | 소유자 | 무엇을 소유하는가 |
 |---|---|

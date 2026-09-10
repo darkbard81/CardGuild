@@ -377,8 +377,12 @@ npm run build # 배포 산출물: dist(client) + dist-server(server bundle)
 npm test      # 동적 검증: Unit/Node -> Unit/Browser -> Integration -> E2E -> Recovery
 ```
 
-CI가 실행하는 것도 이 셋뿐입니다. `npm run playtest`는 seeded 자동 플레이로 밸런스를 살피는
-조사 도구이고 gate가 아닙니다.
+CI는 이 셋을 두 시점에 나눠 씁니다. main이 아닌 branch로 push하면 `CI Quick`이
+`check → build → npx vitest run`만 돌려 빠르게 답하고(Chromium도 설치하지 않습니다), main을
+향한 PR에서 `CI Full`이 `check → build → npm test`로 다섯 계층 전부를 돌립니다. **merge
+가능성을 증명하는 것은 `CI Full` 하나뿐입니다.**
+
+`npm run playtest`는 seeded 자동 플레이로 밸런스를 살피는 조사 도구이고 gate가 아닙니다.
 
 일부만 돌릴 때는 조립용 alias 없이 underlying CLI를 직접 부릅니다.
 
