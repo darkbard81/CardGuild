@@ -377,7 +377,8 @@ npm run build         # Content/asset 검증 후 production bundle
 npm run typecheck:server # DOM 없는 server/session/protocol type boundary
 npm run test:network # 실제 random-port HTTP/WebSocket 3-client integration
 npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive smoke
-npm test             # unit + network + Playwright
+npm run test:recovery # 배포 빌드(dist-server + dist)로 서버 재시작·복구 E2E
+npm test             # unit + network + Playwright + recovery
 npm run playtest     # seeded 자동 플레이(밸런스 조사 도구, gate 아님)
 ```
 
@@ -396,6 +397,9 @@ claim race와 authorization, turn/reaction disconnect fallback·reconnect, serve
 newest-wins reconnect와 legacy protocol(v1·v3·v4·v5) fail-fast를 검증합니다. 여기에 실제 파일
 SQLite를 쓰는 durable Campaign 시나리오가 더해집니다 — 서버 재시작 후 Continue, mid-combat
 정확 복구, 자식 서버를 COMMIT 직전/직후에 강제 종료한 뒤의 복구, 이전 credential 무효화입니다.
+M9-5는 여기에 장애 매트릭스를 얹습니다: 첫 승리·4전 Level-Up·보상 선택·AI step·콘텐츠 이관
+각각의 COMMIT 직전/직후 `SIGKILL`과 복구, ACK만 유실된 동일 요청 재시도, 그리고 종료의
+멱등성과 종료 중 queue·DB 순서입니다.
 Playwright는 별도 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어,
 2P fallback, 3P 분산 제어와 hash 수렴, 그리고 Continue → Resume Lobby → 정확 재개를 검증하며
 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
@@ -477,7 +481,6 @@ gameplay 진행이 SQLite에 저장되고, Host는 My Campaigns에서 Continue�
 - 손상·미지원·다른 Content Pack의 save는 자동 보정하지 않고 409로 거절하며 row를 보존합니다.
 - 브라우저 저장소에는 여전히 reconnect credential만 둡니다.
 
-재시작 복구 강화는 M9-5입니다.
 자세한 계약과 검증은 [M9-3 구현문서](docs/m9-3-durable-campaign-save.md)에 있습니다.
 
 ## M9-4 Encounter EXP & Automatic Level-Up
@@ -507,3 +510,35 @@ Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 L
   Continue의 CAS COMMIT으로 한 번만 저장되고, 실패하면 새 세션을 공개하지 않습니다.
 
 자세한 계약과 검증은 [M9-4 구현문서](docs/m9-4-encounter-experience-level-up.md)에 있습니다.
+
+## M9-5 Server Restart Recovery
+
+서버는 gameplay의 유일한 authority이고, 그 authority는 SQLite 파일 하나입니다. 재시작은
+그 파일을 다시 여는 일입니다.
+
+```bash
+# 정상 재시작: SIGTERM 하나면 됩니다. 두 번 보내도 안전합니다.
+kill -TERM "$(pgrep -f dist-server/main.js)"
+npm run start:production
+```
+
+- **정상 종료**는 신규 HTTP·WebSocket 연결과 메시지를 먼저 막고, 이미 받은 작업과 모든
+  SessionHost queue를 끝낸 뒤에 DB를 닫습니다. 종료가 실패하면 프로세스는 exit code 1로
+  끝납니다 — 그때는 재시작 전에 로그를 보세요. 깨끗하게 끝난 서버를 다시 띄우면 마지막으로
+  **COMMIT된** 지점이 그대로 있습니다.
+- **강제 종료(SIGKILL·크래시)도 같은 보장**입니다. 모든 진행은 COMMIT 후에만 공개되므로,
+  클라이언트가 본 것은 언제나 DB가 이미 가진 것의 부분집합입니다. 전투 명령·Encounter
+  완료·EXP·Level-Up·보상·AI step·콘텐츠 이관은 각각 0회 또는 1회만 반영됩니다.
+- **재시작 후 Host는** 로그인 → My Campaigns → Continue입니다. Continue는 죽은 세션을
+  되살리는 것이 아니라 **새 라이브 세션을 재수화**합니다. Session ID·Host credential이 모두
+  새로 발급되므로, **새 Session ID를 게스트에게 다시 공유**해야 합니다.
+- **재시작 후 Guest는** 새 Session ID로 다시 참가해 저장된 캐릭터를 다시 선택합니다. 참가·
+  선택·접속 상태 변화는 gameplay를 바꾸지 않으므로 DB에 쓰지 않습니다. Host가 Resume을 누르기
+  전까지 모든 gameplay 입력과 서버 AI는 멈춰 있습니다.
+- **저장 오류**는 조용히 보정하지 않습니다. 손상된 payload/hash, 미지원 save schema, 등록되지
+  않은 content identity는 409로 거절하고 row를 그대로 보존합니다 — 나중 빌드가 진짜 migration을
+  쓸 수 있게 하기 위해서입니다. 거절된 Continue는 Host가 이미 플레이 중인 세션도 건드리지
+  않습니다. 서버 AI의 저장 실패는 그 세션을 종료시키며, Host는 Continue로 마지막 저장 지점부터
+  이어갑니다.
+
+자세한 계약과 실측은 [M9-5 구현문서](docs/m9-5-server-restart-recovery.md)에 있습니다.

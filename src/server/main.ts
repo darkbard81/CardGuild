@@ -59,10 +59,23 @@ const running = await startCardGuildServer({
 process.stdout.write(`CardGuild co-op server listening at ${running.origin}\n`);
 process.stdout.write(`Campaign database: ${databasePath}\n`);
 
-async function shutdown(): Promise<void> {
-  await running.close();
-  process.exitCode = 0;
+/**
+ * `close()` is idempotent, so both signals — and a repeat of either — await the one
+ * shutdown rather than starting a second. `on` rather than `once` matters: with `once`, a
+ * second SIGTERM falls through to Node's default handler and kills the process mid-flush,
+ * which is exactly the half-written database this ordering exists to prevent.
+ */
+async function shutdown(signal: NodeJS.Signals): Promise<void> {
+  try {
+    await running.close();
+    process.exitCode = 0;
+  } catch (error) {
+    // A shutdown that could not finish must not look clean, or an operator restarts on top
+    // of a database that was still being written.
+    process.stderr.write(`CardGuild shutdown on ${signal} failed: ${String(error)}\n`);
+    process.exitCode = 1;
+  }
 }
 
-process.once("SIGINT", () => void shutdown());
-process.once("SIGTERM", () => void shutdown());
+process.on("SIGINT", () => void shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));

@@ -1,15 +1,13 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import process from "node:process";
 import { DatabaseSync } from "node:sqlite";
 
-import { WebSocket } from "ws";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { PRODUCTION_CONTENT } from "../../src/content";
-import type { ClientIntentEnvelope, ServerAck, ServerError, ServerMessage, ServerSnapshot } from "../../src/protocol";
+import type { ServerError, ServerSnapshot } from "../../src/protocol";
+import { createAuthService } from "../../src/server/auth-service";
 import { digestReconnectToken } from "../../src/server/credentials";
 import { createSqlitePersistence, type Persistence } from "../../src/server/persistence";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
@@ -21,92 +19,12 @@ import {
   type SessionCoreState,
   type SessionIntent,
 } from "../../src/session";
+import { startFaultServer, type FaultChild } from "./fault-child";
+import { SocketClient, TEST_ORIGIN, envelope, play } from "./socket-client";
 
-const TEST_ORIGIN = "http://cardguild.test";
 const PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
 const ACCOUNT = { username: "durable-host", password: "durable host password" };
 const CONTEXT = { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId };
-
-class SocketClient {
-  public readonly messages: ServerMessage[] = [];
-
-  private constructor(public readonly socket: WebSocket) {
-    socket.on("message", (data) => this.messages.push(JSON.parse(data.toString()) as ServerMessage));
-    socket.on("error", () => undefined);
-  }
-
-  public static async connect(origin: string, credential: SessionCredentialResponse): Promise<SocketClient> {
-    const socket = new WebSocket(origin.replace(/^http/, "ws") + "/ws", { origin: TEST_ORIGIN });
-    const client = new SocketClient(socket);
-    await new Promise<void>((resolve, reject) => {
-      socket.once("open", () => resolve());
-      socket.once("error", reject);
-    });
-    socket.send(JSON.stringify({
-      v: 7,
-      type: "hello",
-      sessionId: credential.sessionId,
-      playerId: credential.playerId,
-      reconnectToken: credential.reconnectToken,
-      contentIdentity: PRODUCTION_CONTENT.contentIdentity,
-    }));
-    return client;
-  }
-
-  public mark(): number {
-    return this.messages.length;
-  }
-
-  public waitFor<T extends ServerMessage>(
-    predicate: (message: ServerMessage) => message is T,
-    from = 0,
-    timeoutMs = 10_000,
-  ): Promise<T> {
-    const existing = this.messages.slice(from).find(predicate);
-    if (existing) return Promise.resolve(existing);
-    return new Promise<T>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.socket.off("message", listener);
-        reject(new Error("Timed out after index " + String(from) + ": " + JSON.stringify(this.messages.slice(from))));
-      }, timeoutMs);
-      const listener = (): void => {
-        const found = this.messages.slice(from).find(predicate);
-        if (!found) return;
-        clearTimeout(timeout);
-        this.socket.off("message", listener);
-        resolve(found);
-      };
-      this.socket.on("message", listener);
-    });
-  }
-
-  public snapshot(from = 0): Promise<ServerSnapshot> {
-    return this.waitFor((message): message is ServerSnapshot => message.type === "snapshot", from);
-  }
-
-  public waitForClose(timeoutMs = 10_000): Promise<number> {
-    if (this.socket.readyState === WebSocket.CLOSED) return Promise.resolve(1000);
-    return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("Socket never closed.")), timeoutMs);
-      this.socket.once("close", (code) => {
-        clearTimeout(timeout);
-        resolve(code);
-      });
-    });
-  }
-
-  public send(envelope: ClientIntentEnvelope): void {
-    this.socket.send(JSON.stringify(envelope));
-  }
-
-  public close(): Promise<void> {
-    if (this.socket.readyState === WebSocket.CLOSED) return Promise.resolve();
-    return new Promise((resolve) => {
-      this.socket.once("close", () => resolve());
-      this.socket.close(1000, "test close");
-    });
-  }
-}
 
 async function signIn(origin: string): Promise<string> {
   const response = await fetch(new URL("/api/auth/login", origin), {
@@ -141,30 +59,6 @@ interface CampaignSummary {
   readonly hasSave: boolean;
 }
 
-function envelope(requestId: string, expectedRevision: number, intent: SessionIntent): ClientIntentEnvelope {
-  return { v: 7, type: "intent", requestId, expectedRevision, intent };
-}
-
-/** Send an intent and wait for its ACK plus the snapshot that must follow a commit. */
-async function play(
-  client: SocketClient,
-  snapshot: ServerSnapshot,
-  requestId: string,
-  intent: SessionIntent,
-): Promise<ServerSnapshot> {
-  const mark = client.mark();
-  client.send(envelope(requestId, snapshot.revision, intent));
-  const ack = await client.waitFor(
-    (message): message is ServerAck => message.type === "ack" && message.requestId === requestId,
-    mark,
-  );
-  expect(ack.accepted, requestId).toBe(true);
-  return await client.waitFor(
-    (message): message is ServerSnapshot => message.type === "snapshot" && message.revision >= ack.committedRevision,
-    mark,
-  );
-}
-
 function hostControl(state: SessionCoreState): SessionControlContext {
   return {
     connectedPlayerIds: [state.hostPlayerId],
@@ -181,58 +75,18 @@ function nextState(state: SessionCoreState, intent: SessionIntent): SessionCoreS
   return result.state;
 }
 
-interface Child {
-  readonly origin: string;
-  readonly process: ChildProcessWithoutNullStreams;
-  readonly output: () => string;
-  readonly exited: Promise<number | null>;
-}
-
-function startChildServer(databasePath: string, fault: "none" | "before" | "after", faultAt: number, seedAccount: boolean): Promise<Child> {
-  const child = spawn(process.execPath, ["--import", "tsx", "tests/network/fault-server.ts"], {
-    cwd: process.cwd(),
-    env: {
-      ...process.env,
-      CARDGUILD_TEST_DB: databasePath,
-      CARDGUILD_TEST_FAULT: fault,
-      CARDGUILD_TEST_FAULT_AT: String(faultAt),
-      CARDGUILD_TEST_ORIGIN: TEST_ORIGIN,
-      ...(seedAccount ? { CARDGUILD_TEST_ACCOUNT: `${ACCOUNT.username}:${ACCOUNT.password}` } : {}),
-    },
-  });
-  let output = "";
-  child.stdout.setEncoding("utf8");
-  child.stderr.setEncoding("utf8");
-  child.stdout.on("data", (chunk: string) => { output += chunk; });
-  child.stderr.on("data", (chunk: string) => { output += chunk; });
-  const exited = new Promise<number | null>((resolve) => child.once("exit", (code) => resolve(code)));
-  return new Promise<Child>((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error("Child server never became ready: " + output)), 30_000);
-    const check = (): void => {
-      const match = /READY (\S+)/.exec(output);
-      if (!match?.[1]) return;
-      clearTimeout(timeout);
-      child.stdout.off("data", check);
-      resolve({ origin: match[1], process: child, output: () => output, exited });
-    };
-    child.stdout.on("data", check);
-    child.once("exit", () => {
-      clearTimeout(timeout);
-      reject(new Error("Child server exited before listening: " + output));
-    });
-  });
-}
-
 describe("M9-3 durable campaign save over a real file database", () => {
   const directories: string[] = [];
   const servers: RunningCardGuildServer[] = [];
   const stores: Persistence[] = [];
   const sockets: SocketClient[] = [];
-  const children: ChildProcessWithoutNullStreams[] = [];
+  const children: FaultChild[] = [];
 
   afterEach(async () => {
     await Promise.all(sockets.splice(0).map((socket) => socket.close()));
-    for (const child of children.splice(0)) if (child.exitCode === null) child.kill("SIGKILL");
+    // Killed children are already gone; the wait is what keeps a survivor from holding the
+    // database open while the next test's temporary directory is removed.
+    for (const child of children.splice(0)) await child.stop(["SIGKILL"]);
     for (const server of servers.splice(0)) await server.close();
     stores.splice(0);
     for (const directory of directories.splice(0)) rmSync(directory, { recursive: true, force: true });
@@ -242,6 +96,10 @@ describe("M9-3 durable campaign save over a real file database", () => {
     const directory = mkdtempSync(path.join(tmpdir(), "cardguild-m9-3-net-"));
     directories.push(directory);
     return path.join(directory, "campaigns.sqlite");
+  }
+
+  function markerPath(file: string): string {
+    return path.join(path.dirname(file), "fault-marker.json");
   }
 
   async function startServer(file: string): Promise<RunningCardGuildServer> {
@@ -267,11 +125,19 @@ describe("M9-3 durable campaign save over a real file database", () => {
   }
 
   async function seedAccount(file: string): Promise<void> {
-    const child = await startChildServer(file, "none", 0, true);
-    children.push(child.process);
-    child.process.kill("SIGTERM");
-    await child.exited;
-    children.pop();
+    const persistence = createSqlitePersistence(file);
+    await createAuthService(persistence).createAccount(ACCOUNT.username, ACCOUNT.password);
+    persistence.close();
+  }
+
+  async function startChild(file: string): Promise<FaultChild> {
+    const child = await startFaultServer({
+      databasePath: file,
+      markerPath: markerPath(file),
+      origin: TEST_ORIGIN,
+    });
+    children.push(child);
+    return child;
   }
 
   async function openCampaign(origin: string, cookie: string): Promise<{
@@ -425,19 +291,20 @@ describe("M9-3 durable campaign save over a real file database", () => {
   it("recovers the previous save when the server dies before the durable write", async () => {
     const file = databasePath();
     await seedAccount(file);
-    const child = await startChildServer(file, "before", 3, false);
-    children.push(child.process);
+    const child = await startChild(file);
     const cookie = await signIn(child.origin);
     const opened = await openCampaign(child.origin, cookie);
     const client = await SocketClient.connect(child.origin, opened.credential);
     sockets.push(client);
     const midCombat = await playToCombat(client);
+    // Armed only now, so the setup writes cannot be mistaken for the transition under test.
+    await child.arm({ when: "before", target: "combat-command" });
 
-    // Commit 3 is this end-turn. The process dies before the write reaches SQLite.
+    // The process dies before this end-turn's write reaches SQLite.
     client.send(envelope("doomed-turn", midCombat.revision, { type: "end-turn", facing: "north" }));
-    expect(await child.exited).toBe(9);
-    expect(child.output()).toContain("FAULT before commit 3");
-    children.pop();
+    expect(await child.exited).toEqual({ code: null, signal: "SIGKILL" });
+    expect(child.marker()).toMatchObject({ when: "before", target: "combat-command", matched: 1 });
+    children.splice(0);
     sockets.splice(0);
 
     const recovered = await startServer(file);
@@ -458,21 +325,21 @@ describe("M9-3 durable campaign save over a real file database", () => {
   it("recovers the committed save when the server dies after the write but before publishing it", async () => {
     const file = databasePath();
     await seedAccount(file);
-    const child = await startChildServer(file, "after", 3, false);
-    children.push(child.process);
+    const child = await startChild(file);
     const cookie = await signIn(child.origin);
     const opened = await openCampaign(child.origin, cookie);
     const client = await SocketClient.connect(child.origin, opened.credential);
     sockets.push(client);
     const midCombat = await playToCombat(client);
+    await child.arm({ when: "after", target: "combat-command" });
     const intent: SessionIntent = { type: "end-turn", facing: "north" };
     // The client never sees an ACK for this, but the database is about to hold it.
     const expected = nextState(midCombat.state, intent);
 
     client.send(envelope("unacked-turn", midCombat.revision, intent));
-    expect(await child.exited).toBe(9);
-    expect(child.output()).toContain("FAULT after commit 3");
-    children.pop();
+    expect(await child.exited).toEqual({ code: null, signal: "SIGKILL" });
+    expect(child.marker()).toMatchObject({ when: "after", target: "combat-command", matched: 1 });
+    children.splice(0);
     sockets.splice(0);
 
     const recovered = await startServer(file);

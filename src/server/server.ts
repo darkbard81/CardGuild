@@ -31,6 +31,15 @@ export interface RunningCardGuildServer {
   readonly httpServer: HttpServer;
   readonly store: SessionStore;
   readonly origin: string;
+  /**
+   * Stop serving and close the database, exactly once.
+   *
+   * Idempotent by contract: concurrent callers and callers after the fact all await the
+   * same shutdown and see the same outcome. `SIGINT` and `SIGTERM` can both arrive, and a
+   * second attempt that re-ran this sequence would close an already closed database.
+   * A failure is reported to every caller rather than swallowed — a shutdown that could
+   * not finish writing must not look like a clean one.
+   */
   close(): Promise<void>;
 }
 
@@ -77,8 +86,18 @@ export async function startCardGuildServer(options: StartServerOptions): Promise
     campaigns: createCampaignService(persistence, store),
     cookie: options.cookie ?? { secure: false, ttlMs: authTtlMs },
   });
+  // In-flight request handlers. `httpServer.close()` waits for sockets, not for the async
+  // work a handler is still doing, and a Continue is a durable write — so the database
+  // cannot close until these settle.
+  const pendingRequests = new Set<Promise<void>>();
+  let closing = false;
   const httpServer = createServer((request, response) => {
-    void (async () => {
+    if (closing) {
+      response.writeHead(503, { "content-type": "application/json; charset=utf-8", connection: "close" });
+      response.end(JSON.stringify({ code: "SERVER_CLOSING", message: "The server is shutting down." }));
+      return;
+    }
+    const handled = (async () => {
       if (await api(request, response)) return;
       const pathname = new URL(request.url ?? "/", "http://cardguild.local").pathname;
       if (options.staticRoot && await serveStatic(options.staticRoot, pathname, response)) return;
@@ -88,6 +107,8 @@ export async function startCardGuildServer(options: StartServerOptions): Promise
       if (!response.headersSent) response.writeHead(500, { "content-type": "application/json; charset=utf-8" });
       response.end(JSON.stringify({ code: "SERVER_ERROR", message: "Internal server error." }));
     });
+    pendingRequests.add(handled);
+    void handled.finally(() => pendingRequests.delete(handled));
   });
   const gateway = attachWebSocketGateway(httpServer, store, {
     allowedOrigins: options.allowedOrigins,
@@ -107,17 +128,33 @@ export async function startCardGuildServer(options: StartServerOptions): Promise
   });
   const address = httpServer.address();
   if (!address || typeof address === "string") throw new Error("Server did not bind a TCP port.");
+  let shutdown: Promise<void> | null = null;
   return {
     httpServer,
     store,
     origin: `http://${host}:${address.port}`,
-    close: async () => {
+    close: () => (shutdown ??= (async () => {
+      // Refuse new work first, so nothing can join the set of things being waited on.
+      closing = true;
+      // Message handlers that were already read off a socket reach their SessionHost queue
+      // here, which is what makes `drain()` below cover them.
       await gateway.close();
-      await new Promise<void>((resolve, reject) => httpServer.close((error) => error ? reject(error) : resolve()));
-      // New work is refused and every host queue is drained before the database closes, so a
-      // transition that already told a client "committed" is never left half written.
+      const stopped = new Promise<void>((resolve, reject) => httpServer.close((error) => {
+        // Already-stopped is the idempotent case, not a failure: the listener may have been
+        // closed by an earlier attempt or by the runtime.
+        const code = (error as NodeJS.ErrnoException | undefined)?.code;
+        if (error && code !== "ERR_SERVER_NOT_RUNNING") reject(error);
+        else resolve();
+      }));
+      // Keep-alive sockets with no request in flight would otherwise hold the listener open
+      // for their whole idle timeout.
+      httpServer.closeIdleConnections();
+      await stopped;
+      await Promise.allSettled([...pendingRequests]);
+      // Every host queue is drained before the database closes, so a transition that already
+      // told a client "committed" is never left half written.
       await store.drain();
       persistence.close();
-    },
+    })()),
   };
 }

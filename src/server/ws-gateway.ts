@@ -69,10 +69,23 @@ export function attachWebSocketGateway(
     perMessageDeflate: false,
   });
   const alive = new Map<WebSocket, boolean>();
+  /**
+   * The tail of each connection's message queue. A message that has been read off the wire
+   * but has not yet reached a SessionHost queue is invisible to `SessionStore.drain()`, so
+   * shutdown has to wait on these too — otherwise the database can close underneath a
+   * handler that is still on its way to a durable write.
+   */
+  const inFlight = new Map<WebSocket, () => Promise<void>>();
+  let closing = false;
 
   server.on("upgrade", (request, socket, head) => {
     const url = new URL(request.url ?? "/", "http://cardguild.local");
     const origin = request.headers.origin;
+    if (closing) {
+      socket.write("HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
     if (url.pathname !== "/ws" || (origin && !options.allowedOrigins.has(origin))) {
       socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
       socket.destroy();
@@ -150,7 +163,11 @@ export function attachWebSocketGateway(
       await host.handleIntent(identity.playerId, connectionId, message);
     }
 
+    inFlight.set(socket, () => messageQueue);
     socket.on("message", (data, isBinary) => {
+      // A message that arrives after shutdown started is dropped rather than queued: the
+      // socket is about to be terminated and its answer could never be delivered.
+      if (closing) return;
       const operation = messageQueue.then(
         () => handleIncoming(data, isBinary),
         () => handleIncoming(data, isBinary),
@@ -169,6 +186,7 @@ export function attachWebSocketGateway(
     socket.on("close", () => {
       clearTimeout(deadline);
       alive.delete(socket);
+      inFlight.delete(socket);
       if (identity) void store.get(identity.sessionId)?.detach(identity.playerId, connectionId);
     });
   });
@@ -185,10 +203,14 @@ export function attachWebSocketGateway(
   }, options.heartbeatMs ?? 30_000);
 
   return {
-    close: () => new Promise<void>((resolve) => {
+    close: async () => {
+      closing = true;
       clearInterval(heartbeat);
+      // Drain before terminating: a handler still deciding what to do with a message it
+      // already read must reach its SessionHost queue, so that `drain()` can see it.
+      await Promise.allSettled([...inFlight.values()].map((queue) => queue()));
       for (const socket of webSockets.clients) socket.terminate();
-      webSockets.close(() => resolve());
-    }),
+      await new Promise<void>((resolve) => webSockets.close(() => resolve()));
+    },
   };
 }
