@@ -1,4 +1,5 @@
 import { mkdtempSync, rmSync } from "node:fs";
+import { createServer, type Server as HttpServer } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { DatabaseSync } from "node:sqlite";
@@ -8,6 +9,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 import { PRODUCTION_CONTENT } from "../../src/content";
 import type { ClientIntentEnvelope, ServerAck, ServerMessage, ServerSnapshot } from "../../src/protocol";
+import type { SessionDurability } from "../../src/server/campaign-durability";
 import { restoreCampaignSave } from "../../src/server/campaign-save";
 import { digestReconnectToken } from "../../src/server/credentials";
 import { createSqlitePersistence, type CampaignSaveRecord, type Persistence } from "../../src/server/persistence";
@@ -15,6 +17,8 @@ import { startCardGuildServer, type RunningCardGuildServer } from "../../src/ser
 import type { SessionCredentialResponse } from "../../src/server/session-store";
 import type { SessionIntent } from "../../src/session";
 import { createAuthService } from "../../src/server/auth-service";
+import { SessionStore } from "../../src/server/session-store";
+import { attachWebSocketGateway } from "../../src/server/ws-gateway";
 
 const TEST_ORIGIN = "http://cardguild.test";
 const ACCOUNT = { username: "shutdown-host", password: "shutdown host password" };
@@ -42,6 +46,41 @@ function counting(inner: Persistence): CountingPersistence {
       inner.close();
     },
   };
+}
+
+/** A durable write the test can park in flight, which is what a real remote store does. */
+interface HeldDurability extends SessionDurability {
+  /** Resolves once the first commit is inside the write and waiting. */
+  readonly entered: Promise<void>;
+  release(): void;
+}
+
+function holdFirstCommit(): HeldDurability {
+  let announce: (() => void) | undefined;
+  const entered = new Promise<void>((resolve) => { announce = resolve; });
+  let open: (() => void) | undefined;
+  const gate = new Promise<void>((resolve) => { open = resolve; });
+  let held = false;
+  return {
+    entered,
+    release: () => open?.(),
+    async commitGameplayTransition() {
+      if (held) return;
+      held = true;
+      announce?.();
+      await gate;
+    },
+  };
+}
+
+/** Counts the gateway's own lookups, which is how a handler makes itself observable. */
+class ObservedStore extends SessionStore {
+  public lookups = 0;
+
+  public override get(sessionId: string): ReturnType<SessionStore["get"]> {
+    this.lookups += 1;
+    return super.get(sessionId);
+  }
 }
 
 class SocketClient {
@@ -320,5 +359,80 @@ describe("M9-5 graceful shutdown", () => {
     persistence.failClose(null);
     servers.splice(servers.indexOf(server), 1);
     persistence.close();
+  }, 60_000);
+
+  /**
+   * The exact ordering the shutdown contract has to survive: a message is being handled,
+   * the client's socket closes first, and shutdown starts immediately after.
+   *
+   * This is a gateway-level test on purpose. The invariant belongs to the gateway — "close
+   * does not return while a message it already accepted is still being handled" — and
+   * `server.close()` is built on top of it. It also cannot be reached through the whole
+   * server today: nothing in the intent path awaits real I/O, so every accepted message
+   * finishes inside the tick that read it and can never still be running when the socket's
+   * close event arrives. A durability that talks to anything remote changes that on its
+   * first line, which is precisely why this is pinned now rather than after.
+   */
+  it("waits for a message it already accepted even when that socket closed first", async () => {
+    const httpServer: HttpServer = createServer((_request, response) => {
+      response.writeHead(404).end();
+    });
+    const store = new ObservedStore(CONTEXT, {
+      sessionId: () => "session-race",
+      playerId: () => "player-race",
+      reconnectCredential: () => {
+        const token = "reconnect-race";
+        return { token, digest: digestReconnectToken(token) };
+      },
+      adventureSeed: () => 1,
+    });
+    const gateway = attachWebSocketGateway(httpServer, store, {
+      allowedOrigins: new Set([TEST_ORIGIN]),
+      heartbeatMs: 60_000,
+    });
+    await new Promise<void>((resolve) => httpServer.listen(0, "127.0.0.1", () => resolve()));
+    const address = httpServer.address();
+    if (!address || typeof address === "string") throw new Error("The test server did not bind a port.");
+    const origin = `http://127.0.0.1:${String(address.port)}`;
+
+    const held = holdFirstCommit();
+    const credential = store.create("Host", held);
+    const client = await SocketClient.connect(origin, credential);
+    const opening = await client.waitFor(
+      (message): message is ServerSnapshot => message.type === "snapshot");
+
+    // Two messages down one socket. The first parks inside its durable write, so the second
+    // is provably still sitting in the gateway's queue rather than on a SessionHost queue —
+    // which is exactly the work `SessionStore.drain()` cannot see.
+    client.send(envelope("first", opening.revision, {
+      type: "set-party-composition", actorDefinitionIds: [...PARTY],
+    }));
+    client.send(envelope("second", opening.revision + 1, { type: "begin-adventure" }));
+    await held.entered;
+
+    // TCP keeps the order, so the server reads the second message and only then the close.
+    await client.close();
+    const lookupsBeforeClose = store.lookups;
+    await expect.poll(() => store.lookups, { timeout: 10_000 }).toBeGreaterThan(lookupsBeforeClose - 1);
+    // Let the close handler land before shutdown starts.
+    await new Promise<void>((resolve) => setTimeout(resolve, 50));
+    const settled = store.lookups;
+
+    let finished = false;
+    const closing = gateway.close().then(() => { finished = true; });
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    // Still holding: the accepted message has not been handled, so close cannot be done.
+    expect(finished).toBe(false);
+    expect(store.lookups).toBe(settled);
+
+    held.release();
+    await closing;
+    // The queued message ran to completion before close returned. Tracking it per socket
+    // would have dropped it the moment that socket closed, and `store.drain()` — the next
+    // step in the shutdown order — would have walked straight past it.
+    expect(store.lookups).toBeGreaterThan(settled);
+
+    await store.drain();
+    await new Promise<void>((resolve, reject) => httpServer.close((error) => error ? reject(error) : resolve()));
   }, 60_000);
 });

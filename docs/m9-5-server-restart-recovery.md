@@ -51,6 +51,19 @@ gateway의 미완료 작업은 **socket이 아니라 operation 단위로** 추�
 지나쳐 버린다. 그 작업이 `store.drain()` barrier보다 늦게 SessionHost queue에 닿으면 새 종료
 계약이 그대로 깨진다. connection cleanup과 operation 추적은 수명이 다르다.
 
+이 순서는 `server-shutdown.integration.test.ts`의 "waits for a message it already accepted
+even when that socket closed first"가 직접 강제한다 — 첫 메시지를 durable write 안에 세워
+두고, 두 번째 메시지를 gateway 큐에 남긴 채 **클라이언트 소켓을 먼저 닫고**, 곧바로 종료를
+시작한다. 고치기 전 코드에서는 종료가 그 메시지를 남겨둔 채 즉시 끝나 실패하고, 고친 뒤에는
+그 메시지가 끝날 때까지 기다린다.
+
+이 테스트가 gateway 단위인 것은 의도적이다. 불변식이 gateway의 것이고(`close()`는 이미 받은
+메시지가 처리 중인 동안 끝나지 않는다) `server.close()`가 그 위에 서 있기 때문이며, 또한
+지금은 서버 전체 경로로는 도달할 수 없기 때문이다 — intent 경로에 실제 I/O를 기다리는 지점이
+없어서, 받은 메시지는 그것을 읽은 tick 안에서 끝나고 소켓의 close 이벤트가 도착할 때에는 이미
+남아 있지 않다. 원격 저장소를 쓰는 durability는 첫 줄에서 그것을 바꾼다. 그래서 지금 못 박아
+둔다.
+
 `main.ts`는 `process.once`가 아니라 `process.on`으로 신호를 받는다. `once`면 두 번째
 `SIGTERM`이 Node 기본 핸들러로 떨어져 flush 도중 프로세스를 죽이는데, 이 순서가 막으려는
 것이 정확히 그 반쯤 쓰인 데이터베이스다.
@@ -220,7 +233,7 @@ npm run test:smoke   # 55 tests
 npm run test:recovery # 5 tests, 배포 빌드
 ```
 
-전부 통과했다. 네트워크 테스트는 M9-4 시점 28개에서 43개로 늘었다(신규: 종료 4, 장애
+전부 통과했다. 네트워크 테스트는 M9-4 시점 28개에서 44개로 늘었다(신규: 종료 5, 장애
 매트릭스 9, ACK 유실 2). `test:recovery`는 `npm test` 집계와 **`.github/workflows/ci.yml`의
 필수 gate**에 모두 들어간다 — 로컬 전체 gate만 통과하고 CI에서는 배포 빌드 재시작이 검증되지
 않는 상태를 남기지 않기 위해서다.
