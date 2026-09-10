@@ -282,8 +282,10 @@ fixture를 import하는 것은 ESLint가 막습니다. 디렉터리 안내는
 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로 추가할 수 있습니다.
 
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
-`art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
-`art/processed`에 있습니다. runtime 저장은 두 갈래입니다 — terrain/object/UI는 4096² WebP
+`art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리를 마친 정규화 프레임은
+`art/processed`에 있습니다. 같은 build가 만드는 `art/processed/qc`는 눈으로 보는
+미리보기라 tracked하지 않습니다 — 필요하면 `npx tsx tools/assets/build-assets.ts`가
+다시 만듭니다. runtime 저장은 두 갈래입니다 — terrain/object/UI는 4096² WebP
 atlas(`public/assets/m3-atlas.{webp,json}`), actor standee는 파일 한 장씩
 (`public/assets/actors/<namespace>/<name>/{front,back}.webp`). 논리 asset ID는 양쪽에서
 동일하고, atlas·ground/transition/object layer 및 Equipment/Card icon mapping은

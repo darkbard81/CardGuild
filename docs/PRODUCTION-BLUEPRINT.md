@@ -80,8 +80,9 @@ AUTHORED ART
   art/source/**/*.png              원본 이미지
 
 GENERATED — 직접 수정 금지
-  art/processed/**                 정규화 프레임, QC, pipeline-meta.json
+  art/processed/**                 정규화 프레임, pipeline-meta.json  (tracked)
   art/processed/actors/<namespace>/<name>/{front,back}.png       정규화 standee
+  art/processed/qc/**              QC 미리보기 — 사람이 눈으로 보는 산출물, tracked 아님
   art/processed/qc/actors/<namespace>/<name>/front-back.png      QC 미리보기
   presentation/m3/asset-manifest.json  asset-sources.json  tilemaps.json
   public/assets/m3-atlas.webp  public/assets/m3-atlas.json   ← terrain / object / UI
@@ -954,7 +955,7 @@ enemy.goblin.elite      → enemy/goblin/elite
 
 ```text
 art/processed/actors/hero/aerin/front.png        정규화 PNG (source of truth)
-art/processed/qc/actors/hero/aerin/front-back.png QC
+art/processed/qc/actors/hero/aerin/front-back.png QC (로컬 전용, tracked 아님)
 public/assets/actors/hero/aerin/front.webp        runtime
 ```
 

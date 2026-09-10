@@ -9,3 +9,4 @@ test-results/
 *.log
 .DS_Store
 docs/temp_plan/
+art/processed/qc/
