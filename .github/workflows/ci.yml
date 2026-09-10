@@ -20,3 +20,6 @@ jobs:
       - run: npm run build
       - run: npm run test:network
       - run: npm run test:smoke
+      # The deployment build restarting on its own database is the last M9 gate, so it is
+      # required here rather than only in the local `npm test` aggregate.
+      - run: npm run test:recovery

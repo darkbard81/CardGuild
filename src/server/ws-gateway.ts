@@ -70,12 +70,18 @@ export function attachWebSocketGateway(
   });
   const alive = new Map<WebSocket, boolean>();
   /**
-   * The tail of each connection's message queue. A message that has been read off the wire
-   * but has not yet reached a SessionHost queue is invisible to `SessionStore.drain()`, so
-   * shutdown has to wait on these too — otherwise the database can close underneath a
-   * handler that is still on its way to a durable write.
+   * Every message operation that has not settled yet, tracked per operation rather than
+   * per socket.
+   *
+   * A message that has been read off the wire but has not yet reached a SessionHost queue
+   * is invisible to `SessionStore.drain()`, so shutdown has to wait on these too —
+   * otherwise the database can close underneath a handler still on its way to a durable
+   * write. Keying this by socket would reintroduce exactly that: a socket that closes while
+   * its queue is still running would drop the whole queue from the set, and a shutdown
+   * starting a moment later would walk straight past work that then lands after the drain
+   * barrier. Connection cleanup and operation tracking are separate lifetimes.
    */
-  const inFlight = new Map<WebSocket, () => Promise<void>>();
+  const pending = new Set<Promise<void>>();
   let closing = false;
 
   server.on("upgrade", (request, socket, head) => {
@@ -163,7 +169,6 @@ export function attachWebSocketGateway(
       await host.handleIntent(identity.playerId, connectionId, message);
     }
 
-    inFlight.set(socket, () => messageQueue);
     socket.on("message", (data, isBinary) => {
       // A message that arrives after shutdown started is dropped rather than queued: the
       // socket is about to be terminated and its answer could never be delivered.
@@ -182,11 +187,15 @@ export function attachWebSocketGateway(
           socket.close(1011, "session authority failure");
         }
       });
+      const tracked = messageQueue;
+      pending.add(tracked);
+      void tracked.finally(() => pending.delete(tracked));
     });
     socket.on("close", () => {
+      // Connection cleanup only. Whatever this socket already handed to the queue stays
+      // tracked in `pending` until it actually settles.
       clearTimeout(deadline);
       alive.delete(socket);
-      inFlight.delete(socket);
       if (identity) void store.get(identity.sessionId)?.detach(identity.playerId, connectionId);
     });
   });
@@ -207,8 +216,9 @@ export function attachWebSocketGateway(
       closing = true;
       clearInterval(heartbeat);
       // Drain before terminating: a handler still deciding what to do with a message it
-      // already read must reach its SessionHost queue, so that `drain()` can see it.
-      await Promise.allSettled([...inFlight.values()].map((queue) => queue()));
+      // already read must reach its SessionHost queue, so that `drain()` can see it. New
+      // messages are already refused, so this loop is bounded by the work in hand.
+      while (pending.size > 0) await Promise.allSettled([...pending]);
       for (const socket of webSockets.clients) socket.terminate();
       await new Promise<void>((resolve) => webSockets.close(() => resolve()));
     },

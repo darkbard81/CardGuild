@@ -325,25 +325,61 @@ describe("M9-5 crash recovery across every durable transition", () => {
     expect(active.state.lifecycle).toBe("active");
   }, 300_000);
 
-  it("grants a chosen reward exactly once across a crash on its write", async () => {
+  it("grants a chosen reward exactly once across a crash on either side of its write", async () => {
     const firstReward = ADVENTURE.rewards.find((reward) => reward.afterEncounterId === ADVENTURE.encounterIds[0]);
     if (!firstReward) throw new Error("The first production encounter is expected to offer a reward.");
-
-    const crashed = await crashAt("reward", "after");
-    // The client was left looking at the offer it had already chosen from.
-    expect(crashed.seen.phase).toBe("reward");
-
-    const recovered = await recover(crashed.file, crashed.campaignId);
-    const progress = progressOf(recovered.snapshot.state.adventure);
-    // The grant and the pending offer resolve together, and the copy count moves by one.
-    expect(progress.owned).toBe(crashed.seen.owned + 1);
-    expect(recovered.snapshot.state.adventure?.pendingReward).toBeNull();
-    expect(recovered.campaignRevision).toBe(crashed.faultRevision);
     const chosen = firstReward.choices[0];
     if (!chosen) throw new Error("The first reward offers nothing.");
-    const collection = recovered.snapshot.state.adventure?.collection;
-    const owned = chosen.kind === "card" ? collection?.cards : collection?.equipment;
-    expect(owned?.[chosen.definitionId]).toBeGreaterThanOrEqual(1);
+    const copiesOf = (snapshot: ServerSnapshot): number => {
+      const collection = snapshot.state.adventure?.collection;
+      return (chosen.kind === "card" ? collection?.cards : collection?.equipment)?.[chosen.definitionId] ?? 0;
+    };
+
+    const beforeCrash = await crashAt("reward", "before");
+    // The client is left on the offer it had already chosen from, still unresolved.
+    expect(beforeCrash.seen.phase).toBe("reward");
+    const beforeRecovered = await recover(beforeCrash.file, beforeCrash.campaignId);
+    // The offer is still open and nothing was granted, so the choice can simply be remade.
+    expect(beforeRecovered.snapshot.state.adventure?.pendingReward?.rewardId).toBe(firstReward.id);
+    expect(progressOf(beforeRecovered.snapshot.state.adventure).owned).toBe(beforeCrash.seen.owned);
+    expect(beforeRecovered.snapshot.gameplayHash).toBe(beforeCrash.lastSeen.gameplayHash);
+    expect(beforeRecovered.campaignRevision).toBe(beforeCrash.faultRevision);
+
+    const beforeCopies = copiesOf(beforeRecovered.snapshot);
+    const active = await play(beforeRecovered.client, beforeRecovered.snapshot, "resume", { type: "resume-adventure" });
+    const remade = await play(beforeRecovered.client, active, "retake", {
+      type: "choose-reward", rewardId: firstReward.id, choiceIndex: 0,
+    });
+    // Retaking it grants exactly one copy, so the crash cost nothing and duplicated nothing.
+    expect(copiesOf(remade)).toBe(beforeCopies + 1);
+
+    const afterCrash = await crashAt("reward", "after");
+    const afterRecovered = await recover(afterCrash.file, afterCrash.campaignId);
+    const progress = progressOf(afterRecovered.snapshot.state.adventure);
+    // The grant and the pending offer resolve together, and the copy count moves by one.
+    expect(progress.owned).toBe(afterCrash.seen.owned + 1);
+    expect(afterRecovered.snapshot.state.adventure?.pendingReward).toBeNull();
+    expect(afterRecovered.campaignRevision).toBe(afterCrash.faultRevision);
+    expect(copiesOf(afterRecovered.snapshot)).toBeGreaterThanOrEqual(1);
+  }, 300_000);
+
+  it("keeps an enemy turn where it was when an AI step dies before its write", async () => {
+    const crashed = await crashAt("ai-command", "before");
+
+    const recovered = await recover(crashed.file, crashed.campaignId);
+    // Every AI step commits on its own, so a crash before one loses that step and nothing
+    // else — the battle comes back exactly as the clients last saw it.
+    expect(recovered.snapshot.gameplayHash).toBe(crashed.lastSeen.gameplayHash);
+    expect(recovered.snapshot.state.combat).toEqual(crashed.lastSeen.state.combat);
+    expect(recovered.campaignRevision).toBe(crashed.faultRevision);
+
+    // Resume wakes the AI again and it takes the step the crash swallowed.
+    const stalled = recovered.snapshot.state.combat?.sequence ?? 0;
+    const active = await play(recovered.client, recovered.snapshot, "resume", { type: "resume-adventure" });
+    expect(active.gameplayHash).toBe(recovered.snapshot.gameplayHash);
+    const settled = await settle(recovered.client, active.revision);
+    expect(settled).not.toBeNull();
+    expect(settled?.state.combat?.sequence ?? 0).toBeGreaterThan(stalled);
   }, 180_000);
 
   it("resumes an enemy turn from the last committed AI step rather than replaying it", async () => {
@@ -366,6 +402,75 @@ describe("M9-5 crash recovery across every durable transition", () => {
     expect(settled).not.toBeNull();
     expect(settled?.state.combat?.sequence ?? 0).toBeGreaterThanOrEqual(beforeResume);
   }, 180_000);
+
+  it("finishes the Adventure exactly once when the last victory is killed on either side of its write", async () => {
+    const last = ADVENTURE.encounterIds.at(-1);
+    const totalExperience = ADVENTURE.experienceAwards.reduce((sum, award) => sum + award.amount, 0);
+
+    const beforeCrash = await crashAt("adventure-complete", "before");
+    // The run is one victory short: still fighting, still Lv.3 from the seventh win.
+    expect(beforeCrash.seen.completed).toHaveLength(ADVENTURE.encounterIds.length - 1);
+    const beforeRecovered = await recover(beforeCrash.file, beforeCrash.campaignId);
+    const beforeProgress = progressOf(beforeRecovered.snapshot.state.adventure);
+    expect(beforeProgress.phase).toBe("combat");
+    expect(beforeProgress.completed).toHaveLength(ADVENTURE.encounterIds.length - 1);
+    expect(beforeProgress.experience).toEqual([0, 0, 0]);
+    expect(beforeRecovered.snapshot.gameplayHash).toBe(beforeCrash.lastSeen.gameplayHash);
+    expect(beforeRecovered.campaignRevision).toBe(beforeCrash.faultRevision);
+
+    // Recovery is not a dead end even at the finale: the party resumes and finishes it.
+    const active = await play(beforeRecovered.client, beforeRecovered.snapshot, "resume", { type: "resume-adventure" });
+    const finished = await drive(beforeRecovered.client, {
+      until: (snapshot) => snapshot.state.adventure?.phase === "complete",
+      prefix: "finish",
+      from: active.revision,
+    });
+    expect(finished.died).toBe(false);
+    expect(progressOf(finished.snapshot?.state.adventure).completed).toHaveLength(ADVENTURE.encounterIds.length);
+
+    const afterCrash = await crashAt("adventure-complete", "after");
+    const afterRecovered = await recover(afterCrash.file, afterCrash.campaignId);
+    const afterProgress = progressOf(afterRecovered.snapshot.state.adventure);
+    // Completion, the final Encounter and its EXP land together, and only once.
+    expect(afterProgress.phase).toBe("complete");
+    expect(afterProgress.completed).toEqual([...ADVENTURE.encounterIds]);
+    expect(afterProgress.completed.at(-1)).toBe(last);
+    expect(afterProgress.levels).toEqual([3, 3, 3]);
+    expect(afterProgress.experience).toEqual([totalExperience % 1_000, totalExperience % 1_000, totalExperience % 1_000]);
+    expect(afterRecovered.campaignRevision).toBe(afterCrash.faultRevision);
+    // A finished Adventure has nothing left to do, so Resume publishes it unchanged.
+    const resumed = await play(afterRecovered.client, afterRecovered.snapshot, "resume", { type: "resume-adventure" });
+    expect(resumed.gameplayHash).toBe(afterRecovered.snapshot.gameplayHash);
+    expect(storedRevision(afterCrash.file, afterCrash.campaignId)).toBe(afterRecovered.campaignRevision);
+  }, 600_000);
+
+  it("has no enemy reaction boundary to crash on, and says so if that ever changes", () => {
+    // The plan asks for an enemy-reaction fault case. The shipped pack cannot produce one:
+    // `reactive-strike` is the only Reaction, and no Creature is granted it, so a Reaction
+    // window never opens on an enemy and the server AI never commits one. Rather than
+    // write a case that can only ever pass vacuously, this states the reason — and fails
+    // the moment a later pack makes the case real and therefore missing.
+    const content = PRODUCTION_CONTENT.pack.combatContent;
+    const reactionActionIds = new Set(Object.values(content.actions)
+      .filter((action) => action.timing.kind === "reaction")
+      .map((action) => action.id));
+    const reactionCardIds = new Set(Object.values(content.cards)
+      .filter((card) => reactionActionIds.has(card.actionId))
+      .map((card) => card.id));
+    const reactingCreatures = Object.values(PRODUCTION_CONTENT.pack.actorDefinitions)
+      .filter((actor) => actor.statProfile.kind === "creature")
+      .filter((actor) => {
+        const granted = [
+          ...actor.baseCardGrants.map((grant) => grant.cardDefinitionId),
+          ...actor.traits.flatMap((trait) => (content.traits[trait.id]?.cardGrants ?? [])
+            .map((grant) => grant.cardDefinitionId)),
+        ];
+        return granted.some((id) => reactionCardIds.has(id)) ||
+          actor.innateActionIds.some((id) => reactionActionIds.has(id));
+      })
+      .map((actor) => actor.id);
+    expect(reactingCreatures).toEqual([]);
+  });
 
   it("leaves a content migration either untouched or done, and never done twice", async () => {
     for (const when of ["before", "after"] as const) {

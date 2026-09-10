@@ -140,9 +140,14 @@ const faulting: Persistence = {
       if (matched !== (spec.nth ?? 1)) return campaigns.commitSave(input);
       if (spec.when === "before") die("before", input.expectedCampaignRevision);
       const result = campaigns.commitSave(input);
+      // Only a write that actually landed opens the "after" window. A refused CAS is a
+      // transition the database does not hold, so killing there would be a "before" fault
+      // wearing the wrong name — and the recovery assertions would be judging the wrong
+      // contract. A refused commit is handed back so the server can report it normally.
+      if (!result.committed) return result;
       // The write is durable and the caller never learns it succeeded: exactly the window
       // where a client has seen no ACK for gameplay the database already holds.
-      die("after", result.committed ? result.campaignRevision : input.expectedCampaignRevision);
+      die("after", result.campaignRevision);
     },
   },
 };

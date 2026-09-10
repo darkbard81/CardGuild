@@ -31,7 +31,7 @@ Host Continue** 정책은 그대로다.
 | 중복 `close()`가 실패 | 하나의 shutdown Promise를 공유한다. 동시 호출·사후 호출 모두 같은 결과를 받는다 |
 | 종료 중 신규 작업 유입 | HTTP는 `503 SERVER_CLOSING`, WebSocket upgrade는 `503`, 이미 열린 소켓의 신규 메시지는 폐기 |
 | in-flight HTTP 작업 유실 | `httpServer.close()`는 소켓만 기다린다. 핸들러 Promise를 따로 추적해 DB close 전에 기다린다 |
-| gateway 큐 유실 | 소켓에서 읽었지만 아직 SessionHost queue에 닿지 않은 메시지는 `store.drain()`에 보이지 않는다. gateway가 각 연결의 message queue를 먼저 배수한다 |
+| gateway 큐 유실 | 소켓에서 읽었지만 아직 SessionHost queue에 닿지 않은 메시지는 `store.drain()`에 보이지 않는다. gateway가 미완료 작업을 먼저 배수한다 |
 | keep-alive 소켓이 listener를 붙잡음 | `closeIdleConnections()` |
 | 종료 실패를 성공으로 숨김 | 모든 호출자에게 전달하고, `main.ts`는 `exitCode = 1` |
 
@@ -45,6 +45,11 @@ closing = true                      신규 HTTP·upgrade·메시지 차단
 → store.drain()                     모든 SessionHost queue 배수
 → persistence.close()               정확히 한 번
 ```
+
+gateway의 미완료 작업은 **socket이 아니라 operation 단위로** 추적한다. socket 기준이면 큐가
+아직 돌고 있는 채로 닫힌 연결이 그 큐 전체를 집합에서 빼 가고, 잠시 뒤 시작한 종료가 그 작업을
+지나쳐 버린다. 그 작업이 `store.drain()` barrier보다 늦게 SessionHost queue에 닿으면 새 종료
+계약이 그대로 깨진다. connection cleanup과 operation 추적은 수명이 다르다.
 
 `main.ts`는 `process.once`가 아니라 `process.on`으로 신호를 받는다. `once`면 두 번째
 `SIGTERM`이 Node 기본 핸들러로 떨어져 flush 도중 프로세스를 죽이는데, 이 순서가 막으려는
@@ -69,6 +74,9 @@ Save v1, DB schema v1, content identity는 그대로다.
   닫는데, crash가 결코 하지 못하는 일이 바로 그것이다.
 - 증거는 marker 파일에 **동기적으로** 쓴다. SIGKILL은 pipe로 가는 비동기 stdout write가
   flush되기 전에 프로세스를 가져간다.
+- `after`는 `committed === true`일 때만 발화한다. 거절된 CAS는 DB가 갖고 있지 않은 전이이므로
+  거기서 죽이면 이름만 `after`인 `before` fault가 되고, 복구 assertion이 다른 계약을 판정하게
+  된다. 거절된 commit은 그대로 돌려주어 서버가 평소대로 보고하게 둔다.
 
 ### 공용 테스트 driver
 
@@ -77,7 +85,7 @@ Save v1, DB schema v1, content identity는 그대로다.
 | 모듈 | 무엇 |
 |---|---|
 | `tests/network/socket-client.ts` | hello·waitFor·intent→ACK. 사본 셋은 한 suite가 조용히 다른 것들과 다른 검사를 하게 되는 길이다 |
-| `tests/network/adventure-driver.ts` | production Adventure를 실제로 4전까지 끌고 갈 수 있는 hero 정책. 공유 legality query로만 묻는다 |
+| `tests/network/adventure-driver.ts` | production Adventure를 seed 1에서 8전 완주까지 끌고 갈 수 있는 hero 정책. 공유 legality query로만 묻는다 |
 | `tests/network/campaign-drive.ts` | 스냅샷만 보고 다음 입력을 정하는 구동 loop. child process에는 `host.whenIdle()`이 없으므로 "서버가 사람을 기다리는 지점"을 스냅샷에서 읽는다 |
 | `tests/network/fault-child.ts` | fault 서버의 spawn·arm·marker·정지 |
 
@@ -100,11 +108,26 @@ DB 파일을 열고 Continue한 결과다. `campaignRevision`은 fault marker가
 | 첫 Encounter 승리 | after | 8 | 8 | 완료 `[road-ambush]`, Lv.1, **EXP 200**, phase `reward` |
 | 4전 승리 + Level-Up | before | 260 | 260 | 완료 3개, **Lv.1 / EXP 700**, phase `combat` |
 | 4전 승리 + Level-Up | after | 261 | 261 | 완료 4개, **Lv.2 / EXP 100**, phase `reward` |
-| 보상 선택 | after | 9 | 9 | 소유 수량 15→16, `pendingReward` 해소, phase `between-encounters` |
+| 보상 선택 | before | 8 | 8 | 소유 15 그대로, **offer가 열린 채** phase `reward` |
+| 보상 선택 | after | 9 | 9 | 소유 15→**16**, `pendingReward` 해소, phase `between-encounters` |
+| AI 연속 command | before | 14 | 14 | 마지막으로 본 전투 그대로, Resume이 그 단계를 다시 진행 |
 | AI 연속 command | after | 15 | 15 | `commandLog`가 빈틈 없는 1..N, Resume 후 그 다음 단계부터 재개 |
+| 최종 Encounter 승리 | before | 750 | 750 | 완료 7개, Lv.3 / EXP 0, phase `combat` |
+| 최종 Encounter 승리 | after | 751 | 751 | 완료 **8개**, Lv.3 / **EXP 500**, phase `complete` |
 | 콘텐츠 이관 | before | legacy 유지 | legacy 유지 | 원본 identity·revision 그대로, 다음 Continue가 이관 |
 | 콘텐츠 이관 | after | legacy+1 | legacy+1 | 목표 identity, 반복 Continue에서 **재이관 없음** |
 | 일반 Combat command | before / after | — | — | `campaign-persistence` suite가 유지 (HP·facing·turn·RNG·카드·commandLog 전체) |
+
+`before` 쪽은 "잃지 않았다"만으로는 부족하므로 **다시 할 수 있는지**까지 본다. 보상 before는
+Resume 후 같은 offer를 다시 골라 사본이 정확히 하나 늘고, AI before는 Resume이 삼켜진 그
+단계를 다시 진행하며, 최종 승리 before는 Resume 후 실제로 끝까지 플레이해 완료에 도달한다.
+
+**적 reaction 경계는 없다.** 계획 §3.1이 요구했지만 지금 콘텐츠가 만들 수 없다:
+`reactive-strike`가 유일한 Reaction이고 18종 Creature 중 어느 쪽도 그것을 받지 않으므로 적에게
+Reaction window가 열리지 않고, 서버 AI가 그것을 COMMIT하는 일도 없다. 통과할 수밖에 없는
+빈 케이스를 쓰는 대신 이유를 검사로 남겼다 — matrix suite의 마지막 테스트가 "Reaction을 가진
+Creature가 없다"를 확인하므로, 나중 pack이 그것을 만들면 그 순간 이 커버리지 부재가 실패로
+드러난다.
 
 before 사례의 복구 hash는 클라이언트가 **마지막으로 본 snapshot의 hash와 동일**하다
 (예: 첫 승리 before는 `fnv1a64:cc45880be6093de1`). after 사례는 클라이언트가 본 적 없는
@@ -197,8 +220,10 @@ npm run test:smoke   # 55 tests
 npm run test:recovery # 5 tests, 배포 빌드
 ```
 
-전부 통과했다. 네트워크 테스트는 M9-4 시점 28개에서 40개로 늘었다(신규: 종료 4, 장애
-매트릭스 6, ACK 유실 2). `test:recovery`는 `npm test` 집계에 포함했다.
+전부 통과했다. 네트워크 테스트는 M9-4 시점 28개에서 43개로 늘었다(신규: 종료 4, 장애
+매트릭스 9, ACK 유실 2). `test:recovery`는 `npm test` 집계와 **`.github/workflows/ci.yml`의
+필수 gate**에 모두 들어간다 — 로컬 전체 gate만 통과하고 CI에서는 배포 빌드 재시작이 검증되지
+않는 상태를 남기지 않기 위해서다.
 
 **완료 조건 충족:**
 
