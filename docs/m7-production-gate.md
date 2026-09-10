@@ -9,8 +9,8 @@ M7-9(#20)의 release gate 설계 기록입니다. 새 validator framework를 만
 적용되는 release policy**로 다시 묶는 이슈입니다.
 
 ```text
-npm run content:check              모든 milestone pack의 generic validity
-npm run content:production-check   현재 PRODUCTION_CONTENT의 M7 release policy
+npx tsx tools/content/check-content.ts            모든 milestone pack의 generic validity
+npx tsx tools/content/check-production-content.ts 현재 PRODUCTION_CONTENT의 M7 release policy
 ```
 
 `npm run check`가 둘을 차례로 실행하고 CI는 `npm run check`를 그대로 씁니다. 새 CI job도,
@@ -113,8 +113,8 @@ Card 32개 중 11개가 도달 불가능하다는 것이 이 gate가 처음 드�
 | 1P/2P/3P encounter 조립 | `createAdventureSession` → `buildAdventureEncounter` → `createCombat` |
 | party-size applicability | #16 `placementAppliesToPartySize` (위 경로 안에서) |
 | creature AI 행동 | #15 `src/game/creature-ai.test.ts` |
-| schema / reference / fingerprint | `npm run content:check` |
-| asset 자체의 유효성 | `npm run assets:check` |
+| schema / reference / fingerprint | `check-content` |
+| asset 자체의 유효성 | `check-assets` |
 
 Production gate가 AI에 대해 보는 것은 **정적 참조**뿐입니다. Adventure가 배치하는 enemy가
 Fixed Strike나 innate action 중 하나는 가졌는지, innate ID가 실재하며 AI가 겨냥할 수 있는

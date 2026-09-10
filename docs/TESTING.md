@@ -11,15 +11,35 @@
 | E2E | 실제 앱 진입부터 로그인·캠페인·협동 플레이까지 | Chromium + 개발 서버 묶음 | 30 | ~1.5분 |
 | Recovery | 배포 artifact와 파일 DB의 실제 재시작·강제 종료 | `dist-server` + `dist` | 4 | ~30초 |
 
+`npm test`가 다섯 계층을 위 순서대로 전부 돌립니다. 앞 계층이 실패하면 뒤는 실행되지
+않습니다. Recovery는 배포 산출물을 쓰므로 **`npm run build`가 먼저** 끝나 있어야 합니다 —
+없으면 다시 만들지 않고 그 사실을 말하며 실패합니다.
+
+계층 하나만 돌릴 때는 underlying CLI를 직접 부릅니다. 조립용 alias는 없습니다.
+
 ```bash
-npm run test:unit         # Unit / Node
-npm run test:browser-unit # Unit / Browser 단독 (전용 Vite 포트, 서버·DB 없음)
-npm run test:network      # Integration
-npm run test:e2e          # E2E
-npm run test:smoke        # Unit/Browser + E2E (기본 Playwright 설정의 두 project)
-npm run test:recovery     # Recovery (build 후 배포 artifact 실행)
-npm test                  # 위를 순서대로 전부
+npx vitest run                                                  # Unit / Node
+npx playwright test --config playwright.browser-unit.config.ts  # Unit / Browser
+npx vitest run --config vitest.integration.config.ts            # Integration
+npx playwright test                                             # E2E
+npx playwright test --config playwright.recovery.config.ts      # Recovery (build 선행)
 ```
+
+## gate
+
+```bash
+npm run check   # 정적 검증: content·production policy·자산 검사, TypeScript 5종, ESLint
+npm run build   # 배포 산출물: dist(client), dist-server(server bundle)
+npm test        # 동적 검증: 위 다섯 계층
+```
+
+세 명령은 겹치지 않습니다. `check`는 파일을 만들지 않고 테스트를 돌리지 않으며, `build`는
+검사하지 않고, `test`는 빌드하지 않습니다. 그래서 전체 gate에서 TypeScript도 client build도
+정확히 한 번씩만 돕니다. CI가 실행하는 것도 이 셋뿐입니다.
+
+`check`의 자산 검사는 **추적된 산출물을 검증**할 뿐 다시 만들지 않습니다. 자산 입력이나
+생성 대상 콘텐츠를 바꿨다면 `npx tsx tools/assets/build-assets.ts`를 직접 돌리고 생성물을 함께
+커밋하세요. gate가 자산을 조용히 고쳐 놓는 일은 없습니다.
 
 ## 디렉터리
 
@@ -64,11 +84,13 @@ Integration에서 CAS를, Recovery에서 진짜 재시작을 붙잡습니다 —
   여는 suite 둘이 동시에 돌면, 제품 버그처럼 보이는 flaky 실패가 됩니다.
 - Integration과 Recovery는 테스트마다 임시 디렉터리의 DB를 만들고 정리합니다. 개발·운영 DB는
   쓰지 않습니다.
-- Unit / Browser 단독 실행은 전용 Vite 포트(4183)를 씁니다. 남아 있는 co-op 서버와 부딪히지
-  않고, API 서버·DB·계정 seed를 시작하지 않습니다.
-- 기본 묶음(`test:smoke`)은 기존 seeded co-op 서버 하나를 두 project가 함께 씁니다. Browser
-  Unit은 그 서버의 API를 호출하지 않으므로 결과는 단독 실행과 같습니다. 두 설정은 **같은
-  project 정의**(`playwright.browser-unit.project.ts`)를 공유합니다.
+- Unit / Browser는 전용 Vite 포트(4183)를 `--strictPort`로 쓰고 서버를 재사용하지 않습니다.
+  API 서버·DB·계정 seed를 시작하지 않으며, 남아 있는 co-op 서버가 그 포트에서 대신 응답할
+  길도 없습니다. 없어야 할 것이 없다는 사실이 이 계층의 계약이라, 그것만은 빌려 쓰지
+  않습니다.
+- E2E는 `npm run dev` 묶음을 씁니다. 로컬에서는 이미 떠 있는 서버를 재사용하지만 CI에서는
+  재사용하지 않습니다 — CI에는 재사용할 것이 없고, 그 포트의 낯선 서버를 받아들이면 이
+  체크아웃이 아닌 무언가를 테스트하게 됩니다.
 
 ## support와 fixtures
 
@@ -88,15 +110,22 @@ Integration에서 CAS를, Recovery에서 진짜 재시작을 붙잡습니다 —
 
 ## 타입 검사 경계
 
-```bash
-npm run typecheck         # 앱 + tests/fixtures (Node 타입 없음)
-npm run typecheck:game    # GameCore만, DOM 없음
-npm run typecheck:server  # 서버 경계, DOM 없음
-npm run typecheck:tests   # tests 전체 (Node 타입 있음)
-```
+`npm run check`가 다섯 설정을 모두 검사합니다. 하나만 볼 때는 `npx tsc`를 직접 부릅니다.
 
-`tests/fixtures`가 두 곳에 들어가는 것은 의도입니다. `typecheck`에는 Node 타입이 없으므로,
-fixture가 `node:fs`에 손을 뻗으면 거기서 실패합니다. fixture는 브라우저와 공유하는 데이터이고,
-그 사실을 지켜주는 것이 이 겹침입니다.
+| 설정 | 대상 |
+|---|---|
+| `tsconfig.json` | 앱 + `tests/fixtures` |
+| `tsconfig.game.json` | GameCore만, DOM 없음 |
+| `tsconfig.tools.json` | `tools/` CLI |
+| `tsconfig.server.json` | 서버 경계, DOM 없음 |
+| `tsconfig.tests.json` | `tests` 전체 |
+
+`tests/fixtures`가 앱 설정에도 들어가는 것은 의도입니다. fixture와 그것을 먹는 앱 코드가 한
+프로그램으로 컴파일되므로 서로 모르게 어긋날 수 없습니다.
+
+다만 이것이 fixture를 Node로부터 막아주지는 **않습니다**. `types`는 어떤 `@types` 패키지를
+자동으로 넣을지만 정하고, `@types/node`는 의존성을 타고 들어옵니다 — 지금 `tsconfig.json`
+아래에서도 `node:fs`와 `process`는 통과합니다. fixture를 브라우저에서 쓸 수 있게 두는 것은
+관습이지 검사되는 경계가 아닙니다. 경계로 만드는 일은 별도 과제입니다.
 
 production 코드가 `tests/`를 import하는 것은 ESLint가 막습니다.

@@ -12,16 +12,16 @@ Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Ad
 - npm 11 이상
 - 최소 지원 해상도 1024x768. 보드 투영은 HUD gutter를 제외한 영역 안에서 계산되며,
   gutter 크기는 `data-hud-gutter` 패널을 실제로 measure해서 얻습니다. style.css가
-  바뀌면 투영이 따라오고, smoke test는 어떤 패널도 보드 quad와 겹치지 않는지 검증합니다.
+  바뀌면 투영이 따라오고, E2E 테스트는 어떤 패널도 보드 quad와 겹치지 않는지 검증합니다.
 
 ```bash
 npm install
-npm run dev:coop
+npm run dev
 ```
 
 브라우저는 `http://127.0.0.1:4173`에서 엽니다. 호스트는 `Host sign in`으로 로그인한 뒤
 `New Campaign`으로 방을 만들고, 화면에 표시되는 Session ID만 B/C에게 전달합니다. 공개 방
-목록이나 matchmaking은 없고, 게스트는 계정 없이 그 ID로 `Join Host`합니다. `npm run dev:coop`은
+목록이나 matchmaking은 없고, 게스트는 계정 없이 그 ID로 `Join Host`합니다. `npm run dev`는
 개발용 계정(`dev-host-a` / `dev-host-b`)을 자동으로 심어 둡니다. 재접속 credential은 각 탭의
 `sessionStorage`에만 보관되며 URL이나 초대 코드에는 포함되지 않습니다. 로그인 토큰은
 `HttpOnly` 쿠키에만 있어 페이지 스크립트가 읽을 수 없습니다.
@@ -30,7 +30,7 @@ Production build는 client와 server entry를 모두 생성합니다.
 
 ```bash
 npm run build
-npm run start:production
+npm start
 ```
 
 운영 계정은 가입 라우트가 아니라 CLI로 만듭니다.
@@ -39,7 +39,7 @@ npm run start:production
 printf %s "$PASSWORD" | npm run account:create -- --username <아이디>
 ```
 
-`start:production`은 `deploy/cardguild.production.env`를 읽어 `127.0.0.1:3011`에서
+`npm start`는 `deploy/cardguild.production.env`를 읽어 `127.0.0.1:3011`에서
 `dist/` 정적 client와 `/api`, `/ws`를 같은 origin으로 제공합니다. 허용 origin은
 `https://card.krdp.ddns.net` 하나입니다. 운영 reverse proxy는 저장소 밖의 기존 Caddy
 설정에서 `127.0.0.1:3011`로 전달합니다.
@@ -264,7 +264,7 @@ off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `r
 
 Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며 pack identity는
 `cardguild.m7`, contract는 schema v9입니다. 현재 authored revision과 fingerprint는
-`content/m7/manifest.json`과 `npm run content:check` 출력이 소유하므로 이 README에 복제하지
+`content/m7/manifest.json`과 `npx tsx tools/content/check-content.ts` 출력이 소유하므로 이 README에 복제하지
 않습니다. Client UI, battle rendering, WebSocket hello와 authoritative server는 모두
 `src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다.
 규칙 회귀 fixture는 `content/`가 아니라 [`tests/fixtures/content`](tests/fixtures/content)의
@@ -368,25 +368,37 @@ GitHub 이슈 `#7`을 따릅니다.
 
 ## 검증
 
+gate는 세 명령이고 서로 겹치지 않습니다. `check`는 파일을 만들지 않고, `build`는 검사하지
+않으며, `test`는 빌드하지 않습니다. Recovery가 배포 산출물을 쓰므로 순서는 지켜야 합니다.
+
 ```bash
-npm run content:check # 모든 pack의 Schema, references, compile, fingerprint
-npm run content:production-check # 현재 M7 release policy/reachability/1P-3P 구조 coverage
-npm run assets        # raw PNG cleanup -> normalized frames -> atlas/tilemap -> validation
-npm run assets:build  # 위 pipeline 산출물 재생성
-npm run assets:check  # alpha, anchors, 양면 standee, atlas/standalone 저장 파티션, layered tilemap 검증
-npm run check         # Content/asset, TypeScript, core 경계, ESLint, Vitest
-npm run build         # Content/asset 검증 후 production bundle
-npm run typecheck:server # DOM 없는 server/session/protocol type boundary
-npm run typecheck:tests  # tests 전체 (Node 타입 포함)
-npm run test:unit    # Unit / Node — 순수 규칙과 컴포넌트 계약
-npm run test:browser-unit # Unit / Browser — 컴포넌트 하나만, 서버·DB 없이
-npm run test:network # Integration — 실제 SQLite·HTTP·WebSocket과 source 장애 주입
-npm run test:e2e     # E2E — 실제 앱을 실제 사용자처럼
-npm run test:smoke   # Unit/Browser + E2E (기본 Playwright 설정의 두 project)
-npm run test:recovery # Recovery — 배포 빌드(dist-server + dist)의 재시작·강제 종료
-npm test             # 위를 순서대로 전부
-npm run playtest     # seeded 자동 플레이(밸런스 조사 도구, gate 아님)
+npm run check # 정적 검증: content·production policy·자산 검사, TypeScript 5종, ESLint
+npm run build # 배포 산출물: dist(client) + dist-server(server bundle)
+npm test      # 동적 검증: Unit/Node -> Unit/Browser -> Integration -> E2E -> Recovery
 ```
+
+CI가 실행하는 것도 이 셋뿐입니다. `npm run playtest`는 seeded 자동 플레이로 밸런스를 살피는
+조사 도구이고 gate가 아닙니다.
+
+일부만 돌릴 때는 조립용 alias 없이 underlying CLI를 직접 부릅니다.
+
+```bash
+npx tsx tools/content/check-content.ts            # 모든 pack의 Schema, references, compile, fingerprint
+npx tsx tools/content/check-production-content.ts # M7 release policy/reachability/1P-3P 구조 coverage
+npx tsx tools/assets/check-assets.ts              # alpha, anchors, 양면 standee, 저장 파티션, layered tilemap
+npx tsx tools/assets/build-assets.ts              # 자산 pipeline 산출물 재생성(gate가 아니라 사람이 돌린다)
+npx tsc --project tsconfig.server.json            # DOM 없는 server/session/protocol type boundary
+npx tsc --project tsconfig.tests.json             # tests 전체
+npx vitest run                                    # Unit / Node
+npx playwright test --config playwright.browser-unit.config.ts # Unit / Browser — 서버·DB 없이
+npx vitest run --config vitest.integration.config.ts           # Integration — 실제 SQLite·HTTP·WebSocket
+npx playwright test                               # E2E — 실제 앱을 실제 사용자처럼
+npx playwright test --config playwright.recovery.config.ts     # Recovery — build 선행
+```
+
+자산은 **추적된 산출물을 검증만** 합니다. 자산 입력이나 생성 대상 콘텐츠를 바꿨다면
+`build-assets`를 직접 돌리고 생성물을 함께 커밋하세요 — gate는 자산을 다시 만들지도, 최신인지
+판정하지도 않습니다. 계층별 책임과 비용은 [`docs/TESTING.md`](docs/TESTING.md)에 있습니다.
 
 Vitest는 Content schema v9 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
 typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
@@ -430,8 +442,8 @@ npm run ui:compare          # docs/ui-review/index.html 좌우 비교 페이지�
 선택, 실패 화면을 1440x900과 1024x768로 찍습니다. 각 해상도의 `manifest.json`이 화면 ID와
 리뷰 포인트, 그리고 찍지 못한 화면과 그 이유를 함께 남기므로 캡쳐 순서가 바뀌어도 원본과
 변경이 화면 ID로 짝지어집니다. 자세한 사용법은 `docs/ui-review/README.md`에 있습니다.
-캡쳐는 `playwright.capture.config.ts`로만 돌아가고 `npm run test:smoke`는 이 파일을
-실행하지 않으므로, 테스트가 리뷰 자료를 덮어쓰지 않습니다.
+캡쳐는 `playwright.capture.config.ts`로만 돌아가고 `npm test`는 이 파일을 실행하지
+않으므로, 테스트가 리뷰 자료를 덮어쓰지 않습니다.
 
 ## M5 범위 밖
 
@@ -535,7 +547,7 @@ Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 L
 ```bash
 # 정상 재시작: SIGTERM 하나면 됩니다. 두 번 보내도 안전합니다.
 kill -TERM "$(pgrep -f dist-server/main.js)"
-npm run start:production
+npm start
 ```
 
 - **정상 종료**는 신규 HTTP·WebSocket 연결과 메시지를 먼저 막고, 이미 받은 작업과 모든

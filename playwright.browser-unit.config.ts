@@ -1,27 +1,34 @@
 import { defineConfig } from "@playwright/test";
 
-import { browserUnitProject } from "./playwright.browser-unit.project";
-
 const BASE_URL = "http://127.0.0.1:4183";
 
 /**
- * Browser Unit on its own, with nothing behind it.
+ * Unit / Browser: one real component — DOM, PixiJS, the actual UI class — driven with
+ * injected state and callbacks.
  *
- * Only Vite runs: no API server, no database, no seeded accounts. That is the point — if a
- * component test needs any of those, it is not a component test. Its own port keeps it from
- * colliding with a co-op server someone left running.
+ * Only Vite runs. No API server, no database, no seeded accounts: these tests never sign in,
+ * never call the API and never open a WebSocket, so the only thing they need served is the
+ * module graph. That absence is the contract, which is why nothing is reused here — a co-op
+ * server left running on this port would silently answer requests a component test is not
+ * supposed to make, and `--strictPort` makes Vite fail instead of drifting to another port.
  */
 export default defineConfig({
+  testDir: "./tests/unit/browser",
+  testMatch: "**/*.spec.ts",
   fullyParallel: true,
   forbidOnly: true,
   reporter: "list",
-  projects: [browserUnitProject(BASE_URL)],
+  use: {
+    baseURL: BASE_URL,
+    browserName: "chromium",
+    headless: true,
+    actionTimeout: 30_000,
+    navigationTimeout: 60_000,
+  },
   webServer: {
-    // `npm run dev` also checks content and rebuilds assets; the prepared output is already
-    // on disk and this suite only needs the modules served.
-    command: "npx vite --host 127.0.0.1 --port 4183",
+    command: "npx vite --host 127.0.0.1 --port 4183 --strictPort",
     url: BASE_URL,
-    reuseExistingServer: true,
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });

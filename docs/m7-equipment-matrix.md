@@ -182,7 +182,7 @@ tool이 따라오지 않은 drift입니다. 그대로 두면 m7 장비를 몇 �
 | `m3-atlas.webp` | 3.61 MB | **6.06 MB** |
 
 `presentation/m3/asset-manifest.json`은 build 산출물입니다. 실제 source of truth는
-`art/source/generation-plan.json`의 `presentation` 블록이고, `npm run assets`가 manifest를
+`art/source/generation-plan.json`의 `presentation` 블록이고, `build-assets`가 manifest를
 거기서 다시 씁니다.
 
 atlas가 lossless WebP라 6MB까지 커졌습니다. 최종 asset/release 정책은 #20 gate 대상이며,

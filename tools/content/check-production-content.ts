@@ -30,7 +30,7 @@ import { M7_PRODUCTION_POLICY, type ReserveEntry, type VolumeRange } from "./m7-
 /**
  * The release gate for the pack `PRODUCTION_CONTENT` actually ships.
  *
- * `npm run content:check` stays the generic validator: it walks every milestone
+ * `check-content.ts` stays the generic validator: it walks every milestone
  * pack under `content/` and says whether each one is a valid pack at all. This
  * command asks a different question — whether the *current M7 release* is
  * complete — and it asks it of the authoritative pack only, so the M3 and M6

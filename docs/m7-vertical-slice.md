@@ -240,7 +240,7 @@ scene을 먼저 떼어내고 렌더했기 때문에, mesh가 그려지지 않아
 
 ## 6. 이미지 자산
 
-**새로 요청한 이미지가 없습니다.** `npm run assets:check`가 production pack에 대해 exact
+**새로 요청한 이미지가 없습니다.** `check-assets`가 production pack에 대해 exact
 coverage를 요구하고 통과합니다 — 이 Adventure가 참조하는 8개 Scenario tilemap, equipment
 25종, card 32종 아이콘이 모두 이미 매핑되어 있습니다(#15·#16·#17에서 생산).
 

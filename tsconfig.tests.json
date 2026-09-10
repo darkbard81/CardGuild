@@ -2,8 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     // Integration and Recovery spawn processes, open files and bind ports; Browser Unit and
-    // E2E drive a real page. Both halves live under `tests/`, so this config carries the
-    // Node types the app itself is not allowed to have.
+    // E2E drive a real page. Both halves live under `tests/`, so this config asks for the
+    // Node and Vite types by name instead of relying on whatever a dependency happens to
+    // pull in.
     "types": ["node", "vite/client"],
     "noEmit": true
   },

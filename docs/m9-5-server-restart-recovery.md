@@ -14,7 +14,7 @@ M9-5는 새 저장 모델을 만들지 않는다. M9-1~M9-4가 만든 저장·�
 - 서버 종료의 멱등성과 종료 중 queue·DB 순서 (**유일한 제품 코드 변경**)
 - 의미 있는 전이별 COMMIT 전후 `SIGKILL` fault matrix
 - 프로세스가 살아 있는 ACK 유실과 동일 요청 재시도
-- 배포 빌드(`dist-server/main.js` + `dist/`) 기반 복구 E2E suite와 `npm run test:recovery`
+- 배포 빌드(`dist-server/main.js` + `dist/`) 기반 복구 E2E suite와 전용 Playwright 설정
 
 범위 밖(이번 완료 판정에 포함하지 않음): 전원 장애, 스토리지 자체 손실, 다중 서버 운영,
 durable request journal, 자동 AI 재시도, Host migration. 기존 **AI 저장 실패 → 세션 종료 →
@@ -175,7 +175,8 @@ hash로 복구된다(`…cc45880b…` → `fnv1a64:ab772a17e113673e`). 비교는
 ## 6. 배포 빌드 복구 E2E
 
 `playwright.recovery.config.ts` + `tests/recovery/campaign.recovery.ts` +
-`tests/support/recovery/deployment.ts`. `npm run test:recovery`가 build 후 이 suite만 실행한다.
+`tests/support/recovery/deployment.ts`. `npm test`의 마지막 계층이며, 앞선 `npm run build`가
+남긴 산출물을 쓴다 — 없으면 다시 만들지 않고 그 사실을 말하며 실패한다.
 
 - 실제 `dist-server/main.js`가 빌드된 `dist/` 클라이언트를 서빙한다. 서버 모듈을 test
   프로세스로 import하지 않는다 — test가 조각들을 붙들고 있어야만 되는 복구는 복구가 아니다.

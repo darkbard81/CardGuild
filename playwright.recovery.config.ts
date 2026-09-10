@@ -10,6 +10,8 @@ import { defineConfig } from "@playwright/test";
  * suite that reuses one long-lived dev server.
  */
 export default defineConfig({
+  // Checked before Chromium starts: this suite runs the deployment build and never makes it.
+  globalSetup: "./tests/support/recovery/require-deployment.ts",
   testDir: "./tests/recovery",
   testMatch: "**/*.recovery.ts",
   // Restarts are process-level events; overlapping them would make failures unreadable.

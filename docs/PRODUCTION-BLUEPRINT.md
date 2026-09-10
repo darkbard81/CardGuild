@@ -10,7 +10,7 @@
 
 ```text
 작성 시점 baseline   cardguild.m7@0.4.0 / schema v9 / fnv1a64:8795c80164042fbf
-지금 값 확인         npm run content:check && npm run content:production-check
+지금 값 확인         npx tsx tools/content/check-content.ts && npx tsx tools/content/check-production-content.ts
 ```
 
 위 두 값은 **스냅샷**입니다. version과 fingerprint는 gameplay data가 바뀔 때마다 움직이므로,
@@ -131,7 +131,7 @@ import합니다. fixture를 production 코드에서 import하는 것은 ESLint�
 | reserve | 16 | 각 항목에 reason + `#issue` | `reserveCards/Equipment/Actors/Scenarios` |
 
 전부 `tools/content/m7-production-policy.ts` 한 파일에 있습니다. 현재 값은
-`npm run content:production-check` 출력이 그대로 보여 줍니다.
+`npx tsx tools/content/check-production-content.ts` 출력이 그대로 보여 줍니다.
 
 **여유 공간**: Equipment +5, Creature +2, Scenario +2, Card 0, Adventure encounter 0.
 
@@ -280,9 +280,9 @@ type      circumstance | item | status | untyped
 > `art/source/generation-plan.json` + `art/source/ui/*.png`,
 > 노출하지 않는다면 `tools/content/m7-production-policy.ts`
 > **Do not edit** `presentation/m3/**`, `public/assets/**`, `art/processed/**`
-> **Required test** `src/game/card-library.test.ts`(새 mechanic이면), `npm run test:unit`
+> **Required test** `src/game/card-library.test.ts`(새 mechanic이면), `npx vitest run`
 > **Required asset** UI icon 1개 (예외 없음 — §11)
-> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
+> **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 
 ### 4.1 절차
 
@@ -305,7 +305,7 @@ type      circumstance | item | status | untyped
      (§10)
 7. `art/source/generation-plan.json`의 `presentation.cardVisuals`에 매핑을 추가하고 icon
    source를 넣습니다(§11).
-8. `npm run assets && npm run check`.
+8. `npx tsx tools/assets/build-assets.ts && npm run check`.
 9. 새 mechanic이면 `src/game/card-library.test.ts`에 회귀를 추가합니다.
 10. gameplay data가 바뀌었으므로 `manifest.json`의 `version`을 올립니다(§2).
 
@@ -358,7 +358,7 @@ Character의 최종 공격 수치, 최종 DC, flat weapon damage modifier는 aut
 > **Do not edit** generated asset (§1.1)
 > **Required test** `src/content/production-equipment.test.ts`, `src/loadout/loadout.test.ts`
 > **Required asset** UI icon 1개
-> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
+> **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 
 ### 5.1 slot 계약
 
@@ -447,7 +447,7 @@ Archer Perch : tower-shield / buckler / striders-boots / spiked-shield    → 1�
 > **Do not edit** 파생 수치(아래 금지 목록), generated asset
 > **Required test** `src/content/production-starters.test.ts`
 > **Required asset** front/back 두 면 standee (§11)
-> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
+> **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 > **주의** 현재 정확히 4명 정책 — 5번째는 routine 작업이 아닙니다(§1.4)
 
 ### 6.1 authored
@@ -534,7 +534,7 @@ snapshot.contextActionIds;
 > **Do not edit** `src/game/ai.ts`의 행동 목록, generated asset
 > **Required test** `src/game/creature-ai.test.ts`(roster 계약이 여기 있습니다)
 > **Required asset** front/back 두 면 standee
-> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
+> **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 > **Envelope** 18/20 — 현재 2마리 여유
 
 ### 7.0 절차
@@ -547,7 +547,7 @@ snapshot.contextActionIds;
    넣어야 합니다(§10). 배치는 `scenarios.json`의 `placements`이고, party size별 등장은
    `partySize` range로 표현합니다(§8.2).
 5. front/back standee source와 `generation-plan.json` 항목을 추가합니다(§11).
-6. `npm run assets && npm run check`. balance에 닿았다면 `npm run playtest`로 전후를 비교합니다.
+6. `npx tsx tools/assets/build-assets.ts && npm run check`. balance에 닿았다면 `npm run playtest`로 전후를 비교합니다.
 
 ### 7.1 Creature는 Character 공식을 쓰지 않습니다
 
@@ -617,7 +617,7 @@ Character의 16 Skill / defense / offense profile을 요구하지 않습니다.
 > **Do not edit** `presentation/m3/tilemaps.json` (map에서 자동 생성됩니다)
 > **Required test** `src/content/production-encounters.test.ts`
 > **Required asset** 새 terrain/object 종류를 쓸 때만 (§11)
-> **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
+> **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 > **Envelope** 10/12 — 2개 여유. Adventure에 넣으려면 §9
 
 ### 8.1 구조
@@ -678,7 +678,7 @@ range를 갖고 같은 tile을 공유합니다.
 ### 8.4 map은 gameplay source, tilemap은 산출물
 
 `scenarios.json`의 `map`이 gameplay 진실입니다. `presentation/m3/tilemaps.json`은
-`npm run assets`가 production pack의 모든 Scenario에서 생성합니다. **Scenario를 추가하면 asset
+`build-assets`가 production pack의 모든 Scenario에서 생성합니다. **Scenario를 추가하면 asset
 build를 다시 돌려야** tilemap이 생깁니다. tilemaps.json을 손으로 편집하지 않습니다.
 
 새 objective family(호위·생존·탈출 등)는 routine encounter authoring이 아닙니다 — schema가
@@ -692,7 +692,7 @@ build를 다시 돌려야** tilemap이 생깁니다. tilemaps.json을 손으로 
 > **Do not edit** 두 번째 production Adventure를 만드는 일 (§1.4)
 > **Required test** `src/content/production-vertical-slice.test.ts`, `src/content/production-tutorial.test.ts`,
 > `tests/integration/adventure-progression.test.ts`
-> **최소 검증** `npm run check && npm run test:network && npm run test:smoke` (전체 DoD는 §12)
+> **최소 검증** `npm run check && npx vitest run --config vitest.integration.config.ts && npx playwright test` (전체 DoD는 §12)
 
 ### 9.1 구조
 
@@ -796,7 +796,7 @@ tutorial scripting DSL. 전부 architecture/product 결정입니다.
 
 ## 10. Reachability / reserve
 
-production gate(`npm run content:production-check`)는 authoritative Adventure에서 출발해
+production gate(`check-production-content`)는 authoritative Adventure에서 출발해
 그래프를 따라갑니다.
 
 ```text
@@ -838,7 +838,7 @@ import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).
 
 > **Files to edit** `art/source/**/*.png`, `art/source/generation-plan.json`
 > **Do not edit** `art/processed/**`, `presentation/m3/**`, `public/assets/**`
-> **최소 검증** `npm run assets` (build + check, 전체 DoD는 §12)
+> **최소 검증** `npx tsx tools/assets/build-assets.ts && npx tsx tools/assets/check-assets.ts` (전체 DoD는 §12)
 
 ### 11.1 무엇이 필요한가
 
@@ -892,8 +892,12 @@ reserve Card/Equipment도 아이콘이 있어야 합니다. Actor visual은 prod
 ### 11.3 pipeline
 
 ```bash
-npm run assets        # = assets:build && assets:check
+npx tsx tools/assets/build-assets.ts   # 생성
+npx tsx tools/assets/check-assets.ts   # 검증 (`npm run check`가 부르는 쪽)
 ```
+
+생성은 **사람이 돌립니다.** gate는 추적된 산출물을 검증만 하고 다시 만들지 않으므로, 자산
+입력이나 생성 대상 콘텐츠를 바꿨다면 `build-assets`를 돌리고 생성물을 같은 커밋에 넣으세요.
 
 `assets:build`가 하는 일: source PNG를 프레임으로 자르고 정규화(`art/processed/**`) — 여기까지는
 모든 asset이 같은 경로입니다. 그 다음 **runtime 전달만 갈라집니다**: non-actor는 4096² WebP
@@ -1091,7 +1095,7 @@ solid region에서 제외됩니다.
 - [ ] closed/open의 jamb 위치·크기 동일, 통로는 좌우로 열림 (canonical 세로 벽)
 - [ ] 방향별 gate asset을 추가하지 않았음 (회전으로 처리)
 - [ ] 투시·isometric diamond를 source에 굽지 않음 (보드가 런타임에 45°/0.5로 눕힙니다)
-- [ ] `npm run assets`
+- [ ] `npx tsx tools/assets/build-assets.ts`
 - [ ] `encounter.ruined-gate`에서 닫힌 gate가 벽과 하나로 이어지고, Lever를 당기면
       같은 자리에서 열린 그림으로 바뀌며 개구부 외곽선이 생김
 
@@ -1101,7 +1105,7 @@ solid region에서 제외됩니다.
 1. gameplay trait는 Scenario author가 §8에서 따로 고릅니다 (blocked / gate / impassable)
 2. 그 칸 자체의 상태면 art/source/terrain/... , 칸 위의 물건이면 art/source/objects/...
 3. generation-plan에 square-terrain 또는 grounded-object frame 등록
-4. npm run assets
+4. npx tsx tools/assets/build-assets.ts
 5. 전투 화면에서 정렬 확인
 ```
 
@@ -1119,22 +1123,27 @@ board 그림이며 interaction legality는 계속 gameplay state가 소유합니
 지나야 하는 **production DoD**입니다.
 
 ```bash
-npm run assets        # asset을 건드렸다면 (build + check)
-npm run check         # content:check → content:production-check → assets:check
-                      #   → typecheck ×4 → lint → test:unit
-npm run build         # client + server 번들
-npm run test:network  # 실제 HTTP/WebSocket 세션으로 Adventure 완주
-npm run test:smoke    # 실제 브라우저(Playwright)로 보드·보상·loadout 경로
+npx tsx tools/assets/build-assets.ts  # asset을 건드렸다면 (생성물을 같은 커밋에)
+npm run check                         # 정적 검증만 — 파일을 만들지 않고 테스트를 돌리지 않는다
+npm run build                         # client + server 번들
+npm test                              # 다섯 계층 전부, Recovery가 위 build를 쓴다
 ```
 
-| command | 무엇을 소유하는가 |
+세 명령은 겹치지 않습니다. 그래서 전체 gate에서 TypeScript도 client build도 한 번씩만 돕니다.
+CI가 실행하는 것도 이 셋입니다.
+
+| 소유자 | 무엇을 소유하는가 |
 |---|---|
-| `content:check` | **모든** pack의 구조/참조/컴파일/fingerprint (m3·m6 fixture 포함) |
-| `content:production-check` | 현재 M7 release policy: volume, reachability/reserve, tutorial prefix, starter loadout, 1P/2P/3P 구조적 조립, AI 정적 참조, visual coverage |
-| `assets:check` | 생성 asset 무결성 + Card/Equipment visual 정확 일치 |
-| `test:unit` | mechanics + content 회귀 (`src/**/*.test.ts`) |
-| `test:network` | server/session/progression 실제 경로 |
-| `test:smoke` | 브라우저/presentation/loadout 실제 경로 |
+| `check-content` | **모든** pack의 구조/참조/컴파일/fingerprint (m3·m6 fixture 포함) |
+| `check-production-content` | 현재 M7 release policy: volume, reachability/reserve, tutorial prefix, starter loadout, 1P/2P/3P 구조적 조립, AI 정적 참조, visual coverage |
+| `check-assets` | 생성 asset 무결성 + Card/Equipment visual 정확 일치 |
+| Unit / Node | mechanics + content 회귀 (`src/**/*.test.ts`) |
+| Unit / Browser | 컴포넌트 하나의 DOM·PixiJS 계약 (서버 없이) |
+| Integration | server/session/progression 실제 경로 |
+| E2E | 브라우저/presentation/loadout 실제 경로 |
+| Recovery | 배포 산출물의 재시작·강제 종료 |
+
+계층별 책임과 비용은 [`TESTING.md`](TESTING.md)에 있습니다.
 
 `npm run playtest -- --seeds N`은 gate가 아니라 조사 도구입니다. **encounter 배치·creature 수치·
 보상 구성·starter 능력치처럼 balance에 닿는 변경을 했다면** 같은 seed로 전후를 비교하세요.
@@ -1144,7 +1153,7 @@ npm run test:smoke    # 실제 브라우저(Playwright)로 보드·보상·loado
 
 - [ ] 새 정의가 도달 가능하거나 explicit reserve에 이유와 함께 있다
 - [ ] 아이콘/standee source와 `generation-plan.json` 매핑이 있다
-- [ ] `npm run assets`로 생성물 갱신 (asset을 건드렸다면)
+- [ ] `npx tsx tools/assets/build-assets.ts`로 생성물 갱신 (asset을 건드렸다면)
 - [ ] `npm run check` 통과
 - [ ] gameplay data가 바뀌었으면 `manifest.json`의 `version`을 올렸다
 - [ ] balance에 닿았으면 같은 seed playtest 전후 비교를 남겼다

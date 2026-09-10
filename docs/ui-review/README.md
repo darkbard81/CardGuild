@@ -27,10 +27,10 @@ npm run ui:capture:baseline   # 원본 캡쳐 → docs/ui-review/baseline/ 를 �
 npm run ui:compare            # 이미 찍힌 캡쳐로 index.html 만 다시 생성
 ```
 
-캡쳐는 `playwright.capture.config.ts`가 `npm run dev:coop`을 `CARDGUILD_ADVENTURE_SEED=1`로
-띄운 뒤 `tests/ui-capture.capture.ts`를 실행합니다. 이미 개발 서버가 떠 있으면 그것을
-재사용합니다. `npm run test:smoke`는 이 설정을 쓰지 않으므로, 스모크 테스트가 리뷰
-자료를 덮어쓰는 일은 없습니다.
+캡쳐는 `playwright.capture.config.ts`가 `npm run dev`를 띄운 뒤
+`tests/ui-capture.capture.ts`를 실행합니다. 이미 개발 서버가 떠 있으면 그것을 재사용합니다.
+`npm test`의 어느 계층도 이 설정을 쓰지 않으므로, 테스트가 리뷰 자료를 덮어쓰는 일은
+없습니다.
 
 UI를 고친 뒤에는 `npm run ui:capture`만 다시 돌리고 `docs/ui-review/index.html`을 열면
 화면마다 왼쪽 원본과 오른쪽 변경이 나란히 보입니다. **`baseline/`은 개선 전 기준이므로

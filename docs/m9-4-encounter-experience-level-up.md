@@ -60,7 +60,7 @@ interface AdventureDefinition {
 - fingerprint는 `afterEncounterId` 정렬 후 계산한다. 선언 순서만 바꾸면 fingerprint는 같고,
   지급량이 바뀌면 달라진다.
 - M3/M6 회귀 fixture는 Encounter별 **명시적 0**을 넣어 기존 "성장 없음" 의미를 유지한다.
-- production gate(`npm run content:production-check`)는 8개 Encounter 전부 양수 EXP인지,
+- production gate(`check-production-content`)는 8개 Encounter 전부 양수 EXP인지,
   그리고 새 Party가 4전·7전 승리에서 각각 Lv.2·Lv.3인지 검사한다.
 
 ### 생산 Adventure EXP 테이블

@@ -1,8 +1,8 @@
 import { defineConfig } from "@playwright/test";
 
 /**
- * Screen captures for UI/UX review. Kept apart from playwright.config.ts so
- * `npm run test:smoke` stays a test run and never rewrites review material.
+ * Screen captures for UI/UX review. Kept apart from playwright.config.ts so no layer of
+ * `npm test` can rewrite review material as a side effect of running.
  */
 export default defineConfig({
   testDir: "./tests",
@@ -17,7 +17,7 @@ export default defineConfig({
     deviceScaleFactor: 2,
   },
   webServer: {
-    command: "CARDGUILD_ADVENTURE_SEED=1 npm run dev:coop",
+    command: "npm run dev",
     url: "http://127.0.0.1:4173",
     reuseExistingServer: true,
     timeout: 120_000,

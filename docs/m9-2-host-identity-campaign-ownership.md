@@ -136,7 +136,7 @@ FK는 `node:sqlite`에서 기본으로 켜져 있다. pragma는 의도를 적어
 
 `--seed-dev`는 "지금이 어떤 환경인가"가 아니라 **"어느 DB를 여는가"**로 막는다. 시드가
 넣는 계정은 비밀번호까지 공개 저장소에 있으므로, `NODE_ENV`를 설정하지 않은 배포에서
-`npm run dev:coop`을 한 번 돌리는 것만으로 그 계정이 실제 DB에 생기면 안 된다. 환경변수
+`npm run dev`를 한 번 돌리는 것만으로 그 계정이 실제 DB에 생기면 안 된다. 환경변수
 누락은 흔하지만 경로는 명시적으로 개발 DB를 가리켜야만 통과한다. 검사는 파일을 열기
 전에 하므로 거절된 시드는 대상 DB를 마이그레이션조차 하지 않는다.
 
@@ -226,9 +226,9 @@ id와 동작이 그대로다. `#create-session`은 `#host-login`으로 대체되
 `15593ae..7bbc969` 리뷰에서 P1/P2 두 건을 받아 후속 커밋에서 닫았다.
 
 **P1 — 개발 시드가 배포 DB를 실제로 보호하지 못했다.** 가드가 `NODE_ENV === "production"`만
-보는데 이 저장소의 배포 계약(`deploy/cardguild.production.env`, `npm run start:production`)에는
+보는데 이 저장소의 배포 계약(`deploy/cardguild.production.env`, `npm start`)에는
 `NODE_ENV`가 없다. 게다가 배포 env와 개발 기본값이 **같은 `.data/cardguild.sqlite`를 가리키고**
-있어서, 배포 호스트에서 `npm run dev:coop`을 돌리면 공개된 비밀번호의 계정이 실제 DB에
+있어서, 배포 호스트에서 `npm run dev`를 돌리면 공개된 비밀번호의 계정이 실제 DB에
 생길 수 있었다. 개발 DB를 `.data/cardguild.dev.sqlite`로 분리하고, 가드를 경로 allowlist로
 바꿨다. 거절 경로를 테스트로 고정했고, 이 테스트는 수정 전 코드에서 실패한다.
 

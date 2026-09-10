@@ -2,8 +2,8 @@
  * Release QA configuration for the authoritative M7 production pack.
  *
  * This is not gameplay content and not a runtime selector. Nothing under `src/`
- * may import it — `npm run content:production-check` fails if anything does.
- * The generic validator (`npm run content:check`) keeps owning what makes *any*
+ * may import it — `check-production-content.ts` fails if anything does.
+ * The generic validator (`check-content.ts`) keeps owning what makes *any*
  * pack valid; this file only states what the *current* release ships, so the M3
  * and M6 regression fixtures are never measured against M7 volume targets.
  *

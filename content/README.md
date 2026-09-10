@@ -18,7 +18,7 @@ content/m7   authoritative production pack (cardguild.m7)  ← 신규 콘텐츠�
 ```
 
 `content/`에는 배포되는 pack 하나만 있습니다. 현재 authored revision은
-`content/m7/manifest.json`이 소유하며 `npm run content:check`가 identity와 fingerprint를
+`content/m7/manifest.json`이 소유하며 `check-content`가 identity와 fingerprint를
 출력합니다. 이 문서는 그 값을 복제하지 않습니다.
 
 **규칙 회귀 fixture는 여기에 없습니다.** `tests/fixtures/content`의 TypeScript factory가
@@ -68,8 +68,8 @@ adventures.json  linear Encounter 순서, 1–3P partySize, 고정 reward offer,
 ## 검증
 
 ```bash
-npm run content:check             # 모든 pack: schema, reference, compile, fingerprint
-npm run content:production-check  # PRODUCTION_CONTENT의 현재 M7 release policy
+npx tsx tools/content/check-content.ts            # 모든 pack: schema, reference, compile, fingerprint
+npx tsx tools/content/check-production-content.ts # PRODUCTION_CONTENT의 현재 M7 release policy
 ```
 
 `content:check` 성공 시 pack identity와 fingerprint를 출력합니다. 실패하면 원본 파일,

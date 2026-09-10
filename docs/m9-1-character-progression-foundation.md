@@ -183,8 +183,8 @@ Guest claim/presence/control metadata의 gameplay hash 제외 계약은 유지�
 ```bash
 npm run check
 npm run build
-npm run test:network
-npm run test:smoke
+npx vitest run --config vitest.integration.config.ts
+npx playwright test
 ```
 
 구현 전 baseline은 관련 단위 테스트 6개 파일·80개 통과였다.
