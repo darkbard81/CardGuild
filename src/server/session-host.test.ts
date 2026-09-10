@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { gridDistance, listLegalActions, listLegalTargets, type CombatState } from "../game";
 import type { ClientIntentEnvelope, ServerMessage } from "../protocol";
 import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../session";
 import { CampaignWriterRetiredError, type SessionDurability } from "./campaign-durability";
@@ -100,7 +101,7 @@ async function harness(): Promise<Harness> {
     attach,
     send(requestId, intent) {
       const envelope: ClientIntentEnvelope = {
-        v: 6,
+        v: 7,
         type: "intent",
         requestId,
         expectedRevision: host.state.revision,
@@ -226,7 +227,7 @@ describe("M9-3 commit before publish", () => {
 
     // A guest claim, a detach and a re-attach are accepted transitions that change no gameplay.
     const claim: ClientIntentEnvelope = {
-      v: 6,
+      v: 7,
       type: "intent",
       requestId: "claim",
       expectedRevision: harnessed.host.state.revision,
@@ -263,7 +264,7 @@ describe("M9-3 commit before publish", () => {
     durability.commits.length = 0;
 
     await host.handleIntent(resumed.hostPlayerId, "socket-resume", {
-      v: 6,
+      v: 7,
       type: "intent",
       requestId: "resume",
       expectedRevision: 0,
@@ -312,7 +313,7 @@ describe("M9-3 commit before publish", () => {
       .filter((message) => message.type === "snapshot" && message.cause?.kind === "server").length;
 
     await host.handleIntent("player-guest", "socket-stalled-guest", {
-      v: 6,
+      v: 7,
       type: "intent",
       requestId: "claim",
       expectedRevision: host.state.revision,
@@ -326,7 +327,7 @@ describe("M9-3 commit before publish", () => {
     expect(host.state.combat?.turn.activeActorId).toBe(enemyId);
 
     await host.handleIntent(stalled.hostPlayerId, "socket-stalled-host", {
-      v: 6,
+      v: 7,
       type: "intent",
       requestId: "resume",
       expectedRevision: host.state.revision,
@@ -384,5 +385,134 @@ describe("M9-3 commit before publish", () => {
     expect(harnessed.connection.messages.some((message) =>
       message.type === "error" && message.code === "PERSISTENCE_FAILED")).toBe(true);
     expect(harnessed.connection.closes.at(-1)?.code).toBe(SESSION_RETIRED_CLOSE_CODE);
+  });
+});
+
+/** A hero turn built only from the shared legality queries, so it asks for nothing a player could not. */
+function heroIntent(combat: CombatState): SessionIntent {
+  const pending = combat.pendingReaction;
+  if (pending) return { type: "pass-reaction", triggerId: pending.triggerId };
+  const actorId = combat.turn.activeActorId;
+  const actor = combat.actors[actorId];
+  if (!actor) throw new Error("Combat has no active actor.");
+  const content = FIXTURE_CONTEXT.pack.combatContent;
+  const actions = listLegalActions(combat, actorId, content).filter((entry) => entry.enabled);
+  const strike = actions.find((entry) => entry.source.kind === "basic" && entry.actionId === "strike");
+  const target = strike && listLegalTargets(combat, actorId, strike.source, content)
+    .find((entry) => entry.kind === "actor" && combat.actors[entry.actorId]?.team === "enemies");
+  if (strike && target?.kind === "actor") {
+    return { type: "use-action", action: strike.source, target: { kind: "actor", actorId: target.actorId } };
+  }
+  const stride = actions.find((entry) => entry.source.kind === "basic" && entry.actionId === "stride");
+  const enemy = Object.values(combat.actors)
+    .filter((candidate) => candidate.team === "enemies" && !candidate.defeated)
+    .sort((left, right) => gridDistance(actor.position, left.position) - gridDistance(actor.position, right.position))[0];
+  if (stride && enemy) {
+    const tile = listLegalTargets(combat, actorId, stride.source, content)
+      .filter((entry) => entry.kind === "tile")
+      .sort((left, right) =>
+        gridDistance(left.position, enemy.position) - gridDistance(right.position, enemy.position) ||
+        left.costFeet - right.costFeet)[0];
+    if (tile?.kind === "tile" && gridDistance(tile.position, enemy.position) < gridDistance(actor.position, enemy.position)) {
+      return { type: "use-action", action: stride.source, target: { kind: "tile", position: tile.position } };
+    }
+  }
+  return { type: "end-turn", facing: actor.facing };
+}
+
+describe("M9-4 growth is published only once the victory is durable", () => {
+  function growthEvents(harnessed: Harness): readonly { readonly type: string }[] {
+    return harnessed.connection.messages.flatMap((message) =>
+      message.type === "snapshot"
+        ? message.events.filter((event) => event.type === "EXPERIENCE_GAINED" || event.type === "LEVEL_UP")
+        : []);
+  }
+
+  /** Fight the first encounter to its end and report what the party ended up with. */
+  async function winFirstEncounter(harnessed: Harness): Promise<Readonly<Record<string, unknown>>> {
+    await harnessed.send("encounter", { type: "start-encounter" });
+    for (let step = 0; step < 400 && harnessed.host.state.combat; step += 1) {
+      await harnessed.send(`play-${String(step)}`, heroIntent(harnessed.host.state.combat));
+    }
+    expect(harnessed.host.state.combat).toBeNull();
+    expect(harnessed.host.state.adventure?.completedEncounterIds).toEqual(["encounter.road-ambush"]);
+    return Object.fromEntries(Object.entries(harnessed.host.state.adventure?.party.members ?? {})
+      .map(([memberId, member]) => [memberId, member.progression]));
+  }
+
+  it("pays the same award whoever is connected and whoever claimed which character", async () => {
+    const alone = await harness();
+    await begin(alone);
+    const soloAward = await winFirstEncounter(alone);
+
+    const shared = await harness();
+    await shared.send("party", { type: "set-party-composition", actorDefinitionIds: [...FIXTURE_PARTY] });
+    const guestCredential = createReconnectCredential();
+    const joined = await shared.host.addPlayer({ playerId: "player-guest", displayName: "Guest" }, guestCredential.digest);
+    expect(joined.accepted).toBe(true);
+    const guestConnection = new FakeConnection("socket-guest", shared.log);
+    const attached = await shared.host.attach(
+      "player-guest", guestCredential.token, shared.host.state.contentIdentity, guestConnection,
+    );
+    expect(attached.ok).toBe(true);
+    await shared.host.handleIntent("player-guest", "socket-guest", {
+      v: 7,
+      type: "intent",
+      requestId: "claim",
+      expectedRevision: shared.host.state.revision,
+      intent: { type: "select-character", memberId: "party.hero-2" },
+    });
+    expect(shared.host.state.guestClaims.byMemberId["party.hero-2"]).toBe("player-guest");
+    await shared.send("begin", { type: "begin-adventure" });
+    // The guest drops out mid-campaign, which is the case that would tempt a per-player split.
+    await shared.host.detach("player-guest", "socket-guest");
+
+    expect(await winFirstEncounter(shared)).toEqual(soloAward);
+  });
+
+  it("keeps EXP unpaid and unpublished when the winning write fails, then pays it exactly once on retry", async () => {
+    const harnessed = await harness();
+    await begin(harnessed);
+    await harnessed.send("encounter", { type: "start-encounter" });
+    // The winning transition is the one that clears Combat, which is exactly where EXP lands.
+    harnessed.durability.failWhen = (candidate) => candidate.combat === null;
+
+    let steps = 0;
+    let refused = false;
+    while (!refused && steps < 400) {
+      const combat = harnessed.host.state.combat;
+      if (!combat) throw new Error("Combat ended without the failing write refusing it.");
+      steps += 1;
+      await harnessed.send(`play-${String(steps)}`, heroIntent(combat));
+      refused = harnessed.connection.messages.at(-1)?.type === "error";
+    }
+    expect(refused).toBe(true);
+
+    const stalled = harnessed.host.state;
+    expect(stalled.combat).not.toBeNull();
+    expect(stalled.adventure?.completedEncounterIds).toEqual([]);
+    for (const member of Object.values(stalled.adventure?.party.members ?? {})) {
+      expect(member.progression).toEqual({ level: 1, experience: 0 });
+    }
+    // Nothing about the growth reached a client, because the campaign does not hold it.
+    expect(growthEvents(harnessed)).toEqual([]);
+    expect(harnessed.connection.messages.at(-1)).toMatchObject({ type: "error", code: "PERSISTENCE_FAILED" });
+    expect(harnessed.host.retired).toBe(false);
+
+    // The refused write was not journalled, so the same winning move is allowed to land.
+    harnessed.durability.failWhen = null;
+    await harnessed.send(`play-${String(steps)}`, heroIntent(stalled.combat!));
+
+    const settled = harnessed.host.state;
+    expect(settled.combat).toBeNull();
+    expect(settled.adventure?.completedEncounterIds).toEqual(["encounter.road-ambush"]);
+    for (const member of Object.values(settled.adventure?.party.members ?? {})) {
+      expect(member.progression).toEqual({ level: 1, experience: 200 });
+    }
+    // Exactly one award per seat, and none of them a Level-Up at this amount.
+    expect(growthEvents(harnessed).map((event) => event.type))
+      .toEqual(["EXPERIENCE_GAINED", "EXPERIENCE_GAINED", "EXPERIENCE_GAINED"]);
+    expect(harnessed.durability.commits.at(-1)?.adventure?.party.members["party.hero-1"]?.progression)
+      .toEqual({ level: 1, experience: 200 });
   });
 });

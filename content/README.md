@@ -15,8 +15,8 @@
 
 ```text
 content/m7   authoritative production pack (cardguild.m7)  ← 신규 콘텐츠는 여기에만
-content/m6   M6 규칙 회귀 fixture (cardguild.m6@0.9.0)
-content/m3   M4 회귀 fixture (cardguild.m4@0.6.0)
+content/m6   M6 규칙 회귀 fixture (cardguild.m6@0.9.1)
+content/m3   M4 회귀 fixture (cardguild.m4@0.6.1)
 ```
 
 m7의 현재 authored revision은 `content/m7/manifest.json`이 소유하며 `npm run content:check`가
@@ -49,7 +49,7 @@ barrel을 계속 사용해도 됩니다.
 각 pack directory는 다음 파일을 모두 가집니다.
 
 ```text
-manifest.json    schemaVersion(현재 8), pack ID/version, ruleset ID
+manifest.json    schemaVersion(현재 9), pack ID/version, ruleset ID
 traits.json      모든 authored Trait과 Card/Action provider
 conditions.json  Condition과 recovery provider Trait
 actions.json     GameCore가 이해하는 effect primitive 조합
@@ -57,7 +57,7 @@ cards.json       Action을 참조하는 전술 카드
 equipment.json   slot, 능력치, 무기/방어구 profile, Trait
 actors.json      재사용 가능한 ActorDefinition (playable Character와 Creature)
 scenarios.json   Encounter placement, objective, map tiles/objects, seat별 partySpawnSlots
-adventures.json  linear Encounter 순서, 1–3P partySize, 고정 reward offer
+adventures.json  linear Encounter 순서, 1–3P partySize, 고정 reward offer, Encounter별 EXP
 ```
 
 무엇이 합법인지는 `schema/content-pack.schema.json`(JSON Schema Draft 2020-12)과
@@ -86,7 +86,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 씁니다. 현재 값은 **8**이며, 호환되지 않는 shape
+- `schemaVersion`은 JSON shape migration에 씁니다. 현재 값은 **9**이며, 호환되지 않는 shape
   변경은 기존 schema를 덮어써 조용히 재해석하지 말고 값을 올리고 명시적 migration을 추가합니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key, definition 배열, tile

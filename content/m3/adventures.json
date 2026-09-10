@@ -26,6 +26,11 @@
           { "kind": "card", "definitionId": "card.spirit-beacon" }
         ]
       }
+    ],
+    "experienceAwards": [
+      { "afterEncounterId": "encounter.road-ambush", "amount": 0 },
+      { "afterEncounterId": "encounter.ruined-gate", "amount": 0 },
+      { "afterEncounterId": "encounter.goblin-chief", "amount": 0 }
     ]
   }
 ]

@@ -1,8 +1,9 @@
-import type { AdventureState } from "../adventure";
+import type { AdventureEvent, AdventureState } from "../adventure";
 import { isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
 import { PRODUCTION_CONTENT } from "../content/production-content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
+import { trackGrowthSummary, type GrowthNotice } from "../dom/progression-view";
 import { SessionLobbyUi } from "../dom/session-lobby-ui";
 import type { CombatEvent, CombatState } from "../game";
 import type { PartyMemberLoadout } from "../loadout";
@@ -57,6 +58,12 @@ export class AdventureController {
   private encounterBundle: Promise<void> | null = null;
   private view: "adventure" | "loadout" = "adventure";
   private continuing = false;
+  /**
+   * The last victory's growth, and the snapshot that published it. Built from committed
+   * events only, so it can never show growth the campaign save does not hold, and kept in
+   * memory only: nothing about it belongs in the save or in browser storage.
+   */
+  private growth: GrowthNotice | null = null;
 
   public constructor(
     private readonly app: Application,
@@ -208,6 +215,7 @@ export class AdventureController {
   private returnToLanding(message: string): void {
     this.snapshot = null;
     this.client = null;
+    this.growth = null;
     this.battle?.destroy();
     this.battle = null;
     this.root.dataset.screen = "session";
@@ -240,8 +248,19 @@ export class AdventureController {
     );
   }
 
+  private trackGrowth(snapshot: ServerSnapshot): void {
+    this.growth = trackGrowthSummary(this.growth, {
+      sessionId: snapshot.state.sessionId,
+      revision: snapshot.revision,
+      inCombat: Boolean(snapshot.state.combat),
+    }, snapshot.events.filter(
+      (event): event is Extract<AdventureEvent, { type: "EXPERIENCE_GAINED" | "LEVEL_UP" }> =>
+        event.type === "EXPERIENCE_GAINED" || event.type === "LEVEL_UP"));
+  }
+
   private async renderSnapshot(snapshot: ServerSnapshot): Promise<void> {
     if (this.snapshot !== snapshot) return;
+    this.trackGrowth(snapshot);
     const state = snapshot.state;
     const viewer = this.viewerSeat(snapshot);
     if (!viewer) throw new Error("Authenticated player does not own a session seat.");
@@ -305,6 +324,7 @@ export class AdventureController {
     this.loadoutUi.setVisible(false);
     this.ui.render(snapshot.state.adventure as AdventureState, {
       isHost: snapshot.state.hostPlayerId === viewer.playerId,
+      growth: this.growth?.summary ?? null,
     });
     const staticScenario = PRODUCTION_CONTENT.pack.scenarios[combat.scenarioId];
     if (!staticScenario) throw new Error(`Scenario "${combat.scenarioId}" is missing.`);
@@ -358,7 +378,7 @@ export class AdventureController {
       this.view = "adventure";
       this.root.dataset.screen = "adventure";
       this.loadoutUi.setVisible(false);
-      this.ui.render(state, { isHost });
+      this.ui.render(state, { isHost, growth: this.growth?.summary ?? null });
       this.ui.setVisible(true);
     }
   }

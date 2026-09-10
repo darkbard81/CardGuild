@@ -86,6 +86,21 @@ export type AdventureEvent =
   | { readonly type: "ADVENTURE_STARTED"; readonly adventureId: string }
   | { readonly type: "ENCOUNTER_STARTED"; readonly encounterId: ScenarioId; readonly combatSeed: number }
   | { readonly type: "ENCOUNTER_COMPLETED"; readonly encounterId: ScenarioId }
+  | {
+      readonly type: "EXPERIENCE_GAINED";
+      readonly encounterId: ScenarioId;
+      readonly memberId: string;
+      readonly amount: number;
+      readonly previous: CharacterProgressionState;
+      readonly next: CharacterProgressionState;
+    }
+  | {
+      readonly type: "LEVEL_UP";
+      readonly encounterId: ScenarioId;
+      readonly memberId: string;
+      readonly previousLevel: number;
+      readonly level: number;
+    }
   | { readonly type: "REWARD_OFFERED"; readonly offer: RewardOffer }
   | { readonly type: "REWARD_GRANTED"; readonly rewardId: string; readonly grant: RewardGrant }
   | {

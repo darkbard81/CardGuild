@@ -1,6 +1,6 @@
 import Ajv, { type ErrorObject } from "ajv";
 
-import { PROTOCOL_VERSION, type ClientMessage } from "./v6-types";
+import { PROTOCOL_VERSION, type ClientMessage } from "./v7-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {

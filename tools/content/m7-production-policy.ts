@@ -63,6 +63,13 @@ export const M7_PRODUCTION_POLICY = {
     "encounter.goblin-chief",
   ],
 
+  /**
+   * Where a party that wins straight through must stand, keyed by victory count. The EXP
+   * table is free to move as long as these two moments do not: they are the pacing the
+   * release was tuned around (`docs/m9-4-encounter-experience-level-up.md` §2).
+   */
+  levelMilestones: { "4": 2, "7": 3 },
+
   /** How much content the M7 release authors. */
   volume: {
     starters: { min: 4, max: 4 },
@@ -187,6 +194,7 @@ export const M7_PRODUCTION_POLICY = {
   readonly packId: string;
   readonly adventureId: string;
   readonly tutorialEncounterIds: readonly string[];
+  readonly levelMilestones: Readonly<Record<string, number>>;
   readonly volume: Readonly<Record<string, VolumeRange>>;
   readonly reachableMinimum: Readonly<Record<string, number>>;
   readonly reserveCards: readonly ReserveEntry[];

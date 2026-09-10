@@ -43,7 +43,7 @@ class SocketClient {
       socket.once("error", reject);
     });
     socket.send(JSON.stringify({
-      v: 6,
+      v: 7,
       type: "hello",
       sessionId: credential.sessionId,
       playerId: credential.playerId,
@@ -142,7 +142,7 @@ interface CampaignSummary {
 }
 
 function envelope(requestId: string, expectedRevision: number, intent: SessionIntent): ClientIntentEnvelope {
-  return { v: 6, type: "intent", requestId, expectedRevision, intent };
+  return { v: 7, type: "intent", requestId, expectedRevision, intent };
 }
 
 /** Send an intent and wait for its ACK plus the snapshot that must follow a commit. */

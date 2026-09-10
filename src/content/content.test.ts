@@ -226,6 +226,63 @@ describe("content semantic validation and compilation", () => {
     expect(issues.some((issue) => issue.code === "INSUFFICIENT_PARTY_SPAWNS")).toBe(false);
   });
 
+  it("requires exactly one well-formed experience award per encounter", () => {
+    const source = sourceCopy();
+    const adventure = source.adventures[0] as NonNullable<typeof source.adventures[0]>;
+    const awards = adventure.experienceAwards;
+    const first = awards[0] as NonNullable<typeof awards[0]>;
+    const withAwards = (experienceAwards: typeof awards): ContentPackSource => ({
+      ...source,
+      adventures: source.adventures.map((candidate) =>
+        candidate.id === adventure.id ? { ...candidate, experienceAwards } : candidate),
+    });
+
+    // The shipped pack is complete, so any issue below is one this edit introduced.
+    expect(validateContentPackSemantics(source).some((issue) => issue.code.includes("EXPERIENCE"))).toBe(false);
+
+    const codesFor = (experienceAwards: typeof awards): readonly string[] =>
+      validateContentPackSemantics(withAwards(experienceAwards)).map((issue) => issue.code);
+
+    // A missing entry is an authoring error, never an implied zero.
+    expect(codesFor(awards.slice(1))).toContain("MISSING_ENCOUNTER_EXPERIENCE");
+    expect(codesFor([...awards, { ...first }])).toContain("DUPLICATE_ENCOUNTER_EXPERIENCE");
+    expect(codesFor([...awards, { afterEncounterId: "encounter.not-in-this-adventure", amount: 10 }]))
+      .toContain("EXPERIENCE_OUTSIDE_ADVENTURE");
+    for (const amount of [-1, 12.5, Number.NaN, Number.MAX_VALUE]) {
+      expect(codesFor(awards.map((award) => award.afterEncounterId === first.afterEncounterId ? { ...award, amount } : award)))
+        .toContain("INVALID_EXPERIENCE_AMOUNT");
+    }
+
+    // An explicit zero is legal: the regression fixtures rely on it to stay growth-free.
+    expect(codesFor(awards.map((award) => ({ ...award, amount: 0 }))).some((code) => code.includes("EXPERIENCE"))).toBe(false);
+
+    // The structural schema refuses the field's absence before semantics ever runs.
+    const withoutField = {
+      ...source,
+      adventures: source.adventures.map((candidate) =>
+        Object.fromEntries(Object.entries(candidate).filter(([key]) => key !== "experienceAwards"))),
+    };
+    expect(validateContentPackStructure(withoutField, contentPackSchema)
+      .some((issue) => issue.path.endsWith("/experienceAwards"))).toBe(true);
+  });
+
+  it("keeps the fingerprint blind to award ordering and sensitive to award amounts", () => {
+    const source = sourceCopy();
+    const adventure = source.adventures[0] as NonNullable<typeof source.adventures[0]>;
+    const first = adventure.experienceAwards[0] as NonNullable<typeof adventure.experienceAwards[0]>;
+    const rewrite = (experienceAwards: typeof adventure.experienceAwards): ContentPackSource => ({
+      ...source,
+      adventures: source.adventures.map((candidate) =>
+        candidate.id === adventure.id ? { ...candidate, experienceAwards } : candidate),
+    });
+
+    expect(fingerprintContentPack(rewrite([...adventure.experienceAwards].reverse())))
+      .toBe(fingerprintContentPack(source));
+    expect(fingerprintContentPack(rewrite(adventure.experienceAwards.map((award) =>
+      award.afterEncounterId === first.afterEncounterId ? { ...award, amount: award.amount + 1 } : award))))
+      .not.toBe(fingerprintContentPack(source));
+  });
+
   it("adds equipment and condition providers using JSON-shaped data without engine changes", () => {
     const source = sourceCopy();
     const custom: ContentPackSource = {
@@ -772,7 +829,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 8,
+        schemaVersion: 9,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),
@@ -799,6 +856,7 @@ describe("content fingerprint", () => {
           rewards: [...adventure.rewards]
             .reverse()
             .map((reward) => ({ ...reward, choices: [...reward.choices] })),
+          experienceAwards: [...adventure.experienceAwards].reverse().map((award) => ({ ...award })),
         })),
     };
     expect(fingerprintContentPack(reordered)).toBe(fingerprintContentPack(source));

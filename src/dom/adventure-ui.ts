@@ -1,10 +1,10 @@
 import type { AdventureState } from "../adventure";
-import { EXPERIENCE_PER_LEVEL } from "../adventure/progression";
 import type { CompiledContentPack } from "../content";
 import { placementAppliesToPartySize } from "../content";
 import type { AdventureDefinition, RewardGrant } from "../content";
 import { createStartingCollection } from "../loadout";
 import type { AssetCatalog } from "../presentation";
+import { growthSummaryPanel, progressionMeter, progressionText, type GrowthSummary } from "./progression-view";
 
 function required<T extends Element>(selector: string): T {
   const found = document.querySelector<T>(selector);
@@ -33,6 +33,12 @@ export interface AdventureUiHandlers {
 
 export interface AdventureUiAccess {
   readonly isHost: boolean;
+  /**
+   * The last committed victory's growth, or nothing. The UI never derives this from state:
+   * Level and EXP are in the snapshot, but "what just changed" only exists in the events
+   * the server published with the COMMIT, so the controller owns it and passes it down.
+   */
+  readonly growth?: GrowthSummary | null;
 }
 
 function rewardName(grant: RewardGrant, pack: CompiledContentPack): string {
@@ -123,6 +129,16 @@ export class AdventureUi {
     return wrapper;
   }
 
+  /** The victory notice, once, wherever the screen after the battle puts it. */
+  private growth(access: AdventureUiAccess): HTMLElement | null {
+    return access.growth
+      ? growthSummaryPanel(access.growth, (memberId) => {
+          const member = this.party.querySelector<HTMLElement>(`[data-member-id="${memberId}"] strong`);
+          return member?.textContent ?? memberId;
+        })
+      : null;
+  }
+
   public render(state: AdventureState, access: AdventureUiAccess = { isHost: true }): void {
     this.screen.hidden = state.phase === "combat";
     if (state.phase !== "combat") {
@@ -136,9 +152,11 @@ export class AdventureUi {
       .map((member) => {
         const row = element("li", "character-progression");
         row.dataset.memberId = member.id;
+        const name = this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id;
         row.append(
-          element("strong", undefined, this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id),
-          element("span", undefined, `Lv. ${member.progression.level} · EXP ${member.progression.experience} / ${EXPERIENCE_PER_LEVEL}`),
+          element("strong", undefined, name),
+          element("span", undefined, progressionText(member.progression)),
+          progressionMeter(name, member.progression),
         );
         return row;
       }));
@@ -176,6 +194,8 @@ export class AdventureUi {
         element("h1", undefined, scenario?.name ?? "Continue"),
         element("p", "adventure-description", scenario?.objective.description ?? "Prepare for battle."),
       );
+      const growth = this.growth(access);
+      if (growth) this.content.append(growth);
       const threats = state.currentEncounterId ? this.threatPreview(state, state.currentEncounterId) : [];
       if (threats.length > 0) {
         const preview = element("p", "encounter-threats");
@@ -203,6 +223,8 @@ export class AdventureUi {
         element("h1", undefined, "Choose one reward"),
         element("p", "adventure-description", "획득한 보상은 Collection에 남고 현재 Loadout은 바뀌지 않습니다."),
       );
+      const growth = this.growth(access);
+      if (growth) this.content.append(growth);
       const choices = element("div", "reward-choices");
       choices.style.setProperty("--reward-choice-count", String(state.pendingReward.choices.length));
       state.pendingReward.choices.forEach((grant, index) => {
@@ -230,8 +252,10 @@ export class AdventureUi {
         element("p", "eyebrow", "Adventure Complete"),
         element("h1", undefined, `${this.definition.name} resolved`),
         element("p", "adventure-description", `${String(this.definition.encounterIds.length)}개 Encounter를 모두 통과했습니다. 획득한 보상은 Collection에 남습니다.`),
-        this.actionButton(access.isHost ? "Session Complete" : "Session Complete", this.handlers.onRetry, false),
       );
+      const growth = this.growth(access);
+      if (growth) this.content.append(growth);
+      this.content.append(this.actionButton("Session Complete", this.handlers.onRetry, false));
       return;
     }
     if (state.phase === "failed") {

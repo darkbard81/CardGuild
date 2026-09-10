@@ -9,7 +9,7 @@
 함께 적었습니다 — 문서가 코드보다 오래됐다고 의심되면 그 경로가 정답입니다.
 
 ```text
-작성 시점 baseline   cardguild.m7@0.3.0 / schema v8 / fnv1a64:887ee163d92faa57
+작성 시점 baseline   cardguild.m7@0.4.0 / schema v9 / fnv1a64:8795c80164042fbf
 지금 값 확인         npm run content:check && npm run content:production-check
 ```
 
@@ -108,7 +108,7 @@ content/m7/*.json → load-m7-content.ts → PRODUCTION_CONTENT
                                           └─ production gate / playtest
 ```
 
-`content/m6`(cardguild.m6@0.9.0)와 `content/m3`(cardguild.m4@0.6.0)은 **규칙 회귀 fixture**입니다.
+`content/m6`(cardguild.m6@0.9.1)와 `content/m3`(cardguild.m4@0.6.1)은 **규칙 회귀 fixture**입니다.
 신규 production 콘텐츠를 그쪽에 넣지 않습니다. generic `content:check`만 적용되고 M7 volume
 정책은 적용되지 않습니다.
 
@@ -702,6 +702,7 @@ Adventure
   partySize { min: 1, max: 3 }
   encounterIds[]   ← 선형 순서. 중복 불가(DUPLICATE_ADVENTURE_ENCOUNTER)
   rewards[]        ← { id, afterEncounterId, choices[] }
+  experienceAwards[] ← { afterEncounterId, amount }. encounter마다 정확히 하나
 ```
 
 - `afterEncounterId`는 그 Adventure의 encounter여야 하고(`REWARD_OUTSIDE_ADVENTURE`), 한
@@ -709,6 +710,23 @@ Adventure
 - `choices`는 `{kind:"card"|"equipment", definitionId}`이며 존재하는 정의여야 합니다.
 - 보상은 collection 소유권을 늘릴 뿐이고, 실제로 쓰려면 **between-encounters에서 장착/준비**해야
   합니다(`set-member-loadout`). 이 경로가 곧 다음 전투의 deck/stat입니다.
+
+### 9.1.0 Encounter EXP (M9-4)
+
+`experienceAwards`는 `rewards`와 **별개의 필수 배열**입니다. 보상이 없는 전투와 최종 전투도
+EXP를 주기 때문에, 보상에 얹지 않고 따로 authoring합니다.
+
+- `encounterIds`의 각 항목에 정확히 하나. 빠지면 `MISSING_ENCOUNTER_EXPERIENCE`이고, 0으로
+  자동 보정하지 않습니다 — "0을 주기로 했다"와 "적는 걸 잊었다"는 다른 사실입니다.
+- 중복은 `DUPLICATE_ENCOUNTER_EXPERIENCE`, Adventure 밖 참조는 `EXPERIENCE_OUTSIDE_ADVENTURE`,
+  음수·소수·비정상 수치는 `INVALID_EXPERIENCE_AMOUNT`.
+- 승리하면 **Party 전원**이 같은 금액을 받고, 1000 EXP마다 Level이 하나 오릅니다. 쓰러진
+  member도 받고, 패배와 보상 선택은 주지 않습니다.
+- production gate는 8개 Encounter 전부 양수 EXP인지, 그리고 `M7_PRODUCTION_POLICY
+  .levelMilestones`가 요구하는 4전 Lv.2 · 7전 Lv.3에 도달하는지 검사합니다. 지급량을 바꾸면
+  이 두 지점이 유지되는지 gate가 알려줍니다.
+- 지급량을 바꾸면 pack fingerprint가 바뀝니다. 배열 순서만 바꾸는 것은 fingerprint에
+  영향을 주지 않습니다. 자세한 계약은 `docs/m9-4-encounter-experience-level-up.md`에 있습니다.
 
 ### 9.1.1 보상 → loadout → 다음 전투는 어디서 검증되는가
 
@@ -758,6 +776,16 @@ encounter를 끼워 넣으면 policy도 같은 PR에서 고쳐야 합니다.
                    { "kind": "card", "definitionId": "card.force-barrage" } ] },
     { "id": "reward.goblin-chief", "afterEncounterId": "encounter.goblin-chief",
       "choices": [ /* equipment 4종 중 1개 */ ] }
+  ],
+  "experienceAwards": [
+    { "afterEncounterId": "encounter.road-ambush", "amount": 200 },
+    { "afterEncounterId": "encounter.spear-line",  "amount": 250 },
+    { "afterEncounterId": "encounter.ruined-gate", "amount": 250 },
+    { "afterEncounterId": "encounter.goblin-chief", "amount": 400 },  // ← 여기서 Lv.2
+    { "afterEncounterId": "encounter.bone-cellar", "amount": 250 },
+    { "afterEncounterId": "encounter.wolf-run",    "amount": 300 },
+    { "afterEncounterId": "encounter.archer-perch", "amount": 350 },  // ← 여기서 Lv.3
+    { "afterEncounterId": "encounter.cult-sanctum", "amount": 500 }
   ] }
 ```
 

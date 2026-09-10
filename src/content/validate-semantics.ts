@@ -658,6 +658,29 @@ export function validateContentPackSemantics(
       rewardIds.add(reward.id);
       rewardedEncounters.add(reward.afterEncounterId);
     });
+
+    // EXP is authored per Encounter and is deliberately independent of `rewards`: a battle
+    // with no reward still awards EXP, and a missing entry is an authoring error rather
+    // than an implied zero.
+    const awardedEncounters = new Set<string>();
+    adventure.experienceAwards.forEach((award, awardIndex) => {
+      const path = `[${adventureIndex}].experienceAwards[${awardIndex}]`;
+      if (!adventure.encounterIds.includes(award.afterEncounterId)) {
+        addIssue(context, "adventures", `${path}.afterEncounterId`, "EXPERIENCE_OUTSIDE_ADVENTURE", `Experience award references encounter "${award.afterEncounterId}" outside its adventure.`, adventure.id);
+      }
+      if (awardedEncounters.has(award.afterEncounterId)) {
+        addIssue(context, "adventures", `${path}.afterEncounterId`, "DUPLICATE_ENCOUNTER_EXPERIENCE", `Encounter "${award.afterEncounterId}" has more than one experience award.`, adventure.id);
+      }
+      if (!Number.isSafeInteger(award.amount) || award.amount < 0) {
+        addIssue(context, "adventures", `${path}.amount`, "INVALID_EXPERIENCE_AMOUNT", `Experience award for "${award.afterEncounterId}" must be a safe non-negative integer.`, adventure.id);
+      }
+      awardedEncounters.add(award.afterEncounterId);
+    });
+    adventure.encounterIds.forEach((scenarioId, encounterIndex) => {
+      if (!awardedEncounters.has(scenarioId)) {
+        addIssue(context, "adventures", `[${adventureIndex}].encounterIds[${encounterIndex}]`, "MISSING_ENCOUNTER_EXPERIENCE", `Encounter "${scenarioId}" has no experience award.`, adventure.id);
+      }
+    });
   });
 
   return context.issues.sort(

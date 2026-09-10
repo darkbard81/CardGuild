@@ -33,6 +33,11 @@ export function normalizeContentPack(source: ContentPackSource): ContentPackSour
       ...adventure,
       encounterIds: [...adventure.encounterIds],
       rewards: byId(adventure.rewards).map((reward) => ({ ...reward, choices: [...reward.choices] })),
+      // Sorted by the Encounter they follow, so re-ordering the authored array cannot move
+      // the fingerprint while changing an amount always does.
+      experienceAwards: [...adventure.experienceAwards]
+        .sort((left, right) => left.afterEncounterId.localeCompare(right.afterEncounterId))
+        .map((award) => ({ ...award })),
     })),
   };
 }

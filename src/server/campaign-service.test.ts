@@ -5,6 +5,7 @@ import { PRODUCTION_CONTENT } from "../content";
 import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../session";
 import type { ServerMessage } from "../protocol";
 import { createCampaignDurability } from "./campaign-durability";
+import { LEGACY_CONTENT_IDENTITY, legacyStoredSave } from "./campaign-save.fixture";
 import { INVALID_CAMPAIGN_NAME, createCampaignService, type CampaignService } from "./campaign-service";
 import { digestReconnectToken } from "./credentials";
 import { createPersistence, migrate, type Persistence } from "./persistence";
@@ -90,7 +91,7 @@ async function driver(
   if (!attached.ok) throw new Error(`Attach failed: ${attached.code}`);
   return async (requestId, intent) => {
     await host.handleIntent(playerId, connection.id, {
-      v: 6,
+      v: 7,
       type: "intent",
       requestId,
       expectedRevision: host.state.revision,
@@ -291,7 +292,7 @@ describe("M9-3 campaign continue", () => {
     // A last gameplay intent is enqueued before Continue reaches the store, so Continue's
     // barrier must let it commit and must then read that newer save, not the older one.
     const lastPlay = host.handleIntent(played.playerId, connectionId, {
-      v: 6,
+      v: 7,
       type: "intent",
       requestId: "last-play",
       expectedRevision: host.state.revision,
@@ -412,6 +413,108 @@ describe("M9-3 campaign continue", () => {
     // Continue still works: the durable save is the authority, not the dead session.
     const result = await harnessed.campaigns.continue("acc_owner", played.campaignId);
     expect(result.ok).toBe(true);
+    harnessed.persistence.close();
+  });
+});
+
+describe("M9-4 campaign continue with content migration", () => {
+  /** Rewrite a campaign's stored row as the previous build would have written it. */
+  function rollBackToPreviousContent(harnessed: Harness, played: PlayedCampaign): number {
+    const legacy = legacyStoredSave(played.state);
+    const lookup = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    if (lookup.status !== "loaded") throw new Error("Expected a stored save.");
+    harnessed.database
+      .prepare(
+        "UPDATE campaigns SET snapshot_json = ?, snapshot_hash = ?, content_pack_version = ?, content_fingerprint = ? " +
+        "WHERE campaign_id = ?",
+      )
+      .run(
+        JSON.stringify(legacy.save),
+        legacy.snapshotHash,
+        LEGACY_CONTENT_IDENTITY.packVersion,
+        LEGACY_CONTENT_IDENTITY.fingerprint,
+        played.campaignId,
+      );
+    return lookup.record.campaignRevision;
+  }
+
+  it("migrates the stored save once, before the new session exists, and not again afterwards", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+    const revisionBefore = rollBackToPreviousContent(harnessed, played);
+    // The live writer must be gone first, or Continue's barrier would re-save current content.
+    await harnessed.store.retire(played.sessionId, "previous build");
+
+    const result = await harnessed.campaigns.continue("acc_owner", played.campaignId, "Returning Host");
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) throw new Error("Continue was expected to succeed.");
+    const migrated = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    if (migrated.status !== "loaded") throw new Error("Expected a stored save.");
+    // Exactly one revision for exactly one migration COMMIT.
+    expect(migrated.record.campaignRevision).toBe(revisionBefore + 1);
+    expect(migrated.record.contentIdentity).toEqual(PRODUCTION_CONTENT.contentIdentity);
+
+    const restored = harnessed.store.get(result.credential.sessionId);
+    if (!restored) throw new Error("Continue opened no live session.");
+    expect(restored.state.lifecycle).toBe("resume-lobby");
+    expect(restored.state.contentIdentity).toEqual(PRODUCTION_CONTENT.contentIdentity);
+    // Progress is preserved exactly: the migration pays no EXP for battles already fought.
+    expect(restored.state.adventure?.completedEncounterIds).toEqual(played.state.adventure?.completedEncounterIds);
+    expect(Object.values(restored.state.adventure?.party.members ?? {}).map((member) => member.progression))
+      .toEqual(Object.values(played.state.adventure?.party.members ?? {}).map((member) => member.progression));
+    expect(restored.state.combat?.commandLog).toEqual(played.state.combat?.commandLog);
+    expect(hashSessionGameplayState(restored.state)).toBe(migrated.record.snapshotHash);
+
+    // A second Continue finds a save that is already current, so it writes nothing.
+    const again = await harnessed.campaigns.continue("acc_owner", played.campaignId, "Returning Host");
+    expect(again.ok).toBe(true);
+    const after = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    if (after.status !== "loaded") throw new Error("Expected a stored save.");
+    expect(after.record.campaignRevision).toBe(migrated.record.campaignRevision);
+    expect(after.record.snapshotHash).toBe(migrated.record.snapshotHash);
+    harnessed.persistence.close();
+  });
+
+  it("publishes no session and keeps the stored row when the migration COMMIT loses the CAS", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+    rollBackToPreviousContent(harnessed, played);
+    await harnessed.store.retire(played.sessionId, "previous build");
+    const before = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    if (before.status !== "loaded") throw new Error("Expected a stored save.");
+    const commitSave = vi.spyOn(harnessed.persistence.campaigns, "commitSave")
+      .mockReturnValue({ committed: false, reason: "revision-conflict" });
+
+    const result = await harnessed.campaigns.continue("acc_owner", played.campaignId);
+
+    expect(result).toMatchObject({ ok: false, code: "PERSISTENCE_FAILED" });
+    expect(harnessed.campaigns.liveSessionOf(played.campaignId)).toBeUndefined();
+    commitSave.mockRestore();
+    const after = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    if (after.status !== "loaded") throw new Error("Expected a stored save.");
+    expect(after.record).toEqual(before.record);
+    // The refused Continue left a save a later attempt can still migrate.
+    expect((await harnessed.campaigns.continue("acc_owner", played.campaignId)).ok).toBe(true);
+    harnessed.persistence.close();
+  });
+
+  it("refuses an unregistered previous pack and preserves its row", async () => {
+    const harnessed = harness();
+    const played = await playedToCombat(harnessed);
+    rollBackToPreviousContent(harnessed, played);
+    harnessed.database
+      .prepare("UPDATE campaigns SET content_pack_version = ? WHERE campaign_id = ?")
+      .run("0.2.0", played.campaignId);
+    await harnessed.store.retire(played.sessionId, "previous build");
+    const before = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+
+    const result = await harnessed.campaigns.continue("acc_owner", played.campaignId);
+
+    // The stored metadata no longer agrees with its payload, which is corruption, not a
+    // pack this build could migrate.
+    expect(result.ok).toBe(false);
+    expect(harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner")).toEqual(before);
     harnessed.persistence.close();
   });
 });

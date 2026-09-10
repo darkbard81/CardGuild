@@ -1,5 +1,5 @@
 import type { AdventureState } from "../adventure";
-import { EXPERIENCE_PER_LEVEL, resolveEffectiveCharacterStatProfile } from "../adventure/progression";
+import { resolveEffectiveCharacterStatProfile } from "../adventure/progression";
 import type { CompiledContentPack } from "../content";
 import type { DeckContributionSource, EquipmentSlotId, ResolvedStrikeProfile } from "../game";
 import {
@@ -10,6 +10,7 @@ import {
   type PartyMemberLoadout,
 } from "../loadout";
 import type { AssetCatalog } from "../presentation";
+import { progressionMeter, progressionText } from "./progression-view";
 
 function required<T extends Element>(selector: string): T {
   const found = document.querySelector<T>(selector);
@@ -132,7 +133,7 @@ export class LoadoutUi {
     const sidebar = element("section", "loadout-panel equipped-panel");
     sidebar.dataset.editable = String(editableMemberIds.has(member.id));
     sidebar.append(element("h2", undefined, actor.name), element("p", "loadout-panel-label", editableMemberIds.has(member.id) ? "Your build" : "Read-only · 다른 플레이어"));
-    sidebar.append(element("p", "character-progression", `Lv. ${member.progression.level} · EXP ${member.progression.experience} / ${EXPERIENCE_PER_LEVEL}`));
+    sidebar.append(element("p", "character-progression", progressionText(member.progression)), progressionMeter(actor.name, member.progression));
     const slots = element("div", view.tab === "cards" ? "prepared-list" : "equipment-slots");
     if (view.tab === "cards") {
       sidebar.append(element("h3", "prepared-heading", `Prepared Cards ${member.loadout.preparedCards.length}/${actor.loadoutProfile.preparedCardCapacity}`));

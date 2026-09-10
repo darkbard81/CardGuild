@@ -25,7 +25,7 @@ import type {
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 8;
+  readonly schemaVersion: 9;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -116,6 +116,15 @@ export interface AdventureRewardDefinition {
   readonly choices: readonly RewardGrant[];
 }
 
+/**
+ * How much EXP one Encounter victory awards each surviving-or-not party member. Authored
+ * per Encounter and kept apart from `RewardGrant`: a battle with no reward still teaches.
+ */
+export interface AdventureExperienceAward {
+  readonly afterEncounterId: ScenarioId;
+  readonly amount: number;
+}
+
 export interface AdventureDefinition {
   readonly id: string;
   readonly name: string;
@@ -126,6 +135,8 @@ export interface AdventureDefinition {
   };
   readonly encounterIds: readonly ScenarioId[];
   readonly rewards: readonly AdventureRewardDefinition[];
+  /** Exactly one entry per `encounterIds` member. Absence is a content error, not a zero. */
+  readonly experienceAwards: readonly AdventureExperienceAward[];
 }
 
 export interface ContentPackSource {

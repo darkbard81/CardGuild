@@ -5,8 +5,11 @@ import { hashSessionGameplayState, type SessionCoreState } from "../session";
 import { CampaignSaveError, createCampaignSave, restoreCampaignSave } from "./campaign-save";
 import {
   FIXTURE_CONTEXT,
+  LEGACY_CONTENT_IDENTITY,
   fixtureBegun,
+  fixtureDispatch,
   fixtureMidCombat,
+  legacyStoredSave,
   withProgression,
 } from "./campaign-save.fixture";
 import type { CampaignSaveRecord } from "./persistence";
@@ -70,8 +73,10 @@ describe("M9-3 campaign save projection", () => {
     });
     const record = storedRecord(state);
 
-    const restored = restoreCampaignSave(record, FIXTURE_CONTEXT);
+    const { projection: restored, migration } = restoreCampaignSave(record, FIXTURE_CONTEXT);
 
+    // A save already written against the current pack is restored, never rewritten.
+    expect(migration).toBeNull();
     expect(restored.adventure).toEqual(state.adventure);
     expect(restored.combat).toEqual(state.combat);
     expect(restored.partySlots).toEqual(state.partySlots);
@@ -165,20 +170,35 @@ describe("M9-3 campaign save validation", () => {
     }
   });
 
-  it("refuses a save written for different content and preserves it for a later migration", () => {
+  it("refuses a save written for unregistered content and preserves it for a later migration", () => {
     const state = fixtureMidCombat();
     for (const identity of [
       { packId: "other-pack" },
       { packVersion: "0.0.1" },
       { fingerprint: "stale-fingerprint" },
     ]) {
+      // A genuinely older save carries the same identity in its header and in its battle.
       const record = tamperedRecord(state, (save) => {
         save.contentIdentity = { ...save.contentIdentity, ...identity };
+        if (save.combat) save.combat["contentIdentity"] = { ...save.contentIdentity };
       });
       const error = refusal(record);
       expect(error.code).toBe("SAVE_CONTENT_MISMATCH");
       expect(error.message).toContain("this build serves");
     }
+  });
+
+  it("refuses a save whose battle names a different pack than the save header", () => {
+    const state = fixtureMidCombat();
+    const record = tamperedRecord(state, (save) => {
+      if (save.combat) {
+        save.combat["contentIdentity"] = { ...save.contentIdentity, packVersion: "0.0.1" };
+      }
+    });
+    const error = refusal(record);
+    // Not a migration candidate: no registered step can say what such a row means.
+    expect(error.code).toBe("SAVE_CORRUPT");
+    expect(error.message).toContain("content identity does not match the save");
   });
 
   it("rejects a party that the current content pack cannot play", () => {
@@ -317,5 +337,96 @@ describe("M9-3 campaign save validation", () => {
       const error = refusal(tamperedRecord(state, mutate));
       expect(error.code, reason).toBe("SAVE_CORRUPT");
     }
+  });
+
+  describe("M9-4 content migration", () => {
+    /** A stored row written by the previous build, with metadata consistent with it. */
+    function legacyRecord(
+      state: SessionCoreState,
+      mutate: (save: Record<string, unknown>) => void = () => undefined,
+    ): CampaignSaveRecord {
+      const legacy = legacyStoredSave(state);
+      const payload = JSON.parse(JSON.stringify(legacy.save)) as Record<string, unknown>;
+      mutate(payload);
+      return {
+        campaignId: "camp_legacy",
+        ownerAccountId: "acc_owner",
+        campaignRevision: 7,
+        saveSchemaVersion: legacy.save.saveSchemaVersion,
+        contentIdentity: payload["contentIdentity"] as CampaignSaveRecord["contentIdentity"],
+        snapshotJson: JSON.stringify(payload),
+        snapshotHash: legacy.snapshotHash,
+        updatedAt: 11_000,
+      };
+    }
+
+    it("carries a mid-combat save from the previous pack onto the current one without replaying it", () => {
+      // Levels are raised before the encounter starts, which is the only order the runtime
+      // can produce: a battle is always built from the progression the party walked in with.
+      const begun = withProgression(fixtureBegun(), {
+        "party.hero-1": { level: 2, experience: 640 },
+        "party.hero-2": { level: 1, experience: 300 },
+      });
+      const state = fixtureDispatch(begun, begun.hostPlayerId, { type: "start-encounter" });
+      const record = legacyRecord(state);
+      expect(record.contentIdentity.fingerprint).toBe(LEGACY_CONTENT_IDENTITY.fingerprint);
+
+      const { projection, migration } = restoreCampaignSave(record, FIXTURE_CONTEXT);
+
+      expect(migration).not.toBeNull();
+      expect(projection.contentIdentity).toEqual({
+        packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: FIXTURE_CONTEXT.pack.fingerprint,
+      });
+      // Progress is carried, never recomputed: no EXP is paid for anything already done.
+      expect(projection.adventure.party.members["party.hero-1"]?.progression).toEqual({ level: 2, experience: 640 });
+      expect(projection.adventure.party.members["party.hero-2"]?.progression).toEqual({ level: 1, experience: 300 });
+      expect(projection.adventure.completedEncounterIds).toEqual(state.adventure?.completedEncounterIds);
+      expect(projection.adventure.collection).toEqual(state.adventure?.collection);
+      expect(projection.adventure.pendingReward).toEqual(state.adventure?.pendingReward);
+      // The battle itself is untouched apart from the identity and the fingerprint holding it.
+      const restoredCombat = projection.combat!;
+      const savedCombat = state.combat!;
+      expect({ ...restoredCombat, contentIdentity: null, setupFingerprint: "" })
+        .toEqual({ ...savedCombat, contentIdentity: null, setupFingerprint: "" });
+      // The fingerprint is re-derived, and it lands on exactly what this build would compute.
+      expect(restoredCombat.setupFingerprint).toBe(savedCombat.setupFingerprint);
+      expect(restoredCombat.setupFingerprint).not.toBe(JSON.parse(record.snapshotJson).combat.setupFingerprint);
+      expect(restoredCombat.commandLog).toEqual(savedCombat.commandLog);
+      // The save handed back is the one a caller must COMMIT, and it hashes to what it says.
+      expect(migration!.save.contentIdentity).toEqual(projection.contentIdentity);
+      expect(hashSessionGameplayState(projection)).toBe(migration!.snapshotHash);
+      expect(migration!.snapshotHash).not.toBe(record.snapshotHash);
+    });
+
+    it("carries a between-encounters save and refuses one whose stored hash disagrees", () => {
+      const state = fixtureBegun();
+      const record = legacyRecord(state);
+
+      const { projection, migration } = restoreCampaignSave(record, FIXTURE_CONTEXT);
+      expect(projection.combat).toBeNull();
+      expect(migration!.save.combat).toBeNull();
+      expect(projection.adventure).toEqual(state.adventure);
+
+      // The source is judged against the content it was written for, so a doctored payload
+      // is refused before anything is re-stamped.
+      expect(refusal({ ...record, snapshotHash: "fnv1a64:0000000000000000" }).code).toBe("SAVE_CORRUPT");
+    });
+
+    it("refuses a legacy mid-combat save whose battle does not match its own party", () => {
+      const state = fixtureMidCombat();
+      const record = legacyRecord(state, (payload) => {
+        const combat = payload["combat"] as Record<string, unknown>;
+        combat["setupFingerprint"] = "fnv1a64:1111111111111111";
+      });
+      // Re-hash so the doctored payload is self-consistent and only the setup is wrong.
+      const legacy = JSON.parse(record.snapshotJson) as { readonly combat: unknown };
+      expect(legacy.combat).toBeTruthy();
+      const error = refusal({
+        ...record,
+        snapshotHash: hashSessionGameplayState(JSON.parse(record.snapshotJson) as never),
+      });
+      expect(error.code).toBe("SAVE_CORRUPT");
+      expect(error.message).toContain("setup does not match the content");
+    });
   });
 });

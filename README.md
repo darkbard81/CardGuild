@@ -69,11 +69,12 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- wire protocol은 v6이고 `SessionCoreState`는 v3입니다. M9-1의 AdventureState v3 snapshot은
+- wire protocol은 v7이고 `SessionCoreState`는 v3입니다. M9-1의 AdventureState v3 snapshot은
   모든 PartyMember에 runtime Level/EXP를 필수로 포함하고, M9-3의 `resume-lobby` lifecycle과
-  `resume-adventure` intent가 v6에 들어 있습니다. 이전 wire version은 `PROTOCOL_MISMATCH`로
-  거절하며, 서버와 클라이언트를 함께 갱신해야 합니다. M8의 Facing 입력 계약은 유지합니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v6 control-only
+  `resume-adventure` intent, M9-4의 `EXPERIENCE_GAINED`/`LEVEL_UP` 성장 이벤트 계약이 v7에
+  들어 있습니다. 이전 wire version은 `PROTOCOL_MISMATCH`로 거절하며, 서버와 클라이언트를 함께
+  갱신해야 합니다. M8의 Facing 입력 계약은 유지합니다.
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v7 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
   판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. host migration은 지원하지
   않지만, 서버가 재시작되면 Host가 Campaign을 Continue해 마지막 저장부터 이어갑니다.
@@ -179,7 +180,7 @@ End Turn 및 제자리 Step은 바라볼 곳을 보드에서 한 번 클릭/터�
 
 ```text
 src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
-src/content JSON authoring DTO, semantic compiler, canonical fingerprint, schema v8 loader
+src/content JSON authoring DTO, semantic compiler, canonical fingerprint, schema v9 loader
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
@@ -262,12 +263,13 @@ off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `r
 따로 보고하므로 대상이 굴리는 Save도 모호하지 않습니다.
 
 Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며 pack identity는
-`cardguild.m7`, contract는 schema v8입니다. 현재 authored revision과 fingerprint는
+`cardguild.m7`, contract는 schema v9입니다. 현재 authored revision과 fingerprint는
 `content/m7/manifest.json`과 `npm run content:check` 출력이 소유하므로 이 README에 복제하지
 않습니다. Client UI, battle rendering, WebSocket hello와 authoritative server는 모두
 `src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다.
-[`content/m6`](content/m6)의 `cardguild.m6@0.9.0`과 [`content/m3`](content/m3)의
-`cardguild.m4@0.6.0` pack은 규칙 회귀 fixture로 보존되며 production authoring 대상이 아닙니다.
+[`content/m6`](content/m6)의 `cardguild.m6@0.9.1`과 [`content/m3`](content/m3)의
+`cardguild.m4@0.6.1` pack은 규칙 회귀 fixture로 보존되며 production authoring 대상이 아닙니다.
+두 fixture는 Encounter별 EXP를 명시적 0으로 authoring해 성장 없는 회귀 의미를 유지합니다.
 디렉터리 안내는 [`content/README.md`](content/README.md)에 있습니다.
 
 **신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
@@ -379,7 +381,7 @@ npm test             # unit + network + Playwright
 npm run playtest     # seeded 자동 플레이(밸런스 조사 도구, gate 아님)
 ```
 
-Vitest는 Content schema v8 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
+Vitest는 Content schema v9 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
 typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
 Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
 deck/stat/context, Adventure 8전/Reward/실패/seed/Combat bridge,
@@ -475,5 +477,33 @@ gameplay 진행이 SQLite에 저장되고, Host는 My Campaigns에서 Continue�
 - 손상·미지원·다른 Content Pack의 save는 자동 보정하지 않고 409로 거절하며 row를 보존합니다.
 - 브라우저 저장소에는 여전히 reconnect credential만 둡니다.
 
-EXP 지급과 Level-Up은 M9-4, 재시작 복구 강화는 M9-5입니다.
+재시작 복구 강화는 M9-5입니다.
 자세한 계약과 검증은 [M9-3 구현문서](docs/m9-3-durable-campaign-save.md)에 있습니다.
+
+## M9-4 Encounter EXP & Automatic Level-Up
+
+Encounter를 이기면 Party 전원이 그 전투에 authoring된 EXP를 받고, 1000 EXP마다 자동으로
+Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 Lv.3**에 도달합니다.
+
+- EXP는 `AdventureDefinition.experienceAwards`에 Encounter별로 정의합니다. 보상(`rewards`)과
+  분리돼 있어 보상 없는 전투와 최종 전투도 EXP를 줍니다. 누락·중복·Adventure 밖 참조·음수·
+  소수는 content 검증이 거절하며, 0으로 자동 보정하지 않습니다.
+- 지급 대상은 현재 Party 전원이고 금액은 모두 같습니다. 승리 시 쓰러져 있던 member, 미접속
+  Guest, claim 없는 캐릭터도 동일하게 받습니다. 패배와 보상 선택은 EXP를 주지 않습니다.
+- 지급은 `accept-combat-result` 승리 분기 한 곳에서만 일어나고, M9-3의 단일 candidate에
+  실려 COMMIT됩니다. 저장이 실패하면 성장 이벤트도 ACK도 공개되지 않고, 이미 완료된
+  Encounter의 결과 재전송은 거절되므로 EXP가 두 번 지급되지 않습니다.
+- 이벤트 순서는 `ENCOUNTER_COMPLETED → EXPERIENCE_GAINED(seat 순) → LEVEL_UP(seat 순,
+  Level 증가마다 하나) → REWARD_OFFERED 또는 ADVENTURE_COMPLETED`입니다.
+- 레벨업은 진행 중이던 Combat의 profile·HP·수치·hash를 바꾸지 않습니다. 갱신된 Level은
+  Loadout 파생 수치와 다음 Encounter부터 쓰이고, 다음 전투는 새 Max HP로 full HP 시작합니다.
+- Adventure와 Loadout이 `Lv. N · EXP X / 1000`과 progress bar를 같은 표시 함수로 그립니다.
+  승리 직후에는 보상·다음 전투·완료 화면에 `EXP +400`, `Lv.1 → Lv.2`, 잔여 EXP 요약이 뜹니다.
+  요약은 COMMIT된 이벤트로만 만들고 저장하지 않으므로, 재로드나 새 Continue에서는 현재
+  Level/EXP만 보이고 지난 요약은 재생되지 않습니다.
+- Content schema는 v9, 생산 pack은 `cardguild.m7@0.4.0`, wire protocol은 v7입니다. 직전
+  `cardguild.m7@0.3.0` Campaign Save 하나만 명시적으로 이관하며, 진행·Level/EXP·Collection·
+  pending reward·진행 중 전투를 보존하고 완료한 전투에 EXP를 소급하지 않습니다. 이관은
+  Continue의 CAS COMMIT으로 한 번만 저장되고, 실패하면 새 세션을 공개하지 않습니다.
+
+자세한 계약과 검증은 [M9-4 구현문서](docs/m9-4-encounter-experience-level-up.md)에 있습니다.

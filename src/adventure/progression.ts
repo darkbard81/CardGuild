@@ -33,6 +33,29 @@ export function resolveEffectiveCharacterStatProfile(
   return { ...profile, stats: { ...profile.stats, level: progression.level } };
 }
 
+/**
+ * The one place EXP becomes Level. Pure: the input progression is never mutated, a single
+ * award may cross several thresholds at once, and arithmetic that cannot be represented
+ * exactly is refused rather than silently rounded.
+ */
+export function applyExperience(
+  progression: CharacterProgressionState,
+  amount: number,
+): { readonly progression: CharacterProgressionState; readonly levelsGained: number } {
+  assertCharacterProgression(progression);
+  if (typeof amount !== "number" || !Number.isSafeInteger(amount) || amount < 0) {
+    throw new Error("Experience award must be a safe non-negative integer.");
+  }
+  const total = progression.experience + amount;
+  if (!Number.isSafeInteger(total)) throw new Error("Experience total cannot be represented exactly.");
+  const levelsGained = Math.floor(total / EXPERIENCE_PER_LEVEL);
+  const level = progression.level + levelsGained;
+  if (!Number.isSafeInteger(level)) throw new Error("Character level cannot be represented exactly.");
+  const next = { level, experience: total % EXPERIENCE_PER_LEVEL };
+  assertCharacterProgression(next);
+  return { progression: next, levelsGained };
+}
+
 /** Validate runtime progression without repairing old or malformed state. */
 export function assertAdventureInvariants(state: AdventureState): void {
   if (state.version !== 3) throw new Error("AdventureState must use version 3.");

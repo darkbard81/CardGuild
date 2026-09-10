@@ -1648,6 +1648,79 @@ button {
   column-gap: 0.5rem;
 }
 
+/* A one-line meter: it has to survive the 1024x768 rail and a 390px phone unchanged. */
+.exp-meter {
+  /* Sits on the party row rather than under it: the 1024x768 rail has no spare line. */
+  flex: 1 1 4rem;
+  align-self: center;
+  min-width: 2.5rem;
+  max-width: 9rem;
+  height: 0.32rem;
+  margin-top: 0.35rem;
+  border: 1px solid #3d392f;
+  border-radius: 0.2rem;
+  background: #1b1a16;
+  overflow: hidden;
+}
+
+.adventure-party .exp-meter {
+  margin-top: 0;
+}
+
+.exp-meter-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  background: var(--gold-bright);
+}
+
+.growth-summary {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.6rem 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #5b5340;
+  border-radius: 0.4rem;
+  background: #1f1d18;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.growth-summary strong {
+  color: var(--ink);
+}
+
+.growth-summary-list {
+  display: grid;
+  gap: 0.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.growth-summary-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
+}
+
+.growth-gain {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.growth-level-up {
+  padding: 0.02rem 0.35rem;
+  border: 1px solid var(--gold-bright);
+  border-radius: 0.65rem;
+  color: var(--gold-bright);
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
 .collection-count {
   padding: 0.05rem 0.4rem;
   border: 1px solid #5b5340;

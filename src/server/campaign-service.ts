@@ -1,5 +1,5 @@
 import { createCampaignDurability, type SessionDurability } from "./campaign-durability";
-import { CampaignSaveError, restoreCampaignSave } from "./campaign-save";
+import { CampaignSaveError, restoreCampaignSave, type CampaignRestoreResult } from "./campaign-save";
 import { createOpaqueId } from "./credentials";
 import type { CampaignRecord, Persistence } from "./persistence";
 import type { SessionCredentialResponse, SessionStore } from "./session-store";
@@ -108,7 +108,7 @@ export function createCampaignService(
   }
 
   function loadSave(campaignId: string, accountId: string):
-    | { readonly ok: true; readonly projection: ReturnType<typeof restoreCampaignSave>; readonly campaignRevision: number }
+    | { readonly ok: true; readonly restored: CampaignRestoreResult; readonly campaignRevision: number }
     | { readonly ok: false; readonly code: CampaignContinueFailureCode; readonly message: string } {
     const lookup = persistence.campaigns.loadOwnedSave(campaignId, accountId);
     if (lookup.status === "not-found") {
@@ -123,7 +123,7 @@ export function createCampaignService(
     try {
       return {
         ok: true,
-        projection: restoreCampaignSave(lookup.record, store.authorityContext),
+        restored: restoreCampaignSave(lookup.record, store.authorityContext),
         campaignRevision: lookup.record.campaignRevision,
       };
     } catch (error) {
@@ -202,15 +202,44 @@ export function createCampaignService(
         }
 
         // Read again after the barrier: the retired host's queue may have committed one more
-        // gameplay transition between the preflight and its own retirement.
+        // gameplay transition between the preflight and its own retirement, and the save it
+        // wrote may need a different migration than the one the preflight computed.
         const loaded = loadSave(campaignId, accountId);
         if (!loaded.ok) return loaded;
 
+        // A migrated save becomes durable before any live session is published against it.
+        // The CAS is the same one gameplay commits through, so a stale writer that slipped
+        // past the barrier loses here instead of overwriting the migration.
+        let campaignRevision = loaded.campaignRevision;
+        const migration = loaded.restored.migration;
+        if (migration) {
+          const committed = persistence.campaigns.commitSave({
+            campaignId,
+            ownerAccountId: accountId,
+            expectedCampaignRevision: campaignRevision,
+            saveSchemaVersion: migration.save.saveSchemaVersion,
+            contentIdentity: migration.save.contentIdentity,
+            snapshotJson: JSON.stringify(migration.save),
+            snapshotHash: migration.snapshotHash,
+            updatedAt: sources.now(),
+          });
+          if (!committed.committed) {
+            return {
+              ok: false,
+              code: "PERSISTENCE_FAILED",
+              message: committed.reason === "not-found"
+                ? "This campaign no longer exists."
+                : "Another live session advanced this campaign while it was being migrated.",
+            };
+          }
+          campaignRevision = committed.campaignRevision;
+        }
+
         let credential: SessionCredentialResponse;
         try {
-          credential = store.restore(loaded.projection, {
+          credential = store.restore(loaded.restored.projection, {
             displayName,
-            durability: durabilityFor(campaignId, accountId, loaded.campaignRevision),
+            durability: durabilityFor(campaignId, accountId, campaignRevision),
           });
         } catch (error) {
           return {

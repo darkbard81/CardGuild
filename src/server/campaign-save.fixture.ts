@@ -3,15 +3,19 @@
  * exists so the save, durability, host and campaign tests all start from one authoritative
  * mid-combat session instead of three hand-written approximations.
  */
+import { buildAdventureEncounter } from "../adventure";
 import { PRODUCTION_CONTENT } from "../content/production-content";
+import { computeCombatSetupFingerprint } from "../game";
 import {
   createSessionCoreState,
   dispatchSessionIntent,
+  hashSessionGameplayState,
   type SessionAuthorityContext,
   type SessionControlContext,
   type SessionCoreState,
   type SessionIntent,
 } from "../session";
+import { createCampaignSave, type CampaignSaveV1 } from "./campaign-save";
 
 export const FIXTURE_PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
 
@@ -81,4 +85,42 @@ export function withProgression(
       },
     },
   };
+}
+
+/**
+ * The one previous content identity M9-4 migrates from. Written out rather than imported
+ * from the migration table so a test that checks the table cannot check it against itself.
+ */
+export const LEGACY_CONTENT_IDENTITY = {
+  packId: "cardguild.m7",
+  packVersion: "0.3.0",
+  fingerprint: "fnv1a64:887ee163d92faa57",
+} as const;
+
+/**
+ * A stored row exactly as the previous build would have written it. The pack differs only
+ * in EXP authoring, so a legacy save is the current projection carrying the old identity
+ * and the setup fingerprint that old identity produces.
+ */
+export function legacyStoredSave(state: SessionCoreState): {
+  readonly save: CampaignSaveV1;
+  readonly snapshotHash: string;
+} {
+  const save = createCampaignSave(state);
+  const combat = save.combat;
+  const legacy: CampaignSaveV1 = {
+    ...save,
+    contentIdentity: { ...LEGACY_CONTENT_IDENTITY },
+    combat: combat
+      ? {
+          ...combat,
+          contentIdentity: { ...LEGACY_CONTENT_IDENTITY },
+          setupFingerprint: computeCombatSetupFingerprint({
+            ...buildAdventureEncounter(PRODUCTION_CONTENT.pack, save.adventure).definition,
+            contentIdentity: { ...LEGACY_CONTENT_IDENTITY },
+          }, combat.seed),
+        }
+      : null,
+  };
+  return { save: legacy, snapshotHash: hashSessionGameplayState(legacy) };
 }

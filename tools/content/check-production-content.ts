@@ -2,6 +2,7 @@ import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
 import { buildAdventureEncounter } from "../../src/adventure/combat-bridge";
+import { applyExperience, createCharacterProgression } from "../../src/adventure/progression";
 import { createAdventureSession } from "../../src/adventure/runtime";
 import type { AdventureState, PartySetup } from "../../src/adventure/types";
 import { getContentIdentity } from "../../src/content/compile-content";
@@ -608,6 +609,46 @@ async function checkVisualCoverage(reachable: ReachableContent, reporter: Report
 }
 
 /** The release policy is QA configuration. Gameplay must not be able to read it. */
+/**
+ * EXP is a release-completeness question, not a content-validity one: the generic validator
+ * already refuses a missing or negative award, and a regression fixture is allowed to author
+ * an explicit 0. What only the shipped Adventure has to satisfy is that every battle pays
+ * something, and that a party that wins straight through reaches the authored milestones.
+ */
+function checkExperienceAwards(pack: CompiledContentPack, reporter: Reporter): void {
+  const adventure = PRODUCTION_CONTENT.adventure;
+  const amounts = new Map(adventure.experienceAwards.map((award) => [award.afterEncounterId, award.amount]));
+  adventure.encounterIds.forEach((encounterId, index) => {
+    const amount = amounts.get(encounterId);
+    if (amount === undefined || amount <= 0) {
+      reporter.issue(
+        PACK_SOURCE,
+        `adventure.experienceAwards[${String(index)}]`,
+        "PRODUCTION_ENCOUNTER_WITHOUT_EXPERIENCE",
+        `Encounter "${encounterId}" awards ${amount === undefined ? "no" : String(amount)} EXP. Every shipped battle must teach something.`,
+        encounterId,
+      );
+    }
+  });
+  const starter = Object.values(pack.actorDefinitions).find(isPlayable);
+  if (!starter) return;
+  let progression = createCharacterProgression(starter);
+  adventure.encounterIds.forEach((encounterId, index) => {
+    progression = applyExperience(progression, amounts.get(encounterId) ?? 0).progression;
+    const milestones: Readonly<Record<string, number>> = M7_PRODUCTION_POLICY.levelMilestones;
+    const expected = milestones[String(index + 1)];
+    if (expected !== undefined && progression.level !== expected) {
+      reporter.issue(
+        PACK_SOURCE,
+        `adventure.experienceAwards`,
+        "PRODUCTION_LEVEL_MILESTONE_MISSED",
+        `A new party is Lv.${String(progression.level)} after ${String(index + 1)} victories, but the release policy expects Lv.${String(expected)}.`,
+        encounterId,
+      );
+    }
+  });
+}
+
 async function checkPolicyIsolation(reporter: Reporter): Promise<void> {
   const root = path.join(process.cwd(), "src");
   const offenders: string[] = [];
@@ -674,6 +715,7 @@ async function main(): Promise<void> {
   checkStarterLoadouts(pack, reachable, reporter);
   checkPartySizeCoverage(pack, reachable, reporter);
   checkAiCoverage(pack, reachable, reporter);
+  checkExperienceAwards(pack, reporter);
   await checkVisualCoverage(reachable, reporter);
   await checkPolicyIsolation(reporter);
 

@@ -1,6 +1,6 @@
 import type { RewardGrant } from "../content/content-types";
 import { clonePartyLoadout, createStartingCollection, validatePartyLoadout } from "../loadout";
-import { assertAdventureInvariants, createCharacterProgression } from "./progression";
+import { applyExperience, assertAdventureInvariants, createCharacterProgression } from "./progression";
 import type {
   AdventureCommand,
   AdventureDispatchResult,
@@ -49,6 +49,50 @@ export function deriveCombatSeed(adventureSeed: number, encounterId: string): nu
     value = Math.imul(value, 0x01000193) >>> 0;
   }
   return value === 0 ? 1 : value;
+}
+
+/**
+ * The authored EXP for one Encounter. A missing entry is a content bug the validator
+ * already refuses, so the runtime treats it as an error rather than as zero.
+ */
+function experienceFor(definition: AdventureRuntimeContext["definition"], encounterId: string): number {
+  const award = definition.experienceAwards.find((candidate) => candidate.afterEncounterId === encounterId);
+  if (!award) throw new Error(`Adventure "${definition.id}" has no experience award for "${encounterId}".`);
+  return award.amount;
+}
+
+/**
+ * Award one Encounter's EXP to every current party member and collect the growth events.
+ * Everyone in the party is paid the same amount: a member who was down when the battle
+ * ended still learned from it, and connection or Guest claim is not a gameplay fact.
+ */
+function awardExperience(
+  party: PartyState,
+  encounterId: string,
+  amount: number,
+): { readonly party: PartyState; readonly events: readonly AdventureEvent[] } {
+  if (amount === 0) return { party, events: [] };
+  const ordered = Object.values(party.members)
+    .sort((left, right) => left.seat - right.seat || left.id.localeCompare(right.id));
+  const members: Record<string, PartyState["members"][string]> = { ...party.members };
+  const gained: AdventureEvent[] = [];
+  const levelled: AdventureEvent[] = [];
+  for (const member of ordered) {
+    const previous = member.progression;
+    const applied = applyExperience(previous, amount);
+    members[member.id] = { ...member, progression: applied.progression };
+    gained.push({ type: "EXPERIENCE_GAINED", encounterId, memberId: member.id, amount, previous, next: applied.progression });
+    for (let step = 1; step <= applied.levelsGained; step += 1) {
+      levelled.push({
+        type: "LEVEL_UP",
+        encounterId,
+        memberId: member.id,
+        previousLevel: previous.level + step - 1,
+        level: previous.level + step,
+      });
+    }
+  }
+  return { party: { members }, events: [...gained, ...levelled] };
 }
 
 export function createAdventureSession(
@@ -142,29 +186,35 @@ export function dispatchAdventureCommand(
           events: [{ type: "ADVENTURE_FAILED", encounterId: command.result.encounterId }],
         };
       }
+      if (state.completedEncounterIds.includes(command.result.encounterId)) {
+        return reject(state, "Encounter has already been completed.");
+      }
       const completedEncounterIds = [...state.completedEncounterIds, command.result.encounterId];
-      const completedState = { ...state, completedEncounterIds };
+      const growth = awardExperience(state.party, command.result.encounterId, experienceFor(definition, command.result.encounterId));
+      const completedState = { ...state, completedEncounterIds, party: growth.party };
       const offer = rewardAfter(definition, command.result.encounterId);
-      const completedEvent: AdventureEvent = { type: "ENCOUNTER_COMPLETED", encounterId: command.result.encounterId };
+      // Fixed publication order: completion, then EXP, then Level-Up, then what comes next.
+      const settled: readonly AdventureEvent[] = [
+        { type: "ENCOUNTER_COMPLETED", encounterId: command.result.encounterId },
+        ...growth.events,
+      ];
       if (offer) {
-        return {
-          accepted: true,
-          state: { ...completedState, phase: "reward", pendingReward: offer },
-          events: [completedEvent, { type: "REWARD_OFFERED", offer }],
-        };
+        const rewarded: AdventureState = { ...completedState, phase: "reward", pendingReward: offer };
+        assertAdventureInvariants(rewarded);
+        return { accepted: true, state: rewarded, events: [...settled, { type: "REWARD_OFFERED", offer }] };
       }
       const currentEncounterId = nextEncounterId(definition, completedState);
       if (currentEncounterId) {
-        return {
-          accepted: true,
-          state: { ...completedState, phase: "between-encounters", currentEncounterId },
-          events: [completedEvent],
-        };
+        const between: AdventureState = { ...completedState, phase: "between-encounters", currentEncounterId };
+        assertAdventureInvariants(between);
+        return { accepted: true, state: between, events: settled };
       }
+      const complete: AdventureState = { ...completedState, phase: "complete", currentEncounterId: null };
+      assertAdventureInvariants(complete);
       return {
         accepted: true,
-        state: { ...completedState, phase: "complete", currentEncounterId: null },
-        events: [completedEvent, { type: "ADVENTURE_COMPLETED", adventureId: definition.id }],
+        state: complete,
+        events: [...settled, { type: "ADVENTURE_COMPLETED", adventureId: definition.id }],
       };
     }
     case "choose-reward": {

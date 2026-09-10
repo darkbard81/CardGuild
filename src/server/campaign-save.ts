@@ -17,6 +17,12 @@ import {
   type SessionGameplayProjection,
   type SessionPartySlot,
 } from "../session";
+import {
+  findContentMigration,
+  migrateCampaignSave,
+  migrateCombatSetupFingerprint,
+  type ContentMigration,
+} from "./campaign-content-migration";
 import { validateCampaignSaveShape } from "./campaign-save-schema";
 import type { CampaignSaveRecord } from "./persistence";
 
@@ -87,18 +93,36 @@ function migrateSaveSchema(version: number, payload: unknown): CampaignSaveV1 {
   return payload as CampaignSaveV1;
 }
 
-/**
- * Content migration entry point. No migration is registered in M9-3, so a save written
- * against a different pack is reported rather than reinterpreted.
- */
-function migrateSaveContent(save: CampaignSaveV1, current: ContentIdentity): CampaignSaveV1 {
-  if (sameContentIdentity(save.contentIdentity, current)) return save;
+/** Nothing else in this module may guess at a pack it does not serve. */
+function contentMismatch(save: CampaignSaveV1, current: ContentIdentity): never {
   throw new CampaignSaveError(
     "SAVE_CONTENT_MISMATCH",
     `Save was written for content pack ${save.contentIdentity.packId}@${save.contentIdentity.packVersion} ` +
       `(${save.contentIdentity.fingerprint}), but this build serves ` +
       `${current.packId}@${current.packVersion} (${current.fingerprint}).`,
   );
+}
+
+/**
+ * Carry a save written against a registered previous pack onto the pack this build serves.
+ *
+ * The source is verified first and separately: its own gameplay hash and, when a battle was
+ * in progress, its own setup fingerprint rebuilt from the saved Party, Loadout and Level.
+ * Only then is the identity re-stamped. Progress is never recomputed and EXP is never
+ * granted retroactively — an already-completed Encounter stays completed and unpaid.
+ */
+function applyContentMigration(
+  save: CampaignSaveV1,
+  migration: ContentMigration,
+  context: SessionAuthorityContext,
+): CampaignSaveV1 {
+  let setupFingerprint: string | null = null;
+  if (save.combat) {
+    const rebuilt = migrateCombatSetupFingerprint(save, save.combat, migration, context);
+    if (!rebuilt.ok) corrupt(rebuilt.reason);
+    setupFingerprint = rebuilt.setupFingerprint;
+  }
+  return migrateCampaignSave(save, migration, setupFingerprint);
 }
 
 function adventureDefinition(context: SessionAuthorityContext): AdventureDefinition {
@@ -315,14 +339,54 @@ function validateCombat(save: CampaignSaveV1, context: SessionAuthorityContext):
 }
 
 /**
+ * What a restore produced. `migration` is non-null exactly when the stored row was written
+ * against a registered previous content pack and had to be re-stamped: it carries the save
+ * the caller must COMMIT, and the hash that save projects to. Restoring never writes to the
+ * database itself, so a caller that cannot commit leaves the stored row exactly as it was.
+ */
+export interface CampaignRestoreResult {
+  readonly projection: SessionGameplayProjection;
+  readonly migration: {
+    readonly save: CampaignSaveV1;
+    readonly snapshotHash: string;
+  } | null;
+}
+
+function projectionOf(save: CampaignSaveV1): SessionGameplayProjection {
+  return {
+    contentIdentity: save.contentIdentity,
+    partySlots: [...save.partySlots].sort((left, right) => left.slot - right.slot),
+    adventure: save.adventure,
+    combat: save.combat,
+  };
+}
+
+/** The rehydrated session must satisfy every live invariant before any writer is retired. */
+function assertRestorable(projection: SessionGameplayProjection, context: SessionAuthorityContext): void {
+  try {
+    assertSessionInvariants(createResumedSessionCoreState(
+      { sessionId: "save-validation", playerId: "save-validation-host", displayName: "Host" },
+      projection,
+      context,
+    ));
+  } catch (error) {
+    corrupt(error instanceof Error ? error.message : "Saved gameplay cannot form a valid session.");
+  }
+}
+
+/**
  * Turn a stored row into a validated gameplay projection, or throw a `CampaignSaveError`
  * naming exactly why the save cannot be resumed. Nothing here recomputes gameplay: no
- * encounter is rebuilt and no command is replayed, so validation cannot alter the save.
+ * encounter is rebuilt into a new battle and no command is replayed, so validation cannot
+ * alter the save. When a registered content migration applies, the source is verified
+ * against the content it was written for and the result against the content this build
+ * serves — two separate judgements, because a migrated projection can no longer hash to the
+ * stored hash.
  */
 export function restoreCampaignSave(
   record: CampaignSaveRecord,
   context: SessionAuthorityContext,
-): SessionGameplayProjection {
+): CampaignRestoreResult {
   if (!record.snapshotHash) corrupt("Stored save has no snapshot hash.");
   if (!Number.isInteger(record.saveSchemaVersion)) corrupt("Stored save schema version is not an integer.");
 
@@ -338,35 +402,46 @@ export function restoreCampaignSave(
   if (declaredVersion !== record.saveSchemaVersion) {
     corrupt("Stored save schema version does not match its payload.");
   }
-  const candidate = migrateSaveSchema(record.saveSchemaVersion, parsed);
+  const save = migrateSaveSchema(record.saveSchemaVersion, parsed);
 
-  if (!sameContentIdentity(candidate.contentIdentity, record.contentIdentity)) {
+  if (!sameContentIdentity(save.contentIdentity, record.contentIdentity)) {
     corrupt("Stored content identity does not match its payload.");
   }
-  const save = migrateSaveContent(candidate, getContentIdentity(context.pack));
-
-  validatePartySlots(save, context);
-  validateAdventure(save, context);
-  validateCombat(save, context);
-
-  const projection: SessionGameplayProjection = {
-    contentIdentity: save.contentIdentity,
-    partySlots: [...save.partySlots].sort((left, right) => left.slot - right.slot),
-    adventure: save.adventure,
-    combat: save.combat,
-  };
-  // The rehydrated session must satisfy every live invariant before any writer is retired.
-  try {
-    assertSessionInvariants(createResumedSessionCoreState(
-      { sessionId: "save-validation", playerId: "save-validation-host", displayName: "Host" },
-      projection,
-      context,
-    ));
-  } catch (error) {
-    corrupt(error instanceof Error ? error.message : "Saved gameplay cannot form a valid session.");
+  // A battle written against a different pack than its own save is not something any
+  // migration can interpret, so it is caught before either branch below.
+  if (save.combat && !sameContentIdentity(save.combat.contentIdentity, save.contentIdentity)) {
+    corrupt("Saved CombatState content identity does not match the save.");
   }
-  if (hashSessionGameplayState(projection) !== record.snapshotHash) {
+
+  const current = getContentIdentity(context.pack);
+  if (sameContentIdentity(save.contentIdentity, current)) {
+    validatePartySlots(save, context);
+    validateAdventure(save, context);
+    validateCombat(save, context);
+    const projection = projectionOf(save);
+    assertRestorable(projection, context);
+    // Last, so a save this build can read is refused by what is actually wrong with it
+    // rather than by the hash mismatch every other kind of damage also produces.
+    if (hashSessionGameplayState(projection) !== record.snapshotHash) {
+      corrupt("Stored snapshot hash does not match the stored gameplay payload.");
+    }
+    return { projection, migration: null };
+  }
+
+  const migration = findContentMigration(save.contentIdentity, context.pack);
+  if (!migration) contentMismatch(save, current);
+
+  // The source is judged against the content it was written for, and that judgement has to
+  // finish before anything is re-stamped: a migrated projection no longer hashes to the
+  // stored hash, so checking it afterwards would be checking the wrong thing.
+  if (hashSessionGameplayState(projectionOf(save)) !== record.snapshotHash) {
     corrupt("Stored snapshot hash does not match the stored gameplay payload.");
   }
-  return projection;
+  const migrated = applyContentMigration(save, migration, context);
+  validatePartySlots(migrated, context);
+  validateAdventure(migrated, context);
+  validateCombat(migrated, context);
+  const projection = projectionOf(migrated);
+  assertRestorable(projection, context);
+  return { projection, migration: { save: migrated, snapshotHash: hashSessionGameplayState(projection) } };
 }

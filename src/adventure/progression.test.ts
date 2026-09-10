@@ -190,7 +190,9 @@ describe("M9-1 runtime progression", () => {
     let adventure = dispatch(initial, { type: "accept-combat-result", result: {
       encounterId: finished.scenarioId, combatSeed: finished.seed, finalCombatHash: completedHash, outcome: "victory",
     } });
-    expect(adventure.party).toEqual(initial.party);
+    // The victory pays this Encounter's authored EXP; it is far short of the next Level.
+    expect(adventure.party.members["party.hero-1"]!.progression).toEqual({ level: 1, experience: 200 });
+    expect(adventure.party.members["party.hero-1"]!.loadout).toEqual(initial.party.members["party.hero-1"]!.loadout);
     adventure = progression(adventure, { level: 2, experience: 375 });
     if (adventure.pendingReward) adventure = dispatch(adventure, { type: "choose-reward", rewardId: adventure.pendingReward.rewardId, choiceIndex: 0 });
     const nextEncounter = combat(dispatch(adventure, { type: "continue-adventure" }));
@@ -200,23 +202,39 @@ describe("M9-1 runtime progression", () => {
     expect(hashCombatState(old.state)).toBe(activeHash);
   });
 
-  it("preserves Level/EXP through loadout, reward and defeat transitions", () => {
+  it("preserves Level/EXP through loadout and defeat, and grows only on victory", () => {
     const state = progression(ready(), { level: 2, experience: 999 });
     const member = state.party.members["party.hero-1"]!;
     const changed = dispatch(state, { type: "set-member-loadout", memberId: member.id, loadout: member.loadout });
     expect(changed.party.members[member.id]!.progression).toEqual(member.progression);
     const active = start(changed);
     const encounter = buildAdventureEncounter(pack, active);
-    for (const outcome of ["victory", "defeat"] as const) {
+    const settle = (outcome: "victory" | "defeat"): AdventureState => {
       const result = dispatchAdventureCommand(active, { type: "accept-combat-result", result: {
         encounterId: active.currentEncounterId!, combatSeed: encounter.seed, outcome, finalCombatHash: "fixture",
       } }, context);
-      expect(result.accepted).toBe(true);
-      expect(result.state.party).toEqual(state.party);
-      expect(result.events.some(event => /EXPERIENCE|LEVEL/.test(event.type))).toBe(false);
-      if (result.state.pendingReward) {
-        expect(dispatch(result.state, { type: "choose-reward", rewardId: result.state.pendingReward.rewardId, choiceIndex: 0 }).party).toEqual(state.party);
-      }
-    }
+      expect(result.accepted, result.error).toBe(true);
+      return result.state;
+    };
+
+    // Defeat pays nothing, so the run that ends here keeps exactly the Level it walked in with.
+    expect(settle("defeat").party).toEqual(state.party);
+
+    const won = dispatchAdventureCommand(active, { type: "accept-combat-result", result: {
+      encounterId: active.currentEncounterId!, combatSeed: encounter.seed, outcome: "victory", finalCombatHash: "fixture",
+    } }, context);
+    expect(won.accepted, won.error).toBe(true);
+    // 999 + 200 crosses the threshold once and carries the remainder.
+    expect(won.state.party.members[member.id]!.progression).toEqual({ level: 3, experience: 199 });
+    expect(won.events.map(event => event.type)).toEqual([
+      "ENCOUNTER_COMPLETED", "EXPERIENCE_GAINED", "LEVEL_UP", "REWARD_OFFERED",
+    ]);
+    // Choosing the reward is a Collection change; it must not pay EXP a second time.
+    const rewarded = dispatch(won.state, { type: "choose-reward", rewardId: won.state.pendingReward!.rewardId, choiceIndex: 0 });
+    expect(rewarded.party.members[member.id]!.progression).toEqual({ level: 3, experience: 199 });
+    // The same accepted result cannot be replayed into a second award.
+    expect(dispatchAdventureCommand(won.state, { type: "accept-combat-result", result: {
+      encounterId: active.currentEncounterId!, combatSeed: encounter.seed, outcome: "victory", finalCombatHash: "fixture",
+    } }, context).accepted).toBe(false);
   });
 });

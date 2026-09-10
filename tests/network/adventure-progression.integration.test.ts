@@ -167,7 +167,7 @@ class SocketClient {
       socket.once("error", reject);
     });
     socket.send(JSON.stringify({
-      v: 6,
+      v: 7,
       type: "hello",
       sessionId: credential.sessionId,
       playerId: credential.playerId,
@@ -260,9 +260,20 @@ describe("the production adventure completes over a real co-op session", () => {
     const send = async (intent: SessionIntent): Promise<void> => {
       const requestId = `run-${String(++requestSequence)}`;
       const mark = client.mark();
-      client.send({ v: 6, type: "intent", requestId, expectedRevision: host.state.revision, intent });
+      client.send({ v: 7, type: "intent", requestId, expectedRevision: host.state.revision, intent });
       const ack = await client.waitForAck(requestId, mark);
       expect(`${intent.type}:${String(ack.accepted)}`).toBe(`${intent.type}:true`);
+      for (const message of client.messages.slice(mark)) {
+        if (message.type !== "snapshot") continue;
+        for (const event of message.events) {
+          if (event.type === "EXPERIENCE_GAINED") {
+            experienceOnWire.set(event.memberId, (experienceOnWire.get(event.memberId) ?? 0) + event.amount);
+          }
+          if (event.type === "LEVEL_UP" && event.memberId === "party.hero-1") {
+            levelUpsOnWire.push(`${event.encounterId}:${String(event.previousLevel)}->${String(event.level)}`);
+          }
+        }
+      }
       // The host pumps enemy turns and stops at every human boundary before going idle.
       await host.whenIdle();
     };
@@ -273,6 +284,10 @@ describe("the production adventure completes over a real co-op session", () => {
     const played: string[] = [];
     const rewards: string[] = [];
     const equipments: string[] = [];
+    // Growth is read off the wire, not off the server's own state: a client only ever
+    // learns what changed from the events published with the COMMIT.
+    const experienceOnWire = new Map<string, number>();
+    const levelUpsOnWire: string[] = [];
     let heroReactions = 0;
     for (let guard = 0; guard < 4_000 && host.state.adventure?.phase !== "complete"; guard += 1) {
       const adventure = host.state.adventure;
@@ -322,6 +337,18 @@ describe("the production adventure completes over a real co-op session", () => {
     // This seed opens a hero reaction window, and the host must hand it back to the client
     // rather than resolving it. Seeing none would mean the server crossed that boundary.
     expect(heroReactions).toBeGreaterThan(0);
+    // The whole authored table is paid, once each, to every seat, and the two authored
+    // Level-Up moments land on the fourth and seventh victories.
+    const totalExperience = ADVENTURE.experienceAwards.reduce((sum, award) => sum + award.amount, 0);
+    expect([...experienceOnWire.keys()].sort()).toEqual(Object.keys(host.state.adventure?.party.members ?? {}).sort());
+    for (const [, amount] of experienceOnWire) expect(amount).toBe(totalExperience);
+    expect(levelUpsOnWire).toEqual([
+      `${ADVENTURE.encounterIds[3] as string}:1->2`,
+      `${ADVENTURE.encounterIds[6] as string}:2->3`,
+    ]);
+    for (const member of Object.values(host.state.adventure?.party.members ?? {})) {
+      expect(member.progression).toEqual({ level: 3, experience: totalExperience % 1_000 });
+    }
     // Each reward's first choice is owned afterwards, in its own half of the collection.
     const collection = host.state.adventure?.collection;
     for (const encounterId of ADVENTURE.encounterIds) {
