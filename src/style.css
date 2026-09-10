@@ -1511,6 +1511,13 @@ button {
   padding: 1.2rem;
 }
 
+/* Keep all eight encounters, three progression rows and the Collection on the
+   supported minimum screen; spend less space on margins before hiding information. */
+@media (min-width: 901px) and (max-height: 800px) {
+  .adventure-screen { padding-block: 1rem; }
+  .adventure-map-card { padding: 1rem; }
+}
+
 .adventure-map-card h2,
 .adventure-content h1 {
   margin: 0;
@@ -1617,6 +1624,101 @@ button {
   gap: 0.45rem;
   align-items: center;
   color: var(--ink);
+}
+
+.adventure-party {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  padding: 0;
+  margin: 0.8rem 0;
+}
+
+.character-progression {
+  color: var(--gold-bright);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.adventure-party .character-progression {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  column-gap: 0.5rem;
+}
+
+/* A one-line meter: it has to survive the 1024x768 rail and a 390px phone unchanged. */
+.exp-meter {
+  /* Sits on the party row rather than under it: the 1024x768 rail has no spare line. */
+  flex: 1 1 4rem;
+  align-self: center;
+  min-width: 2.5rem;
+  max-width: 9rem;
+  height: 0.32rem;
+  margin-top: 0.35rem;
+  border: 1px solid #3d392f;
+  border-radius: 0.2rem;
+  background: #1b1a16;
+  overflow: hidden;
+}
+
+.adventure-party .exp-meter {
+  margin-top: 0;
+}
+
+.exp-meter-fill {
+  display: block;
+  height: 100%;
+  min-width: 0;
+  background: var(--gold-bright);
+}
+
+.growth-summary {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0.6rem 0;
+  padding: 0.55rem 0.7rem;
+  border: 1px solid #5b5340;
+  border-radius: 0.4rem;
+  background: #1f1d18;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.45;
+}
+
+.growth-summary strong {
+  color: var(--ink);
+}
+
+.growth-summary-list {
+  display: grid;
+  gap: 0.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.growth-summary-list li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 0.5rem;
+  row-gap: 0.15rem;
+}
+
+.growth-gain {
+  color: var(--gold-bright);
+  font-weight: 700;
+}
+
+.growth-level-up {
+  padding: 0.02rem 0.35rem;
+  border: 1px solid var(--gold-bright);
+  border-radius: 0.65rem;
+  color: var(--gold-bright);
+  font-size: 0.7rem;
+  font-weight: 700;
 }
 
 .collection-count {
@@ -1898,6 +2000,9 @@ button {
 .deck-panel .loadout-tile { min-height: 72px; }
 .deck-panel .loadout-stat-grid { overflow: auto; }
 @media (max-width: 900px) {
+  .adventure-screen { grid-template-columns: minmax(0, 1fr); padding: 1rem; }
+  .adventure-content { min-width: 0; padding: 1.2rem; overflow-wrap: anywhere; }
+  .adventure-content h1 { font-size: clamp(1.8rem, 8vw, 3rem); }
   .loadout-screen { height: auto; min-height: 100dvh; padding: 12px; }
   .loadout-header { flex-wrap: wrap; gap: 12px; }
   .loadout-header h1 { font-size: 21px; }

@@ -1,8 +1,9 @@
-import type { AdventureState } from "../adventure";
-import { isTerminalHandshakeFailure, SessionClient, type SessionCredential } from "../client";
+import type { AdventureEvent, AdventureState } from "../adventure";
+import { isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
 import { PRODUCTION_CONTENT } from "../content/production-content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
+import { trackGrowthSummary, type GrowthNotice } from "../dom/progression-view";
 import { SessionLobbyUi } from "../dom/session-lobby-ui";
 import type { CombatEvent, CombatState } from "../game";
 import type { PartyMemberLoadout } from "../loadout";
@@ -56,6 +57,13 @@ export class AdventureController {
   private readonly lobbyUi: SessionLobbyUi;
   private encounterBundle: Promise<void> | null = null;
   private view: "adventure" | "loadout" = "adventure";
+  private continuing = false;
+  /**
+   * The last victory's growth, and the snapshot that published it. Built from committed
+   * events only, so it can never show growth the campaign save does not hold, and kept in
+   * memory only: nothing about it belongs in the save or in browser storage.
+   */
+  private growth: GrowthNotice | null = null;
 
   public constructor(
     private readonly app: Application,
@@ -74,26 +82,95 @@ export class AdventureController {
       onDone: () => this.closeLoadout(),
     });
     this.lobbyUi = new SessionLobbyUi(PRODUCTION_CONTENT.pack, this.catalog, {
-      onCreate: (displayName) => void this.createSession(displayName),
+      onShowLogin: () => this.lobbyUi.renderLogin(),
+      onShowLanding: () => this.lobbyUi.renderLanding(),
+      onLogin: (username, password) => void this.signIn(username, password),
+      onLogout: () => void this.signOut(),
+      onCreateCampaign: (name, displayName) => void this.createCampaign(name, displayName),
+      onContinueCampaign: (campaignId) => void this.continueCampaign(campaignId),
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
       onSetParty: (actorDefinitionIds) => this.sendIntent({ type: "set-party-composition", actorDefinitionIds }),
       onSelectCharacter: (memberId) => this.sendIntent({ type: "select-character", memberId }),
       onRemoveOfflineGuest: (playerId) => this.sendIntent({ type: "remove-offline-guest", playerId }),
       onBegin: () => this.sendIntent({ type: "begin-adventure" }),
+      onResume: () => this.sendIntent({ type: "resume-adventure" }),
     });
     this.root.dataset.ready = "true";
     this.root.dataset.screen = "session";
+    // data-auth starts as "unknown" synchronously, so nothing has to race the /api/auth/me
+    // round trip to know whether the landing it is looking at is the final one.
+    this.root.dataset.auth = "unknown";
     this.lobbyUi.renderLanding();
     const stored = SessionClient.loadCredential();
-    if (stored) this.attach(stored);
+    if (stored) {
+      this.root.dataset.auth = "resumed";
+      this.attach(stored);
+    } else {
+      void this.restoreAccount();
+    }
   }
 
-  private async createSession(displayName: string): Promise<void> {
-    this.lobbyUi.setStatus("세션을 만드는 중입니다…");
+  private async restoreAccount(): Promise<void> {
     try {
-      this.attach(await SessionClient.create(displayName));
+      const account = await SessionClient.currentAccount();
+      this.root.dataset.auth = account ? "authenticated" : "anonymous";
+      if (account) await this.showCampaigns(account);
+    } catch {
+      // A server that cannot answer is treated as signed out, not as a broken page.
+      this.root.dataset.auth = "anonymous";
+    }
+  }
+
+  private async showCampaigns(account: AccountIdentity): Promise<void> {
+    this.lobbyUi.renderCampaigns(account, await SessionClient.listCampaigns());
+  }
+
+  private async signIn(username: string, password: string): Promise<void> {
+    this.lobbyUi.setStatus("로그인하는 중입니다…");
+    try {
+      const account = await SessionClient.login(username, password);
+      this.root.dataset.auth = "authenticated";
+      await this.showCampaigns(account);
     } catch (error) {
-      this.lobbyUi.setStatus(error instanceof Error ? error.message : "세션을 만들 수 없습니다.");
+      this.lobbyUi.setStatus(error instanceof Error ? error.message : "로그인할 수 없습니다.");
+    }
+  }
+
+  private async signOut(): Promise<void> {
+    try {
+      await SessionClient.logout();
+    } finally {
+      this.root.dataset.auth = "anonymous";
+      this.lobbyUi.renderLanding();
+    }
+  }
+
+  private async createCampaign(name: string, displayName: string): Promise<void> {
+    this.lobbyUi.setStatus("Campaign을 만드는 중입니다…");
+    try {
+      this.attach(await SessionClient.createCampaign(name, displayName));
+    } catch (error) {
+      this.lobbyUi.setStatus(error instanceof Error ? error.message : "Campaign을 만들 수 없습니다.");
+    }
+  }
+
+  private async continueCampaign(campaignId: string): Promise<void> {
+    // Continue retires whatever live session the campaign has, so a second in-flight call
+    // would tear down the session the first one just opened.
+    if (this.continuing) return;
+    this.continuing = true;
+    this.lobbyUi.setStatus("Campaign을 이어가는 중입니다…");
+    try {
+      this.attach(await SessionClient.continueCampaign(campaignId));
+    } catch (error) {
+      this.lobbyUi.setStatus(error instanceof Error ? error.message : "Campaign을 이어갈 수 없습니다.");
+      // Re-arm Continue before anything that can fail on its own. The campaign row and its
+      // save are untouched by a refused Continue, so the retry has to stay reachable even
+      // when the refresh below fails too — otherwise one outage costs a page reload.
+      this.lobbyUi.settleContinue();
+      void this.restoreAccount();
+    } finally {
+      this.continuing = false;
     }
   }
 
@@ -138,6 +215,7 @@ export class AdventureController {
   private returnToLanding(message: string): void {
     this.snapshot = null;
     this.client = null;
+    this.growth = null;
     this.battle?.destroy();
     this.battle = null;
     this.root.dataset.screen = "session";
@@ -145,6 +223,7 @@ export class AdventureController {
     delete this.root.dataset.sessionRevision;
     delete this.root.dataset.controlRevision;
     delete this.root.dataset.sessionHash;
+    delete this.root.dataset.lifecycle;
     delete this.root.dataset.viewerMemberId;
     delete this.root.dataset.controlledActorIds;
     delete this.root.dataset.viewerRole;
@@ -152,6 +231,9 @@ export class AdventureController {
     this.loadoutUi.setVisible(false);
     this.lobbyUi.renderLanding();
     this.lobbyUi.setStatus(message);
+    // A signed-in host whose session died belongs back at their campaigns, not at the
+    // guest landing; a guest stays where they are.
+    void this.restoreAccount().then(() => this.lobbyUi.setStatus(message));
   }
 
   private viewerSeat(snapshot: ServerSnapshot): SessionSeat | undefined {
@@ -166,8 +248,20 @@ export class AdventureController {
     );
   }
 
+  private trackGrowth(snapshot: ServerSnapshot): void {
+    this.growth = trackGrowthSummary(this.growth, {
+      sessionId: snapshot.state.sessionId,
+      revision: snapshot.revision,
+      inCombat: Boolean(snapshot.state.combat),
+      lastCompletedEncounterId: snapshot.state.adventure?.completedEncounterIds.at(-1) ?? null,
+    }, snapshot.events.filter(
+      (event): event is Extract<AdventureEvent, { type: "EXPERIENCE_GAINED" | "LEVEL_UP" }> =>
+        event.type === "EXPERIENCE_GAINED" || event.type === "LEVEL_UP"));
+  }
+
   private async renderSnapshot(snapshot: ServerSnapshot): Promise<void> {
     if (this.snapshot !== snapshot) return;
+    this.trackGrowth(snapshot);
     const state = snapshot.state;
     const viewer = this.viewerSeat(snapshot);
     if (!viewer) throw new Error("Authenticated player does not own a session seat.");
@@ -180,13 +274,19 @@ export class AdventureController {
     this.root.dataset.controlledActorIds = [...controlledMemberIds].sort().join(",");
     this.root.dataset.viewerRole = state.hostPlayerId === viewer.playerId ? "host" : "guest";
 
+    this.root.dataset.lifecycle = state.lifecycle;
     if (state.lifecycle === "lobby") {
-      this.battle?.destroy();
-      this.battle = null;
-      this.root.dataset.screen = "session";
-      this.lobbyUi.renderLobby(state, viewer.playerId, snapshot.control);
-      this.ui.setVisible(false);
-      this.loadoutUi.setVisible(false);
+      this.renderSessionLobby(state, viewer.playerId, snapshot.control);
+      return;
+    }
+
+    // A restored campaign already carries saved Adventure and Combat state. Rendering it
+    // before Resume would drop the host straight into a battle they have not resumed, and
+    // would arm combat input the server is going to refuse.
+    if (state.lifecycle === "resume-lobby") {
+      delete this.root.dataset.adventurePhase;
+      delete this.root.dataset.encounterId;
+      this.renderSessionLobby(state, viewer.playerId, snapshot.control);
       return;
     }
 
@@ -207,11 +307,25 @@ export class AdventureController {
     this.renderAdventure(adventure, viewer);
   }
 
+  private renderSessionLobby(
+    state: ServerSnapshot["state"],
+    viewerPlayerId: string,
+    control: ServerSnapshot["control"],
+  ): void {
+    this.battle?.destroy();
+    this.battle = null;
+    this.root.dataset.screen = "session";
+    this.lobbyUi.renderLobby(state, viewerPlayerId, control);
+    this.ui.setVisible(false);
+    this.loadoutUi.setVisible(false);
+  }
+
   private renderCombat(snapshot: ServerSnapshot, viewer: SessionSeat, combat: CombatState): void {
     this.root.dataset.screen = "combat";
     this.loadoutUi.setVisible(false);
     this.ui.render(snapshot.state.adventure as AdventureState, {
       isHost: snapshot.state.hostPlayerId === viewer.playerId,
+      growth: this.growth?.summary ?? null,
     });
     const staticScenario = PRODUCTION_CONTENT.pack.scenarios[combat.scenarioId];
     if (!staticScenario) throw new Error(`Scenario "${combat.scenarioId}" is missing.`);
@@ -265,7 +379,7 @@ export class AdventureController {
       this.view = "adventure";
       this.root.dataset.screen = "adventure";
       this.loadoutUi.setVisible(false);
-      this.ui.render(state, { isHost });
+      this.ui.render(state, { isHost, growth: this.growth?.summary ?? null });
       this.ui.setVisible(true);
     }
   }

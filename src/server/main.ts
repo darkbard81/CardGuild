@@ -2,8 +2,17 @@ import path from "node:path";
 import process from "node:process";
 
 import { PRODUCTION_CONTENT } from "../content/production-content";
+import { DEFAULT_AUTH_TTL_MS } from "./auth-service";
+import { deriveCookieSecure } from "./cookies";
 import { createOpaqueId, createReconnectCredential } from "./credentials";
+import { resolveDatabasePath } from "./database-path";
+import { createSqlitePersistence } from "./persistence";
 import { startCardGuildServer } from "./server";
+
+// node:sqlite needs an experimental flag before Node 24; failing here beats failing at the
+// first login with a stack trace from deep inside the driver.
+const nodeMajor = Number.parseInt(process.versions.node.split(".")[0] ?? "0", 10);
+if (nodeMajor < 24) throw new Error(`CardGuild requires Node 24 or newer, but this is ${process.versions.node}.`);
 
 const port = Number.parseInt(process.env.CARDGUILD_PORT ?? "8787", 10);
 const host = process.env.CARDGUILD_HOST ?? "127.0.0.1";
@@ -13,6 +22,11 @@ const allowedOrigins = new Set(
     .map((value) => value.trim())
     .filter(Boolean),
 );
+const authTtlDays = Number.parseFloat(process.env.CARDGUILD_AUTH_TTL_DAYS ?? "");
+const authTtlMs = Number.isFinite(authTtlDays) && authTtlDays > 0
+  ? authTtlDays * 24 * 60 * 60 * 1000
+  : DEFAULT_AUTH_TTL_MS;
+const databasePath = resolveDatabasePath();
 const configuredSeed = process.env.CARDGUILD_ADVENTURE_SEED;
 const adventureSeed = configuredSeed === undefined ? null : Number.parseInt(configuredSeed, 10);
 if (adventureSeed !== null && !Number.isInteger(adventureSeed)) {
@@ -28,6 +42,12 @@ const running = await startCardGuildServer({
   port,
   allowedOrigins,
   staticRoot: path.resolve(process.cwd(), "dist"),
+  persistence: createSqlitePersistence(databasePath),
+  authTtlMs,
+  cookie: {
+    secure: deriveCookieSecure(allowedOrigins, process.env.CARDGUILD_COOKIE_SECURE),
+    ttlMs: authTtlMs,
+  },
   sources: adventureSeed === null ? undefined : {
     sessionId: () => createOpaqueId("session"),
     playerId: () => createOpaqueId("player"),
@@ -37,11 +57,25 @@ const running = await startCardGuildServer({
 });
 
 process.stdout.write(`CardGuild co-op server listening at ${running.origin}\n`);
+process.stdout.write(`Campaign database: ${databasePath}\n`);
 
-async function shutdown(): Promise<void> {
-  await running.close();
-  process.exitCode = 0;
+/**
+ * `close()` is idempotent, so both signals — and a repeat of either — await the one
+ * shutdown rather than starting a second. `on` rather than `once` matters: with `once`, a
+ * second SIGTERM falls through to Node's default handler and kills the process mid-flush,
+ * which is exactly the half-written database this ordering exists to prevent.
+ */
+async function shutdown(signal: NodeJS.Signals): Promise<void> {
+  try {
+    await running.close();
+    process.exitCode = 0;
+  } catch (error) {
+    // A shutdown that could not finish must not look clean, or an operator restarts on top
+    // of a database that was still being written.
+    process.stderr.write(`CardGuild shutdown on ${signal} failed: ${String(error)}\n`);
+    process.exitCode = 1;
+  }
 }
 
-process.once("SIGINT", () => void shutdown());
-process.once("SIGTERM", () => void shutdown());
+process.on("SIGINT", () => void shutdown("SIGINT"));
+process.on("SIGTERM", () => void shutdown("SIGTERM"));

@@ -3,7 +3,9 @@ import { describe, expect, it } from "vitest";
 import { PRODUCTION_CONTENT } from "../content";
 import { hashCombatState } from "../game";
 import {
+  createResumedSessionCoreState,
   createSessionCoreState,
+  assertSessionInvariants,
   dispatchSessionIntent,
   hashSessionGameplayState,
   joinSessionCore,
@@ -12,6 +14,7 @@ import type {
   SessionAuthorityContext,
   SessionControlContext,
   SessionCoreState,
+  SessionGameplayProjection,
   SessionIntent,
   SessionPlayerIdentity,
   SessionTransitionResult,
@@ -90,6 +93,29 @@ function beginAndStart(state: SessionCoreState): SessionCoreState {
 }
 
 describe("pure M5 Session authority", () => {
+  it("hashes runtime Level and EXP, preserves them through JSON, and rejects invalid Adventure state", () => {
+    const initial = beginAndStart(prepare(lobby()));
+    const memberId = "party.hero-1";
+    const stateWith = (level: number, experience: number): SessionCoreState => ({
+      ...initial,
+      adventure: { ...initial.adventure!, party: { members: {
+        ...initial.adventure!.party.members,
+        [memberId]: { ...initial.adventure!.party.members[memberId]!, progression: { level, experience } },
+      } } },
+    });
+    const hash = hashSessionGameplayState(initial);
+    for (const changed of [stateWith(2, 0), stateWith(1, 375)]) {
+      assertSessionInvariants(changed);
+      expect(hashSessionGameplayState(changed)).not.toBe(hash);
+      const decoded = JSON.parse(JSON.stringify(changed)) as SessionCoreState;
+      assertSessionInvariants(decoded);
+      expect(decoded).toEqual(changed);
+      expect(hashSessionGameplayState(decoded)).toBe(hashSessionGameplayState(changed));
+      expect(hashCombatState(decoded.combat!)).toBe(hashCombatState(initial.combat!));
+    }
+    expect(() => assertSessionInvariants(stateWith(1, 1000))).toThrow("experience");
+    expect(() => assertSessionInvariants({ ...initial, adventure: { ...initial.adventure!, version: 2 } } as unknown as SessionCoreState)).toThrow("version 3");
+  });
   it("authorizes and commits final facing plus End Turn as one revision", () => {
     const state = beginAndStart(readyThreePlayers());
     const combat = state.combat!;
@@ -113,7 +139,7 @@ describe("pure M5 Session authority", () => {
   it("keeps player seats separate and prepares deterministic 1/2/3-character parties", () => {
     for (const size of [1, 2, 3] as const) {
       const state = prepare(lobby("session-" + String(size)), DEFAULT_PARTY.slice(0, size));
-      expect(state.version).toBe(2);
+      expect(state.version).toBe(3);
       expect(state.seats).toEqual([{ seat: 1, playerId: "player-a", displayName: "Host" }]);
       expect(state.partySlots).toEqual(DEFAULT_PARTY.slice(0, size).map((actorDefinitionId, index) => ({
         slot: index + 1,
@@ -331,5 +357,150 @@ describe("pure M5 Session authority", () => {
     ]));
     expect(reordered.combat?.setupFingerprint).not.toBe(first.combat?.setupFingerprint);
     expect(hashSessionGameplayState(reordered)).not.toBe(hashSessionGameplayState(first));
+  });
+});
+
+function projectionOf(state: SessionCoreState): SessionGameplayProjection {
+  const adventure = state.adventure;
+  if (!adventure) throw new Error("Fixture state has no AdventureState.");
+  return {
+    contentIdentity: state.contentIdentity,
+    partySlots: state.partySlots,
+    adventure,
+    combat: state.combat,
+  };
+}
+
+function resumed(saved: SessionCoreState, sessionId = "session-resumed"): SessionCoreState {
+  return createResumedSessionCoreState(
+    { sessionId, playerId: "player-resumed-host", displayName: "Resumed Host" },
+    projectionOf(saved),
+    context,
+  );
+}
+
+describe("M9-3 resume lobby", () => {
+  it("rehydrates saved gameplay into a fresh session with the same gameplay hash", () => {
+    const saved = beginAndStart(readyThreePlayers());
+    const state = resumed(saved);
+
+    expect(state.version).toBe(3);
+    expect(state.lifecycle).toBe("resume-lobby");
+    expect(state.sessionId).not.toBe(saved.sessionId);
+    expect(state.hostPlayerId).not.toBe(saved.hostPlayerId);
+    expect(state.revision).toBe(0);
+    expect(state.seats).toEqual([{ seat: 1, playerId: "player-resumed-host", displayName: "Resumed Host" }]);
+    expect(state.guestClaims).toEqual({ byMemberId: {} });
+    expect(state.partyPrepared).toBe(true);
+    expect(state.partySlots).toEqual(saved.partySlots);
+    expect(state.adventure).toEqual(saved.adventure);
+    expect(state.combat).toEqual(saved.combat);
+    // The seed is read back from the Adventure rather than stored beside it.
+    expect(state.adventureSeed).toBe(saved.adventure?.adventureSeed);
+    expect(hashSessionGameplayState(state)).toBe(hashSessionGameplayState(saved));
+    // No trace of the session that saved it survives in the restored state.
+    const encoded = JSON.stringify(state);
+    for (const stale of [saved.sessionId, saved.hostPlayerId, "player-b", "player-c"]) {
+      expect(encoded).not.toContain(stale);
+    }
+  });
+
+  it("forbids every gameplay intent until the host resumes", () => {
+    const saved = beginAndStart(prepare(lobby()));
+    const state = resumed(saved);
+    const member = state.adventure?.party.members["party.hero-1"];
+    const combat = state.combat;
+    if (!member || !combat) throw new Error("Fixture is missing saved gameplay.");
+    const forbidden: readonly SessionIntent[] = [
+      { type: "set-party-composition", actorDefinitionIds: ["hero.brom"] },
+      { type: "begin-adventure" },
+      { type: "start-encounter" },
+      { type: "choose-reward", rewardId: "reward.any", choiceIndex: 0 },
+      { type: "set-loadout", memberId: "party.hero-1", loadout: member.loadout },
+      { type: "use-action", action: { kind: "basic", id: "stride" }, target: { kind: "none" } },
+      { type: "end-turn", facing: "north" },
+      { type: "use-reaction", triggerId: "trigger", cardInstanceId: "card" },
+      { type: "pass-reaction", triggerId: "trigger" },
+    ];
+
+    for (const intent of forbidden) {
+      const result = dispatch(state, state.hostPlayerId, intent);
+      expect(result.accepted, intent.type).toBe(false);
+      expect(result.errorCode, intent.type).toBe("FORBIDDEN");
+      expect(result.state, intent.type).toBe(state);
+    }
+    // Saved combat is present, so the guard cannot be relying on its absence.
+    expect(state.combat).not.toBeNull();
+  });
+
+  it("lets a fresh guest join and reclaim a saved character before Resume", () => {
+    const saved = beginAndStart(readyThreePlayers());
+    let state = resumed(saved);
+
+    state = join(state, player("player-new-guest", "New Guest"));
+    expect(state.seats.map((seat) => seat.seat)).toEqual([1, 2]);
+    state = claim(state, "player-new-guest", "party.hero-3");
+    expect(state.guestClaims.byMemberId).toEqual({ "party.hero-3": "player-new-guest" });
+    // Reclaiming changes no gameplay, so the restored hash still matches the save.
+    expect(hashSessionGameplayState(state)).toBe(hashSessionGameplayState(saved));
+
+    const removable = dispatch(state, state.hostPlayerId, {
+      type: "remove-offline-guest",
+      playerId: "player-new-guest",
+    }, [state.hostPlayerId]);
+    // A guest holding a claim still cannot be removed, exactly as in a new lobby.
+    expect(removable.accepted).toBe(false);
+  });
+
+  it("resumes on the host's word alone, changing lifecycle and nothing else", () => {
+    const saved = beginAndStart(readyThreePlayers());
+    let state = resumed(saved);
+    state = join(state, player("player-idle-guest", "Idle Guest"));
+
+    expect(dispatch(state, "player-idle-guest", { type: "resume-adventure" }).accepted).toBe(false);
+    // A guest who joined without choosing a character does not block Resume: unclaimed
+    // saved characters fall back to the host under the existing control rules.
+    const result = dispatch(state, state.hostPlayerId, { type: "resume-adventure" });
+
+    expect(result.accepted).toBe(true);
+    expect(result.events).toEqual([]);
+    expect(result.state.lifecycle).toBe("active");
+    expect(result.state.revision).toBe(state.revision + 1);
+    expect(result.state.adventure).toEqual(state.adventure);
+    expect(result.state.combat).toEqual(state.combat);
+    expect(result.state.seats).toEqual(state.seats);
+    expect(hashSessionGameplayState(result.state)).toBe(hashSessionGameplayState(saved));
+    // Resume is not repeatable, and a live session never re-enters the resume lobby.
+    expect(dispatch(result.state, result.state.hostPlayerId, { type: "resume-adventure" }).accepted).toBe(false);
+    expect(joinSessionCore(result.state, player("player-late"), context).errorCode).toBe("ROSTER_LOCKED");
+  });
+
+  it("plays on from the resumed state at the same combat sequence", () => {
+    const saved = beginAndStart(prepare(lobby()));
+    const state = dispatch(resumed(saved), "player-resumed-host", { type: "resume-adventure" }).state;
+    const actorId = state.combat?.turn.activeActorId;
+    if (!actorId) throw new Error("Restored combat has no active actor.");
+
+    const played = dispatch(state, state.hostPlayerId, { type: "end-turn", facing: "east" });
+
+    expect(played.accepted).toBe(true);
+    expect(played.state.combat?.sequence).toBe((saved.combat?.sequence ?? 0) + 1);
+    expect(hashSessionGameplayState(played.state)).not.toBe(hashSessionGameplayState(saved));
+  });
+
+  it("refuses to restore gameplay that cannot form a valid session", () => {
+    const saved = beginAndStart(prepare(lobby()));
+    const projection = projectionOf(saved);
+
+    expect(() => createResumedSessionCoreState(
+      { sessionId: "session-broken", playerId: "player-broken", displayName: "Host" },
+      { ...projection, partySlots: projection.partySlots.slice(1) },
+      context,
+    )).toThrow();
+    expect(() => createResumedSessionCoreState(
+      { sessionId: "session-broken", playerId: "player-broken", displayName: "Host" },
+      { ...projection, combat: null },
+      context,
+    )).toThrow("atomically");
   });
 });

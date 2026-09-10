@@ -10,7 +10,7 @@ import {
   type ProtocolErrorCode,
   type ServerError,
 } from "../protocol";
-import type { SessionConnection } from "./session-host";
+import { SESSION_RETIRED_CLOSE_CODE, type SessionConnection } from "./session-host";
 import type { SessionStore } from "./session-store";
 import { createOpaqueId } from "./credentials";
 
@@ -69,10 +69,29 @@ export function attachWebSocketGateway(
     perMessageDeflate: false,
   });
   const alive = new Map<WebSocket, boolean>();
+  /**
+   * Every message operation that has not settled yet, tracked per operation rather than
+   * per socket.
+   *
+   * A message that has been read off the wire but has not yet reached a SessionHost queue
+   * is invisible to `SessionStore.drain()`, so shutdown has to wait on these too —
+   * otherwise the database can close underneath a handler still on its way to a durable
+   * write. Keying this by socket would reintroduce exactly that: a socket that closes while
+   * its queue is still running would drop the whole queue from the set, and a shutdown
+   * starting a moment later would walk straight past work that then lands after the drain
+   * barrier. Connection cleanup and operation tracking are separate lifetimes.
+   */
+  const pending = new Set<Promise<void>>();
+  let closing = false;
 
   server.on("upgrade", (request, socket, head) => {
     const url = new URL(request.url ?? "/", "http://cardguild.local");
     const origin = request.headers.origin;
+    if (closing) {
+      socket.write("HTTP/1.1 503 Service Unavailable\r\nConnection: close\r\n\r\n");
+      socket.destroy();
+      return;
+    }
     if (url.pathname !== "/ws" || (origin && !options.allowedOrigins.has(origin))) {
       socket.write("HTTP/1.1 403 Forbidden\r\nConnection: close\r\n\r\n");
       socket.destroy();
@@ -126,7 +145,12 @@ export function attachWebSocketGateway(
         const attached = await host.attach(hello.playerId, hello.reconnectToken, hello.contentIdentity, connection);
         if (!attached.ok) {
           send(socket, errorMessage(attached.code, attached.message));
-          socket.close(4003, attached.code.toLowerCase());
+          // A retired session gets its own close code so the client discards the credential
+          // instead of reconnecting to a room that will never come back.
+          socket.close(
+            attached.code === "SESSION_RETIRED" ? SESSION_RETIRED_CLOSE_CODE : 4003,
+            attached.code.toLowerCase(),
+          );
           return;
         }
         identity = { sessionId: hello.sessionId, playerId: hello.playerId };
@@ -146,6 +170,9 @@ export function attachWebSocketGateway(
     }
 
     socket.on("message", (data, isBinary) => {
+      // A message that arrives after shutdown started is dropped rather than queued: the
+      // socket is about to be terminated and its answer could never be delivered.
+      if (closing) return;
       const operation = messageQueue.then(
         () => handleIncoming(data, isBinary),
         () => handleIncoming(data, isBinary),
@@ -160,8 +187,13 @@ export function attachWebSocketGateway(
           socket.close(1011, "session authority failure");
         }
       });
+      const tracked = messageQueue;
+      pending.add(tracked);
+      void tracked.finally(() => pending.delete(tracked));
     });
     socket.on("close", () => {
+      // Connection cleanup only. Whatever this socket already handed to the queue stays
+      // tracked in `pending` until it actually settles.
       clearTimeout(deadline);
       alive.delete(socket);
       if (identity) void store.get(identity.sessionId)?.detach(identity.playerId, connectionId);
@@ -180,10 +212,15 @@ export function attachWebSocketGateway(
   }, options.heartbeatMs ?? 30_000);
 
   return {
-    close: () => new Promise<void>((resolve) => {
+    close: async () => {
+      closing = true;
       clearInterval(heartbeat);
+      // Drain before terminating: a handler still deciding what to do with a message it
+      // already read must reach its SessionHost queue, so that `drain()` can see it. New
+      // messages are already refused, so this loop is bounded by the work in hand.
+      while (pending.size > 0) await Promise.allSettled([...pending]);
       for (const socket of webSockets.clients) socket.terminate();
-      webSockets.close(() => resolve());
-    }),
+      await new Promise<void>((resolve) => webSockets.close(() => resolve()));
+    },
   };
 }

@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { createCampaignAsHost } from "./host-login";
 import { chooseFacing } from "./facing-input";
 
 // The same pattern the asset build generates actor paths from, so a request-shape
@@ -56,11 +57,7 @@ function captureRuntimeErrors(page: Page): string[] {
 }
 
 async function openAdventure(page: Page): Promise<void> {
-  await page.goto("/");
-  await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
-  await expect(page.locator("#app")).toHaveAttribute("data-screen", "session");
-  await page.locator("#session-display-name").fill("Solo Host");
-  await page.locator("#create-session").click();
+  await createCampaignAsHost(page, "Solo Host");
   await expect(page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "host");
   await page.locator("#party-slot-2").selectOption("");
   await page.locator("#party-slot-3").selectOption("");
@@ -632,41 +629,96 @@ test.describe("touch camera", () => {
         type,
         touchPoints: points.map((point) => ({ ...point, radiusX: 12, radiusY: 12, force: 1 })),
       });
-    const quad = async (): Promise<{ width: number; centerX: number }> => {
-      const corners = await boardCorners(page);
+    interface BoardReading {
+      readonly width: number;
+      readonly centerX: number;
+      readonly zoom: number;
+      readonly safeArea: string;
+    }
+    const quad = async (): Promise<BoardReading> => {
+      const canvas = page.locator("#pixi-canvas");
+      const [corners, zoom, safeArea] = await Promise.all([
+        boardCorners(page),
+        canvas.getAttribute("data-board-zoom"),
+        canvas.getAttribute("data-safe-area"),
+      ]);
       return {
         width: Math.max(...corners.map((corner) => corner.x)) - Math.min(...corners.map((corner) => corner.x)),
         centerX: corners.reduce((sum, corner) => sum + corner.x, 0) / corners.length,
+        zoom: Number(zoom),
+        safeArea: safeArea ?? "",
       };
     };
+    /**
+     * CDP resolves a touch dispatch before the page has handled it, and the HUD can still
+     * be settling into its safe area, so a single read may come from a board that is still
+     * moving. Only accept a reading the page has stopped changing.
+     */
+    const settled = async (): Promise<BoardReading> => {
+      let previous = await quad();
+      await expect.poll(async () => {
+        const current = await quad();
+        const quiet = current.width === previous.width &&
+          current.centerX === previous.centerX &&
+          current.zoom === previous.zoom &&
+          current.safeArea === previous.safeArea;
+        previous = current;
+        return quiet;
+      }, { timeout: 15_000 }).toBe(true);
+      return previous;
+    };
 
-    const start = await quad();
+    const spread = async (): Promise<void> => {
+      let left = { x: 520, y: 380, id: 1 };
+      let right = { x: 620, y: 440, id: 2 };
+      await touch("touchStart", [left, right]);
+      for (let step = 0; step < 8; step += 1) {
+        left = { ...left, x: left.x - 12, y: left.y - 8 };
+        right = { ...right, x: right.x + 12, y: right.y + 8 };
+        await touch("touchMove", [left, right]);
+      }
+      await touch("touchEnd", []);
+    };
+
+    const start = await settled();
+    await spread();
+    const zoomedOnce = await settled();
+    // Spreading two fingers zooms in, the way turning the wheel away does, and the board
+    // really is drawn larger for it.
+    expect(zoomedOnce.zoom).toBeGreaterThan(start.zoom * 1.2);
+    expect(zoomedOnce.width).toBeGreaterThan(start.width * 1.2);
+
+    // Pinch on until the camera is pinned against its ceiling before the drag. That is the
+    // state a two-finger drag used to zoom out of: at the ceiling the half-step that zooms
+    // in is clamped away, leaving only the half that zooms out.
+    await spread();
+    const zoomed = await settled();
+    expect(zoomed.zoom).toBeGreaterThanOrEqual(zoomedOnce.zoom);
+    await spread();
+    // A further pinch changes nothing, which is how this knows it is at the ceiling.
+    expect((await settled()).zoom).toBe(zoomed.zoom);
+
     let left = { x: 520, y: 380, id: 1 };
-    let right = { x: 620, y: 440, id: 2 };
+    let right = { x: 640, y: 460, id: 2 };
     await touch("touchStart", [left, right]);
     for (let step = 0; step < 8; step += 1) {
-      left = { ...left, x: left.x - 12, y: left.y - 8 };
-      right = { ...right, x: right.x + 12, y: right.y + 8 };
-      await touch("touchMove", [left, right]);
-    }
-    await touch("touchEnd", []);
-    // The camera lays out on the next frame, so measure once it has settled.
-    await expect.poll(async () => (await quad()).width).toBeGreaterThan(start.width * 1.2);
-    const zoomed = await quad();
-
-    left = { x: 520, y: 380, id: 1 };
-    right = { x: 640, y: 460, id: 2 };
-    await touch("touchStart", [left, right]);
-    for (let step = 0; step < 8; step += 1) {
+      // One finger at a time, trailing finger first, which is how the browser delivers a
+      // two-finger move anyway: a `pointermove` each. Taking the step that widens the gap
+      // first is the order that used to lose zoom at the ceiling, and real hardware does
+      // not promise the harmless order.
       left = { ...left, x: left.x - 14 };
+      await touch("touchMove", [left, right]);
       right = { ...right, x: right.x - 14 };
       await touch("touchMove", [left, right]);
     }
     await touch("touchEnd", []);
-    await expect.poll(async () => (await quad()).centerX).toBeLessThan(zoomed.centerX - 50);
-    const panned = await quad();
-    // Fingers travelling together move the board without changing how big it is.
-    expect(panned.width).toBeCloseTo(zoomed.width, 0);
+    const panned = await settled();
+    expect(panned.centerX).toBeLessThan(zoomed.centerX - 50);
+    // Fingers travelling together move the board without zooming, exactly. This reads the
+    // camera rather than the board's on-screen width, because the width is the camera
+    // multiplied by the fit: a HUD that reflows between the two readings resizes the board
+    // on its own, which is not the gesture doing anything.
+    expect(panned.zoom).toBe(zoomed.zoom);
     // Lifting out of a gesture is not a pick, so no radial menu opens behind it.
     await expect(page.locator("#ring-root")).toBeHidden();
   });

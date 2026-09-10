@@ -2,150 +2,21 @@ import { WebSocket } from "ws";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { PRODUCTION_CONTENT } from "../../src/content";
-import { gridDistance, listLegalActions, listLegalTargets } from "../../src/game";
-import type { ActionSource, ActionTarget, CombatState, LegalTarget } from "../../src/game";
-import type { AdventureState } from "../../src/adventure";
-import type { RewardGrant } from "../../src/content";
-import { deriveLoadoutSnapshot } from "../../src/loadout";
 import type { ClientIntentEnvelope, ServerAck, ServerMessage } from "../../src/protocol";
 import { digestReconnectToken } from "../../src/server/credentials";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
 import type { SessionCredentialResponse } from "../../src/server/session-store";
 import type { SessionIntent } from "../../src/session";
+import { equipIntent, heroIntent, reactionIntent } from "./adventure-driver";
+import { hostSession, seededPersistence } from "./host-account";
 
 const TEST_ORIGIN = "http://cardguild.test";
 // A frontline, a guardian and the healer. The policy below has a heal branch, and after
 // #21's balance pass a party with nobody who can use it does not reach the finale.
 const PARTY = ["hero.aerin", "hero.brom", "hero.nera"] as const;
-const CONTENT = PRODUCTION_CONTENT.pack.combatContent;
 const ADVENTURE = PRODUCTION_CONTENT.adventure;
 
 type Host = NonNullable<ReturnType<RunningCardGuildServer["store"]["get"]>>;
-
-function actorTargets(targets: readonly LegalTarget[]): readonly Extract<LegalTarget, { kind: "actor" }>[] {
-  return targets.filter((target): target is Extract<LegalTarget, { kind: "actor" }> => target.kind === "actor");
-}
-
-/** Whether an Action heals, read off its authored effects rather than an id list. */
-function restoresHp(actionId: string): boolean {
-  const resolution = CONTENT.actions[actionId]?.resolution;
-  if (!resolution || resolution.kind === "move") return false;
-  const effects = resolution.kind === "direct" ? resolution.effects : Object.values(resolution.outcomes).flat();
-  return effects.some((effect) => effect.kind === "restore-hp");
-}
-
-/**
- * A deterministic hero policy built only from the shared legality queries, so it can only
- * ask for what a player could ask for.
- */
-function heroIntent(combat: CombatState, actorId: string): SessionIntent {
-  const actor = combat.actors[actorId];
-  if (!actor) throw new Error("Missing active hero.");
-  const actions = listLegalActions(combat, actorId, CONTENT).filter((entry) => entry.enabled);
-  const use = (source: ActionSource, target: ActionTarget): SessionIntent =>
-    ({ type: "use-action", action: source, target });
-
-  for (const actionId of ["stand", "escape-grab"]) {
-    const entry = actions.find((candidate) => candidate.source.kind === "context" && candidate.actionId === actionId);
-    if (entry) return use(entry.source, { kind: "none" });
-  }
-  const interact = actions.find((candidate) => candidate.actionId === "interact-lever");
-  if (interact) {
-    const target = listLegalTargets(combat, actorId, interact.source, CONTENT)
-      .find((candidate): candidate is Extract<LegalTarget, { kind: "object" }> => candidate.kind === "object");
-    if (target) return use(interact.source, { kind: "object", objectId: target.objectId });
-  }
-  // Patch up a badly hurt ally before swinging, or the healers on the far side of the
-  // adventure simply out-attrit a party that only attacks.
-  const hurt = Object.values(combat.actors)
-    .filter((candidate) => candidate.team === actor.team && !candidate.defeated && candidate.hp * 2 <= candidate.maxHp);
-  if (hurt.length > 0) {
-    for (const candidate of actions.filter((entry) => restoresHp(entry.actionId))) {
-      const target = actorTargets(listLegalTargets(combat, actorId, candidate.source, CONTENT))
-        .filter((entry) => hurt.some((ally) => ally.id === entry.actorId))
-        .sort((left, right) => (combat.actors[left.actorId]?.hp ?? 0) - (combat.actors[right.actorId]?.hp ?? 0))[0];
-      if (target) return use(candidate.source, { kind: "actor", actorId: target.actorId });
-    }
-  }
-  // Cheapest offence first, so a turn buys the most attacks it can, aimed at whoever is
-  // closest to dropping. Spreading damage loses to anything that heals.
-  const offensive = actions
-    .filter((candidate) => CONTENT.actions[candidate.actionId]?.targeting === "enemy" && candidate.timing.kind === "turn")
-    .map((candidate) => ({
-      entry: candidate,
-      target: actorTargets(listLegalTargets(combat, actorId, candidate.source, CONTENT))
-        .sort((left, right) =>
-          (combat.actors[left.actorId]?.hp ?? 0) - (combat.actors[right.actorId]?.hp ?? 0) ||
-          left.actorId.localeCompare(right.actorId))[0],
-      cost: candidate.timing.kind === "turn" ? candidate.timing.actions : 9,
-    }))
-    .filter((candidate) => candidate.target)
-    .sort((left, right) => left.cost - right.cost || left.entry.actionId.localeCompare(right.entry.actionId));
-  const best = offensive[0];
-  if (best?.target) return use(best.entry.source, { kind: "actor", actorId: best.target.actorId });
-
-  const shield = actions.find((candidate) => candidate.actionId === "raise-shield");
-  if (shield && !actor.shieldRaised) return use(shield.source, { kind: "none" });
-
-  const stride = actions.find((candidate) => candidate.source.kind === "basic" && candidate.actionId === "stride");
-  const enemy = Object.values(combat.actors)
-    .filter((candidate) => candidate.team === "enemies" && !candidate.defeated)
-    .sort((left, right) => left.id.localeCompare(right.id))[0];
-  if (stride && enemy) {
-    const destination = listLegalTargets(combat, actorId, stride.source, CONTENT)
-      .filter((candidate): candidate is Extract<LegalTarget, { kind: "tile" }> => candidate.kind === "tile")
-      .sort((left, right) =>
-        gridDistance(left.position, enemy.position) - gridDistance(right.position, enemy.position) ||
-        left.costFeet - right.costFeet ||
-        left.position.y - right.position.y ||
-        left.position.x - right.position.x)[0];
-    if (destination && gridDistance(destination.position, enemy.position) < gridDistance(actor.position, enemy.position)) {
-      return { type: "use-action", action: stride.source, target: { kind: "tile", position: destination.position } };
-    }
-  }
-  return { type: "end-turn", facing: actor.facing };
-}
-
-/**
- * Wears a just-granted item, as the Loadout screen would: on whoever has the slot free,
- * otherwise on whoever it does not make worse. "Worse" is read off the production resolver,
- * so this driver never invents its own arithmetic. Card rewards are left alone — preparing
- * one is a capacity decision this driver has no policy for.
- */
-function equipIntent(adventure: AdventureState | null, grant: RewardGrant): SessionIntent | null {
-  if (!adventure || grant.kind !== "equipment") return null;
-  const equipment = CONTENT.equipment[grant.definitionId];
-  if (!equipment) return null;
-  const members = Object.values(adventure.party.members).sort((left, right) => left.id.localeCompare(right.id));
-  const wear = (member: (typeof members)[number]): SessionIntent => ({
-    type: "set-loadout",
-    memberId: member.id,
-    loadout: { ...member.loadout, equipment: { ...member.loadout.equipment, [equipment.slot]: equipment.id } },
-  });
-  const empty = members.find((member) => !member.loadout.equipment[equipment.slot]);
-  if (empty) return wear(empty);
-  for (const member of members) {
-    const definition = PRODUCTION_CONTENT.pack.actorDefinitions[member.actorDefinitionId];
-    if (!definition) continue;
-    const intent = wear(member) as Extract<SessionIntent, { type: "set-loadout" }>;
-    const before = deriveLoadoutSnapshot(definition, member.loadout, CONTENT, member.id);
-    const after = deriveLoadoutSnapshot(definition, intent.loadout, CONTENT, member.id);
-    const damage = (snapshot: typeof before): number =>
-      snapshot.strike.damage.count * (snapshot.strike.damage.sides + 1) / 2 + snapshot.strike.damage.flatModifier;
-    if (after.statistics.ac >= before.statistics.ac && damage(after) >= damage(before)) return intent;
-  }
-  return null;
-}
-
-/** A hero reaction is a human boundary: the server waits, so the client must answer it. */
-function reactionIntent(combat: CombatState): SessionIntent | null {
-  const pending = combat.pendingReaction;
-  if (!pending) return null;
-  const candidate = pending.candidates[0];
-  if (!candidate) return { type: "pass-reaction", triggerId: pending.triggerId };
-  if (combat.actors[candidate.actorId]?.team !== "heroes") return null;
-  return { type: "use-reaction", triggerId: pending.triggerId, cardInstanceId: candidate.cardInstanceId };
-}
 
 class SocketClient {
   public readonly messages: ServerMessage[] = [];
@@ -166,7 +37,7 @@ class SocketClient {
       socket.once("error", reject);
     });
     socket.send(JSON.stringify({
-      v: 4,
+      v: 7,
       type: "hello",
       sessionId: credential.sessionId,
       playerId: credential.playerId,
@@ -214,16 +85,6 @@ class SocketClient {
   }
 }
 
-async function post<T>(origin: string, path: string, body: unknown): Promise<T> {
-  const response = await fetch(origin + path, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  expect(response.status).toBe(201);
-  return await response.json() as T;
-}
-
 describe("the production adventure completes over a real co-op session", () => {
   let running: RunningCardGuildServer | null = null;
   const sockets: SocketClient[] = [];
@@ -242,6 +103,7 @@ describe("the production adventure completes over a real co-op session", () => {
       context: { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId },
       allowedOrigins: new Set([TEST_ORIGIN]),
       heartbeatMs: 60_000,
+      persistence: await seededPersistence(),
       sources: {
         sessionId: () => "session-" + String(++sessionSequence),
         playerId: () => "player-" + String(++playerSequence),
@@ -258,7 +120,7 @@ describe("the production adventure completes over a real co-op session", () => {
       },
     });
     running = server;
-    const credential = await post<SessionCredentialResponse>(server.origin, "/api/sessions", { displayName: "Host" });
+    const credential = await hostSession(server.origin);
     const client = await SocketClient.connect(server.origin, credential);
     sockets.push(client);
     const host = server.store.get(credential.sessionId) as Host;
@@ -268,9 +130,20 @@ describe("the production adventure completes over a real co-op session", () => {
     const send = async (intent: SessionIntent): Promise<void> => {
       const requestId = `run-${String(++requestSequence)}`;
       const mark = client.mark();
-      client.send({ v: 4, type: "intent", requestId, expectedRevision: host.state.revision, intent });
+      client.send({ v: 7, type: "intent", requestId, expectedRevision: host.state.revision, intent });
       const ack = await client.waitForAck(requestId, mark);
       expect(`${intent.type}:${String(ack.accepted)}`).toBe(`${intent.type}:true`);
+      for (const message of client.messages.slice(mark)) {
+        if (message.type !== "snapshot") continue;
+        for (const event of message.events) {
+          if (event.type === "EXPERIENCE_GAINED") {
+            experienceOnWire.set(event.memberId, (experienceOnWire.get(event.memberId) ?? 0) + event.amount);
+          }
+          if (event.type === "LEVEL_UP" && event.memberId === "party.hero-1") {
+            levelUpsOnWire.push(`${event.encounterId}:${String(event.previousLevel)}->${String(event.level)}`);
+          }
+        }
+      }
       // The host pumps enemy turns and stops at every human boundary before going idle.
       await host.whenIdle();
     };
@@ -281,6 +154,10 @@ describe("the production adventure completes over a real co-op session", () => {
     const played: string[] = [];
     const rewards: string[] = [];
     const equipments: string[] = [];
+    // Growth is read off the wire, not off the server's own state: a client only ever
+    // learns what changed from the events published with the COMMIT.
+    const experienceOnWire = new Map<string, number>();
+    const levelUpsOnWire: string[] = [];
     let heroReactions = 0;
     for (let guard = 0; guard < 4_000 && host.state.adventure?.phase !== "complete"; guard += 1) {
       const adventure = host.state.adventure;
@@ -330,6 +207,18 @@ describe("the production adventure completes over a real co-op session", () => {
     // This seed opens a hero reaction window, and the host must hand it back to the client
     // rather than resolving it. Seeing none would mean the server crossed that boundary.
     expect(heroReactions).toBeGreaterThan(0);
+    // The whole authored table is paid, once each, to every seat, and the two authored
+    // Level-Up moments land on the fourth and seventh victories.
+    const totalExperience = ADVENTURE.experienceAwards.reduce((sum, award) => sum + award.amount, 0);
+    expect([...experienceOnWire.keys()].sort()).toEqual(Object.keys(host.state.adventure?.party.members ?? {}).sort());
+    for (const [, amount] of experienceOnWire) expect(amount).toBe(totalExperience);
+    expect(levelUpsOnWire).toEqual([
+      `${ADVENTURE.encounterIds[3] as string}:1->2`,
+      `${ADVENTURE.encounterIds[6] as string}:2->3`,
+    ]);
+    for (const member of Object.values(host.state.adventure?.party.members ?? {})) {
+      expect(member.progression).toEqual({ level: 3, experience: totalExperience % 1_000 });
+    }
     // Each reward's first choice is owned afterwards, in its own half of the collection.
     const collection = host.state.adventure?.collection;
     for (const encounterId of ADVENTURE.encounterIds) {

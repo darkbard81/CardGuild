@@ -31,12 +31,39 @@ export interface SessionGuestClaims {
   readonly byMemberId: Readonly<Record<string, string>>;
 }
 
+/**
+ * The gameplay-only projection of a session. This is exactly what a durable Campaign save
+ * holds and exactly what the canonical gameplay hash covers, so the server can restore a
+ * session without the pure layer ever learning about accounts, sockets, or SQL.
+ */
+export interface SessionGameplayProjection {
+  readonly contentIdentity: ContentIdentity;
+  readonly partySlots: readonly SessionPartySlot[];
+  readonly adventure: AdventureState;
+  readonly combat: CombatState | null;
+}
+
+/** What `hashSessionGameplayState()` reads. A lobby has no Adventure yet, so it is nullable here. */
+export interface SessionGameplayHashInput {
+  readonly contentIdentity: ContentIdentity;
+  readonly partySlots: readonly SessionPartySlot[];
+  readonly adventure: AdventureState | null;
+  readonly combat: CombatState | null;
+}
+
+/**
+ * `resume-lobby` is a restored Campaign waiting for its Host to press Resume. It already
+ * holds saved Adventure and Combat state, which is why it is a distinct lifecycle rather
+ * than an `active` session: every gameplay intent stays forbidden until Resume.
+ */
+export type SessionLifecycle = "lobby" | "resume-lobby" | "active";
+
 export interface SessionCoreState {
-  readonly version: 2;
+  readonly version: 3;
   readonly sessionId: string;
   readonly revision: number;
   readonly contentIdentity: ContentIdentity;
-  readonly lifecycle: "lobby" | "active";
+  readonly lifecycle: SessionLifecycle;
   readonly hostPlayerId: string;
   readonly adventureSeed: number;
   readonly seats: readonly SessionSeat[];
@@ -68,11 +95,17 @@ export interface CreateSessionOptions extends SessionPlayerIdentity {
   readonly adventureSeed: number;
 }
 
+/** A restored session keeps none of the old live identity: only the saved gameplay. */
+export interface ResumeSessionOptions extends SessionPlayerIdentity {
+  readonly sessionId: string;
+}
+
 export type SessionIntent =
   | { readonly type: "set-party-composition"; readonly actorDefinitionIds: readonly string[] }
   | { readonly type: "select-character"; readonly memberId: string }
   | { readonly type: "remove-offline-guest"; readonly playerId: string }
   | { readonly type: "begin-adventure" }
+  | { readonly type: "resume-adventure" }
   | { readonly type: "start-encounter" }
   | { readonly type: "choose-reward"; readonly rewardId: string; readonly choiceIndex: number }
   | { readonly type: "set-loadout"; readonly memberId: string; readonly loadout: PartyMemberLoadout }
@@ -91,6 +124,7 @@ export type SessionErrorCode =
   | "CHARACTER_TAKEN"
   | "FORBIDDEN"
   | "DOMAIN_REJECTED";
+
 
 export type SessionEvent =
   | AdventureEvent

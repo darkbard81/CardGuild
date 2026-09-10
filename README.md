@@ -8,7 +8,7 @@ Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Ad
 
 ## 요구 환경과 실행
 
-- Node.js 22.13 이상(22.x) 또는 Node.js 24 이상
+- Node.js 24 이상. `.node-version`과 CI가 24뿐이라 22.x는 테스트되지 않습니다.
 - npm 11 이상
 - 최소 지원 해상도 1024x768. 보드 투영은 HUD gutter를 제외한 영역 안에서 계산되며,
   gutter 크기는 `data-hud-gutter` 패널을 실제로 measure해서 얻습니다. style.css가
@@ -19,16 +19,24 @@ npm install
 npm run dev:coop
 ```
 
-브라우저는 `http://127.0.0.1:4173`에서 엽니다. 호스트가 `Create & Host`로 세션을 만든 뒤
-화면에 표시되는 Session ID만 B/C에게 전달합니다. 공개 방 목록이나 matchmaking은 없고,
-게스트는 그 ID로 `Join Host`합니다. 재접속 credential은 각 탭의 `sessionStorage`에만
-보관되며 URL이나 초대 코드에는 포함되지 않습니다.
+브라우저는 `http://127.0.0.1:4173`에서 엽니다. 호스트는 `Host sign in`으로 로그인한 뒤
+`New Campaign`으로 방을 만들고, 화면에 표시되는 Session ID만 B/C에게 전달합니다. 공개 방
+목록이나 matchmaking은 없고, 게스트는 계정 없이 그 ID로 `Join Host`합니다. `npm run dev:coop`은
+개발용 계정(`dev-host-a` / `dev-host-b`)을 자동으로 심어 둡니다. 재접속 credential은 각 탭의
+`sessionStorage`에만 보관되며 URL이나 초대 코드에는 포함되지 않습니다. 로그인 토큰은
+`HttpOnly` 쿠키에만 있어 페이지 스크립트가 읽을 수 없습니다.
 
 Production build는 client와 server entry를 모두 생성합니다.
 
 ```bash
 npm run build
 npm run start:production
+```
+
+운영 계정은 가입 라우트가 아니라 CLI로 만듭니다.
+
+```bash
+printf %s "$PASSWORD" | npm run account:create -- --username <아이디>
 ```
 
 `start:production`은 `deploy/cardguild.production.env`를 읽어 `127.0.0.1:3011`에서
@@ -61,13 +69,15 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- wire protocol은 v4입니다. v3의 `end-turn`에는 `facing`이 없고 tile target에는 `facing`이
-  필수였으므로 두 버전은 서로의 payload를 거부합니다. 그래서 같은 `v`를 선언한 채 intent
-  단위로 실패하는 대신 handshake에서 `PROTOCOL_MISMATCH`로 끊습니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v4 control-only
+- wire protocol은 v7이고 `SessionCoreState`는 v3입니다. M9-1의 AdventureState v3 snapshot은
+  모든 PartyMember에 runtime Level/EXP를 필수로 포함하고, M9-3의 `resume-lobby` lifecycle과
+  `resume-adventure` intent, M9-4의 `EXPERIENCE_GAINED`/`LEVEL_UP` 성장 이벤트 계약이 v7에
+  들어 있습니다. 이전 wire version은 `PROTOCOL_MISMATCH`로 거절하며, 서버와 클라이언트를 함께
+  갱신해야 합니다. M8의 Facing 입력 계약은 유지합니다.
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v7 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
-  판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. server restart persistence와
-  host migration은 지원하지 않습니다.
+  판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. host migration은 지원하지
+  않지만, 서버가 재시작되면 Host가 Campaign을 Continue해 마지막 저장부터 이어갑니다.
 
 ## 플레이
 
@@ -170,13 +180,13 @@ End Turn 및 제자리 Step은 바라볼 곳을 보드에서 한 번 클릭/터�
 
 ```text
 src/game   순수 CombatState + Command + Event, grid, trait providers, AI, replay
-src/content JSON authoring DTO, semantic compiler, canonical fingerprint, schema v8 loader
+src/content JSON authoring DTO, semantic compiler, canonical fingerprint, schema v9 loader
 content    JSON Schema와 versioned Content Pack authoring source
 src/adventure 순수 AdventureState/Command/Event와 Combat bridge
 src/loadout Collection copy validation, 파생 deck/stat/context preview와 ActorSetup resolver
 src/session 순수 Session authority, authorization, atomic Adventure↔Combat, gameplay hash
-src/protocol protocol v4 type/schema, gameplay/control revision과 strict Ajv validation
-src/server HTTP create/join, credential, SessionHost queue, WebSocket, server AI orchestration
+src/protocol protocol v6 type/schema, gameplay/control revision과 strict Ajv validation
+src/server HTTP auth/campaign/continue/join, credential, SQLite persistence, durable Campaign save/CAS, SessionHost queue, WebSocket, server AI orchestration
 src/client full snapshot/reconnect/idempotent intent client
 src/app    snapshot 기반 Adventure/Battle controller와 명시적 interaction state machine
 src/pixi   affine BoardProjection/board plane/camera/depth renderers와 tactical overlay
@@ -253,12 +263,13 @@ off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `r
 따로 보고하므로 대상이 굴리는 Save도 모호하지 않습니다.
 
 Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며 pack identity는
-`cardguild.m7`, contract는 schema v8입니다. 현재 authored revision과 fingerprint는
+`cardguild.m7`, contract는 schema v9입니다. 현재 authored revision과 fingerprint는
 `content/m7/manifest.json`과 `npm run content:check` 출력이 소유하므로 이 README에 복제하지
 않습니다. Client UI, battle rendering, WebSocket hello와 authoritative server는 모두
 `src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다.
-[`content/m6`](content/m6)의 `cardguild.m6@0.9.0`과 [`content/m3`](content/m3)의
-`cardguild.m4@0.6.0` pack은 규칙 회귀 fixture로 보존되며 production authoring 대상이 아닙니다.
+[`content/m6`](content/m6)의 `cardguild.m6@0.9.1`과 [`content/m3`](content/m3)의
+`cardguild.m4@0.6.1` pack은 규칙 회귀 fixture로 보존되며 production authoring 대상이 아닙니다.
+두 fixture는 Encounter별 EXP를 명시적 0으로 authoring해 성장 없는 회귀 의미를 유지합니다.
 디렉터리 안내는 [`content/README.md`](content/README.md)에 있습니다.
 
 **신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
@@ -366,11 +377,12 @@ npm run build         # Content/asset 검증 후 production bundle
 npm run typecheck:server # DOM 없는 server/session/protocol type boundary
 npm run test:network # 실제 random-port HTTP/WebSocket 3-client integration
 npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive smoke
-npm test             # unit + network + Playwright
+npm run test:recovery # 배포 빌드(dist-server + dist)로 서버 재시작·복구 E2E
+npm test             # unit + network + Playwright + recovery
 npm run playtest     # seeded 자동 플레이(밸런스 조사 도구, gate 아님)
 ```
 
-Vitest는 Content schema v8 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
+Vitest는 Content schema v9 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
 typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
 Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
 deck/stat/context, Adventure 8전/Reward/실패/seed/Combat bridge,
@@ -382,9 +394,15 @@ hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 �
 손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
 Network integration은 실제 `ws` client 3개로 queue/gameplay·control revision/idempotency,
 claim race와 authorization, turn/reaction disconnect fallback·reconnect, server AI,
-newest-wins reconnect와 legacy protocol(v1·v3) fail-fast를 검증합니다. Playwright는 별도
-BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어, 2P fallback,
-3P 분산 제어와 hash 수렴을 검증하며 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
+newest-wins reconnect와 legacy protocol(v1·v3·v4·v5) fail-fast를 검증합니다. 여기에 실제 파일
+SQLite를 쓰는 durable Campaign 시나리오가 더해집니다 — 서버 재시작 후 Continue, mid-combat
+정확 복구, 자식 서버를 COMMIT 직전/직후에 강제 종료한 뒤의 복구, 이전 credential 무효화입니다.
+M9-5는 여기에 장애 매트릭스를 얹습니다: 첫 승리·4전 Level-Up·보상 선택·AI step·콘텐츠 이관
+각각의 COMMIT 직전/직후 `SIGKILL`과 복구, ACK만 유실된 동일 요청 재시도, 그리고 종료의
+멱등성과 종료 중 queue·DB 순서입니다.
+Playwright는 별도 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어,
+2P fallback, 3P 분산 제어와 hash 수렴, 그리고 Continue → Resume Lobby → 정확 재개를 검증하며
+기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
 
 ## UI/UX 리뷰 캡쳐
 
@@ -407,6 +425,120 @@ npm run ui:compare          # docs/ui-review/index.html 좌우 비교 페이지�
 ## M5 범위 밖
 
 계정/OAuth, matchmaking/public room, late join/spectator, host migration/kick, chat,
-hidden-hand/PvP, prediction/rollback/delta protocol, DB·Redis·다중 process·server restart 복구,
+hidden-hand/PvP, prediction/rollback/delta protocol, Redis·다중 process 조정,
 AFK auto-turn/reaction auto-pass/disconnect AI takeover는 후속 범위입니다. 전체 PF2e 규칙,
 branch Adventure, 완성형 VFX/audio와 3인 balance polish도 포함하지 않습니다.
+
+## M9-1 Character Progression Foundation
+
+PartyMember의 Level/EXP가 Adventure runtime state에 포함됩니다. 새 Adventure는 authored
+starting Level과 EXP 0으로 시작하며 Adventure와 Loadout에 표시됩니다. 다음 Encounter와
+Loadout preview는 같은 effective Character profile로 수치를 계산합니다. 기존 Combat은
+runtime progression 때문에 다시 계산하지 않습니다.
+
+실제 EXP 지급과 Level-Up은 M9-4, 계정/저장/복구는 M9-2 이후 범위입니다.
+자세한 계약과 검증은 [M9-1 구현문서](docs/m9-1-character-progression-foundation.md)에 있습니다.
+
+## M9-2 Host Identity & Campaign Ownership
+
+Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유자는 영속 `accountId`
+하나뿐입니다. auth session token과 live `gameSessionId`는 소유자가 아닙니다. Guest는
+지금까지처럼 계정 없이 Session ID로 참가합니다.
+
+- 계정·auth session·Campaign metadata는 single-file SQLite(`node:sqlite`)에 저장합니다.
+  경로는 `CARDGUILD_DB_PATH`(기본 `.data/cardguild.sqlite`)입니다. 개발과 Playwright는
+  `.data/cardguild.dev.sqlite`를 따로 쓰며, `--seed-dev`는 그 경로에서만 동작합니다.
+- 가입 라우트는 없습니다. 계정은 `npm run account:create`로 만듭니다.
+- 비밀번호는 scrypt 해시로만, auth token은 digest로만 저장합니다. 쿠키는
+  `HttpOnly`·`SameSite=Lax`이고 `Secure`는 `CARDGUILD_COOKIE_SECURE`로 정합니다.
+- 남의 Campaign은 "권한 없음"이 아니라 "없음"으로 보입니다.
+- account/campaign 식별자는 `SessionCoreState`에 들어가지 않으므로 gameplay hash와
+  결정론은 그대로입니다. M9-2 자체는 wire protocol을 v5에서 바꾸지 않았습니다.
+
+자세한 계약과 검증은 [M9-2 구현문서](docs/m9-2-host-identity-campaign-ownership.md)에 있습니다.
+
+## M9-3 Durable Campaign Save & Resume Lobby
+
+gameplay 진행이 SQLite에 저장되고, Host는 My Campaigns에서 Continue해 마지막으로 **COMMIT된**
+지점부터 이어서 플레이합니다. 저장의 유일한 원본은 서버 DB입니다.
+
+- 저장 payload는 `CampaignSaveV1` gameplay projection입니다. ContentIdentity, slot 순
+  party, AdventureState v3, CombatState v4만 들어가고 sessionId·playerId·guest claim·
+  reconnect credential·presence·request journal은 들어가지 않습니다.
+- 첫 저장은 Adventure 시작 시점입니다. 새 Campaign의 파티 편집만으로는 save가 생기지 않습니다.
+- accepted transition은 `durable COMMIT → 메모리 state 교체 → ACK/snapshot` 순서로만
+  공개됩니다. 저장이 실패하면 그 진행은 아무 클라이언트도 보지 못합니다. Client 명령은
+  `PERSISTENCE_FAILED`로 재시도할 수 있고, 서버 AI 저장 실패는 해당 세션을 종료합니다.
+- Guest 참가/캐릭터 선택, offline guest 제거, presence/control 변화, Resume 전환은
+  gameplay hash를 바꾸지 않으므로 DB를 쓰지 않습니다.
+- Continue는 저장된 세션을 되살리지 않고 **새 라이브 세션을 재수화**합니다. 새 session ID·
+  Host player ID·reconnect token, 빈 guest claim, `revision=0`, `resume-lobby` lifecycle로
+  시작합니다. 한 Campaign에 writer는 하나뿐이라 기존 라이브 세션은 queue barrier 뒤 종료되고
+  (close code `4005`), `campaignRevision` compare-and-swap이 stale writer를 최종 차단합니다.
+- Resume Lobby에서는 Guest 참가·캐릭터 선택·offline guest 제거·Host Resume만 가능하고 파티
+  편집과 모든 gameplay 명령은 차단됩니다. Host는 혼자서도 Resume할 수 있고, 미할당 캐릭터는
+  기존 fallback대로 Host가 제어합니다.
+- 손상·미지원·다른 Content Pack의 save는 자동 보정하지 않고 409로 거절하며 row를 보존합니다.
+- 브라우저 저장소에는 여전히 reconnect credential만 둡니다.
+
+자세한 계약과 검증은 [M9-3 구현문서](docs/m9-3-durable-campaign-save.md)에 있습니다.
+
+## M9-4 Encounter EXP & Automatic Level-Up
+
+Encounter를 이기면 Party 전원이 그 전투에 authoring된 EXP를 받고, 1000 EXP마다 자동으로
+Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 Lv.3**에 도달합니다.
+
+- EXP는 `AdventureDefinition.experienceAwards`에 Encounter별로 정의합니다. 보상(`rewards`)과
+  분리돼 있어 보상 없는 전투와 최종 전투도 EXP를 줍니다. 누락·중복·Adventure 밖 참조·음수·
+  소수는 content 검증이 거절하며, 0으로 자동 보정하지 않습니다.
+- 지급 대상은 현재 Party 전원이고 금액은 모두 같습니다. 승리 시 쓰러져 있던 member, 미접속
+  Guest, claim 없는 캐릭터도 동일하게 받습니다. 패배와 보상 선택은 EXP를 주지 않습니다.
+- 지급은 `accept-combat-result` 승리 분기 한 곳에서만 일어나고, M9-3의 단일 candidate에
+  실려 COMMIT됩니다. 저장이 실패하면 성장 이벤트도 ACK도 공개되지 않고, 이미 완료된
+  Encounter의 결과 재전송은 거절되므로 EXP가 두 번 지급되지 않습니다.
+- 이벤트 순서는 `ENCOUNTER_COMPLETED → EXPERIENCE_GAINED(seat 순) → LEVEL_UP(seat 순,
+  Level 증가마다 하나) → REWARD_OFFERED 또는 ADVENTURE_COMPLETED`입니다.
+- 레벨업은 진행 중이던 Combat의 profile·HP·수치·hash를 바꾸지 않습니다. 갱신된 Level은
+  Loadout 파생 수치와 다음 Encounter부터 쓰이고, 다음 전투는 새 Max HP로 full HP 시작합니다.
+- Adventure와 Loadout이 `Lv. N · EXP X / 1000`과 progress bar를 같은 표시 함수로 그립니다.
+  승리 직후에는 보상·다음 전투·완료 화면에 `EXP +400`, `Lv.1 → Lv.2`, 잔여 EXP 요약이 뜹니다.
+  요약은 COMMIT된 이벤트로만 만들고 저장하지 않으므로, 재로드나 새 Continue에서는 현재
+  Level/EXP만 보이고 지난 요약은 재생되지 않습니다.
+- Content schema는 v9, 생산 pack은 `cardguild.m7@0.4.0`, wire protocol은 v7입니다. 직전
+  `cardguild.m7@0.3.0` Campaign Save 하나만 명시적으로 이관하며, 진행·Level/EXP·Collection·
+  pending reward·진행 중 전투를 보존하고 완료한 전투에 EXP를 소급하지 않습니다. 이관은
+  Continue의 CAS COMMIT으로 한 번만 저장되고, 실패하면 새 세션을 공개하지 않습니다.
+
+자세한 계약과 검증은 [M9-4 구현문서](docs/m9-4-encounter-experience-level-up.md)에 있습니다.
+
+## M9-5 Server Restart Recovery
+
+서버는 gameplay의 유일한 authority이고, 그 authority는 SQLite 파일 하나입니다. 재시작은
+그 파일을 다시 여는 일입니다.
+
+```bash
+# 정상 재시작: SIGTERM 하나면 됩니다. 두 번 보내도 안전합니다.
+kill -TERM "$(pgrep -f dist-server/main.js)"
+npm run start:production
+```
+
+- **정상 종료**는 신규 HTTP·WebSocket 연결과 메시지를 먼저 막고, 이미 받은 작업과 모든
+  SessionHost queue를 끝낸 뒤에 DB를 닫습니다. 종료가 실패하면 프로세스는 exit code 1로
+  끝납니다 — 그때는 재시작 전에 로그를 보세요. 깨끗하게 끝난 서버를 다시 띄우면 마지막으로
+  **COMMIT된** 지점이 그대로 있습니다.
+- **강제 종료(SIGKILL·크래시)도 같은 보장**입니다. 모든 진행은 COMMIT 후에만 공개되므로,
+  클라이언트가 본 것은 언제나 DB가 이미 가진 것의 부분집합입니다. 전투 명령·Encounter
+  완료·EXP·Level-Up·보상·AI step·콘텐츠 이관은 각각 0회 또는 1회만 반영됩니다.
+- **재시작 후 Host는** 로그인 → My Campaigns → Continue입니다. Continue는 죽은 세션을
+  되살리는 것이 아니라 **새 라이브 세션을 재수화**합니다. Session ID·Host credential이 모두
+  새로 발급되므로, **새 Session ID를 게스트에게 다시 공유**해야 합니다.
+- **재시작 후 Guest는** 새 Session ID로 다시 참가해 저장된 캐릭터를 다시 선택합니다. 참가·
+  선택·접속 상태 변화는 gameplay를 바꾸지 않으므로 DB에 쓰지 않습니다. Host가 Resume을 누르기
+  전까지 모든 gameplay 입력과 서버 AI는 멈춰 있습니다.
+- **저장 오류**는 조용히 보정하지 않습니다. 손상된 payload/hash, 미지원 save schema, 등록되지
+  않은 content identity는 409로 거절하고 row를 그대로 보존합니다 — 나중 빌드가 진짜 migration을
+  쓸 수 있게 하기 위해서입니다. 거절된 Continue는 Host가 이미 플레이 중인 세션도 건드리지
+  않습니다. 서버 AI의 저장 실패는 그 세션을 종료시키며, Host는 Continue로 마지막 저장 지점부터
+  이어갑니다.
+
+자세한 계약과 실측은 [M9-5 구현문서](docs/m9-5-server-restart-recovery.md)에 있습니다.

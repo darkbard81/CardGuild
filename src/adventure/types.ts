@@ -15,6 +15,19 @@ export interface PartyMemberState extends LoadoutPartyMember {
   readonly seat: 1 | 2 | 3;
   readonly actorDefinitionId: ActorDefinitionId;
   readonly loadout: PartyMemberLoadout;
+  readonly progression: CharacterProgressionState;
+}
+
+export interface CharacterProgressionState {
+  readonly level: number;
+  /** EXP toward the next level, not lifetime EXP. */
+  readonly experience: number;
+}
+
+export type PartyMemberSetup = Omit<PartyMemberState, "progression">;
+
+export interface PartySetup extends LoadoutParty {
+  readonly members: Readonly<Record<string, PartyMemberSetup>>;
 }
 
 export interface PartyState extends LoadoutParty {
@@ -39,7 +52,7 @@ export interface RewardOffer {
 }
 
 export interface AdventureState {
-  readonly version: 2;
+  readonly version: 3;
   readonly adventureId: string;
   readonly phase: AdventurePhase;
   readonly currentEncounterId: ScenarioId | null;
@@ -73,6 +86,21 @@ export type AdventureEvent =
   | { readonly type: "ADVENTURE_STARTED"; readonly adventureId: string }
   | { readonly type: "ENCOUNTER_STARTED"; readonly encounterId: ScenarioId; readonly combatSeed: number }
   | { readonly type: "ENCOUNTER_COMPLETED"; readonly encounterId: ScenarioId }
+  | {
+      readonly type: "EXPERIENCE_GAINED";
+      readonly encounterId: ScenarioId;
+      readonly memberId: string;
+      readonly amount: number;
+      readonly previous: CharacterProgressionState;
+      readonly next: CharacterProgressionState;
+    }
+  | {
+      readonly type: "LEVEL_UP";
+      readonly encounterId: ScenarioId;
+      readonly memberId: string;
+      readonly previousLevel: number;
+      readonly level: number;
+    }
   | { readonly type: "REWARD_OFFERED"; readonly offer: RewardOffer }
   | { readonly type: "REWARD_GRANTED"; readonly rewardId: string; readonly grant: RewardGrant }
   | {

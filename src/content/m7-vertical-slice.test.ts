@@ -8,7 +8,7 @@ import {
   type AdventureRuntimeContext,
   type AdventureState,
   type EncounterResult,
-  type PartyState,
+  type PartySetup,
 } from "../adventure";
 import { createCombat } from "../game/engine";
 import { deriveLoadoutSnapshot, validatePartyLoadout } from "../loadout";
@@ -80,7 +80,7 @@ function canOwnTogether(items: readonly string[], groups: readonly (readonly str
   return assign(0);
 }
 
-function party(actorDefinitionIds: readonly string[]): PartyState {
+function party(actorDefinitionIds: readonly string[]): PartySetup {
   return {
     members: Object.fromEntries(actorDefinitionIds.map((actorDefinitionId, index) => {
       const definition = PACK.actorDefinitions[actorDefinitionId];

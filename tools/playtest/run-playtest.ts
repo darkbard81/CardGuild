@@ -2,8 +2,9 @@ import { execFileSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 
 import { buildAdventureEncounter } from "../../src/adventure/combat-bridge";
+import { resolveEffectiveCharacterStatProfile } from "../../src/adventure/progression";
 import { createAdventureSession, dispatchAdventureCommand, deriveCombatSeed } from "../../src/adventure/runtime";
-import type { AdventureState, PartyState } from "../../src/adventure/types";
+import type { AdventureState, PartySetup } from "../../src/adventure/types";
 import type { ActorDefinition, CompiledContentPack } from "../../src/content/content-types";
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
 import { chooseAiCommand } from "../../src/game/ai";
@@ -19,6 +20,9 @@ import type {
 import { EQUIPMENT_SLOT_ORDER, deriveLoadoutSnapshot } from "../../src/loadout";
 import type { PartyMemberLoadout } from "../../src/loadout";
 import { chooseHeroCommand, chooseReactionCommand } from "./hero-policy";
+
+/** The runtime Level-aware profile every derived number has to be measured against. */
+type EffectiveCharacterStatProfile = ReturnType<typeof resolveEffectiveCharacterStatProfile>;
 
 /**
  * The #21 playtest harness: it plays the shipped Adventure instead of asserting about it.
@@ -46,8 +50,8 @@ interface RunSpec {
   readonly loadoutPolicy: LoadoutPolicy;
 }
 
-interface EncounterReport {
-  readonly encounterId: string;
+/** What one battle did, independent of where the Adventure put it. */
+interface CombatReport {
   readonly outcome: "victory" | "defeat" | "stalled";
   readonly rounds: number;
   readonly enemies: number;
@@ -61,6 +65,17 @@ interface EncounterReport {
   readonly enemyStrideOnlyTurns: number;
   readonly heroIdleTurns: number;
   readonly rejectedCommands: number;
+}
+
+interface EncounterReport extends CombatReport {
+  readonly encounterId: string;
+  /** What the party walked in with, what this battle paid, and where that left them. */
+  readonly startingLevels: readonly number[];
+  readonly startingMaxHp: readonly number[];
+  readonly experienceAwarded: number;
+  readonly levelsGained: number;
+  readonly finalLevels: readonly number[];
+  readonly finalExperience: readonly number[];
 }
 
 /** One accepted `set-member-loadout`, so a completed run can show what a reward changed. */
@@ -132,7 +147,7 @@ function starters(pack: CompiledContentPack): readonly ActorDefinition[] {
     .sort((left, right) => left.id.localeCompare(right.id));
 }
 
-function party(pack: CompiledContentPack, starterIds: readonly string[]): PartyState {
+function party(pack: CompiledContentPack, starterIds: readonly string[]): PartySetup {
   return {
     members: Object.fromEntries(
       starterIds.map((actorDefinitionId, index) => {
@@ -158,7 +173,7 @@ function party(pack: CompiledContentPack, starterIds: readonly string[]): PartyS
 
 interface CombatOutcomeReport {
   readonly state: CombatState;
-  readonly report: Omit<EncounterReport, "encounterId">;
+  readonly report: CombatReport;
 }
 
 function playCombat(
@@ -344,8 +359,13 @@ function reactionCommand(state: CombatState, tally: Tally): CombatCommand | null
 }
 
 /** Equipment worth: one scalar so a swap is a comparison rather than a judgement call. */
-function loadoutScore(actor: ActorDefinition, loadout: PartyMemberLoadout, content: CombatContent): number {
-  const snapshot = deriveLoadoutSnapshot(actor, loadout, content, "playtest");
+function loadoutScore(
+  actor: ActorDefinition,
+  loadout: PartyMemberLoadout,
+  content: CombatContent,
+  statProfile: EffectiveCharacterStatProfile,
+): number {
+  const snapshot = deriveLoadoutSnapshot(actor, loadout, content, "playtest", statProfile);
   const damage = snapshot.strike.damage;
   const averageDamage = (damage.count * (damage.sides + 1)) / 2 + damage.flatModifier;
   return (
@@ -366,6 +386,9 @@ function adaptLoadout(
   ownedCards: Readonly<Record<string, number>>,
   preparedElsewhere: ReadonlySet<string>,
   granted: readonly string[],
+  // The scoring below has to see the same numbers the next battle will use, or a levelled
+  // party would be equipped by Level 1 arithmetic.
+  statProfile: EffectiveCharacterStatProfile,
 ): PartyMemberLoadout {
   let best = loadout;
   for (const slot of EQUIPMENT_SLOT_ORDER) {
@@ -377,7 +400,7 @@ function adaptLoadout(
         equipment: { ...best.equipment, [slot]: equipmentId },
         preparedCards: [...best.preparedCards],
       };
-      if (loadoutScore(actor, candidate, content) > loadoutScore(actor, best, content)) best = candidate;
+      if (loadoutScore(actor, candidate, content, statProfile) > loadoutScore(actor, best, content, statProfile)) best = candidate;
     }
   }
   // A granted Card is only a real choice if someone prepares it, so free capacity takes one —
@@ -419,6 +442,8 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
   );
   let rewardIndex = 0;
   let failedAt: string | null = null;
+  const awardFor = (encounterId: string): number =>
+    context.definition.experienceAwards.find((award) => award.afterEncounterId === encounterId)?.amount ?? 0;
 
   const send = (command: Parameters<typeof dispatchAdventureCommand>[1]): void => {
     const result = dispatchAdventureCommand(state, command, context);
@@ -448,6 +473,7 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
             state.collection.cards,
             preparedElsewhere,
             grantedCards,
+            resolveEffectiveCharacterStatProfile(actor, member.progression),
           );
           const result = dispatchAdventureCommand(state, { type: "set-member-loadout", memberId: member.id, loadout: next }, context);
           if (result.accepted) state = result.state;
@@ -483,8 +509,14 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
       const encounterId = state.currentEncounterId;
       if (!encounterId) throw new Error("Combat phase without an encounter.");
       const encounter = buildAdventureEncounter(pack, state);
+      const seated = (source: AdventureState): readonly (typeof state.party.members)[string][] =>
+        Object.values(source.party.members).sort((left, right) => left.seat - right.seat);
+      const before = seated(state);
+      const startingLevels = before.map((member) => member.progression.level);
+      // Read off the Encounter this Level actually built, which is where growth shows up.
+      const openingHp = before.map((member) =>
+        encounter.definition.scenario.actors.find((actor) => actor.id === member.id)?.maxHp ?? 0);
       const played = playCombat(encounter.definition, encounter.seed, pack.combatContent, tally);
-      encounters.push({ encounterId, ...played.report });
       for (const member of Object.values(state.party.members)) {
         for (const slot of EQUIPMENT_SLOT_ORDER) {
           const id = member.loadout.equipment[slot];
@@ -492,6 +524,16 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
         }
       }
       if (played.report.outcome !== "victory") {
+        encounters.push({
+          encounterId,
+          ...played.report,
+          startingLevels,
+          startingMaxHp: openingHp,
+          experienceAwarded: 0,
+          levelsGained: 0,
+          finalLevels: startingLevels,
+          finalExperience: before.map((member) => member.progression.experience),
+        });
         failedAt = encounterId;
         break;
       }
@@ -503,6 +545,17 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
           combatSeed: deriveCombatSeed(state.adventureSeed, encounterId),
           finalCombatHash: hashCombatState(played.state),
         },
+      });
+      const after = seated(state);
+      encounters.push({
+        encounterId,
+        ...played.report,
+        startingLevels,
+        startingMaxHp: openingHp,
+        experienceAwarded: awardFor(encounterId),
+        levelsGained: after.reduce((total, member, index) => total + (member.progression.level - (startingLevels[index] ?? member.progression.level)), 0),
+        finalLevels: after.map((member) => member.progression.level),
+        finalExperience: after.map((member) => member.progression.experience),
       });
       continue;
     }

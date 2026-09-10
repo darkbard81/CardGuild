@@ -1,6 +1,6 @@
 import Ajv, { type ErrorObject } from "ajv";
 
-import { PROTOCOL_VERSION, type ClientMessage } from "./v4-types";
+import { PROTOCOL_VERSION, type ClientMessage } from "./v7-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {
@@ -106,6 +106,7 @@ const intent = {
       properties: { type: { const: "remove-offline-guest" }, playerId: nonEmptyString },
     },
     { type: "object", additionalProperties: false, required: ["type"], properties: { type: { const: "begin-adventure" } } },
+    { type: "object", additionalProperties: false, required: ["type"], properties: { type: { const: "resume-adventure" } } },
     { type: "object", additionalProperties: false, required: ["type"], properties: { type: { const: "start-encounter" } } },
     {
       type: "object",

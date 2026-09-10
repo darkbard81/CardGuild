@@ -11,7 +11,7 @@ describe("production content selector", () => {
     // The authored revision is not pinned here. It moves with every gameplay data change,
     // and a second copy of it would turn a routine content edit into a surprise test failure.
     expect(PRODUCTION_CONTENT.pack.manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(PRODUCTION_CONTENT.pack.manifest.schemaVersion).toBe(8);
+    expect(PRODUCTION_CONTENT.pack.manifest.schemaVersion).toBe(9);
     expect(PRODUCTION_CONTENT.pack.manifest.rulesetId).toBe("cardguild.pf2e-remaster.v1");
   });
 

@@ -1,5 +1,6 @@
 export {
   assertSessionInvariants,
+  createResumedSessionCoreState,
   createSessionCoreState,
   dispatchServerCombatCommand,
   dispatchSessionIntent,

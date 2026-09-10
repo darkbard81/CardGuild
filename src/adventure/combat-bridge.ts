@@ -5,6 +5,7 @@ import { positionKey } from "../game/grid";
 import type { CombatDefinition } from "../game/types";
 import { deriveActorSetup, validatePartyLoadout } from "../loadout";
 import { deriveCombatSeed } from "./runtime";
+import { assertAdventureInvariants, resolveEffectiveCharacterStatProfile } from "./progression";
 import type { AdventureState } from "./types";
 
 export interface AdventureEncounterDefinition {
@@ -16,6 +17,7 @@ export function buildAdventureEncounter(
   pack: CompiledContentPack,
   state: AdventureState,
 ): AdventureEncounterDefinition {
+  assertAdventureInvariants(state);
   const scenarioId = state.currentEncounterId;
   if (state.phase !== "combat" || !scenarioId) throw new Error("Adventure is not in an active combat phase.");
   const source = pack.scenarioSources[scenarioId];
@@ -46,7 +48,8 @@ export function buildAdventureEncounter(
         team: "heroes",
         position: { ...spawn.position },
         facing: spawn.facing,
-      }, partyMember.loadout, pack.combatContent, partyMember.id);
+      }, partyMember.loadout, pack.combatContent, partyMember.id,
+      resolveEffectiveCharacterStatProfile(actorDefinition, partyMember.progression));
     });
   const actors = [...partyActors, ...staticActors];
 

@@ -4,6 +4,7 @@ import path from "node:path";
 import process from "node:process";
 import sharp from "sharp";
 import { expect, type Page, test } from "@playwright/test";
+import { createCampaignAsHost } from "./host-login";
 
 /**
  * Walks one solo host run and photographs every screen the player actually sees.
@@ -126,11 +127,10 @@ async function openSoloAdventure(page: Page, album: ScreenAlbum): Promise<void> 
   await album.shot(
     "session-lobby",
     "세션 로비 (진입 화면)",
-    "첫 화면. 이름 입력, Create & Host, Join Host가 한 화면에 있고 첫 행동이 무엇인지 안내한다.",
+    "첫 화면. 게스트는 이름과 세션 ID로 바로 참가하고, 호스트는 Host sign in으로 계정에 들어간다.",
   );
 
-  await page.locator("#session-display-name").fill("Solo Host");
-  await page.locator("#create-session").click();
+  await createCampaignAsHost(page, "Solo Host");
   await expect(page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "host");
   await album.shot(
     "party-builder",

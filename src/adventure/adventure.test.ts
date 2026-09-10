@@ -11,7 +11,7 @@ import { createCombat, resolveStatisticDC } from "../game";
 import { deriveLoadoutSnapshot } from "../loadout";
 import { buildAdventureEncounter } from "./combat-bridge";
 import { createAdventureSession, deriveCombatSeed, dispatchAdventureCommand } from "./runtime";
-import type { AdventureRuntimeContext, AdventureState, EncounterResult, PartyState } from "./types";
+import type { AdventureRuntimeContext, AdventureState, EncounterResult, PartySetup } from "./types";
 
 const context: AdventureRuntimeContext = {
   definition: M3_ADVENTURE,
@@ -23,7 +23,7 @@ const aerin = M3_COMPILED_PACK.actorDefinitions["hero.aerin"] as NonNullable<
   (typeof M3_COMPILED_PACK.actorDefinitions)["hero.aerin"]
 >;
 
-function partyWithStarter(): PartyState {
+function partyWithStarter(): PartySetup {
   return {
     members: {
       "party.hero-1": {
@@ -39,7 +39,7 @@ function partyWithStarter(): PartyState {
   };
 }
 
-function partyWithSize(size: 1 | 2 | 3): PartyState {
+function partyWithSize(size: 1 | 2 | 3): PartySetup {
   return {
     members: Object.fromEntries(Array.from({ length: size }, (_, index) => {
       const seat = (index + 1) as 1 | 2 | 3;
@@ -117,7 +117,7 @@ describe("Adventure runtime", () => {
   });
 
   it("derives starting ownership and equipped loadout from actor definitions, not caller data", () => {
-    const injected: PartyState = {
+    const injected: PartySetup = {
       members: {
         "party.hero-1": {
           id: "party.hero-1",

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { buildAdventureEncounter, createAdventureSession, dispatchAdventureCommand } from "../adventure";
-import type { AdventureRuntimeContext, PartyState } from "../adventure";
+import type { AdventureRuntimeContext, PartySetup } from "../adventure";
 import tilemapPack from "../../presentation/m3/tilemaps.json";
 
 interface GeneratedTilemap {
@@ -53,7 +53,7 @@ const CONTEXT: AdventureRuntimeContext = {
   combatContent: PACK.combatContent,
 };
 
-function partyOf(count: 1 | 2 | 3): PartyState {
+function partyOf(count: 1 | 2 | 3): PartySetup {
   const roster = ["hero.aerin", "hero.lyra", "hero.brom"].slice(0, count);
   return {
     members: Object.fromEntries(roster.map((actorDefinitionId, index) => {

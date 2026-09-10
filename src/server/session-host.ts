@@ -11,6 +11,7 @@ import {
   type ServerSnapshot,
 } from "../protocol";
 import {
+  assertSessionInvariants,
   dispatchServerCombatCommand,
   dispatchSessionIntent,
   hashSessionGameplayState,
@@ -22,6 +23,7 @@ import {
   type SessionEvent,
   type SessionPlayerIdentity,
 } from "../session";
+import { CampaignWriterRetiredError, type SessionDurability } from "./campaign-durability";
 import { reconnectTokenMatches } from "./credentials";
 
 export interface SessionConnection {
@@ -38,7 +40,20 @@ interface RequestRecord {
 
 export type AttachResult =
   | { readonly ok: true }
-  | { readonly ok: false; readonly code: Extract<ProtocolErrorCode, "UNAUTHENTICATED" | "CONTENT_MISMATCH">; readonly message: string };
+  | {
+      readonly ok: false;
+      readonly code: Extract<ProtocolErrorCode, "UNAUTHENTICATED" | "CONTENT_MISMATCH" | "SESSION_RETIRED">;
+      readonly message: string;
+    };
+
+/** Close code for a session that will never accept this credential again. */
+export const SESSION_RETIRED_CLOSE_CODE = 4005;
+
+export interface SessionHostOptions {
+  /** Absent only in tests that deliberately exercise a session with no durable campaign. */
+  readonly durability?: SessionDurability;
+  readonly onRetired?: (sessionId: string, reason: string) => void;
+}
 
 export class SessionHost {
   private stateValue: SessionCoreState;
@@ -48,18 +63,31 @@ export class SessionHost {
   private readonly journal = new Map<string, Map<string, RequestRecord>>();
   private combatEventHistory: SessionEvent[] = [];
   private queue: Promise<void> = Promise.resolve();
+  private retiredValue = false;
+  private readonly durability: SessionDurability | undefined;
+  private readonly onRetired: ((sessionId: string, reason: string) => void) | undefined;
 
   public constructor(
     state: SessionCoreState,
     private readonly context: SessionAuthorityContext,
     hostReconnectDigest: string,
+    options: SessionHostOptions = {},
   ) {
+    // attach() publishes this state as a snapshot before any commit runs, so the
+    // constructor is the only place left to reject a restored state.
+    assertSessionInvariants(state);
     this.stateValue = state;
     this.reconnectDigests.set(state.hostPlayerId, hostReconnectDigest);
+    this.durability = options.durability;
+    this.onRetired = options.onRetired;
   }
 
   public get state(): SessionCoreState {
     return this.stateValue;
+  }
+
+  public get retired(): boolean {
+    return this.retiredValue;
   }
 
   public get controlRevision(): number {
@@ -72,6 +100,15 @@ export class SessionHost {
 
   public addPlayer(player: SessionPlayerIdentity, reconnectDigest: string): Promise<ReturnType<typeof joinSessionCore>> {
     return this.enqueue(() => {
+      if (this.retiredValue) {
+        return {
+          accepted: false,
+          state: this.stateValue,
+          events: [],
+          errorCode: "ROSTER_LOCKED" as const,
+          error: "This live session was retired. Continue the campaign to open a new one.",
+        };
+      }
       const result = joinSessionCore(this.stateValue, player, this.context);
       if (!result.accepted) return result;
       this.stateValue = result.state;
@@ -88,6 +125,9 @@ export class SessionHost {
     connection: SessionConnection,
   ): Promise<AttachResult> {
     return this.enqueue(() => {
+      if (this.retiredValue) {
+        return { ok: false, code: "SESSION_RETIRED", message: "This live session was retired." };
+      }
       if (!sameContentIdentity(contentIdentity, this.stateValue.contentIdentity)) {
         return { ok: false, code: "CONTENT_MISMATCH", message: "Client content does not match the session content." };
       }
@@ -121,6 +161,10 @@ export class SessionHost {
     envelope: ClientIntentEnvelope,
   ): Promise<void> {
     return this.enqueue(async () => {
+      if (this.retiredValue) {
+        this.sendError(playerId, "SESSION_RETIRED", "This live session was retired.", envelope.requestId);
+        return;
+      }
       if (this.connections.get(playerId)?.id !== connectionId) return;
       const payloadHash = fingerprintValue(envelope);
       const playerJournal = this.journal.get(playerId) ?? new Map<string, RequestRecord>();
@@ -168,6 +212,24 @@ export class SessionHost {
         return;
       }
 
+      // COMMIT before publish. Until the durable write lands, the candidate exists nowhere
+      // the client can observe: not in the memory authority, not in an ACK, not in a
+      // snapshot. A crash between the two therefore loses nothing a player already saw.
+      const committed = await this.commitTransition(this.stateValue, result.state);
+      if (!committed.ok) {
+        if (committed.terminal) {
+          this.sendError(playerId, "SESSION_RETIRED", committed.message, envelope.requestId);
+          this.retireInQueue(committed.message);
+          return;
+        }
+        // The request is deliberately not journalled: the same requestId may be retried,
+        // and a persistence failure must not be remembered as a settled answer.
+        const ack = this.ack(envelope.requestId, false, this.stateValue.revision);
+        this.send(playerId, ack);
+        this.sendError(playerId, "PERSISTENCE_FAILED", committed.message, envelope.requestId);
+        return;
+      }
+
       this.stateValue = result.state;
       if (envelope.intent.type === "remove-offline-guest") {
         this.reconnectDigests.delete(envelope.intent.playerId);
@@ -180,6 +242,15 @@ export class SessionHost {
       this.broadcastSnapshot(result.events, { kind: "intent", requestId: envelope.requestId });
       await this.pumpServerAuthority();
     });
+  }
+
+  /**
+   * Retire this live session from outside. The work is enqueued, so it runs only after
+   * every transition already in flight has finished — that queue barrier is what lets
+   * Continue read the campaign's last committed save rather than a stale one.
+   */
+  public retire(reason: string): Promise<void> {
+    return this.enqueue(() => this.retireInQueue(reason));
   }
 
   public whenIdle(): Promise<void> {
@@ -209,6 +280,10 @@ export class SessionHost {
   }
 
   private async pumpServerAuthority(): Promise<void> {
+    // A restored campaign holds saved combat that may be stopped on an enemy turn. Nothing
+    // may act on it until the host resumes, so a guest claim in the resume lobby must not
+    // wake the server AI.
+    if (this.stateValue.lifecycle !== "active") return;
     for (let count = 0; count < 512; count += 1) {
       const combat = this.stateValue.combat;
       if (!combat) return;
@@ -237,12 +312,67 @@ export class SessionHost {
       const beforeCombat = this.stateValue.combat;
       const result = dispatchServerCombatCommand(this.stateValue, command, this.context);
       if (!result.accepted) throw new Error("Server AI command was rejected: " + (result.error ?? "unknown error"));
+      // Every AI step commits on its own. Batching several into one write would let a crash
+      // lose AI turns the clients had already been shown.
+      const committed = await this.commitTransition(this.stateValue, result.state);
+      if (!committed.ok) {
+        // The candidate is never published. There is no automatic retry by design: the host
+        // continues the campaign from My Campaigns and guests rejoin the new session.
+        this.broadcastError(
+          committed.terminal ? "SESSION_RETIRED" : "PERSISTENCE_FAILED",
+          committed.message,
+        );
+        this.retireInQueue(committed.message);
+        return;
+      }
       this.stateValue = result.state;
       this.updateCombatHistory(beforeCombat, result.events);
       this.broadcastSnapshot(result.events, { kind: "server" });
       await Promise.resolve();
     }
     throw new Error("Server AI exceeded the deterministic 512-command guard.");
+  }
+
+  private async commitTransition(
+    previous: SessionCoreState,
+    candidate: SessionCoreState,
+  ): Promise<{ readonly ok: true } | { readonly ok: false; readonly terminal: boolean; readonly message: string }> {
+    if (!this.durability) return { ok: true };
+    try {
+      await this.durability.commitGameplayTransition(previous, candidate);
+      return { ok: true };
+    } catch (error) {
+      if (error instanceof CampaignWriterRetiredError) {
+        return { ok: false, terminal: true, message: error.message };
+      }
+      return {
+        ok: false,
+        terminal: false,
+        message: error instanceof Error
+          ? "Saving campaign progress failed: " + error.message
+          : "Saving campaign progress failed.",
+      };
+    }
+  }
+
+  /**
+   * Retire from inside the queue. The AI failure path must use this rather than `retire()`:
+   * enqueuing from within the running queue slot would wait on itself forever.
+   */
+  private retireInQueue(reason: string): void {
+    if (this.retiredValue) return;
+    this.retiredValue = true;
+    const sessionId = this.stateValue.sessionId;
+    for (const connection of this.connections.values()) {
+      connection.close(SESSION_RETIRED_CLOSE_CODE, reason);
+    }
+    this.connections.clear();
+    this.onRetired?.(sessionId, reason);
+  }
+
+  private broadcastError(code: ProtocolErrorCode, message: string): void {
+    const error = this.errorMessage(code, message);
+    for (const connection of this.connections.values()) connection.send(error);
   }
 
   private updateCombatHistory(previousCombat: SessionCoreState["combat"], events: readonly SessionEvent[]): void {

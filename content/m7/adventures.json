@@ -72,6 +72,16 @@
           { "kind": "equipment", "definitionId": "spiked-shield" }
         ]
       }
+    ],
+    "experienceAwards": [
+      { "afterEncounterId": "encounter.road-ambush", "amount": 200 },
+      { "afterEncounterId": "encounter.spear-line", "amount": 250 },
+      { "afterEncounterId": "encounter.ruined-gate", "amount": 250 },
+      { "afterEncounterId": "encounter.goblin-chief", "amount": 400 },
+      { "afterEncounterId": "encounter.bone-cellar", "amount": 250 },
+      { "afterEncounterId": "encounter.wolf-run", "amount": 300 },
+      { "afterEncounterId": "encounter.archer-perch", "amount": 350 },
+      { "afterEncounterId": "encounter.cult-sanctum", "amount": 500 }
     ]
   }
 ]
