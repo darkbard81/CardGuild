@@ -93,6 +93,11 @@ export interface GrowthSnapshotFacts {
   readonly sessionId: string;
   readonly revision: number;
   readonly inCombat: boolean;
+  /**
+   * The Encounter the party most recently finished. A notice describes exactly one victory,
+   * so this is what says whether it still describes the latest one.
+   */
+  readonly lastCompletedEncounterId: string | null;
 }
 
 /**
@@ -104,9 +109,15 @@ export interface GrowthSnapshotFacts {
  * - Walking into the next battle clears it: the notice belongs to the battle just won.
  * - A snapshot at or below the revision that produced the notice changes nothing, so a
  *   resync, a control-only snapshot or a plain re-render neither drops it nor re-announces
- *   it.
- * - A batch carrying no growth leaves the standing notice alone, which is what keeps it up
- *   across the reward choice and a Loadout round trip.
+ *   it, and an out-of-order older view cannot retire a newer notice.
+ * - A notice about an Encounter that is no longer the last one the party finished is
+ *   dropped. Clearing on the next battle alone is not enough: a client that was away —
+ *   a disconnected Guest, say — comes back to a resync carrying no events at all, having
+ *   missed both the battle that would have cleared the notice and the victory that
+ *   replaced it. Without this rule that client keeps announcing a two-battles-ago result
+ *   next to the current EXP total.
+ * - A batch carrying no growth otherwise leaves the standing notice alone, which is what
+ *   keeps it up across the reward choice and a Loadout round trip.
  *
  * Nothing here reads durable state, and nothing writes any: a reload or a fresh Continue
  * replays no events, so it correctly starts with no notice at all.
@@ -116,9 +127,14 @@ export function trackGrowthSummary(
   snapshot: GrowthSnapshotFacts,
   events: readonly AdventureEvent[],
 ): GrowthNotice | null {
-  const standing = previous && previous.sessionId === snapshot.sessionId ? previous : null;
+  const sameSession = previous && previous.sessionId === snapshot.sessionId ? previous : null;
   if (snapshot.inCombat) return null;
-  if (standing && standing.revision >= snapshot.revision) return standing;
+  // Judged before the Encounter check, so a repeat or an older view of the run is a
+  // no-op rather than evidence that the notice is stale.
+  if (sameSession && sameSession.revision >= snapshot.revision) return sameSession;
+  const standing = sameSession && sameSession.summary.encounterId === snapshot.lastCompletedEncounterId
+    ? sameSession
+    : null;
   const summary = summarizeGrowth(events);
   return summary ? { sessionId: snapshot.sessionId, revision: snapshot.revision, summary } : standing;
 }

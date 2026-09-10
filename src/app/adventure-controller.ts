@@ -253,6 +253,7 @@ export class AdventureController {
       sessionId: snapshot.state.sessionId,
       revision: snapshot.revision,
       inCombat: Boolean(snapshot.state.combat),
+      lastCompletedEncounterId: snapshot.state.adventure?.completedEncounterIds.at(-1) ?? null,
     }, snapshot.events.filter(
       (event): event is Extract<AdventureEvent, { type: "EXPERIENCE_GAINED" | "LEVEL_UP" }> =>
         event.type === "EXPERIENCE_GAINED" || event.type === "LEVEL_UP"));

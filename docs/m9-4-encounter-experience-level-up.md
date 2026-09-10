@@ -217,8 +217,15 @@ Loadout의 선택 캐릭터가 같은 함수를 쓰므로 두 화면의 문구�
 | 성장이 없는 이후 snapshot (보상 선택, Loadout 왕복) | 기존 요약 유지 |
 | 같은/이전 revision 재수신 (resync, control-only, 재렌더) | 기존 요약 유지, 재알림 없음 |
 | 다음 Encounter 진입 (`combat` 존재) | 비움 |
+| 요약의 Encounter가 더 이상 마지막 완료 Encounter가 아님 | 비움 |
 | 다른 session ID | 비움 |
 | 브라우저 재로드·새 Continue | 이벤트가 재생되지 않으므로 요약 없음 |
+
+마지막 완료 Encounter 대조가 따로 필요한 이유는 "다음 전투 진입 시 비움"만으로는 부족하기
+때문이다. 첫 승리 뒤 연결이 끊긴 Guest는 요약을 지웠어야 할 전투 진입 snapshot과 그것을
+대체했어야 할 다음 승리를 **둘 다** 놓친 채, 이벤트가 비어 있고 `combat`도 없는 resync로
+돌아온다. 그 snapshot에서 요약이 낡았다고 말해주는 것은 완료 목록뿐이다. 이 대조는 revision
+비교 **뒤에** 적용해, 순서가 뒤바뀐 오래된 view가 최신 요약을 지우지 못하게 한다.
 
 요약과 이벤트 이력은 Campaign Save에도 browser storage에도 저장하지 않는다.
 

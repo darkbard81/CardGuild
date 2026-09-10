@@ -25,7 +25,12 @@ const VICTORY: readonly AdventureEvent[] = [
   levelUp("party.hero-1", 2, 3),
 ];
 
-const FACTS = { sessionId: "session-a", revision: 12, inCombat: false } as const;
+const FACTS = {
+  sessionId: "session-a",
+  revision: 12,
+  inCombat: false,
+  lastCompletedEncounterId: "encounter.goblin-chief",
+} as const;
 
 describe("M9-4 growth summary", () => {
   it("collapses several levels into one jump and reports the remainder each member kept", () => {
@@ -64,9 +69,9 @@ describe("M9-4 growth notice lifecycle", () => {
 
   it("clears when the party walks into the next battle or lands in another session", () => {
     expect(trackGrowthSummary(notice, { ...FACTS, revision: 15, inCombat: true }, [])).toBeNull();
-    expect(trackGrowthSummary(notice, { sessionId: "session-b", revision: 1, inCombat: false }, [])).toBeNull();
+    expect(trackGrowthSummary(notice, { ...FACTS, sessionId: "session-b", revision: 1 }, [])).toBeNull();
     // A fresh Continue replays no events, so the new session starts with nothing to report.
-    expect(trackGrowthSummary(null, { sessionId: "session-b", revision: 0, inCombat: false }, [])).toBeNull();
+    expect(trackGrowthSummary(null, { ...FACTS, sessionId: "session-b", revision: 0 }, [])).toBeNull();
   });
 
   it("replaces the notice when a later victory publishes its own growth", () => {
@@ -75,5 +80,36 @@ describe("M9-4 growth notice lifecycle", () => {
     expect(later?.summary.entries).toEqual([
       { memberId: "party.hero-1", amount: 350, fromLevel: 3, toLevel: 4, experience: 0 },
     ]);
+  });
+
+  it("drops a notice about a battle the party has already moved past, even with no events to say so", () => {
+    // A Guest that disconnects after one victory and reconnects two battles later gets a
+    // resync: no events, and no combat because the party is between encounters. The only
+    // thing in that snapshot saying the notice is stale is which Encounter finished last.
+    const reconnect = trackGrowthSummary(notice, {
+      ...FACTS,
+      revision: 40,
+      lastCompletedEncounterId: "encounter.bone-cellar",
+    }, []);
+    expect(reconnect).toBeNull();
+
+    // The same resync during the next battle is cleared by `inCombat`, as before.
+    expect(trackGrowthSummary(notice, {
+      ...FACTS,
+      revision: 40,
+      inCombat: true,
+      lastCompletedEncounterId: "encounter.bone-cellar",
+    }, [])).toBeNull();
+
+    // An out-of-order older view of the run is not evidence that the notice is stale.
+    expect(trackGrowthSummary(notice, {
+      ...FACTS,
+      revision: 11,
+      lastCompletedEncounterId: "encounter.road-ambush",
+    }, [])).toBe(notice);
+
+    // A reconnect that lands on the same battle the notice describes still keeps it, so a
+    // Guest who blinked during the reward screen does not lose the only notice they get.
+    expect(trackGrowthSummary(notice, { ...FACTS, revision: 40 }, [])).toBe(notice);
   });
 });
