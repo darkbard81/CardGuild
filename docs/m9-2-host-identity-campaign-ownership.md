@@ -40,7 +40,7 @@ M9-2에는 gameplay snapshot이 없다. 그래서 Continue는 인증과 소유�
 |---|---|---|
 | SQLite driver | 내장 `node:sqlite`(`DatabaseSync`) | 런타임 의존성 0개 추가, 네이티브 빌드·esbuild external 불필요. esbuild는 `node:` 접두 specifier를 `--platform=node`에서 자동 외부화한다 |
 | engines | `>=24.0.0` | 22.13에서도 `node:sqlite`는 플래그 없이 쓸 수 있으나 "1.1 Active development" 단계다. `.node-version`과 CI가 24뿐이라 22.x는 **한 번도 테스트되지 않는다** — 지원한다고 선언하지 않는 편이 정직하다 |
-| 계정 등록 | HTTP 라우트 없음, `npm run account:create` CLI | 서버가 공개 도메인에 배포되어 있어 가입을 열면 누구나 Campaign 소유자가 된다 |
+| 계정 등록 | HTTP 라우트 없음, `npm run account:create` CLI | 서버가 공개 도메인에 배포되어 있어 가입을 열면 누구나 Campaign 소유자가 된다 — **이 결정은 이후 뒤집혔다. 아래 주석을 볼 것** |
 | password KDF | scrypt N=2^15, r=8, p=1, keylen=32 | 이 하드웨어에서 약 80ms. **`maxmem`을 명시해야 한다** — 기본 32MiB로는 N=2^15가 실패한다 |
 | auth session | 30일 절대 만료, 슬라이딩 없음 | 슬라이딩은 요청마다 쓰기를 만든다. M9-3이 같은 파일에 commit-before-ACK를 얹으므로 그 경로에 경합을 미리 넣지 않는다 |
 
@@ -249,6 +249,11 @@ M9-3/M9-5의 durable identity 뿌리가 되므로 보상 삭제를 넣고 **양�
   공개 가입이 없어 계정 수가 운영자에게 알려진 소수라 지금은 과설계로 보고 미뤘다.
 - **로그인 실패 횟수 제한도 없다.** 같은 이유이고, 단일 호스트에서 잠금은 자기 DoS 벡터다.
   가입을 열게 되면 둘 다 다시 판단해야 한다.
+- **가입은 이후 열렸다.** `POST /api/auth/register`와 로그인·랜딩 화면의 Create account
+  버튼이 추가되어, 위 표의 "계정 등록" 행은 더 이상 현재 동작이 아니다. 계정 수가 운영자에게
+  알려진 소수라는 전제가 깨졌으므로 **바로 위 두 항목(KDF 동시성 상한, 로그인·가입 시도
+  제한)이 다시 열린 문제가 된다.** 초대제로 운영하려면 리버스 프록시에서 그 라우트를 막고
+  CLI만 쓴다. 현재 동작은 README를 볼 것.
 - **WAL은 아직 실제로 검증되지 않았다.** `PRAGMA journal_mode=WAL`은 `:memory:`에서 조용히
   no-op이고 모든 테스트가 in-memory다. M9-3의 재시작 테스트가 파일 DB를 써야 한다.
 - **M9-3 Save restore validator**는 `PartyMember.actorDefinitionId → Character profile`

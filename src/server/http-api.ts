@@ -1,7 +1,15 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 
 import type { ProtocolErrorCode } from "../protocol";
-import type { AuthService, PublicAccount } from "./auth-service";
+import {
+  INVALID_PASSWORD,
+  INVALID_USERNAME,
+  PASSWORD_RULE,
+  USERNAME_RULE,
+  USERNAME_TAKEN,
+  type AuthService,
+  type PublicAccount,
+} from "./auth-service";
 import type { CampaignService } from "./campaign-service";
 import { AUTH_COOKIE, authCookie, clearedAuthCookie, parseCookies, type CookieConfig } from "./cookies";
 import type { CampaignRecord } from "./persistence";
@@ -19,7 +27,13 @@ export type ApiErrorCode =
   | "SAVE_NOT_FOUND"
   | "SAVE_CORRUPT"
   | "SAVE_SCHEMA_UNSUPPORTED"
-  | "SAVE_CONTENT_MISMATCH";
+  | "SAVE_CONTENT_MISMATCH"
+  // Signup refusals. Named separately from INVALID_MESSAGE because the request was
+  // well-formed: it is the credential that cannot be accepted, and the person typing it
+  // needs to know which half to change.
+  | "USERNAME_TAKEN"
+  | "INVALID_USERNAME"
+  | "INVALID_PASSWORD";
 
 export interface HttpApiDependencies {
   readonly store: SessionStore;
@@ -103,7 +117,7 @@ function failureStatus(code: ApiErrorCode): number {
   if (code === "UNAUTHENTICATED") return 401;
   if (code === "FORBIDDEN") return 403;
   if (code === "SESSION_NOT_FOUND" || code === "CAMPAIGN_NOT_FOUND") return 404;
-  if (code === "SESSION_FULL" || code === "ROSTER_LOCKED" || SAVE_CONFLICT_CODES.has(code)) return 409;
+  if (code === "SESSION_FULL" || code === "ROSTER_LOCKED" || code === "USERNAME_TAKEN" || SAVE_CONFLICT_CODES.has(code)) return 409;
   // The request was fine and the save is fine; the store could not be reached.
   if (code === "PERSISTENCE_FAILED") return 503;
   return 400;
@@ -158,6 +172,37 @@ export function createHttpApi(
       } catch (error) {
         badRequest(response, error);
       }
+      return true;
+    }
+
+    if (method === "POST" && url.pathname === "/api/auth/register") {
+      let requested: { readonly username: string; readonly password: string };
+      try {
+        requested = credentials(await readJsonBody(request));
+      } catch (error) {
+        badRequest(response, error);
+        return true;
+      }
+      try {
+        await auth.createAccount(requested.username, requested.password);
+      } catch (error) {
+        // The service reports codes; whoever is typing needs a sentence and, for a taken
+        // username, the one fact that tells them to pick another.
+        const code = error instanceof Error ? error.message : "";
+        if (code === USERNAME_TAKEN) fail(response, "USERNAME_TAKEN", "That username is already taken.");
+        else if (code === INVALID_USERNAME) fail(response, "INVALID_USERNAME", USERNAME_RULE);
+        else if (code === INVALID_PASSWORD) fail(response, "INVALID_PASSWORD", PASSWORD_RULE);
+        else throw error;
+        return true;
+      }
+      // Signed in here rather than sending the browser back to a form: the account exists
+      // and the password it was just given is the one the next screen would ask for again.
+      const grant = await auth.login(requested.username, requested.password);
+      if (!grant) {
+        fail(response, "UNAUTHENTICATED", "The account was created but could not be signed in. Try signing in.");
+        return true;
+      }
+      json(response, 201, { account: grant.account }, authCookie(grant.token, cookie));
       return true;
     }
 

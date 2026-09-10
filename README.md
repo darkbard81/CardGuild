@@ -448,7 +448,12 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
 - 계정·auth session·Campaign metadata는 single-file SQLite(`node:sqlite`)에 저장합니다.
   경로는 `CARDGUILD_DB_PATH`(기본 `.data/cardguild.sqlite`)입니다. 개발과 Playwright는
   `.data/cardguild.dev.sqlite`를 따로 쓰며, `--seed-dev`는 그 경로에서만 동작합니다.
-- 가입 라우트는 없습니다. 계정은 `npm run account:create`로 만듭니다.
+- 로그인 화면과 랜딩의 **Create account**로 계정을 만들 수 있습니다(`POST /api/auth/register`).
+  가입은 곧바로 로그인까지 마치므로 다음 화면이 My Campaigns입니다. 비밀번호 재설정 경로는
+  없으므로 가입 화면은 비밀번호를 두 번 받습니다. 운영자가 직접 만들 때는 여전히
+  `npm run account:create`를 씁니다.
+- 서버가 공개적으로 접근 가능하다면 가입도 공개됩니다. 초대제로 운영하려면 리버스 프록시에서
+  `POST /api/auth/register`를 막고 `npm run account:create`만 쓰세요.
 - 비밀번호는 scrypt 해시로만, auth token은 digest로만 저장합니다. 쿠키는
   `HttpOnly`·`SameSite=Lax`이고 `Secure`는 `CARDGUILD_COOKIE_SECURE`로 정합니다.
 - 남의 Campaign은 "권한 없음"이 아니라 "없음"으로 보입니다.

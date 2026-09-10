@@ -83,8 +83,10 @@ export class AdventureController {
     });
     this.lobbyUi = new SessionLobbyUi(PRODUCTION_CONTENT.pack, this.catalog, {
       onShowLogin: () => this.lobbyUi.renderLogin(),
+      onShowRegister: () => this.lobbyUi.renderRegister(),
       onShowLanding: () => this.lobbyUi.renderLanding(),
       onLogin: (username, password) => void this.signIn(username, password),
+      onRegister: (username, password) => void this.signUp(username, password),
       onLogout: () => void this.signOut(),
       onCreateCampaign: (name, displayName) => void this.createCampaign(name, displayName),
       onContinueCampaign: (campaignId) => void this.continueCampaign(campaignId),
@@ -133,6 +135,18 @@ export class AdventureController {
       await this.showCampaigns(account);
     } catch (error) {
       this.lobbyUi.setStatus(error instanceof Error ? error.message : "로그인할 수 없습니다.");
+    }
+  }
+
+  /** Signing up lands on the campaign list, because the server signed the new account in. */
+  private async signUp(username: string, password: string): Promise<void> {
+    this.lobbyUi.setStatus("계정을 만드는 중입니다…");
+    try {
+      const account = await SessionClient.register(username, password);
+      this.root.dataset.auth = "authenticated";
+      await this.showCampaigns(account);
+    } catch (error) {
+      this.lobbyUi.setStatus(error instanceof Error ? error.message : "계정을 만들 수 없습니다.");
     }
   }
 

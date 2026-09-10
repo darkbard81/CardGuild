@@ -146,6 +146,81 @@ describe("M9-2 host identity and campaign ownership over real HTTP", () => {
     expect(me.body.account?.username).toBe(OWNER.username);
   });
 
+  it("creates an account, signs it straight in, and lets it own a campaign at once", async () => {
+    const server = await start();
+    const created = await request<{ account: { accountId: string; username: string } }>(
+      server.origin, "POST", "/api/auth/register", { body: { username: "new-host", password: "new host password" } },
+    );
+
+    expect(created.status).toBe(201);
+    expect(created.body.account.username).toBe("new-host");
+    // Signing up signs you in: the same cookie login issues, with the same protections.
+    expect(created.setCookie).toContain("HttpOnly");
+    expect(created.setCookie).toContain("SameSite=Lax");
+    expect(created.setCookie).toContain(AUTH_COOKIE);
+    const cookie = cookieFrom(created.setCookie);
+
+    const me = await request<{ account: { username: string } | null }>(
+      server.origin, "GET", "/api/auth/me", { cookie });
+    expect(me.body.account?.username).toBe("new-host");
+
+    // The account is a real owner from its first request, not a second-class one.
+    const campaign = await request<{ campaign: { campaignId: string } }>(
+      server.origin, "POST", "/api/campaigns", { body: { name: "First Campaign" }, cookie });
+    expect(campaign.status).toBe(201);
+    const listed = await request<{ campaigns: readonly { readonly name: string }[] }>(
+      server.origin, "GET", "/api/campaigns", { cookie });
+    expect(listed.body.campaigns.map((entry) => entry.name)).toEqual(["First Campaign"]);
+
+    // And the password it chose is the password it can sign back in with.
+    const again = await request(server.origin, "POST", "/api/auth/login", {
+      body: { username: "new-host", password: "new host password" },
+    });
+    expect(again.status).toBe(200);
+  });
+
+  it("refuses a taken username, a malformed one, a short password and an unexpected field", async () => {
+    const server = await start();
+
+    // Case-insensitive, because the accounts table folds case for uniqueness.
+    const taken = await request<{ code: string; message: string }>(
+      server.origin, "POST", "/api/auth/register", { body: { username: OWNER.username.toUpperCase(), password: "another password" } },
+    );
+    expect(taken.status).toBe(409);
+    expect(taken.body.code).toBe("USERNAME_TAKEN");
+    expect(taken.setCookie).toBeNull();
+
+    const badName = await request<{ code: string; message: string }>(
+      server.origin, "POST", "/api/auth/register", { body: { username: "no", password: "long enough password" } },
+    );
+    expect(badName.status).toBe(400);
+    expect(badName.body.code).toBe("INVALID_USERNAME");
+    // The refusal names the rule, so the next attempt is not a guess.
+    expect(badName.body.message).toContain("3-32 characters");
+
+    const badPassword = await request<{ code: string; message: string }>(
+      server.origin, "POST", "/api/auth/register", { body: { username: "short-pass-host", password: "short" } },
+    );
+    expect(badPassword.status).toBe(400);
+    expect(badPassword.body.code).toBe("INVALID_PASSWORD");
+
+    // The body allowlist is the same one every other route uses.
+    const extra = await request<{ code: string }>(
+      server.origin, "POST", "/api/auth/register",
+      { body: { username: "extra-host", password: "long enough password", accountId: "account_forged" } },
+    );
+    expect(extra.status).toBe(400);
+    expect(extra.body.code).toBe("INVALID_MESSAGE");
+
+    // None of the refusals left an account behind.
+    for (const username of ["no", "short-pass-host", "extra-host"]) {
+      const attempt = await request(server.origin, "POST", "/api/auth/login", {
+        body: { username, password: "long enough password" },
+      });
+      expect(attempt.status).toBe(401);
+    }
+  });
+
   it("answers a wrong password and an unknown account identically, and issues no cookie", async () => {
     const server = await start();
     const wrongPassword = await request(server.origin, "POST", "/api/auth/login",

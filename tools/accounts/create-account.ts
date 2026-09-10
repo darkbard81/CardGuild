@@ -1,6 +1,13 @@
 import process from "node:process";
 
-import { INVALID_PASSWORD, INVALID_USERNAME, USERNAME_TAKEN, createAuthService } from "../../src/server/auth-service";
+import {
+  INVALID_PASSWORD,
+  INVALID_USERNAME,
+  PASSWORD_RULE,
+  USERNAME_RULE,
+  USERNAME_TAKEN,
+  createAuthService,
+} from "../../src/server/auth-service";
 import { assertDevDatabase, resolveDatabasePath } from "../../src/server/database-path";
 import { createSqlitePersistence } from "../../src/server/persistence";
 
@@ -35,8 +42,8 @@ async function readPasswordFromStdin(): Promise<string> {
 function explain(error: unknown, username: string): string {
   const code = error instanceof Error ? error.message : String(error);
   if (code === USERNAME_TAKEN) return `Account "${username}" already exists.`;
-  if (code === INVALID_USERNAME) return "A username is 3-32 characters of ASCII letters, digits, dot, dash or underscore, starting with a letter or digit.";
-  if (code === INVALID_PASSWORD) return "A password must be at least 8 characters.";
+  if (code === INVALID_USERNAME) return USERNAME_RULE;
+  if (code === INVALID_PASSWORD) return PASSWORD_RULE;
   return code;
 }
 

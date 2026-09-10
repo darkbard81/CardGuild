@@ -316,4 +316,55 @@ test.describe("M9-5 deployment recovery", () => {
     await expect(host.page.locator("#app")).toHaveAttribute("data-session-revision", revision ?? "");
     expectNoUnexpectedErrors(guest);
   });
+
+  test("creates an account from the landing page and lets it host straight away", async ({ browser }) => {
+    // Signup needs a database nobody else shares: a username can only be taken once, so a
+    // suite that reused one would pass exactly the first time it ran.
+    const deployment = await deploy("signup");
+    const visitor = await player(browser, deployment, "New Host");
+    const username = `signup-${String(Date.now())}`;
+
+    await visitor.page.locator("#host-register").click();
+    await expect(visitor.page.locator("#register-submit")).toBeVisible();
+
+    // A mistyped confirmation is caught here, before it can become a real attempt.
+    await visitor.page.locator("#register-username").fill(username);
+    await visitor.page.locator("#register-password").fill("a long enough password");
+    await visitor.page.locator("#register-password-confirm").fill("a long enough passward");
+    await visitor.page.locator("#register-submit").click();
+    await expect(visitor.page.locator("#session-status")).toContainText("비밀번호가 서로 다릅니다");
+    await expect(visitor.page.locator("#app")).toHaveAttribute("data-auth", "anonymous");
+
+    // The server's own refusals reach the same line.
+    await visitor.page.locator("#register-password").fill("short");
+    await visitor.page.locator("#register-password-confirm").fill("short");
+    await visitor.page.locator("#register-submit").click();
+    await expect(visitor.page.locator("#session-status")).toContainText("8 characters");
+
+    await visitor.page.locator("#register-password").fill("a long enough password");
+    await visitor.page.locator("#register-password-confirm").fill("a long enough password");
+    await visitor.page.locator("#register-submit").click();
+
+    // Signing up signs you in, so the next screen is the campaign list, not the login form.
+    await expect(visitor.page.locator("#app")).toHaveAttribute("data-auth", "authenticated");
+    await expect(visitor.page.locator("#new-campaign")).toBeVisible();
+    await createCampaign(visitor, "Signup Campaign", "New Host");
+    await applyParty(visitor.page);
+    await reachCombat(visitor.page);
+
+    // The same username cannot be taken twice, and the refusal says so rather than failing
+    // silently on a fresh page that has no session of its own.
+    const second = await player(browser, deployment, "Impostor");
+    await second.page.locator("#host-register").click();
+    await second.page.locator("#register-username").fill(username);
+    await second.page.locator("#register-password").fill("a different password");
+    await second.page.locator("#register-password-confirm").fill("a different password");
+    await second.page.locator("#register-submit").click();
+    await expect(second.page.locator("#session-status")).toContainText("already taken");
+    await expect(second.page.locator("#app")).toHaveAttribute("data-auth", "anonymous");
+    // Only uncaught exceptions are checked here: this test provokes 400 and 409 answers on
+    // purpose, and the browser logs a console error for every one of them.
+    expect(visitor.pageErrors).toEqual([]);
+    expect(second.pageErrors).toEqual([]);
+  });
 });

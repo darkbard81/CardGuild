@@ -18,8 +18,10 @@ function element<K extends keyof HTMLElementTagNameMap>(
 
 export interface SessionLobbyHandlers {
   readonly onShowLogin: () => void;
+  readonly onShowRegister: () => void;
   readonly onShowLanding: () => void;
   readonly onLogin: (username: string, password: string) => void;
+  readonly onRegister: (username: string, password: string) => void;
   readonly onLogout: () => void;
   readonly onCreateCampaign: (name: string, displayName: string) => void;
   readonly onContinueCampaign: (campaignId: string) => void;
@@ -82,7 +84,13 @@ export class SessionLobbyUi {
     host.id = "host-login";
     host.type = "button";
     host.addEventListener("click", () => this.handlers.onShowLogin());
-    card.append(form, element("p", "party-builder-label", "HOST"), host, this.statusLine());
+    const signUp = element("button", "session-secondary", "Create account");
+    signUp.id = "host-register";
+    signUp.type = "button";
+    signUp.addEventListener("click", () => this.handlers.onShowRegister());
+    const hostActions = element("div", "session-form");
+    hostActions.append(host, signUp);
+    card.append(form, element("p", "party-builder-label", "HOST"), hostActions, this.statusLine());
     this.screen.append(card);
     this.setVisible(true);
   }
@@ -93,7 +101,7 @@ export class SessionLobbyUi {
     card.append(
       element("p", "eyebrow", "Host account"),
       element("h1", undefined, "Host Sign In"),
-      element("p", "session-description", "Campaign은 계정이 소유합니다. 계정은 서버 운영자가 만들어 줍니다."),
+      element("p", "session-description", "Campaign은 계정이 소유합니다. 계정이 없다면 새로 만드세요."),
     );
     const username = element("input", "session-input");
     username.id = "account-username";
@@ -113,9 +121,66 @@ export class SessionLobbyUi {
     back.id = "account-back";
     back.type = "button";
     back.addEventListener("click", () => this.handlers.onShowLanding());
+    const signUp = element("button", "session-secondary", "Create account");
+    signUp.id = "account-show-register";
+    signUp.type = "button";
+    signUp.addEventListener("click", () => this.handlers.onShowRegister());
 
     const form = element("div", "session-form");
     form.append(username, submit, password, back);
+    card.append(form, element("p", "party-builder-label", "NO ACCOUNT YET"), signUp, this.statusLine());
+    this.screen.append(card);
+    this.setVisible(true);
+  }
+
+  /**
+   * Making an account, which the server then signs in.
+   *
+   * The password is asked for twice because there is no reset flow: a typo here would lock the
+   * account away from the only person who wanted it. The match is checked before the
+   * request so a mistyped confirmation never reaches the server as a real attempt.
+   */
+  public renderRegister(): void {
+    this.screen.replaceChildren();
+    const card = element("section", "session-card");
+    card.append(
+      element("p", "eyebrow", "Host account"),
+      element("h1", undefined, "Create Account"),
+      element("p", "session-description", "Campaign을 만들려면 계정이 필요합니다. 비밀번호는 다시 찾을 수 없으니 잘 보관하세요."),
+    );
+    const username = element("input", "session-input");
+    username.id = "register-username";
+    username.placeholder = "Username";
+    username.autocomplete = "username";
+    const password = element("input", "session-input");
+    password.id = "register-password";
+    password.type = "password";
+    password.placeholder = "Password (8+ characters)";
+    password.autocomplete = "new-password";
+    const confirm = element("input", "session-input");
+    confirm.id = "register-password-confirm";
+    confirm.type = "password";
+    confirm.placeholder = "Repeat password";
+    confirm.autocomplete = "new-password";
+
+    const submit = element("button", "session-primary", "Create account");
+    submit.id = "register-submit";
+    submit.type = "button";
+    submit.addEventListener("click", () => {
+      if (password.value !== confirm.value) {
+        this.setStatus("비밀번호가 서로 다릅니다.");
+        confirm.focus();
+        return;
+      }
+      this.handlers.onRegister(username.value, password.value);
+    });
+    const back = element("button", "session-secondary", "Back");
+    back.id = "register-back";
+    back.type = "button";
+    back.addEventListener("click", () => this.handlers.onShowLogin());
+
+    const form = element("div", "session-form");
+    form.append(username, submit, password, back, confirm, element("span"));
     card.append(form, this.statusLine());
     this.screen.append(card);
     this.setVisible(true);
