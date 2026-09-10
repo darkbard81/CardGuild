@@ -14,10 +14,7 @@
     "test": "vitest run && playwright test --config playwright.browser-unit.config.ts && vitest run --config vitest.integration.config.ts && playwright test && playwright test --config playwright.recovery.config.ts",
     "start": "node --env-file=deploy/cardguild.production.env dist-server/main.js",
     "playtest": "tsx tools/playtest/run-playtest.ts",
-    "account:create": "tsx tools/accounts/create-account.ts",
-    "ui:capture": "playwright test --config playwright.capture.config.ts && tsx tools/ui/build-compare-page.ts",
-    "ui:capture:baseline": "CARDGUILD_UI_SHOT_DIR=docs/ui-review/baseline playwright test --config playwright.capture.config.ts && tsx tools/ui/build-compare-page.ts",
-    "ui:compare": "tsx tools/ui/build-compare-page.ts"
+    "account:create": "tsx tools/accounts/create-account.ts"
   },
   "dependencies": {
     "ajv": "^8.20.0",

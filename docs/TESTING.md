@@ -127,7 +127,13 @@ invariant를 기다립니다. 제스처도 같습니다: 줌·팬은 corners가 
 성공한 테스트는 그림을 만들지 않습니다. screenshot은 `only-on-failure`이고, trace는 꺼져
 있습니다 — `retain-on-failure`는 실패한 것만 남기지만 **모든** 테스트의 screencast를 먼저
 찍고, 여기서 재보니 두 브라우저 suite 벽시계의 약 30%였습니다. 실패를 재현할 때는
-`--trace on`을 직접 붙입니다. UI 리뷰 캡쳐는 `playwright.capture.config.ts`가 따로 소유합니다.
+`--trace on`을 직접 붙입니다.
+
+예전에는 UI 리뷰용 캡쳐 subsystem이 따로 있었습니다. 회귀 gate가 아니라 손으로 전후를 비교하는
+사진첩이었고, 지금은 Browser Unit이 HUD·카메라·뷰포트·기하를, E2E가 실제 사용자 흐름을 붙잡고,
+실패한 테스트는 스스로 그림을 남깁니다. 큰 redesign에서 전후 비교가 다시 필요해지면 그때의
+화면에 맞는 임시 workflow를 그때 만드는 편이, 흐름이 바뀔 때마다 같이 고쳐야 하는 두 번째
+Playwright 설정을 계속 들고 있는 것보다 쌉니다.
 
 ## 자원 격리
 
