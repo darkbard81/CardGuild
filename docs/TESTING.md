@@ -79,10 +79,12 @@ seed로 전후를 비교하세요. 재현의 기준은 SHA가 아니라 pack fin
 
 ### 결과를 읽는 법
 
-hero policy는 **유능한 플레이어가 아니라 하한선**입니다. 행동 순서는 기립/탈출 → 60% 미만 아군
-치료 → 인접 레버 → 적 대상 최고 점수 행동 → 방패 → 접근 → 턴 종료이고, 점수는 `previewAction`의
-hit chance·damage range와 authored outcome effect에서만 나옵니다. 그래서 수치는 "이 정도
-플레이로도 되는가"를 말하고, 그보다 잘 두는 사람에게는 더 쉽습니다.
+hero policy는 **유능한 플레이어가 아니라 하한선**입니다. 한 번에 한 action씩 고르는 greedy
+정책이고, 순서는 `tools/playtest/hero-policy.ts`가 소유합니다 — 기립/탈출 → 60% 미만 아군 치료
+→ HP 절반 아래에서 들고 있는 방어 수단 → 인접 레버 → 적 대상 최고 점수 행동 → 방패 → 접근 →
+턴 종료. 점수는 `previewAction`이 보고할 때는 거기서(hit chance·damage range), 아닐 때는
+authored outcome effect에서 나옵니다. 그래서 수치는 "이 정도 플레이로도 되는가"를 말하고,
+그보다 잘 두는 사람에게는 더 쉽습니다.
 
 | 하지 않는 것 | 결과 |
 |---|---|

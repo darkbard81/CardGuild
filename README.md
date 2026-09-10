@@ -364,8 +364,8 @@ Pan은 두 규칙 중 **느슨한 쪽**을 씁니다. 보드가 안전영역보�
 턴이 시작될 때 해당 액터가 안전영역 밖이면 최소 거리만 pan해 시야에 넣습니다(zoom 1에서는
 전체가 보이므로 아무 일도 하지 않습니다).
 
-보드·카메라·투영 계약은 위에 적힌 것이 전부이고, 그 값을 소유하는 코드는 `src/pixi`의
-`BoardProjection`과 camera입니다. 초기 설계 초안과 M5 구현 범위·protocol 정정 사항은 Git
+보드·카메라·투영 계약은 위에 적힌 것이 전부이고, 그 값을 소유하는 코드는
+`src/pixi/battle/BoardProjection.ts`와 `BattleCamera.ts`, 그리고 두 파일 옆의 test입니다. 초기 설계 초안과 M5 구현 범위·protocol 정정 사항은 Git
 history와 GitHub 이슈 `#6`·`#7`에 남아 있습니다.
 
 ## 검증
@@ -448,8 +448,8 @@ Loadout preview는 같은 effective Character profile로 수치를 계산합니�
 runtime progression 때문에 다시 계산하지 않습니다.
 
 실제 EXP 지급과 Level-Up은 M9-4, 계정/저장/복구는 M9-2 이후 범위입니다.
-계약을 소유하는 코드는 `src/adventure/progression.ts`와 `src/loadout`이고, 회귀는
-`src/adventure/progression.test.ts`가 붙잡습니다.
+계약을 소유하는 코드는 `src/adventure/progression.ts`와 `src/loadout/loadout.ts`이고,
+회귀는 `src/adventure/progression.test.ts`가 붙잡습니다.
 
 ## M9-2 Host Identity & Campaign Ownership
 

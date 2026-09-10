@@ -1241,11 +1241,15 @@ routine authoring에는 필요 없습니다. **왜 지금 이 수치인지**는 
 issue와 그때의 commit이 갖고 있습니다 — 완료된 설계 문서를 현행 tree에 남겨 두면 코드가
 움직인 뒤에도 계약처럼 읽히기 때문입니다.
 
-```text
-#13 카드 라이브러리 설계와 AoN 대조     #19 Adventure 조립 기록
-#14 Starter 4명 설계                   #20 release gate 설계
-#15 creature role 설계                 #21 자동 플레이 측정과 balance 근거
-#16 encounter × party-size 설계
-#17 장비 trade-off 설계
-content/README.md   pack 디렉터리 landing page
-```
+| issue | 무엇을 정했는가 |
+|---|---|
+| #13 | 카드 라이브러리 설계와 AoN 대조 |
+| #14 | Starter 4명 설계 |
+| #15 | creature role 설계 |
+| #16 | encounter × party-size 설계 |
+| #17 | 장비 trade-off 설계 |
+| #19 | Adventure 조립 기록 |
+| #20 | release gate 설계 |
+| #21 | 자동 플레이 측정과 balance 근거 |
+
+pack 디렉터리 자체의 안내는 [`content/README.md`](../content/README.md)에 있습니다.
