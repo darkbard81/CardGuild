@@ -103,6 +103,6 @@ the wall runs the other way, turns it.
 
 ## References
 
-- Board composition and upright standee reference: `documents/view_modify.png`.
-- Character standee reference: `documents/Template.png`.
-- User prompt convention: `documents/ImageGen_Prompt.md`.
+- Board composition and upright standee reference: `art/reference/board-standee-layout.png`.
+- Character standee reference: `art/reference/character-standee.png`.
+- User prompt convention: `art/reference/IMAGEGEN_PROMPT.md`.

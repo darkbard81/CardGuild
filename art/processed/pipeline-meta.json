@@ -1,7 +1,7 @@
 {
   "version": 3,
   "styleSheet": "art/STYLE.md",
-  "promptConvention": "documents/ImageGen_Prompt.md",
+  "promptConvention": "art/reference/IMAGEGEN_PROMPT.md",
   "backgroundCleanup": {
     "method": "preserve generated alpha or remove edge-connected neutral checkerboard",
     "outputAlpha": "straight"
