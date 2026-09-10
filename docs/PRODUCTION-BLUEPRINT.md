@@ -1,8 +1,8 @@
 # CardGuild Production Blueprint
 
 **신규 Card / Equipment / playable Character / Creature / Encounter / Adventure를 추가하려면 이
-문서 하나면 됩니다.** `docs/m7-*.md`와 과거 issue는 설계 근거 기록이며, routine authoring의
-선행 조건이 아닙니다.
+문서 하나면 됩니다.** 지금 이 수치가 왜 이 값인지는 GitHub issue와 Git history가 갖고 있으며,
+routine authoring의 선행 조건이 아닙니다.
 
 이 문서는 요약본이 아니라 **현재 코드·schema·validator·production gate·asset pipeline이 실제로
 강제하는 계약**을 사람이 읽는 형태로 옮긴 것입니다. 숫자와 규칙에는 전부 machine owner 경로를
@@ -25,7 +25,7 @@
 2. tools/content/m7-production-policy.ts                                  = 현재 M7 release envelope
 3. art/source/generation-plan.json + tools/assets/{build,check}-assets.ts  = asset contract
 4. docs/PRODUCTION-BLUEPRINT.md (이 문서)                                  = 사람이 쓰는 단일 guide
-5. docs/m7-*.md / 과거 issue                                              = 근거·역사, 필수 아님
+5. GitHub issue / Git history                                            = 근거·역사, 필수 아님
 ```
 
 Markdown은 CI가 파싱하지 않습니다. 이 문서는 human SSOT이지 validator의 대체물이 아닙니다.
@@ -726,7 +726,7 @@ EXP를 주기 때문에, 보상에 얹지 않고 따로 authoring합니다.
   .levelMilestones`가 요구하는 4전 Lv.2 · 7전 Lv.3에 도달하는지 검사합니다. 지급량을 바꾸면
   이 두 지점이 유지되는지 gate가 알려줍니다.
 - 지급량을 바꾸면 pack fingerprint가 바뀝니다. 배열 순서만 바꾸는 것은 fingerprint에
-  영향을 주지 않습니다. 자세한 계약은 `docs/m9-4-encounter-experience-level-up.md`에 있습니다.
+  영향을 주지 않습니다. 지급과 레벨업 계산은 `src/adventure/runtime.ts`가 소유합니다.
 
 ### 9.1.1 보상 → loadout → 다음 전투는 어디서 검증되는가
 
@@ -758,7 +758,7 @@ encounter를 끼워 넣으면 policy도 같은 PR에서 고쳐야 합니다.
 - 이미 착용 중인 장비를 보상으로 주지 않습니다(dead choice).
 - 카드 보상은 받는 사람의 `preparedCardCapacity`에 여유가 있어야 실제로 쓰입니다. 현재 각
   Starter는 여유 슬롯이 1칸이므로, 카드 보상을 늘리면 **후반 보상이 갈 곳을 잃습니다**
-  (`docs/m7-playtest-report.md` §6-1).
+  (#21 playtest에서 세 번의 카드 보상 중 두 번째·세 번째가 1P에서 준비되지 못했습니다).
 - 선택지가 실제로 다른 결과를 만드는지는 `npm run playtest`로 확인합니다(§12).
 
 ### 9.4 Golden example — `adventure.goblin-trouble`
@@ -1149,7 +1149,7 @@ main을 향한 PR은 `CI Full`(`check` → `build` → `npm test`)입니다. mer
 
 `npm run playtest -- --seeds N`은 gate가 아니라 조사 도구입니다. **encounter 배치·creature 수치·
 보상 구성·starter 능력치처럼 balance에 닿는 변경을 했다면** 같은 seed로 전후를 비교하세요.
-출력 형식과 해석 한계는 `docs/m7-playtest-report.md`에 있습니다.
+실행법과 결과를 읽는 규칙은 [`TESTING.md`](TESTING.md)의 playtest 절에 있습니다.
 
 ### Definition of Done 체크리스트
 
@@ -1236,16 +1236,15 @@ asset generation / check workflow
 
 ### 더 읽을 것 (선택)
 
-routine authoring에는 필요 없습니다. 왜 지금 이 수치인지 알고 싶을 때만 보세요.
+routine authoring에는 필요 없습니다. **왜 지금 이 수치인지**는 이 문서가 아니라 그것을 정한
+issue와 그때의 commit이 갖고 있습니다 — 완료된 설계 문서를 현행 tree에 남겨 두면 코드가
+움직인 뒤에도 계약처럼 읽히기 때문입니다.
 
 ```text
-docs/m7-card-capability.md    #13 카드 라이브러리 설계와 AoN 대조
-docs/m7-starter-builds.md     #14 Starter 4명 설계
-docs/m7-creature-roster.md    #15 creature role 설계
-docs/m7-encounter-matrix.md   #16 encounter × party-size 설계
-docs/m7-equipment-matrix.md   #17 장비 trade-off 설계
-docs/m7-vertical-slice.md     #19 Adventure 조립 기록
-docs/m7-production-gate.md    #20 release gate 설계
-docs/m7-playtest-report.md    #21 자동 플레이 측정과 balance 근거
-content/README.md             pack 디렉터리 landing page
+#13 카드 라이브러리 설계와 AoN 대조     #19 Adventure 조립 기록
+#14 Starter 4명 설계                   #20 release gate 설계
+#15 creature role 설계                 #21 자동 플레이 측정과 balance 근거
+#16 encounter × party-size 설계
+#17 장비 trade-off 설계
+content/README.md   pack 디렉터리 landing page
 ```

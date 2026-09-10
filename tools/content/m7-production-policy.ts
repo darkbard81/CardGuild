@@ -7,10 +7,9 @@
  * pack valid; this file only states what the *current* release ships, so the M3
  * and M6 regression fixtures are never measured against M7 volume targets.
  *
- * The design rationale lives in `docs/m7-encounter-matrix.md`,
- * `docs/m7-equipment-matrix.md`, `docs/m7-card-capability.md` and
- * `docs/m7-vertical-slice.md`. Those are written for people. CI reads this file,
- * so a release decision is never recovered by parsing Markdown.
+ * The design rationale lives in issues #15-#17 and #19 and in the commits that
+ * set these numbers. Those are written for people. CI reads this file, so a
+ * release decision is never recovered by parsing Markdown.
  *
  * ## Reserve is tracked debt, not an exemption
  *
@@ -54,7 +53,8 @@ export const M7_PRODUCTION_POLICY = {
 
   /**
    * The onboarding run, in order. These have to be the first encounters of the
-   * authoritative Adventure — a prefix, not a set (`docs/m7-encounter-matrix.md` §4).
+   * authoritative Adventure — a prefix, not a set (#16). A party that meets these
+   * out of order meets them without the vocabulary the earlier ones teach.
    */
   tutorialEncounterIds: [
     "encounter.road-ambush",
@@ -66,7 +66,8 @@ export const M7_PRODUCTION_POLICY = {
   /**
    * Where a party that wins straight through must stand, keyed by victory count. The EXP
    * table is free to move as long as these two moments do not: they are the pacing the
-   * release was tuned around (`docs/m9-4-encounter-experience-level-up.md` §2).
+   * release was tuned around: onboarding ends at Lv.2, and the elite half of the
+   * Adventure is met at Lv.3.
    */
   levelMilestones: { "4": 2, "7": 3 },
 

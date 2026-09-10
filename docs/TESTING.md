@@ -53,6 +53,48 @@ Quick은 Chromium을 설치조차 하지 않습니다. 브라우저·포트·DB�
 생성 대상 콘텐츠를 바꿨다면 `npx tsx tools/assets/build-assets.ts`를 직접 돌리고 생성물을 함께
 커밋하세요. gate가 자산을 조용히 고쳐 놓는 일은 없습니다.
 
+## playtest — gate가 아닌 조사 도구
+
+```bash
+npm run playtest -- --seeds 12            # 요약을 터미널로
+npm run playtest -- --seeds 12 --json out.json
+```
+
+`tools/playtest/`가 생산 경로를 그대로 돌립니다. 새 telemetry나 balance solver가 아니라, 이미
+있는 query만 씁니다.
+
+```text
+createAdventureSession → buildAdventureEncounter → createCombat → dispatchCombatCommand
+enemies : src/game/ai.ts chooseAiCommand      출하되는 그 AI
+heroes  : tools/playtest/hero-policy.ts       측정 장치. src/는 이것을 import하지 않습니다
+```
+
+matrix는 9개 party × (reward route 2 × loadout direction 2) = 36 spec이고, seed 하나가 36 run을
+만듭니다. reward route는 `first`/`last`(항상 첫/마지막 선택지), loadout은 `authored`(시작 장비
+고정)/`adapt`(보상을 실제로 장착·준비)입니다. seed와 party 구성만 같으면 전부 재현되므로,
+**encounter 배치·creature 수치·보상 구성·starter 능력치처럼 balance에 닿는 변경**을 했다면 같은
+seed로 전후를 비교하세요. 재현의 기준은 SHA가 아니라 pack fingerprint입니다.
+
+### 결과를 읽는 법
+
+hero policy는 **유능한 플레이어가 아니라 하한선**입니다. 행동 순서는 기립/탈출 → 60% 미만 아군
+치료 → 인접 레버 → 적 대상 최고 점수 행동 → 방패 → 접근 → 턴 종료이고, 점수는 `previewAction`의
+hit chance·damage range와 authored outcome effect에서만 나옵니다. 그래서 수치는 "이 정도
+플레이로도 되는가"를 말하고, 그보다 잘 두는 사람에게는 더 쉽습니다.
+
+| 하지 않는 것 | 결과 |
+|---|---|
+| 이동 카드 사용 | 기본 Stride만 씀 |
+| 후퇴·kiting·엄폐 활용 | 원거리 적에게 접근하는 동안 그대로 맞음 |
+| 지속 효과와 아군 버프 | 사용 정책 없음 |
+| prepared card 교체 | 새 보상 카드는 **빈 슬롯이 있을 때만** 준비됨 |
+
+그래서 어려운 셀을 balance 문제로 읽기 전에 이 목록을 먼저 봐야 합니다 — 원거리 압박 encounter나
+solo 지원가처럼 위 항목이 그대로 걸리는 자리가 있습니다.
+
+**`legal했는가`는 content의 성질이고 `얼마나 썼는가`는 이 policy의 성질입니다.** dead card
+판정은 전자를 기준으로 읽어야 합니다. 사용률이 0인 카드가 곧 쓸모없는 카드는 아닙니다.
+
 ## 디렉터리
 
 ```text
@@ -183,6 +225,28 @@ SIGKILL·fault marker·COMMIT 전후 의미·0회/1회 계약은 그대로입니
 | `tests/support/browser` | 로그인·Facing·전술 조작, 컴포넌트 harness |
 | `tests/fixtures/content` | 규칙 fixture(`cardguild.test.*`) — [README](../tests/fixtures/content/README.md) |
 | `tests/fixtures` | 브라우저 상태 builder, campaign save builder |
+
+### 장애를 주입하는 방법
+
+Recovery와 `restart-matrix`는 `tests/support/recovery/fault-server.ts`가 만든 자식 서버를 씁니다.
+fault는 "세 번째 저장"이 아니라 **대상 전이**로 받습니다 — `combat-command`·`ai-command`·
+`encounter-complete`·`level-up`·`adventure-complete`·`reward`·`migration`·`any`. 분류는 저장된
+save와 candidate save를 비교해서만 합니다. 서버에 "무엇을 하는 중이냐"고 묻지 않습니다: crash가
+남기는 증거는 save뿐이고, 복구도 같은 것을 읽기 때문입니다.
+
+네 가지가 이 harness를 정직하게 유지합니다.
+
+- **arm 전까지 무동작.** 프로세스 시작부터 세면 준비 단계의 저장까지 세게 되어, 준비 단계가
+  하나 늘면 조용히 다른 전이를 겨눕니다.
+- **발화는 `process.exit`이 아니라 `SIGKILL`.** 정상 종료는 shutdown handler를 돌리고 DB를
+  닫는데, crash가 결코 하지 못하는 일이 바로 그것입니다.
+- **증거는 marker 파일에 동기적으로.** SIGKILL은 pipe로 가는 비동기 stdout write가 flush되기
+  전에 프로세스를 가져갑니다.
+- **`after`는 `committed === true`일 때만.** 거절된 CAS는 DB가 갖고 있지 않은 전이라, 거기서
+  죽이면 이름만 `after`인 `before` fault가 되고 복구 assertion이 다른 계약을 판정합니다.
+
+checkpoint도 조작하지 않습니다. HP를 낮추거나 완료 목록·EXP를 직접 고쳐 승리를 만들지 않고,
+seed 1의 생산 콘텐츠를 실제 reducer로 플레이해서 도달한 저장을 파일로 복사해 씁니다.
 
 ### 종료를 기다림과 구분하기
 

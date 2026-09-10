@@ -44,11 +44,12 @@ const ONBOARDING_LENGTH = 4;
 const RESERVE_EQUIPMENT = ["executioner-axe", "brigandine", "bloodied-talisman"] as const;
 
 /**
- * #17's five build directions, copied from docs/m7-equipment-matrix.md §4 and reduced to the
- * `reward` items only — the baseline gear in those combinations (half-plate, shield,
- * scale-mail, leather-armor) is already worn, so an Adventure only has to hand out the rest.
- * docs/m7-equipment-matrix.md stays the source of truth: a direction is never shortened here
- * to make this file pass. Two assemblable directions are the acceptance floor.
+ * #17's five build directions, reduced to the `reward` items only — the baseline gear in
+ * those combinations (half-plate, shield, scale-mail, leather-armor) is already worn, so an
+ * Adventure only has to hand out the rest. The directions themselves are a design decision,
+ * not this file's: a direction is never shortened here to make the test pass. Widening one
+ * is a change to #17, and it belongs in a review, not in this constant. Two assemblable
+ * directions are the acceptance floor.
  */
 const BUILD_DIRECTIONS: Readonly<Record<string, readonly string[]>> = {
   "heavy breaker": ["greatsword", "tower-shield"],
@@ -152,7 +153,7 @@ describe("production vertical slice", () => {
       // Past onboarding, no encounter a real party meets is one enemy definition repeated.
       // Role is authored in the design matrix and is not runtime metadata, so this counts
       // distinct definitions and nothing more — two definitions that share a role still pass.
-      // Role mix itself is a design review over docs/m7-vertical-slice.md.
+      // Role mix itself is a design review (#19), not something this test can decide.
       for (const encounterId of ADVENTURE.encounterIds.slice(ONBOARDING_LENGTH)) {
         const distinct = new Set(opposition(encounterId, partySize)).size;
         expect(`${encounterId}@${String(partySize)}P:${String(distinct >= 2)}`)

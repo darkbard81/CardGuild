@@ -362,9 +362,9 @@ Pan은 두 규칙 중 **느슨한 쪽**을 씁니다. 보드가 안전영역보�
 턴이 시작될 때 해당 액터가 안전영역 밖이면 최소 거리만 pan해 시야에 넣습니다(zoom 1에서는
 전체가 보이므로 아무 일도 하지 않습니다).
 
-설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M5 구현
-범위와 protocol 정정 사항은 GitHub 이슈 `#6`, M6-1 Character Stat Foundation은
-GitHub 이슈 `#7`을 따릅니다.
+보드·카메라·투영 계약은 위에 적힌 것이 전부이고, 그 값을 소유하는 코드는 `src/pixi`의
+`BoardProjection`과 camera입니다. 초기 설계 초안과 M5 구현 범위·protocol 정정 사항은 Git
+history와 GitHub 이슈 `#6`·`#7`에 남아 있습니다.
 
 ## 검증
 
@@ -446,7 +446,8 @@ Loadout preview는 같은 effective Character profile로 수치를 계산합니�
 runtime progression 때문에 다시 계산하지 않습니다.
 
 실제 EXP 지급과 Level-Up은 M9-4, 계정/저장/복구는 M9-2 이후 범위입니다.
-자세한 계약과 검증은 [M9-1 구현문서](docs/m9-1-character-progression-foundation.md)에 있습니다.
+계약을 소유하는 코드는 `src/adventure/progression.ts`와 `src/loadout`이고, 회귀는
+`src/adventure/progression.test.ts`가 붙잡습니다.
 
 ## M9-2 Host Identity & Campaign Ownership
 
@@ -469,7 +470,9 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
 - account/campaign 식별자는 `SessionCoreState`에 들어가지 않으므로 gameplay hash와
   결정론은 그대로입니다. M9-2 자체는 wire protocol을 v5에서 바꾸지 않았습니다.
 
-자세한 계약과 검증은 [M9-2 구현문서](docs/m9-2-host-identity-campaign-ownership.md)에 있습니다.
+계약을 소유하는 코드는 `src/server/auth-service.ts`·`campaign-service.ts`·`password.ts`·
+`cookies.ts`이고, `tests/integration/auth-service.test.ts`·`account.test.ts`·
+`campaign-service.test.ts`가 실제 SQLite로 검증합니다.
 
 ## M9-3 Durable Campaign Save & Resume Lobby
 
@@ -495,7 +498,9 @@ gameplay 진행이 SQLite에 저장되고, Host는 My Campaigns에서 Continue�
 - 손상·미지원·다른 Content Pack의 save는 자동 보정하지 않고 409로 거절하며 row를 보존합니다.
 - 브라우저 저장소에는 여전히 reconnect credential만 둡니다.
 
-자세한 계약과 검증은 [M9-3 구현문서](docs/m9-3-durable-campaign-save.md)에 있습니다.
+저장 payload와 4단계 검증은 `src/server/campaign-save.ts`, COMMIT·CAS·공개 순서는
+`src/server/campaign-durability.ts`가 소유하고,
+`tests/integration/campaign-persistence.test.ts`와 `restart-matrix.test.ts`가 검증합니다.
 
 ## M9-4 Encounter EXP & Automatic Level-Up
 
@@ -523,7 +528,9 @@ Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 L
   pending reward·진행 중 전투를 보존하고 완료한 전투에 EXP를 소급하지 않습니다. 이관은
   Continue의 CAS COMMIT으로 한 번만 저장되고, 실패하면 새 세션을 공개하지 않습니다.
 
-자세한 계약과 검증은 [M9-4 구현문서](docs/m9-4-encounter-experience-level-up.md)에 있습니다.
+EXP를 authoring하는 방법은 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md)
+§9.1에 있고, 지급과 레벨업 계산은 `src/adventure/runtime.ts`, 이관은
+`src/server/campaign-content-migration.ts`가 소유합니다.
 
 ## M9-5 Server Restart Recovery
 
@@ -555,4 +562,7 @@ npm start
   않습니다. 서버 AI의 저장 실패는 그 세션을 종료시키며, Host는 Continue로 마지막 저장 지점부터
   이어갑니다.
 
-자세한 계약과 실측은 [M9-5 구현문서](docs/m9-5-server-restart-recovery.md)에 있습니다.
+멱등한 종료는 `src/server/main.ts`가 소유하고, 장애 매트릭스는
+`tests/integration/restart-matrix.test.ts`, 배포 산출물의 실제 재시작은
+`tests/recovery/campaign.recovery.ts`가 검증합니다. 계층별 책임은
+[`docs/TESTING.md`](docs/TESTING.md)에 있습니다.

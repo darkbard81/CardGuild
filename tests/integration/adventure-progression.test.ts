@@ -45,7 +45,7 @@ describe("the production adventure completes over a real co-op session", () => {
         // policy below. Balance across every starter and party size is #21's, not this
         // test's: a scripted party only has to prove the path connects end to end. #21
         // retuned the encounters, so this is simply a seed that still wins with the
-        // deliberately plain policy here — see docs/m7-playtest-report.md.
+        // deliberately plain policy here. Balance evidence is `npm run playtest` (#21).
         adventureSeed: () => 8,
       },
     });
