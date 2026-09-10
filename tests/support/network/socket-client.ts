@@ -12,6 +12,38 @@ export function envelope(requestId: string, expectedRevision: number, intent: Se
   return { v: 7, type: "intent", requestId, expectedRevision, intent };
 }
 
+/** How a connection actually ended, as reported by the socket's own close event. */
+export interface SocketClosure {
+  readonly code: number;
+  readonly reason: string;
+}
+
+/**
+ * A wait that ended because the connection did.
+ *
+ * This is the difference between "the answer has not arrived yet" and "the answer can never
+ * arrive". A killed server produces the second, and a caller that cannot tell them apart has
+ * to sit out the whole timeout before it can even ask which one happened.
+ */
+export class SocketClosedError extends Error {
+  public constructor(
+    public readonly code: number,
+    public readonly reason: string,
+    /** Where the interrupted wait started reading, so the caller can see what it did get. */
+    public readonly from: number,
+    /** The transport failure that preceded the close, when there was one. */
+    public readonly transportError?: Error,
+  ) {
+    super(
+      `The connection closed with ${String(code)}` +
+      (reason ? ` (${reason})` : "") +
+      ` while waiting from index ${String(from)}.` +
+      (transportError ? ` Transport error: ${transportError.message}` : ""),
+    );
+    this.name = "SocketClosedError";
+  }
+}
+
 export interface ConnectOptions {
   /** What the hello claims to be built against, so a mismatched peer can be refused. */
   readonly contentIdentity?: ContentIdentity;
@@ -33,11 +65,21 @@ export interface ConnectOptions {
 export class SocketClient {
   public readonly messages: ServerMessage[] = [];
 
+  private closure: SocketClosure | null = null;
+  private lastTransportError: Error | null = null;
+
   private constructor(public readonly socket: WebSocket) {
     socket.on("message", (data) => this.messages.push(JSON.parse(data.toString()) as ServerMessage));
+    // Registered before anything can wait, so every waiter's own close listener already sees
+    // the recorded code by the time it runs.
+    socket.on("close", (code: number, reason: Buffer) => {
+      this.closure ??= { code, reason: reason.toString() };
+    });
     // A test that kills its server sees the transport error before the close; it is the
-    // recovery that is under test, not the socket's dying breath.
-    socket.on("error", () => undefined);
+    // recovery that is under test, not the socket's dying breath. It is kept rather than
+    // dropped because it is the only thing that says *why*, but it never decides anything:
+    // a connection is dead when it has closed, not when it has complained.
+    socket.on("error", (error: Error) => { this.lastTransportError = error; });
   }
 
   public static async connect(
@@ -69,26 +111,68 @@ export class SocketClient {
     return this.messages.length;
   }
 
+  /** The recorded end of this connection, or null while it is still open. */
+  public get closedWith(): SocketClosure | null {
+    return this.closure;
+  }
+
+  /**
+   * The first message at or after `from` that satisfies `predicate`.
+   *
+   * Three things can end this wait and each has to mean something different. The message
+   * arriving is success. The timeout expiring means the server is still there and still
+   * silent, which is a real failure. The connection closing means no message will ever
+   * arrive, so waiting the rest of the timeout out only delays the same answer — but a
+   * message already in the log wins over the close, because it did arrive.
+   */
   public waitFor<T extends ServerMessage>(
     predicate: (message: ServerMessage) => message is T,
     from = 0,
     timeoutMs = 15_000,
   ): Promise<T> {
-    const existing = this.messages.slice(from).find(predicate);
-    if (existing) return Promise.resolve(existing);
     return new Promise<T>((resolve, reject) => {
-      const timeout = setTimeout(() => {
-        this.socket.off("message", listener);
-        reject(new Error("Timed out after index " + String(from) + ": " + JSON.stringify(this.messages.slice(from))));
-      }, timeoutMs);
-      const listener = (): void => {
-        const found = this.messages.slice(from).find(predicate);
-        if (!found) return;
-        clearTimeout(timeout);
-        this.socket.off("message", listener);
-        resolve(found);
+      // Armed first so `finish` can always clear it; it cannot fire until this function has
+      // returned, by which point everything it reaches is initialised.
+      const timer = setTimeout(() => finish(() => reject(new Error(
+        "Timed out after index " + String(from) + ": " + JSON.stringify(this.messages.slice(from))))), timeoutMs);
+      let done = false;
+      // Only this wait's own listeners and timer are removed, so concurrent waits on the
+      // same socket cannot cancel each other.
+      const finish = (settle: () => void): void => {
+        if (done) return;
+        done = true;
+        clearTimeout(timer);
+        this.socket.off("message", onMessage);
+        this.socket.off("close", onClose);
+        settle();
       };
-      this.socket.on("message", listener);
+      const scan = (): boolean => {
+        let found: T | undefined;
+        try {
+          found = this.messages.slice(from).find(predicate);
+        } catch (error) {
+          finish(() => reject(error instanceof Error ? error : new Error(String(error))));
+          return true;
+        }
+        if (found === undefined) return false;
+        const hit = found;
+        finish(() => resolve(hit));
+        return true;
+      };
+      const onMessage = (): void => { scan(); };
+      // Messages are delivered before the close, so anything that qualifies is already here.
+      const onClose = (): void => {
+        if (scan()) return;
+        finish(() => reject(this.closedError(from)));
+      };
+
+      if (scan()) return;
+      if (this.closure) {
+        finish(() => reject(this.closedError(from)));
+        return;
+      }
+      this.socket.on("message", onMessage);
+      this.socket.on("close", onClose);
     });
   }
 
@@ -107,13 +191,17 @@ export class SocketClient {
 
   /** The code the *server* closed with, which is how a retired session announces itself. */
   public waitForClose(timeoutMs = 15_000): Promise<number> {
-    if (this.socket.readyState === WebSocket.CLOSED) return Promise.resolve(1000);
+    if (this.closure) return Promise.resolve(this.closure.code);
     return new Promise((resolve, reject) => {
-      const timeout = setTimeout(() => reject(new Error("Socket never closed.")), timeoutMs);
-      this.socket.once("close", (code) => {
+      const onClose = (code: number): void => {
         clearTimeout(timeout);
         resolve(code);
-      });
+      };
+      const timeout = setTimeout(() => {
+        this.socket.off("close", onClose);
+        reject(new Error("Socket never closed."));
+      }, timeoutMs);
+      this.socket.once("close", onClose);
     });
   }
 
@@ -123,11 +211,17 @@ export class SocketClient {
 
   /** Close from this side and report the code the connection actually ended with. */
   public close(): Promise<number> {
-    if (this.socket.readyState === WebSocket.CLOSED) return Promise.resolve(1000);
-    return new Promise((resolve) => {
-      this.socket.once("close", (code) => resolve(code));
+    if (this.closure) return Promise.resolve(this.closure.code);
+    const closed = this.waitForClose();
+    if (this.socket.readyState === WebSocket.OPEN || this.socket.readyState === WebSocket.CONNECTING) {
       this.socket.close(1000, "test close");
-    });
+    }
+    return closed;
+  }
+
+  private closedError(from: number): SocketClosedError {
+    const closure = this.closure ?? { code: 1006, reason: "" };
+    return new SocketClosedError(closure.code, closure.reason, from, this.lastTransportError ?? undefined);
   }
 }
 

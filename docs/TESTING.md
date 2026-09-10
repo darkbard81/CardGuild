@@ -7,7 +7,7 @@
 |---|---|---|---:|---|
 | Unit / Node | 순수 규칙·변환·컴포넌트 계약 | Node, 외부 자원은 fake | 549 | ~8초 |
 | Unit / Browser | 실제 DOM·PixiJS 컴포넌트에 상태와 콜백을 주입 | Chromium + Vite만 | 27 | ~1분 |
-| Integration | 실제 SQLite·HTTP·WebSocket과 source 서버 장애 주입 | Node, 파일 DB와 자식 프로세스 | 88 | ~4분 |
+| Integration | 실제 SQLite·HTTP·WebSocket과 source 서버 장애 주입 | Node, 파일 DB와 자식 프로세스 | 100 | ~1.5분 |
 | E2E | 실제 앱 진입부터 로그인·캠페인·협동 플레이까지 | Chromium + 개발 서버 묶음 | 30 | ~1.5분 |
 | Recovery | 배포 artifact와 파일 DB의 실제 재시작·강제 종료 | `dist-server` + `dist` | 4 | ~30초 |
 
@@ -96,12 +96,42 @@ Integration에서 CAS를, Recovery에서 진짜 재시작을 붙잡습니다 —
 
 | 위치 | 무엇 |
 |---|---|
-| `tests/support/network` | `SocketClient`, HTTP 로그인·계정 준비 |
+| `tests/support/network` | `SocketClient`, HTTP 로그인·계정 준비, 대기 계약 검증용 임시 소켓 서버 |
 | `tests/support/campaign` | 합법 행동만 고르는 hero 정책과 스냅샷 기반 구동 loop |
 | `tests/support/recovery` | fault 자식 서버, 배포 서버 실행 helper |
 | `tests/support/browser` | 로그인·Facing·전술 조작, 컴포넌트 harness |
 | `tests/fixtures/content` | 규칙 fixture(`cardguild.test.*`) — [README](../tests/fixtures/content/README.md) |
 | `tests/fixtures` | 브라우저 상태 builder, campaign save builder |
+
+### 종료를 기다림과 구분하기
+
+`SocketClient`의 대기는 세 가지로 끝나고, 셋은 서로 다른 뜻입니다. 메시지가 오면 성공,
+timeout이 끝나면 **서버는 살아 있는데 답이 없다**는 실패, 연결이 닫히면 **그 답은 영영 오지
+않는다**입니다. 이미 도착한 메시지는 연결이 닫혀도 이깁니다 — 받은 것을 안 받은 것으로 만들지는
+않습니다.
+
+셋을 구분하지 못하면 crash 테스트가 timeout을 다 기다린 뒤에야 같은 답을 얻습니다. 그리고
+반대 방향으로 틀리면 더 나쁩니다: 거절이나 침묵을 죽음으로 읽으면 **crash 없이도 crash
+테스트가 통과합니다.** 그래서 `drive()`는 `SocketClosedError`만 죽음으로 처리하고, ACK 거절과
+timeout은 그대로 실패시킵니다.
+
+계약은 `tests/integration/socket-client.test.ts`가 실제 임시 WebSocket 서버로 고정합니다 —
+이벤트 순서를 테스트가 직접 정하고, timeout 검증에만 fake timer를 씁니다.
+
+#### 측정 기록 (2026-09-10)
+
+기준 SHA `0a012e0`, `feat/misc-test`, Node 24.18.1 / Linux, 로컬 실행.
+명령은 `npx vitest run --config vitest.integration.config.ts`입니다.
+
+| | 변경 전 | 변경 후 (3회 중앙값) |
+|---|---:|---:|
+| `restart-matrix` (9개) | 213.76초 | **50.33초** (범위 47.61–52.14) |
+| Integration 전체 | 243.61초 / 88개 | **84.36초 / 100개** |
+| 연결 종료 → `drive()` 반환 | 19.95–19.99초 × 8회 | **0–1ms × 8회** |
+
+사례별로는 마지막 승리 crash 68.06초 → 27.13초, 네 번째 승리 52.53초 → 9.70초, 보상 42.39초 →
+2.16초입니다. 종료 관측 횟수(8회)는 그대로이고 사라진 것은 그 뒤의 대기뿐입니다. CI에 고정
+시간 임계값이나 자동 재시도는 넣지 않았습니다.
 
 `SocketClient`는 하나뿐입니다. 예전에는 네 벌이 있었고 이미 갈라져 있었습니다 — 하나는 메시지를
 5초, 다른 하나는 15초 기다렸고, 하나는 전송 오류를 삼키고 다른 하나는 삼키지 않았으며, 옛

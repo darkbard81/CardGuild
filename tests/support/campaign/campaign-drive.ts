@@ -3,7 +3,7 @@ import { WebSocket } from "ws";
 import type { ServerSnapshot } from "../../../src/protocol";
 import type { SessionIntent } from "../../../src/session";
 import { heroIntent, reactionIntent } from "../../support/campaign/adventure-driver";
-import { SocketClient, envelope } from "../../support/network/socket-client";
+import { SocketClient, SocketClosedError, envelope } from "../../support/network/socket-client";
 
 /**
  * Play a campaign over a real socket until something the test cares about happens — or
@@ -52,7 +52,13 @@ export async function settle(
   for (;;) {
     const snapshot = latestSnapshot(client);
     if (snapshot && snapshot.revision >= minRevision && awaitingPlayer(snapshot)) return snapshot;
-    if (client.socket.readyState === WebSocket.CLOSED || client.socket.readyState === WebSocket.CLOSING) return null;
+    if (client.socket.readyState === WebSocket.CLOSED || client.socket.readyState === WebSocket.CLOSING) {
+      // A closing socket may still deliver the frames already in flight, and one of them can
+      // be the snapshot the caller is going to report as the last thing it saw. Waiting for
+      // the close itself is what makes "the last snapshot" mean the same on every run.
+      await client.waitForClose().catch(() => undefined);
+      return null;
+    }
     if (Date.now() > deadline) throw new Error("The server never came back to a player boundary.");
     const settled = await new Promise<boolean>((resolve) => {
       const timer = setTimeout(() => {
@@ -123,6 +129,12 @@ export async function drive(
     const intent = nextIntent(snapshot);
     if (!intent) return { snapshot, died: false };
     const requestId = `${prefix}-${String(step)}`;
+    // Nothing is sent into a connection that is on its way out: the frame would be dropped
+    // and the loop would then wait for an answer to a request the server never read.
+    if (client.socket.readyState !== WebSocket.OPEN) {
+      await client.waitForClose().catch(() => undefined);
+      return { snapshot: latestSnapshot(client) ?? null, died: true };
+    }
     const mark = client.mark();
     client.send(envelope(requestId, snapshot.revision, intent));
     try {
@@ -132,9 +144,14 @@ export async function drive(
       }
       minRevision = Math.max(minRevision, ack.committedRevision);
     } catch (error) {
-      // A killed server answers nothing. Anything else is a real failure.
-      if (client.socket.readyState === WebSocket.OPEN) throw error;
-      return { snapshot: latestSnapshot(client) ?? null, died: true };
+      // A killed server answers nothing, and the closed connection says so the moment it
+      // happens. This used to be decided by reading `readyState` after a 20s ACK timeout had
+      // already expired — the same answer, eight times per matrix run, 20 seconds later.
+      // Every other error is still a real failure: a refused intent stays a refused intent.
+      if (error instanceof SocketClosedError) {
+        return { snapshot: latestSnapshot(client) ?? null, died: true };
+      }
+      throw error;
     }
   }
   throw new Error(`Drive exceeded ${String(limit)} steps without reaching its goal.`);
