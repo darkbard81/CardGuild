@@ -14,7 +14,7 @@ npm run content:production-check   현재 PRODUCTION_CONTENT의 M7 release polic
 ```
 
 `npm run check`가 둘을 차례로 실행하고 CI는 `npm run check`를 그대로 씁니다. 새 CI job도,
-새 network/runtime smoke도 추가하지 않았습니다 — `tests/network`와 `tests/runtime.smoke.spec.ts`는
+새 network/runtime smoke도 추가하지 않았습니다 — `tests/integration`와 `tests/e2e/runtime.spec.ts`는
 이미 `PRODUCTION_CONTENT`와 `adventure.goblin-trouble`을 실제 WebSocket session과 브라우저로
 지나갑니다.
 

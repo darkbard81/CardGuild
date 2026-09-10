@@ -206,17 +206,17 @@ close 4005가 늦게 도착해도 새 Continue가 방금 발급받은 credential
 | `src/server/campaign-save.test.ts` | mid-combat·비기본 Level/EXP·collection roundtrip과 hash 동일성, 입력 불변성, ephemeral 필드 미포함, slot canonical 정렬, malformed JSON/hash 불일치/metadata 불일치, 미지원 schema, content mismatch, 파티·progression·encounter·reward·loadout·combat·actor·turn·cardZone·map·reaction 참조 거절 | `test:unit` |
 | `src/server/campaign-durability.test.ts` | control-only 0회 write, 로비 파티 편집 0회, begin-adventure 첫 저장, revision 증가, CAS 충돌·소실의 terminal 처리와 held revision 불변, store 실패의 재시도 가능 형태 | `test:unit` |
 | `src/server/session-host.test.ts` | COMMIT 전 ACK/snapshot 미발생(지연 주입), 실패 시 old state·이력 유지와 동일 requestId 재시도 성공, CAS 실패의 `SESSION_RETIRED`+4005와 이후 명령/attach/join 차단, guest join·claim·presence 0회 write, Resume 0회 write와 hash 동일, 적 턴에 멈춘 resume-lobby에서 AI가 깨지 않고 Resume 이후에만 도는 것, AI step별 COMMIT 후 broadcast, AI 실패의 미공개·pump 중단·종료 | `test:unit` |
-| `src/server/persistence/persistence.test.ts` | empty/not-found 구분, 첫 저장 0→1과 `hasSave`, 후속 증가, stale CAS 거절과 row 불변, owner 격리, 부분 metadata `partial`, **실제 파일 DB의 close/reopen과 `journal_mode=wal`** | `test:unit` |
-| `src/server/campaign-service.test.ts` | 첫 durable save 시점, Continue의 fresh 식별자·이전 writer retire·resume-lobby·hash 동일, 대기 중 커밋된 최신 상태 복구, 손상 save의 세션·row 보존, save 없음/타 계정/미지원 거절, 동시 Continue의 단일 writer, stale writer CAS 거절, 자기 retire 후 mapping 정리 | `test:unit` |
+| `tests/integration/persistence.test.ts` | empty/not-found 구분, 첫 저장 0→1과 `hasSave`, 후속 증가, stale CAS 거절과 row 불변, owner 격리, 부분 metadata `partial`, **실제 파일 DB의 close/reopen과 `journal_mode=wal`** | `test:network` |
+| `tests/integration/campaign-service.test.ts` | 첫 durable save 시점, Continue의 fresh 식별자·이전 writer retire·resume-lobby·hash 동일, 대기 중 커밋된 최신 상태 복구, 손상 save의 세션·row 보존, save 없음/타 계정/미지원 거절, 동시 Continue의 단일 writer, stale writer CAS 거절, 자기 retire 후 mapping 정리 | `test:network` |
 | `src/session/session.test.ts` | 복구 상태의 fresh identity·revision 0·빈 claim·hash 동일·옛 식별자 부재, Resume 전 gameplay intent 전부 `FORBIDDEN`, 게스트 재참가/재claim, Host 단독 Resume과 lifecycle만 변경, 이어서 플레이, 잘못된 projection 거절 | `test:unit` |
 | `src/protocol/validate-message.test.ts` | v6 수용, v1·v3·v4·v5 거절, `resume-adventure` 무페이로드 계약 | `test:unit` |
-| `tests/network/campaign-persistence.integration.test.ts` | 실제 파일 DB의 서버 재시작 → 목록 `hasSave` → Continue → attach → resume-lobby hash → 명령 차단 → Resume → active hash → 이어서 플레이, 이전 credential 4005 무효화, 게스트 재참가·재claim·fallback, **자식 프로세스를 COMMIT 직전/직후에 종료한 뒤 동일 파일 DB 복구** | `test:network` |
-| `tests/campaign-resume.browser.spec.ts` | 1P Continue→Resume 정확 재개, 파티 편집기·Begin 부재와 전투 HUD 차단, 새 invite ID, 1440x900·390 폭 무가로스크롤, 이전 탭의 `SESSION_RETIRED`와 자기 credential만 정리, 2P 재참가·재claim·Host Resume·이탈 fallback | `test:smoke` |
+| `tests/integration/campaign-persistence.test.ts` | 실제 파일 DB의 서버 재시작 → 목록 `hasSave` → Continue → attach → resume-lobby hash → 명령 차단 → Resume → active hash → 이어서 플레이, 이전 credential 4005 무효화, 게스트 재참가·재claim·fallback, **자식 프로세스를 COMMIT 직전/직후에 종료한 뒤 동일 파일 DB 복구** | `test:network` |
+| `tests/e2e/campaign-resume.spec.ts` | 1P Continue→Resume 정확 재개, 파티 편집기·Begin 부재와 전투 HUD 차단, 새 invite ID, 1440x900·390 폭 무가로스크롤, 이전 탭의 `SESSION_RETIRED`와 자기 credential만 정리, 2P 재참가·재claim·Host Resume·이탈 fallback | `test:e2e` |
 | 기존 회귀 | protocol v6 이전 후 network 23개, 브라우저 49개 | network / smoke |
 
 ### 강제 종료 테스트
 
-`tests/network/fault-server.ts`는 `commitSave` 앞뒤에 fault를 넣고 `process.exit(9)`하는 자식
+`tests/support/recovery/fault-server.ts`는 `commitSave` 앞뒤에 fault를 넣고 `process.exit(9)`하는 자식
 서버다. 부모 테스트는 실제 파일 DB를 넘겨 자식을 띄우고, HTTP/WebSocket으로 mid-combat까지
 플레이한 뒤 다음 end-turn에서 죽인다.
 

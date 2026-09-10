@@ -10,7 +10,7 @@ import { defineConfig } from "@playwright/test";
  * suite that reuses one long-lived dev server.
  */
 export default defineConfig({
-  testDir: "./tests",
+  testDir: "./tests/recovery",
   testMatch: "**/*.recovery.ts",
   // Restarts are process-level events; overlapping them would make failures unreadable.
   fullyParallel: false,

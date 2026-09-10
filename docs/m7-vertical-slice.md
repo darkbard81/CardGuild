@@ -167,7 +167,7 @@ issue가 mid reward에 요구한 "다른 tactical route를 열 수 있는 choice
 
 ## 4. Network progression smoke
 
-`tests/network/adventure-progression.integration.test.ts` — #18의 tutorial prefix 테스트가
+`tests/integration/adventure-progression.test.ts` — #18의 tutorial prefix 테스트가
 전체 progression을 덮게 자라서 이름을 바꿨습니다.
 
 한 번의 실행이 지나가는 것:

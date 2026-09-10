@@ -377,10 +377,14 @@ npm run assets:check  # alpha, anchors, 양면 standee, atlas/standalone 저장 
 npm run check         # Content/asset, TypeScript, core 경계, ESLint, Vitest
 npm run build         # Content/asset 검증 후 production bundle
 npm run typecheck:server # DOM 없는 server/session/protocol type boundary
-npm run test:network # 실제 random-port HTTP/WebSocket 3-client integration
-npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive smoke
-npm run test:recovery # 배포 빌드(dist-server + dist)로 서버 재시작·복구 E2E
-npm test             # unit + network + Playwright + recovery
+npm run typecheck:tests  # tests 전체 (Node 타입 포함)
+npm run test:unit    # Unit / Node — 순수 규칙과 컴포넌트 계약
+npm run test:browser-unit # Unit / Browser — 컴포넌트 하나만, 서버·DB 없이
+npm run test:network # Integration — 실제 SQLite·HTTP·WebSocket과 source 장애 주입
+npm run test:e2e     # E2E — 실제 앱을 실제 사용자처럼
+npm run test:smoke   # Unit/Browser + E2E (기본 Playwright 설정의 두 project)
+npm run test:recovery # Recovery — 배포 빌드(dist-server + dist)의 재시작·강제 종료
+npm test             # 위를 순서대로 전부
 npm run playtest     # seeded 자동 플레이(밸런스 조사 도구, gate 아님)
 ```
 
@@ -402,6 +406,11 @@ SQLite를 쓰는 durable Campaign 시나리오가 더해집니다 — 서버 재
 M9-5는 여기에 장애 매트릭스를 얹습니다: 첫 승리·4전 Level-Up·보상 선택·AI step·콘텐츠 이관
 각각의 COMMIT 직전/직후 `SIGKILL`과 복구, ACK만 유실된 동일 요청 재시도, 그리고 종료의
 멱등성과 종료 중 queue·DB 순서입니다.
+
+**계층별 책임·직접 실행 명령·비용·자원 격리는 [`docs/TESTING.md`](docs/TESTING.md)에
+있습니다.** 테스트는 무엇을 붙잡고 있는지로 나뉩니다 — 컴포넌트 하나(Unit/Browser)는 서버 없이
+돌고, 실제 저장·전송(Integration)은 파일을 직렬로 실행하며, 배포 산출물의 재시작(Recovery)은
+자기 포트와 임시 DB를 갖습니다.
 Playwright는 별도 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어,
 2P fallback, 3P 분산 제어와 hash 수렴, 그리고 Continue → Resume Lobby → 정확 재개를 검증하며
 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.

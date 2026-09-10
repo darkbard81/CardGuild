@@ -172,8 +172,8 @@ Guest claim/presence/control metadata의 gameplay hash 제외 계약은 유지�
 | `src/session/session.test.ts` | Level/EXP hash 반영, JSON 왕복, Combat hash 보존, Session의 Adventure invariant 위임, 기존 control 회귀 |
 | `src/protocol/validate-message.test.ts` | v5 수용, v4 포함 미지원 버전 거절, 기존 Facing 계약 |
 | `src/client/session-client.test.ts` | v4 snapshot/ACK/error 수신 시 미적용·연결 종료·재시도 중단 |
-| `tests/network/coop.integration.test.ts` | 실제 WebSocket에서 nonzero Level/EXP 전송, Level 2 전투 생성, disconnect/reconnect 후 동일 state/hash, `SessionHost` constructor의 invalid state 거절, 기존 1P/2P/3P 회귀 |
-| `tests/progression.browser.spec.ts` | 실제 Host 시작/reload, 양쪽 표시, Level 2/EXP 375 fixture, preview 수치, 캐릭터 전환, 읽기 전용, 재렌더링, desktop/mobile screenshot |
+| `tests/integration/coop.test.ts` | 실제 WebSocket에서 nonzero Level/EXP 전송, Level 2 전투 생성, disconnect/reconnect 후 동일 state/hash, `SessionHost` constructor의 invalid state 거절, 기존 1P/2P/3P 회귀 |
+| `tests/unit/browser/progression.spec.ts` | 실제 Host 시작/reload, 양쪽 표시, Level 2/EXP 375 fixture, preview 수치, 캐릭터 전환, 읽기 전용, 재렌더링, desktop/mobile screenshot |
 
 테스트의 runtime Level/EXP 주입은 생성된 상태의 불변 교체 또는 기존 SessionHost constructor
 경계를 사용한다. 제품용 임의 progression 변경 기능을 추가하지 않는다.
@@ -203,7 +203,7 @@ npm run test:smoke
 | protocol | `src/protocol/v4-types.ts` → `v5-types.ts`, `index.ts`, `validate-message.ts`, `validate-message.test.ts` |
 | session·client | `src/session/authority.ts`, `session.test.ts`, `src/client/session-client.ts`, `session-client.test.ts` |
 | 표시 | `index.html`, `src/dom/adventure-ui.ts`, `src/dom/loadout-ui.ts`, `src/style.css` |
-| 테스트·도구 | `tests/progression.browser.spec.ts`(신규), `tests/network/coop.integration.test.ts`, `adventure-progression.integration.test.ts`, `src/content/*.test.ts`, `tools/content/check-production-content.ts`, `tools/playtest/run-playtest.ts` |
+| 테스트·도구 | `tests/unit/browser/progression.spec.ts`(신규), `tests/integration/coop.test.ts`, `tests/integration/adventure-progression.test.ts`, `src/content/*.test.ts`, `tools/content/check-production-content.ts`, `tools/playtest/run-playtest.ts` |
 | 문서 | `README.md`, 이 문서 |
 
 `PartySetup` 도입으로 Adventure를 생성하는 모든 호출부(테스트·playtest·production check)가 progression
@@ -220,7 +220,7 @@ npm run test:smoke
 | `npm run test:network` | 통과 — 2개 파일·11개 테스트 (`coop` 10개, 전체 Adventure 완주 1개) |
 | `npm run test:smoke` | 통과 — Playwright 45개 테스트 |
 
-브라우저 검증은 `tests/progression.browser.spec.ts` 2개 테스트가 smoke gate 안에서 함께 돈다.
+브라우저 검증은 `tests/unit/browser/progression.spec.ts` 2개 테스트가 smoke gate 안에서 함께 돈다.
 실제 Host 시작 경로의 초기 표시, Level 2/EXP 375 fixture, 양쪽 화면의 수치와 preview,
 캐릭터 전환·읽기 전용 조회를 확인하고 1024×768 Adventure/Loadout/runtime Level screenshot 3장과
 390×844 mobile screenshot 1장을 남긴다. 1024×768에서는 마지막 encounter 항목과 Collection이
@@ -229,7 +229,7 @@ viewport 안에 들어오고 `.adventure-map-card`가 잘리지 않는 것을 �
 ### 리뷰 반영
 
 `121ef7a` 리뷰에서 `SessionHost` constructor의 invariant 경계 1건을 지적받아 후속 커밋에서 닫았다.
-constructor가 `assertSessionInvariants()`를 먼저 호출하고, `tests/network/coop.integration.test.ts`가
+constructor가 `assertSessionInvariants()`를 먼저 호출하고, `tests/integration/coop.test.ts`가
 valid Level 2/EXP 375 복원 성공과 EXP 1000·progression 누락·Adventure v2 거절, 그리고 거절된 state가
 `attach()` snapshot에 도달하지 않음을 함께 고정한다. 이 테스트는 수정 전 코드에서 실패한다.
 

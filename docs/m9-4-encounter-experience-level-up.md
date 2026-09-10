@@ -254,9 +254,9 @@ npm run playtest -- --seeds 3
 | 멀티플레이 | Guest claim + 중도 이탈이 있는 세션과 Host 단독 세션의 지급 결과 동일 | `src/server/session-host.test.ts` |
 | 저장 경계 | 승리 candidate COMMIT 실패 시 성장 이벤트·ACK 미공개, 상태 유지, 같은 요청 재시도 후 정확히 한 번 지급 | `src/server/session-host.test.ts` |
 | 콘텐츠 이관 | mid-combat·between-encounters 이관, 진행·Level/EXP·Collection·pending reward·commandLog 보존, 소급 EXP 없음, setupFingerprint 재계산, 새 hash 일치 | `src/server/campaign-save.test.ts` |
-| 이관 실패·경쟁 | 원본 hash 불일치 거절, setup 불일치 거절, save/battle identity 불일치 거절, 미등록 pack 거절과 row 보존, CAS 실패 시 미공개·row 보존·재시도 가능, 반복 Continue에서 재이관 없음 | `src/server/campaign-save.test.ts`, `src/server/campaign-service.test.ts` |
-| Wire | 실제 WebSocket에서 8전 전부의 EXP 수신, 두 Level-Up 지점, 최종 progression | `tests/network/adventure-progression.integration.test.ts` |
-| 브라우저 | 보상·다음 전투·완료 화면의 요약, 다중 Level 묶음 표시, 요약 없는 재렌더, progressbar aria 값, Loadout 왕복, 1440×900·1024×768·390px 도달성과 가로 스크롤 없음 | `tests/progression.browser.spec.ts` |
+| 이관 실패·경쟁 | 원본 hash 불일치 거절, setup 불일치 거절, save/battle identity 불일치 거절, 미등록 pack 거절과 row 보존, CAS 실패 시 미공개·row 보존·재시도 가능, 반복 Continue에서 재이관 없음 | `src/server/campaign-save.test.ts`, `tests/integration/campaign-service.test.ts` |
+| Wire | 실제 WebSocket에서 8전 전부의 EXP 수신, 두 Level-Up 지점, 최종 progression | `tests/integration/adventure-progression.test.ts` |
+| 브라우저 | 보상·다음 전투·완료 화면의 요약, 다중 Level 묶음 표시, 요약 없는 재렌더, progressbar aria 값, Loadout 왕복, 1440×900·1024×768·390px 도달성과 가로 스크롤 없음 | `tests/unit/browser/progression.spec.ts` |
 | 요약 수명 | 보상 선택·Loadout 유지, 같은/이전 revision 재수신 무변화, 다음 전투·다른 세션 비움, 재로드 시 없음 | `src/dom/progression-view.test.ts` |
 
 ### Playtest 비교 (36 조합 × seed 1~3 = 108 runs)

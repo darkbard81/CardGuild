@@ -3,7 +3,7 @@ import path from "node:path";
 import process from "node:process";
 import sharp from "sharp";
 import { expect, test } from "@playwright/test";
-import { boardPoint, inspectStrike } from "./tactical-support";
+import { boardPoint, inspectStrike } from "./support/browser/tactical-support";
 import type { TacticalCase } from "./fixtures/tactical";
 
 for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900 }]) {

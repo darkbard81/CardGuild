@@ -10,7 +10,7 @@ import {
   resolveDatabasePath,
 } from "./database-path";
 
-describe("M9-2 database path", () => {
+describe("database path", () => {
   it("resolves the configured path, falling back to the deployed default", () => {
     expect(resolveDatabasePath({})).toBe(path.resolve(process.cwd(), DEFAULT_DATABASE_PATH));
     expect(resolveDatabasePath({ CARDGUILD_DB_PATH: "/srv/cardguild/live.sqlite" }))
@@ -25,7 +25,7 @@ describe("M9-2 database path", () => {
   });
 });
 
-describe("M9-2 development seeding guard", () => {
+describe("development seeding guard", () => {
   it("allows seeding only into the development database", () => {
     expect(() => assertDevDatabase(resolveDatabasePath({ CARDGUILD_DB_PATH: DEV_DATABASE_PATH }))).not.toThrow();
   });

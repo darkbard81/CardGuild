@@ -4,7 +4,7 @@ import { gridDistance, listLegalActions, listLegalTargets, type CombatState } fr
 import type { ClientIntentEnvelope, ServerMessage } from "../protocol";
 import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../session";
 import { CampaignWriterRetiredError, type SessionDurability } from "./campaign-durability";
-import { FIXTURE_CONTEXT, FIXTURE_PARTY, fixtureLobby } from "./campaign-save.fixture";
+import { FIXTURE_CONTEXT, FIXTURE_PARTY, fixtureLobby } from "../../tests/fixtures/campaign-save";
 import { createReconnectCredential } from "./credentials";
 import { SESSION_RETIRED_CLOSE_CODE, SessionHost, type SessionConnection } from "./session-host";
 
@@ -117,7 +117,7 @@ async function begin(harnessed: Harness): Promise<void> {
   await harnessed.send("begin", { type: "begin-adventure" });
 }
 
-describe("M9-3 commit before publish", () => {
+describe("commit before publish", () => {
   it("commits the durable save before any ACK or snapshot leaves the host", async () => {
     const harnessed = await harness();
     harnessed.log.length = 0;
@@ -420,7 +420,7 @@ function heroIntent(combat: CombatState): SessionIntent {
   return { type: "end-turn", facing: actor.facing };
 }
 
-describe("M9-4 growth is published only once the victory is durable", () => {
+describe("growth is published only once the victory is durable", () => {
   function growthEvents(harnessed: Harness): readonly { readonly type: string }[] {
     return harnessed.connection.messages.flatMap((message) =>
       message.type === "snapshot"

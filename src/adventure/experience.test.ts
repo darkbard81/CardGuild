@@ -87,7 +87,7 @@ function withProgression(state: AdventureState, value: CharacterProgressionState
   };
 }
 
-describe("M9-4 experience arithmetic", () => {
+describe("experience arithmetic", () => {
   it("carries remainders, crosses several levels at once and never touches its input", () => {
     const cases: ReadonlyArray<readonly [CharacterProgressionState, number, CharacterProgressionState, number]> = [
       [{ level: 1, experience: 999 }, 1, { level: 2, experience: 0 }, 1],
@@ -119,7 +119,7 @@ describe("M9-4 experience arithmetic", () => {
   });
 });
 
-describe("M9-4 encounter growth", () => {
+describe("encounter growth", () => {
   it("pays the authored amount to every seat in order and publishes growth between completion and what comes next", () => {
     const state = begun(context, HEROES);
     const won = accept(state);

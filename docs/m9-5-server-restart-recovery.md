@@ -75,7 +75,7 @@ Save v1, DB schema v1, content identity는 그대로다.
 
 ### Fault harness
 
-`tests/network/fault-server.ts`가 "세 번째 저장"이 아니라 **대상 전이**로 fault를 받는다.
+`tests/support/recovery/fault-server.ts`가 "세 번째 저장"이 아니라 **대상 전이**로 fault를 받는다.
 
 - `FaultTarget`: `combat-command` · `ai-command` · `encounter-complete` · `level-up` ·
   `adventure-complete` · `reward` · `migration` · `any`
@@ -97,10 +97,10 @@ Save v1, DB schema v1, content identity는 그대로다.
 
 | 모듈 | 무엇 |
 |---|---|
-| `tests/network/socket-client.ts` | hello·waitFor·intent→ACK. 사본 셋은 한 suite가 조용히 다른 것들과 다른 검사를 하게 되는 길이다 |
-| `tests/network/adventure-driver.ts` | production Adventure를 seed 1에서 8전 완주까지 끌고 갈 수 있는 hero 정책. 공유 legality query로만 묻는다 |
-| `tests/network/campaign-drive.ts` | 스냅샷만 보고 다음 입력을 정하는 구동 loop. child process에는 `host.whenIdle()`이 없으므로 "서버가 사람을 기다리는 지점"을 스냅샷에서 읽는다 |
-| `tests/network/fault-child.ts` | fault 서버의 spawn·arm·marker·정지 |
+| `tests/support/network/socket-client.ts` | hello·waitFor·intent→ACK. 사본 셋은 한 suite가 조용히 다른 것들과 다른 검사를 하게 되는 길이다 |
+| `tests/support/campaign/adventure-driver.ts` | production Adventure를 seed 1에서 8전 완주까지 끌고 갈 수 있는 hero 정책. 공유 legality query로만 묻는다 |
+| `tests/support/campaign/campaign-drive.ts` | 스냅샷만 보고 다음 입력을 정하는 구동 loop. child process에는 `host.whenIdle()`이 없으므로 "서버가 사람을 기다리는 지점"을 스냅샷에서 읽는다 |
+| `tests/support/recovery/fault-child.ts` | fault 서버의 spawn·arm·marker·정지 |
 
 `campaign-drive`의 `minRevision`이 이 loop를 정직하게 만든다. ACK와 그 commit의 snapshot은
 별개 frame이라, ACK 직후 "가장 새 snapshot"으로 판단하면 **자기 수를 두기 전 상태**를 보고
@@ -111,7 +111,7 @@ seed 1의 생산 콘텐츠를 실제 reducer로 끝까지 플레이해서 도달
 
 ## 4. 장애 매트릭스 실측
 
-`tests/network/restart-matrix.integration.test.ts`. 각 사례는 fault 없는 새 프로세스가 같은
+`tests/integration/restart-matrix.test.ts`. 각 사례는 fault 없는 새 프로세스가 같은
 DB 파일을 열고 Continue한 결과다. `campaignRevision`은 fault marker가 그 경계에서 기록한 값과
 복구 후 값이며, 표의 두 값이 같다는 것이 곧 "0회 또는 1회"의 증거다.
 
@@ -157,7 +157,7 @@ hash로 복구된다(`…cc45880b…` → `fnv1a64:ab772a17e113673e`). 비교는
 
 ## 5. ACK 유실 — 프로세스는 살아 있다
 
-`tests/network/ack-loss.integration.test.ts`. 프로세스는 죽지 않고 답만 사라진다.
+`tests/integration/ack-loss.test.ts`. 프로세스는 죽지 않고 답만 사라진다.
 
 - 요청 직후 소켓을 끊는다. 서버는 클라이언트가 사라진 줄 모르고 COMMIT한 뒤 죽은 소켓에 답한다.
 - 같은 credential로 재접속해 **동일 requestId·expectedRevision·payload**를 다시 보낸다.
@@ -174,8 +174,8 @@ hash로 복구된다(`…cc45880b…` → `fnv1a64:ab772a17e113673e`). 비교는
 
 ## 6. 배포 빌드 복구 E2E
 
-`playwright.recovery.config.ts` + `tests/campaign-recovery.recovery.ts` +
-`tests/recovery-server.ts`. `npm run test:recovery`가 build 후 이 suite만 실행한다.
+`playwright.recovery.config.ts` + `tests/recovery/campaign.recovery.ts` +
+`tests/support/recovery/deployment.ts`. `npm run test:recovery`가 build 후 이 suite만 실행한다.
 
 - 실제 `dist-server/main.js`가 빌드된 `dist/` 클라이언트를 서빙한다. 서버 모듈을 test
   프로세스로 import하지 않는다 — test가 조각들을 붙들고 있어야만 되는 복구는 복구가 아니다.
@@ -197,7 +197,7 @@ hash로 복구된다(`…cc45880b…` → `fnv1a64:ab772a17e113673e`). 비교는
 
 계획 §4의 "같은 live session의 단절 회귀" 중 **Guest disconnect → Host fallback → 같은
 credential reconnect → claim·control 복원**은 이미
-`tests/coop.browser.spec.ts`와 `tests/network/coop.integration.test.ts`가 검증한다. 계획이
+`tests/e2e/coop.spec.ts`와 `tests/integration/coop.test.ts`가 검증한다. 계획이
 명시적으로 금지한 복제 대신, 아직 검증되지 않았던 **Host 단절**을 추가했다.
 
 ### 축소한 것 하나
@@ -208,7 +208,7 @@ encounter별 좌표에 묶인 전투 구동 헬퍼가 하나 더 필요하고, �
 가치보다 크다. 같은 시나리오는 `src/dom/progression-view.test.ts`가 리뷰에서 재현된 그대로
 검증한다 — 이벤트 없는 resync에서 두 전투 전의 요약을 폐기하고, 순서가 뒤바뀐 오래된 view는
 유지하며, 같은 전투로 돌아온 재접속은 요약을 지킨다. 브라우저 쪽은
-`tests/progression.browser.spec.ts`가 요약 표시 자체를 검증한다.
+`tests/unit/browser/progression.spec.ts`가 요약 표시 자체를 검증한다.
 
 ## 7. 쓰기 실패와 복구 거절
 
@@ -219,9 +219,9 @@ encounter별 좌표에 묶인 전투 구동 헬퍼가 하나 더 필요하고, �
 | 승리·레벨업 쓰기 실패 시 성장 이벤트·accepted ACK 미공개, 이전 authority 유지 | `src/server/session-host.test.ts` "keeps EXP unpaid and unpublished…" |
 | 재시도 가능한 쓰기 실패 후 동일 요청 재시도가 한 번만 반영 | 같은 테스트의 후반부 |
 | AI 쓰기 실패 → candidate 미공개·pump 중단·세션 종료 | `src/server/session-host.test.ts` "commits every server AI step on its own…" |
-| 손상 JSON/hash·미지원 schema·미등록 identity 거절과 row 보존 | `src/server/campaign-save.test.ts`, `tests/network/campaign-persistence.integration.test.ts` |
-| 사전 검증 실패가 기존 live writer를 죽이지 않음 | `src/server/campaign-service.test.ts` "leaves the live session and the stored row untouched…" |
-| 다른 계정 404 / 미인증 401 | `tests/network/account.integration.test.ts`, 위 E2E의 Host 단절 사례 |
+| 손상 JSON/hash·미지원 schema·미등록 identity 거절과 row 보존 | `src/server/campaign-save.test.ts`, `tests/integration/campaign-persistence.test.ts` |
+| 사전 검증 실패가 기존 live writer를 죽이지 않음 | `tests/integration/campaign-service.test.ts` "leaves the live session and the stored row untouched…" |
+| 다른 계정 404 / 미인증 401 | `tests/integration/account.test.ts`, 위 E2E의 Host 단절 사례 |
 
 ## 8. 실행한 gate
 

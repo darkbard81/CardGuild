@@ -176,13 +176,13 @@ id와 동작이 그대로다. `#create-session`은 `#host-login`으로 대체되
 
 | 증거 | 확인할 내용 | 러너 |
 |---|---|---|
-| `src/server/persistence/persistence.test.ts` | 마이그레이션 결정성·재실행 no-op·미래 버전 거절, 대소문자 무시 중복 계정 거절, 소유권 격리, 만료가 조회에 포함됨, FK 강제, 비밀번호 평문 미저장·손상 해시가 예외가 아닌 실패 | `test:unit` |
-| `src/server/auth-service.test.ts` | 중복 계정 거절, ASCII 아이디 제한, 짧은 비밀번호 거절, 없는 아이디와 틀린 비밀번호가 같은 답, 만료 경계와 지연 청소, 로그아웃 멱등성, 계정 간 세션 분리 | `test:unit` |
-| `src/server/campaign-service.test.ts` | Campaign 생성이 세션을 열고 소유를 기억, **소유권이 session state와 gameplay hash에 없음**, 남의 Campaign은 404 형태, 이름 검증, **부분 생성 양방향 차단**(durable write 실패 시 세션 미생성 / 세션 생성 실패 시 campaign row 보상 삭제, 앞선 campaign은 보존) | `test:unit` |
+| `tests/integration/persistence.test.ts` | 마이그레이션 결정성·재실행 no-op·미래 버전 거절, 대소문자 무시 중복 계정 거절, 소유권 격리, 만료가 조회에 포함됨, FK 강제, 비밀번호 평문 미저장·손상 해시가 예외가 아닌 실패 | `test:network` |
+| `tests/integration/auth-service.test.ts` | 중복 계정 거절, ASCII 아이디 제한, 짧은 비밀번호 거절, 없는 아이디와 틀린 비밀번호가 같은 답, 만료 경계와 지연 청소, 로그아웃 멱등성, 계정 간 세션 분리 | `test:network` |
+| `tests/integration/campaign-service.test.ts` | Campaign 생성이 세션을 열고 소유를 기억, **소유권이 session state와 gameplay hash에 없음**, 남의 Campaign은 404 형태, 이름 검증, **부분 생성 양방향 차단**(durable write 실패 시 세션 미생성 / 세션 생성 실패 시 campaign row 보상 삭제, 앞선 campaign은 보존) | `test:network` |
 | `src/server/database-path.test.ts` | 개발 시드가 개발 DB 경로에서만 허용되고 배포 기본 경로·임의 경로는 거절, `NODE_ENV`는 관여하지 않음 | `test:unit` |
 | `src/server/cookies.test.ts` | 파싱·이스케이프 왕복, HttpOnly·SameSite=Lax·Domain 없음, Secure 결정 규칙 | `test:unit` |
-| `tests/network/account.integration.test.ts` | 실제 HTTP 로그인/쿠키/me/로그아웃/만료, 미로그인 401, 타 계정 404가 없는 id와 동일, 자기 Campaign Continue 409, 게스트 무계정 참가, **snapshot과 서버 출력에 비밀번호·토큰·해시 없음**, 서로 다른 계정 두 Campaign의 hash 동일 | `test:network` |
-| `tests/account.browser.spec.ts` | 게스트 진입은 무계정, 틀린 비밀번호 UI, Campaign 생성 후 라이브 세션, 재방문 목록, 계정 간 목록 격리, 로그아웃, save 없는 Continue 비활성 | `test:smoke` |
+| `tests/integration/account.test.ts` | 실제 HTTP 로그인/쿠키/me/로그아웃/만료, 미로그인 401, 타 계정 404가 없는 id와 동일, 자기 Campaign Continue 409, 게스트 무계정 참가, **snapshot과 서버 출력에 비밀번호·토큰·해시 없음**, 서로 다른 계정 두 Campaign의 hash 동일 | `test:network` |
+| `tests/e2e/account.spec.ts` | 게스트 진입은 무계정, 틀린 비밀번호 UI, Campaign 생성 후 라이브 세션, 재방문 목록, 계정 간 목록 격리, 로그아웃, save 없는 Continue 비활성 | `test:e2e` |
 | 기존 회귀 | `coop.integration.test.ts` 10개, 전체 Adventure 완주 1개, 브라우저 45개 | network / smoke |
 
 이슈 §14의 M9-2 필수 항목 대응:

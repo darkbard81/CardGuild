@@ -356,7 +356,7 @@ Character의 최종 공격 수치, 최종 DC, flat weapon damage modifier는 aut
 > 획득 경로에 따라 `actors.json`(starter) 또는 `adventures.json`(reward),
 > `art/source/generation-plan.json` + icon source
 > **Do not edit** generated asset (§1.1)
-> **Required test** `src/content/m7-equipment.test.ts`, `src/loadout/loadout.test.ts`
+> **Required test** `src/content/production-equipment.test.ts`, `src/loadout/loadout.test.ts`
 > **Required asset** UI icon 1개
 > **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
 
@@ -407,7 +407,7 @@ Wolf Run     : medics-kit / warding-charm / hexers-focus / scout-leather  → 1�
 Archer Perch : tower-shield / buckler / striders-boots / spiked-shield    → 1개
 ```
 
-`src/content/m7-vertical-slice.test.ts`가 이것을 **offer마다 최대 하나를 배정하는 매칭**으로
+`src/content/production-vertical-slice.test.ts`가 이것을 **offer마다 최대 하나를 배정하는 매칭**으로
 검증합니다. 단순히 "어딘가 등장한다"로 세면 조립 불가능한 build를 가능하다고 착각합니다.
 
 ### 5.4 ownership / collection
@@ -445,7 +445,7 @@ Archer Perch : tower-shield / buckler / striders-boots / spiked-shield    → 1�
 
 > **Files to edit** `content/m7/actors.json`, 필요 시 `equipment.json` / `cards.json`
 > **Do not edit** 파생 수치(아래 금지 목록), generated asset
-> **Required test** `src/content/m7-starters.test.ts`
+> **Required test** `src/content/production-starters.test.ts`
 > **Required asset** front/back 두 면 standee (§11)
 > **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
 > **주의** 현재 정확히 4명 정책 — 5번째는 routine 작업이 아닙니다(§1.4)
@@ -491,7 +491,7 @@ proficiency bonus = `untrained 0`, 그 외 `level + 2/4/6/8`(trained/expert/mast
 Attribute는 `SKILL_ATTRIBUTE` 표(`athletics→STR`, `arcana→INT` …)가 소유합니다.
 
 schema가 `ac`/`maxHp`/`attackModifier`/`classDc` 같은 필드를 character profile에서 아예 거부하고,
-`m7-starters.test.ts`가 authored JSON 문자열에 그 키가 없는지도 확인합니다.
+`production-starters.test.ts`가 authored JSON 문자열에 그 키가 없는지도 확인합니다.
 
 ### 6.3 값 확인 방법
 
@@ -615,7 +615,7 @@ Character의 16 Skill / defense / offense profile을 요구하지 않습니다.
 
 > **Files to edit** `content/m7/scenarios.json`, 배치할 creature가 새것이면 `actors.json`
 > **Do not edit** `presentation/m3/tilemaps.json` (map에서 자동 생성됩니다)
-> **Required test** `src/content/m7-encounters.test.ts`
+> **Required test** `src/content/production-encounters.test.ts`
 > **Required asset** 새 terrain/object 종류를 쓸 때만 (§11)
 > **최소 검증** `npm run assets && npm run check` (전체 DoD는 §12)
 > **Envelope** 10/12 — 2개 여유. Adventure에 넣으려면 §9
@@ -690,8 +690,8 @@ build를 다시 돌려야** tilemap이 생깁니다. tilemaps.json을 손으로 
 
 > **Files to edit** `content/m7/adventures.json`
 > **Do not edit** 두 번째 production Adventure를 만드는 일 (§1.4)
-> **Required test** `src/content/m7-vertical-slice.test.ts`, `src/content/m7-tutorial.test.ts`,
-> `tests/network/adventure-progression.integration.test.ts`
+> **Required test** `src/content/production-vertical-slice.test.ts`, `src/content/production-tutorial.test.ts`,
+> `tests/integration/adventure-progression.test.ts`
 > **최소 검증** `npm run check && npm run test:network && npm run test:smoke` (전체 DoD는 §12)
 
 ### 9.1 구조
@@ -737,9 +737,9 @@ EXP를 주기 때문에, 보상에 얹지 않고 따로 authoring합니다.
 |---|---|---|
 | 소유권 규칙 | `src/loadout/loadout.test.ts` | 사본 수, slot, prepared capacity, 장착/해제 시 소유권 이동 |
 | Adventure runtime | `src/adventure/adventure.test.ts` | 보상 획득 → 소유권 → loadout 변경 → **다음 CombatState의 deck/stat/provenance 일치** |
-| onboarding 계약 | `src/content/m7-tutorial.test.ts` | prefix 보상이 다음 Encounter에서 실제로 준비 가능한지 |
-| 실제 서버 경로 | `tests/network/adventure-progression.integration.test.ts` | 보상을 실제 세션에서 받고 착용한 뒤 완주 |
-| 실제 브라우저 | `tests/runtime.smoke.spec.ts` | Reward 화면 → Manage Loadout → 다음 Encounter의 손패/능력치 |
+| onboarding 계약 | `src/content/production-tutorial.test.ts` | prefix 보상이 다음 Encounter에서 실제로 준비 가능한지 |
+| 실제 서버 경로 | `tests/integration/adventure-progression.test.ts` | 보상을 실제 세션에서 받고 착용한 뒤 완주 |
+| 실제 브라우저 | `tests/e2e/runtime.spec.ts` | Reward 화면 → Manage Loadout → 다음 Encounter의 손패/능력치 |
 
 선택지가 실제로 다른 플레이를 만드는지(dead/dominant choice)는 `npm run playtest`가 봅니다.
 
@@ -749,7 +749,7 @@ EXP를 주기 때문에, 보상에 얹지 않고 따로 authoring합니다.
 순서까지 같아야 합니다(`TUTORIAL_PREFIX_MISMATCH`). 현재 4개입니다. 순서를 바꾸거나 앞에
 encounter를 끼워 넣으면 policy도 같은 PR에서 고쳐야 합니다.
 
-`m7-tutorial.test.ts`가 onboarding 구간의 보상을 **card 전용**으로 고정합니다 — baseline 장비
+`production-tutorial.test.ts`가 onboarding 구간의 보상을 **card 전용**으로 고정합니다 — baseline 장비
 9종은 전부 누군가의 시작 장비라 보상으로 주면 dead choice이기 때문입니다.
 
 ### 9.3 보상 설계 규칙

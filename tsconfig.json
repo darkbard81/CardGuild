@@ -19,8 +19,8 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  // `tests/fixtures` is type-checked with the app because that is what it is made of. The
-  // browser fixture is loaded by Playwright rather than imported from src, so without this
-  // it was the one file in the repository nothing type-checked.
+  // `tests/fixtures` is checked here as well as by `tsconfig.tests.json`, and the overlap is
+  // the point: this config has no Node types, so a fixture that reached for `node:fs` would
+  // fail here. Fixtures are shared with the browser, and that is what keeps them that way.
   "include": ["src", "tests/fixtures"]
 }

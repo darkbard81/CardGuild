@@ -1,10 +1,10 @@
-import { chooseFacing } from "./facing-input";
+import { chooseFacing } from "./support/browser/facing-input";
 import { mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 import sharp from "sharp";
 import { expect, type Page, test } from "@playwright/test";
-import { createCampaignAsHost } from "./host-login";
+import { createCampaignAsHost } from "./support/browser/host-login";
 
 /**
  * Walks one solo host run and photographs every screen the player actually sees.
