@@ -700,15 +700,33 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
 
   const minimumRatio = await heroCellRatio(page);
 
+  const heroId = await controlledActorId(page);
+
   await page.setViewportSize({ width: 1600, height: 900 });
-  // The canvas following the window is the resize landing; nothing else needs timing.
-  await expect.poll(() => page.locator("#pixi-canvas").evaluate((canvas) => canvas.clientWidth),
-    { intervals: [50, 100, 200] }).toBeGreaterThan(850);
+  /**
+   * The canvas taking the new width only says the DOM element resized. Board projection and
+   * standee layout are recomputed after that, and CI caught the frame in between: the board
+   * had already grown while the hero still carried the old scale, so the sprite measured
+   * 1.91 cells instead of 1. The completion signal has to be the layout itself — the ratio
+   * back where it was and the standee standing on its own square — not the element that
+   * triggers it.
+   */
+  await expect.poll(async () => {
+    const canvasWidth = await page.locator("#pixi-canvas").evaluate((canvas) => canvas.clientWidth);
+    if (canvasWidth <= 850) return false;
+    // The same tolerance the assertions below use, so nothing can settle into a state they
+    // would then reject.
+    if (Math.abs(await heroCellRatio(page) - minimumRatio) > 0.005) return false;
+    const standing = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
+    const standee = standing.find((entry) => entry.id === heroId);
+    const square = await boardPoint(page, 0.5, 1.5);
+    return standee !== undefined && Math.hypot(standee.x - square.x, standee.y - square.y) < 1;
+  }, { intervals: [50, 100, 200, 400] }).toBe(true);
+
   // Board content is sized against its square, so widening the window enlarges the
   // squares and the standees together instead of leaving sprites oversized.
   expect(await heroCellRatio(page)).toBeCloseTo(minimumRatio, 2);
   const feet = JSON.parse(await page.locator("#pixi-canvas").getAttribute("data-actor-feet") ?? "[]") as Array<{ id: string; x: number; y: number }>;
-  const heroId = await controlledActorId(page);
   const heroFoot = feet.find((entry) => entry.id === heroId);
   const expectedFoot = await boardPoint(page, 0.5, 1.5);
   expect(heroFoot?.x).toBeCloseTo(expectedFoot.x, 0);

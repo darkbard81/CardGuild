@@ -46,7 +46,7 @@ test.describe("touch camera", () => {
 
     const start = await settledBoard(page);
     await spread();
-    const zoomedOnce = await settledBoard(page);
+    const zoomedOnce = await settledBoard(page, start);
     // Spreading two fingers zooms in, the way turning the wheel away does, and the board
     // really is drawn larger for it.
     expect(zoomedOnce.zoom).toBeGreaterThan(start.zoom * 1.2);
@@ -76,7 +76,7 @@ test.describe("touch camera", () => {
       await touch("touchMove", [left, right]);
     }
     await touch("touchEnd", []);
-    const panned = await settledBoard(page);
+    const panned = await settledBoard(page, zoomed);
     expect(panned.centerX).toBeLessThan(zoomed.centerX - 50);
     // Fingers travelling together move the board without zooming, exactly. This reads the
     // camera rather than the board's on-screen width, because the width is the camera
@@ -108,8 +108,9 @@ test.describe("iPad mini", () => {
     test(`keeps the whole board on screen in ${name}`, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (error) => errors.push(error.message));
+      const beforeResize = await settledBoard(page);
       await page.setViewportSize({ width, height });
-      await settledBoard(page);
+      await settledBoard(page, beforeResize);
 
       // Nothing hangs off the bottom or the side: the page is exactly the screen.
       const overflow = await page.evaluate(() => ({
@@ -136,10 +137,11 @@ test.describe("iPad mini", () => {
   test("re-fits the board after a rotation instead of leaving it half applied", async ({ page }) => {
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
+    const beforePortrait = await settledBoard(page);
     await page.setViewportSize({ width: 744, height: 1133 });
-    await settledBoard(page);
+    const portrait = await settledBoard(page, beforePortrait);
     await page.setViewportSize({ width: 1133, height: 744 });
-    await settledBoard(page);
+    await settledBoard(page, portrait);
 
     const canvas = await page.locator("#pixi-canvas").boundingBox();
     if (!canvas) throw new Error("Pixi canvas does not have a bounding box.");
