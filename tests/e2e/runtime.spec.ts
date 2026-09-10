@@ -701,15 +701,24 @@ test("fits the 1024x768 minimum and independently resizes the battlefield camera
   const minimumRatio = await heroCellRatio(page);
 
   const heroId = await controlledActorId(page);
+  const beforeResizeCorners = await page.locator("#pixi-canvas").getAttribute("data-board-corners");
 
   await page.setViewportSize({ width: 1600, height: 900 });
   /**
-   * The canvas taking the new width only says the DOM element resized. Board projection and
-   * standee layout are recomputed after that, and CI caught the frame in between: the board
-   * had already grown while the hero still carried the old scale, so the sprite measured
-   * 1.91 cells instead of 1. The completion signal has to be the layout itself — the ratio
-   * back where it was and the standee standing on its own square — not the element that
-   * triggers it.
+   * Two things have to be true, and each covers a frame the other lets through.
+   *
+   * First, the new viewport must have produced a board at all. Every check below compares
+   * the standee against the board it is standing on, and a frame where neither has moved yet
+   * agrees with itself perfectly — an unchanged sprite sits exactly on an unchanged square,
+   * at exactly the ratio measured at 1024x768. Published corners that differ from the ones
+   * taken before the resize are the evidence that a new generation exists.
+   */
+  await expect(page.locator("#pixi-canvas")).not.toHaveAttribute("data-board-corners", beforeResizeCorners!);
+  /**
+   * Second, the layout that comes out of it has to catch up. The canvas taking the new width
+   * only says the DOM element resized; board projection and standee layout are recomputed
+   * after that, and CI #127 caught the frame in between, where the board had already grown
+   * while the hero still carried the old scale — a sprite measuring 1.91 cells instead of 1.
    */
   await expect.poll(async () => {
     const canvasWidth = await page.locator("#pixi-canvas").evaluate((canvas) => canvas.clientWidth);
