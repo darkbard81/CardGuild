@@ -19,5 +19,8 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["src"]
+  // `tests/fixtures` is type-checked with the app because that is what it is made of. The
+  // browser fixture is loaded by Playwright rather than imported from src, so without this
+  // it was the one file in the repository nothing type-checked.
+  "include": ["src", "tests/fixtures"]
 }

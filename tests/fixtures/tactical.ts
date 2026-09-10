@@ -1,6 +1,6 @@
 import { Application, Text } from "pixi.js";
 import { BattleController } from "../../src/app/battle-controller";
-import { M6_COMBAT_DEFINITION } from "../../src/content/load-m6-content";
+import { createTacticalCombatFixture } from "./content";
 import { createCombat, dispatchCombatCommand, hashCombatState } from "../../src/game";
 import type { CombatEvent, CombatState } from "../../src/game";
 import type { SessionIntent } from "../../src/session";
@@ -44,9 +44,10 @@ async function start() {
   const catalog = createPresentationCatalog();
   await catalog.loadEncounterBundle();
   let controller: BattleController | null = null;
-  const content = { ...M6_COMBAT_DEFINITION.content, cards: { ...M6_COMBAT_DEFINITION.content.cards }, conditions: { ...M6_COMBAT_DEFINITION.content.conditions } };
-  const definition = { ...M6_COMBAT_DEFINITION, content };
-  const opened = createCombat(M6_COMBAT_DEFINITION, 34).state;
+  const combat = createTacticalCombatFixture({ rules: "character-rules" });
+  const content = { ...combat.content, cards: { ...combat.content.cards }, conditions: { ...combat.content.conditions } };
+  const definition = { ...combat, content };
+  const opened = createCombat(combat, 34).state;
   const fixture: TacticalFixture = {
     state: opened, events: [], intents: [], rejectNext: false, rejectAfterSend: false,
     reset(mode) {

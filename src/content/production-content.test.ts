@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { getContentIdentity } from "./compile-content";
-import { M6_COMPILED_PACK } from "./load-m6-content";
+import { createCharacterRulesContentSource } from "../../tests/fixtures/content";
+import { compileContentPack } from "./compile-content";
 import { M7_ADVENTURE_ID, M7_COMPILED_PACK } from "./load-m7-content";
 import { PRODUCTION_CONTENT } from "./production-content";
 
@@ -32,11 +33,13 @@ describe("production content selector", () => {
     expect(PRODUCTION_CONTENT.pack).toBe(M7_COMPILED_PACK);
   });
 
-  it("compiles M7 independently of the M6 regression fixture", () => {
-    // M7 bootstrapped from an M6 snapshot but is a self-contained pack: it has no
-    // inheritance link, and its distinct identity yields a distinct fingerprint.
-    expect(M6_COMPILED_PACK.manifest.id).toBe("cardguild.m6");
-    expect(PRODUCTION_CONTENT.pack.fingerprint).not.toBe(M6_COMPILED_PACK.fingerprint);
-    expect(Object.keys(PRODUCTION_CONTENT.pack.adventures)).toEqual(Object.keys(M6_COMPILED_PACK.adventures));
+  it("compiles independently of the rules fixtures it grew out of", () => {
+    // The shipped pack bootstrapped from a fixture snapshot but is self-contained: it has
+    // no inheritance link, and its distinct identity yields a distinct fingerprint.
+    const fixture = compileContentPack(createCharacterRulesContentSource());
+    expect(fixture.manifest.id).toBe("cardguild.test.character-rules");
+    expect(PRODUCTION_CONTENT.pack.manifest.id).not.toMatch(/^cardguild\.test\./);
+    expect(PRODUCTION_CONTENT.pack.fingerprint).not.toBe(fixture.fingerprint);
+    expect(Object.keys(PRODUCTION_CONTENT.pack.adventures)).toEqual(Object.keys(fixture.adventures));
   });
 });

@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { M6_COMBAT_DEFINITION, M6_CONTENT } from "../content/load-m6-content";
+import { createTacticalCombatFixture } from "../../tests/fixtures/content";
 import { createCombat } from "./engine";
 import { crossesOppositeSides, resolveOffGuardTo } from "./off-guard";
 import { resolveArmorClass } from "./statistics";
 import type { ActorState } from "./types";
 
-const context = { content: M6_CONTENT };
+/** The three-Character rules on the Ruined Gate board. */
+const CHARACTER_RULES_COMBAT = createTacticalCombatFixture({ rules: "character-rules" });
+const CHARACTER_RULES_CONTENT = CHARACTER_RULES_COMBAT.content;
+
+const context = { content: CHARACTER_RULES_CONTENT };
 function fixture(rear = false, flank = false) {
-  const opened = createCombat(M6_COMBAT_DEFINITION, 33).state;
+  const opened = createCombat(CHARACTER_RULES_COMBAT, 33).state;
   const attacker: ActorState = { ...opened.actors.hero!, position: { x: 1, y: 1 }, facing: "east" };
   const target: ActorState = { ...opened.actors["goblin-skirmisher"]!, position: { x: 2, y: 1 }, facing: rear ? "east" : "west" };
   const ally: ActorState = { ...attacker, id: "ally", position: { x: 3, y: 1 }, facing: "west", defeated: !flank };
@@ -39,9 +43,9 @@ describe("attacker-relative Off-Guard", () => {
 
   it("excludes ranged attacks and ranged allies even at melee distance", () => {
     const { state, attacker, target, ally } = fixture(true, true);
-    const equipment = Object.values(M6_CONTENT.equipment).find((item) => item.weaponProfile);
+    const equipment = Object.values(CHARACTER_RULES_CONTENT.equipment).find((item) => item.weaponProfile);
     if (!equipment?.weaponProfile) throw new Error("Missing weapon fixture");
-    const rangedContext = { content: { ...M6_CONTENT, equipment: { ...M6_CONTENT.equipment,
+    const rangedContext = { content: { ...CHARACTER_RULES_CONTENT, equipment: { ...CHARACTER_RULES_CONTENT.equipment,
       ranged: { ...equipment, id: "ranged", weaponProfile: { ...equipment.weaponProfile, attackMode: "ranged" as const } },
     } } };
     const ranged = { ...attacker, equipmentIds: ["ranged"] };

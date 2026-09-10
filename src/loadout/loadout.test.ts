@@ -1,12 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  M3_COMPILED_PACK,
-  M3_CONTENT_IDENTITY,
-  M3_ROAD_AMBUSH_ID,
-  M6_COMBAT_DEFINITION,
-  M6_COMPILED_PACK,
-} from "../content";
+  ROAD_AMBUSH_ID,
+  createCharacterRulesFixture,
+  createCoreRulesFixture,
+  createTacticalCombatFixture,
+} from "../../tests/fixtures/content";
 import { createCombat, resolveArmorClass, resolveStrike } from "../game";
 import {
   createStartingCollection,
@@ -18,10 +17,10 @@ import {
 } from "./loadout";
 import type { LoadoutCollection, LoadoutContent, LoadoutParty, PartyMemberLoadout } from "./types";
 
-const actor = M3_COMPILED_PACK.actorDefinitions["hero.aerin"] as NonNullable<
-  (typeof M3_COMPILED_PACK.actorDefinitions)["hero.aerin"]
+const content: LoadoutContent = createCoreRulesFixture();
+const actor = content.actorDefinitions["hero.aerin"] as NonNullable<
+  (typeof content.actorDefinitions)["hero.aerin"]
 >;
-const content: LoadoutContent = M3_COMPILED_PACK;
 
 function member(loadout: PartyMemberLoadout = actor.starterLoadout, id = "party.hero-1") {
   return { id, actorDefinitionId: actor.id, loadout };
@@ -153,23 +152,16 @@ describe("loadout ownership and derivation", () => {
       facing: "north" as const,
       partyMemberId: "party.hero-1",
     };
-    const source = M3_COMPILED_PACK.scenarioSources[M3_ROAD_AMBUSH_ID];
-    expect(source).toBeDefined();
-    const map = M3_COMPILED_PACK.scenarios[M3_ROAD_AMBUSH_ID]?.map;
-    expect(map).toBeDefined();
+    const encounter = createTacticalCombatFixture({ scenarioId: ROAD_AMBUSH_ID });
     const loadouts = [
       { equipment: actor.starterLoadout.equipment, preparedCards: ["card.trip", "card.fly"] },
       { equipment: actor.starterLoadout.equipment, preparedCards: ["card.fly", "card.trip"] },
     ] as const;
     const definitions = loadouts.map((loadout) => ({
-      content: content.combatContent,
-      contentIdentity: M3_CONTENT_IDENTITY,
+      ...encounter,
       scenario: {
-        id: source?.id ?? M3_ROAD_AMBUSH_ID,
-        name: source?.name ?? "Road Ambush",
-        objective: source?.objective ?? { kind: "defeat-all-enemies" as const, description: "Test" },
+        ...encounter.scenario,
         actors: [deriveActorSetup(actor, placement, loadout, content.combatContent, placement.partyMemberId)],
-        map: map as NonNullable<typeof map>,
       },
     }));
 
@@ -217,7 +209,8 @@ describe("loadout ownership and derivation", () => {
 });
 
 describe("resolved Strike and Class DC in the Loadout preview", () => {
-  const pack: LoadoutContent = M6_COMPILED_PACK;
+  const pack: LoadoutContent = createCharacterRulesFixture();
+  const encounter = createTacticalCombatFixture({ rules: "character-rules" });
   const placement = {
     instanceId: "hero.probe",
     team: "heroes" as const,
@@ -226,8 +219,8 @@ describe("resolved Strike and Class DC in the Loadout preview", () => {
   };
 
   function hero(id: string) {
-    return M6_COMPILED_PACK.actorDefinitions[id] as NonNullable<
-      (typeof M6_COMPILED_PACK.actorDefinitions)[string]
+    return pack.actorDefinitions[id] as NonNullable<
+      (typeof pack.actorDefinitions)[string]
     >;
   }
 
@@ -236,7 +229,7 @@ describe("resolved Strike and Class DC in the Loadout preview", () => {
     const actor = hero(actorId);
     const setup = deriveActorSetup(actor, { ...placement, actorDefinitionId: actor.id }, loadout, pack.combatContent, "party.hero-1");
     const state = createCombat(
-      { ...M6_COMBAT_DEFINITION, scenario: { ...M6_COMBAT_DEFINITION.scenario, actors: [setup, ...M6_COMBAT_DEFINITION.scenario.actors] } },
+      { ...encounter, scenario: { ...encounter.scenario, actors: [setup, ...encounter.scenario.actors] } },
       7,
     ).state;
     const combatActor = state.actors["hero.probe"] as NonNullable<(typeof state.actors)["hero.probe"]>;
@@ -304,7 +297,7 @@ describe("resolved Strike and Class DC in the Loadout preview", () => {
     const fingerprints = [lyra.starterLoadout, unarmed].map((loadout) => {
       const setup = deriveActorSetup(lyra, { ...placement, actorDefinitionId: lyra.id }, loadout, pack.combatContent, "party.hero-1");
       return createCombat(
-        { ...M6_COMBAT_DEFINITION, scenario: { ...M6_COMBAT_DEFINITION.scenario, actors: [setup, ...M6_COMBAT_DEFINITION.scenario.actors] } },
+        { ...encounter, scenario: { ...encounter.scenario, actors: [setup, ...encounter.scenario.actors] } },
         7,
       ).state.setupFingerprint;
     });
@@ -325,9 +318,10 @@ describe("resolved Strike and Class DC in the Loadout preview", () => {
 });
 
 describe("armor loadout and derived defenses", () => {
-  const armoredContent: LoadoutContent = M6_COMPILED_PACK;
-  const aerin = M6_COMPILED_PACK.actorDefinitions["hero.aerin"] as NonNullable<
-    (typeof M6_COMPILED_PACK.actorDefinitions)["hero.aerin"]
+  const armoredContent: LoadoutContent = createCharacterRulesFixture();
+  const armoredEncounter = createTacticalCombatFixture({ rules: "character-rules" });
+  const aerin = armoredContent.actorDefinitions["hero.aerin"] as NonNullable<
+    (typeof armoredContent.actorDefinitions)["hero.aerin"]
   >;
 
   function armoredParty(loadout: PartyMemberLoadout = aerin.starterLoadout): LoadoutParty {
@@ -377,7 +371,7 @@ describe("armor loadout and derived defenses", () => {
     for (const [loadout, expected] of [[aerin.starterLoadout, 18], [unarmored, 15]] as const) {
       const setup = deriveActorSetup(aerin, placement, loadout, armoredContent.combatContent, "party.hero-1");
       const state = createCombat(
-        { ...M6_COMBAT_DEFINITION, scenario: { ...M6_COMBAT_DEFINITION.scenario, actors: [setup, ...M6_COMBAT_DEFINITION.scenario.actors] } },
+        { ...armoredEncounter, scenario: { ...armoredEncounter.scenario, actors: [setup, ...armoredEncounter.scenario.actors] } },
         7,
       ).state;
       const combatActor = state.actors["hero.probe"] as NonNullable<typeof state.actors["hero.probe"]>;

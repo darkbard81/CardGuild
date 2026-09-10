@@ -11,18 +11,14 @@ import {
  * The single compile-time point where the runtime picks its authoritative pack.
  *
  * Client UI, battle rendering and the authoritative server all read production
- * content from here so they cannot drift onto different packs. Milestone loaders
- * stay separate: `load-m6-content.ts` remains the rule regression fixture.
+ * content from here so they cannot drift onto different packs. The rules fixtures
+ * are somewhere else entirely — `tests/fixtures/content` — and a lint rule keeps
+ * them there, because a fixture reachable from this module would be a fixture in
+ * the shipped bundle.
  *
  * Changing the production pack means changing the loader imported below and
  * nothing else. This is deliberately not a dynamic selector — no environment
  * switch, no runtime branching, no mod loading.
- *
- * Production code imports this module directly rather than through
- * `src/content/index.ts`. The barrel re-exports every milestone loader, and each
- * loader compiles its pack at module scope, so a barrel import would pull the M3
- * and M6 regression fixtures into the shipped client and server bundles. Tests
- * may keep using the barrel.
  */
 export interface ProductionContent {
   readonly pack: CompiledContentPack;

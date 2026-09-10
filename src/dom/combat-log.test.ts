@@ -1,14 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { M0_CONTENT } from "../content/load-m0-content";
+import { createCoreRulesFixture } from "../../tests/fixtures/content";
 import type { CombatEvent } from "../game";
 import { buildCombatLog } from "./combat-log";
+
+const CORE_CONTENT = createCoreRulesFixture().combatContent;
 
 const NAMES: Record<string, string> = { hero: "Aerin", goblin: "Goblin Lackey" };
 const names = (actorId: string): string => NAMES[actorId] ?? actorId;
 
 function log(history: readonly CombatEvent[]): readonly { summary: string; details: readonly string[] }[] {
-  return buildCombatLog(history, names, M0_CONTENT);
+  return buildCombatLog(history, names, CORE_CONTENT);
 }
 
 const strike: readonly CombatEvent[] = [

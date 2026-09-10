@@ -1,0 +1,147 @@
+[
+  {
+    "id": "encounter.probe",
+    "name": "Probe Room",
+    "objective": {
+      "kind": "defeat-all-enemies",
+      "description": "Defeat the goblin."
+    },
+    "placements": [
+      {
+        "instanceId": "goblin",
+        "actorDefinitionId": "enemy.goblin-skirmisher",
+        "team": "enemies",
+        "position": {
+          "x": 2,
+          "y": 0
+        },
+        "facing": "south"
+      }
+    ],
+    "partySpawnSlots": [
+      {
+        "seat": 1,
+        "position": {
+          "x": 0,
+          "y": 2
+        },
+        "facing": "north"
+      }
+    ],
+    "map": {
+      "width": 3,
+      "height": 3,
+      "tiles": [
+        {
+          "id": "tile.0-0",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "tile.1-0",
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "tile.2-0",
+          "position": {
+            "x": 2,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "tile.0-1",
+          "position": {
+            "x": 0,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "tile.1-1",
+          "position": {
+            "x": 1,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "tile.2-1",
+          "position": {
+            "x": 2,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "tile.0-2",
+          "position": {
+            "x": 0,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "tile.1-2",
+          "position": {
+            "x": 1,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "tile.2-2",
+          "position": {
+            "x": 2,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        }
+      ],
+      "objects": []
+    }
+  }
+]

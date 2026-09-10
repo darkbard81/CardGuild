@@ -15,15 +15,17 @@
 
 ```text
 content/m7   authoritative production pack (cardguild.m7)  ← 신규 콘텐츠는 여기에만
-content/m6   M6 규칙 회귀 fixture (cardguild.m6@0.9.1)
-content/m3   M4 회귀 fixture (cardguild.m4@0.6.1)
 ```
 
-m7의 현재 authored revision은 `content/m7/manifest.json`이 소유하며 `npm run content:check`가
-identity와 fingerprint를 출력합니다. 이 문서는 그 값을 복제하지 않습니다.
+`content/`에는 배포되는 pack 하나만 있습니다. 현재 authored revision은
+`content/m7/manifest.json`이 소유하며 `npm run content:check`가 identity와 fingerprint를
+출력합니다. 이 문서는 그 값을 복제하지 않습니다.
 
-회귀 fixture는 이미 검증된 규칙을 고정하기 위해 존재합니다. content volume을 늘리려고 함께
-수정하지 않습니다. M7 release 정책(volume/reachability)은 fixture에 적용되지 않습니다.
+**규칙 회귀 fixture는 여기에 없습니다.** `tests/fixtures/content`의 TypeScript factory가
+그 역할을 합니다(`cardguild.test.*`). 이미 검증된 규칙을 고정하는 것이 목적이므로 content
+volume을 늘리려고 수정하지 않고, M7 release 정책(volume/reachability)도 적용되지 않습니다.
+자세한 내용은 [`tests/fixtures/content/README.md`](../tests/fixtures/content/README.md)에
+있습니다.
 
 Production client와 authoritative server는 pack을 직접 import하지 않고
 `src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점만 봅니다.
@@ -40,9 +42,8 @@ Selector에는 environment switch나 dynamic loading이 없습니다. 이후 mil
 pack을 바꿀 때 이 파일이 import하는 loader만 교체합니다.
 
 Production 코드는 barrel(`src/content/index.ts`)이 아니라 `production-content.ts`를 직접
-import합니다. barrel은 모든 milestone loader를 re-export하고 각 loader가 module scope에서
-pack을 compile하므로, barrel을 거치면 M3/M6 fixture가 배포 bundle에 함께 들어갑니다. 테스트는
-barrel을 계속 사용해도 됩니다.
+import합니다. barrel에는 이제 fixture가 없지만, 이 한 지점을 통해서만 pack을 보는 규칙 자체는
+그대로입니다. fixture를 production 코드에서 import하는 것은 ESLint가 막습니다.
 
 ## Pack 구조
 

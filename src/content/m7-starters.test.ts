@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { M6_COMBAT_DEFINITION } from "./load-m6-content";
+import { createTacticalCombatFixture } from "../../tests/fixtures/content";
 
 import { buildResolvedActionPlan } from "../game/action-plan";
 import { createCombat, dispatchCombatCommand } from "../game/engine";
@@ -242,7 +242,7 @@ const TARGET_ENEMY: ActorState = (() => {
 function planOf(actor: ActorState, actionId: string, target: ActionTarget) {
   const definition = CONTENT.actions[actionId];
   if (!definition) throw new Error(`Action "${actionId}" is missing.`);
-  const state = { map: createCombat(M6_COMBAT_DEFINITION, 33).state.map, actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } };
+  const state = { map: createCombat(createTacticalCombatFixture({ rules: "character-rules" }), 33).state.map, actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } };
   return buildResolvedActionPlan(
     definition, actor, target, { kind: "card", id: "unused" }, state, CONTENT, { kind: "turn", attacksThisTurn: 0 },
   );

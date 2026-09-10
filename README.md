@@ -267,10 +267,12 @@ Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며
 `content/m7/manifest.json`과 `npm run content:check` 출력이 소유하므로 이 README에 복제하지
 않습니다. Client UI, battle rendering, WebSocket hello와 authoritative server는 모두
 `src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다.
-[`content/m6`](content/m6)의 `cardguild.m6@0.9.1`과 [`content/m3`](content/m3)의
-`cardguild.m4@0.6.1` pack은 규칙 회귀 fixture로 보존되며 production authoring 대상이 아닙니다.
-두 fixture는 Encounter별 EXP를 명시적 0으로 authoring해 성장 없는 회귀 의미를 유지합니다.
-디렉터리 안내는 [`content/README.md`](content/README.md)에 있습니다.
+규칙 회귀 fixture는 `content/`가 아니라 [`tests/fixtures/content`](tests/fixtures/content)의
+TypeScript factory입니다 — `cardguild.test.core`(기본 규칙)와
+`cardguild.test.character-rules`(그 위의 세 playable Character·무기·방어구·주문). 둘 다
+Encounter별 EXP를 명시적 0으로 두어 성장 없는 회귀 의미를 유지합니다. production 코드가
+fixture를 import하는 것은 ESLint가 막습니다. 디렉터리 안내는
+[`content/README.md`](content/README.md)에 있습니다.
 
 **신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md) 하나에 있습니다** — schema 계약,

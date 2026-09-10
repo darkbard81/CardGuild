@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  cloneM0Scenario,
-  M0_CONTENT,
-  M0_CONTENT_IDENTITY,
-  M0_DEFAULT_SEED,
-} from "../content/load-m0-content";
+import { createTacticalCombatFixture } from "../../tests/fixtures/content";
 import { chooseAiCommand } from "./ai";
 import { createCombat, dispatchCombatCommand, validateMoveContinuation } from "./engine";
 import {
@@ -30,12 +25,21 @@ import type {
   ScenarioDefinition,
 } from "./types";
 
-function createM0Combat(
+/** The core rules on the Ruined Gate board, which is what every case below fights on. */
+const CORE_COMBAT = createTacticalCombatFixture();
+const CORE_CONTENT = CORE_COMBAT.content;
+const CORE_SEED = 1;
+
+function coreScenario(): ScenarioDefinition {
+  return createTacticalCombatFixture().scenario;
+}
+
+function createCoreCombat(
   scenario: ScenarioDefinition,
   seed: number,
-  content: CombatContent = M0_CONTENT,
+  content: CombatContent = CORE_CONTENT,
 ): CombatSetupResult {
-  return createCombat({ scenario, content, contentIdentity: M0_CONTENT_IDENTITY }, seed);
+  return createCombat({ scenario, content, contentIdentity: CORE_COMBAT.contentIdentity }, seed);
 }
 
 type ActorOverride = Partial<ActorSetup> & {
@@ -73,7 +77,7 @@ function withAuthoredAc(actor: ActorSetup, ac: number): ActorSetup {
 function scenarioWith(
   actorOverrides: Readonly<Record<string, ActorOverride>> = {},
 ): ScenarioDefinition {
-  const scenario = cloneM0Scenario();
+  const scenario = coreScenario();
   return {
     ...scenario,
     actors: scenario.actors.map((actor) => {
@@ -143,7 +147,7 @@ function makeReactionAvailable(state: CombatState, actorId: string): CombatState
 }
 
 function twoReactionState(moverHp = 100): CombatState {
-  const scenario = cloneM0Scenario();
+  const scenario = coreScenario();
   const hero = scenario.actors.find((actor) => actor.id === "hero") as ActorSetup;
   const configured: ScenarioDefinition = {
     ...scenario,
@@ -161,7 +165,7 @@ function twoReactionState(moverHp = 100): CombatState {
       withInitiative({ ...hero, id: "hero-2", position: { x: 2, y: 0 }, facing: "south" }, -101),
     ],
   };
-  let state = createM0Combat(configured, 44).state;
+  let state = createCoreCombat(configured, 44).state;
   state = makeReactionAvailable(state, "hero");
   return makeReactionAvailable(state, "hero-2");
 }
@@ -178,7 +182,7 @@ function openTwoReactions(
       { kind: "basic", id: "stride" },
       { kind: "tile", position: destination, facing: "east" },
     ),
-    M0_CONTENT,
+    CORE_CONTENT,
   ).state;
 }
 
@@ -190,7 +194,7 @@ describe("movement occupancy integration", () => {
       "goblin-brute": { position: { x: 8, y: 6 } },
     });
     const hero = scenario.actors.find((actor) => actor.id === "hero") as ActorSetup;
-    const state = createM0Combat({
+    const state = createCoreCombat({
       ...scenario,
       actors: [...scenario.actors, withInitiative({ ...hero, id: "ally", position: { x: 2, y: 1 } }, -101)],
     }, 44).state;
@@ -221,10 +225,10 @@ describe("movement occupancy integration", () => {
     const destination = { x: 3, y: 1 };
     const target = { kind: "tile" as const, position: destination, facing: "east" as const };
 
-    expect(listLegalTargets(state, "hero", source, M0_CONTENT))
+    expect(listLegalTargets(state, "hero", source, CORE_CONTENT))
       .toContainEqual({ kind: "tile", position: destination, costFeet: 10 });
-    expect(validateActionIntent(state, "hero", source, target, M0_CONTENT).legal).toBe(true);
-    const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+    expect(validateActionIntent(state, "hero", source, target, CORE_CONTENT).legal).toBe(true);
+    const result = dispatchCombatCommand(state, command(state, "hero", source, target), CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.state.actors.hero?.position).toEqual(destination);
     expect(result.state.actors.ally?.position).toEqual({ x: 2, y: 1 });
@@ -242,10 +246,10 @@ describe("movement occupancy integration", () => {
     const source = moveSource(state, actionId);
     const target = { kind: "tile" as const, position: { x: 2, y: 1 }, facing: "east" as const };
 
-    expect(listLegalTargets(state, "hero", source, M0_CONTENT))
+    expect(listLegalTargets(state, "hero", source, CORE_CONTENT))
       .not.toContainEqual(expect.objectContaining({ kind: "tile", position: target.position }));
-    expect(validateActionIntent(state, "hero", source, target, M0_CONTENT).legal).toBe(false);
-    const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+    expect(validateActionIntent(state, "hero", source, target, CORE_CONTENT).legal).toBe(false);
+    const result = dispatchCombatCommand(state, command(state, "hero", source, target), CORE_CONTENT);
     expect(result.accepted).toBe(false);
     expect(result.state).toBe(state);
     expect(result.events).toEqual([]);
@@ -258,9 +262,9 @@ describe("movement occupancy integration", () => {
     const source = moveSource(state, actionId);
     for (const position of [{ x: 2, y: 1 }, { x: 3, y: 1 }]) {
       const target = { kind: "tile" as const, position, facing: "east" as const };
-      expect(listLegalTargets(state, "hero", source, M0_CONTENT))
+      expect(listLegalTargets(state, "hero", source, CORE_CONTENT))
         .not.toContainEqual(expect.objectContaining({ kind: "tile", position }));
-      const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+      const result = dispatchCombatCommand(state, command(state, "hero", source, target), CORE_CONTENT);
       expect(result.accepted).toBe(false);
       expect(result.state).toBe(state);
       expect(result.events).toEqual([]);
@@ -286,7 +290,7 @@ describe("issue #32 authoritative facing", () => {
     while (state.pendingReaction) {
       const pending = state.pendingReaction;
       const result = dispatchCombatCommand(state, { type: "pass-reaction", id: `pass-${state.sequence + 1}`, sequence: state.sequence + 1,
-        actorId: pending.candidates[0]!.actorId, triggerId: pending.triggerId }, M0_CONTENT);
+        actorId: pending.candidates[0]!.actorId, triggerId: pending.triggerId }, CORE_CONTENT);
       expect(result.accepted).toBe(true);
       events.push(...result.events);
       state = result.state;
@@ -298,7 +302,7 @@ describe("issue #32 authoritative facing", () => {
 
   it("in-place Step does not trigger an available adjacent reaction", () => {
     const state = twoReactionState();
-    const result = dispatchCombatCommand(state, command(state, "goblin-skirmisher", step, { kind: "tile", position: { x: 2, y: 1 }, facing: "south" }), M0_CONTENT);
+    const result = dispatchCombatCommand(state, command(state, "goblin-skirmisher", step, { kind: "tile", position: { x: 2, y: 1 }, facing: "south" }), CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.state.pendingReaction).toBeNull();
     expect(result.events.map((event) => event.type)).toEqual(["ACTION_SPENT", "FACING_CHANGED"]);
@@ -311,9 +315,9 @@ describe("issue #32 authoritative facing", () => {
       traits: [], targeting: "tile", range: { kind: "feet", value: 10 },
       resolution: { kind: "direct", effects: [] },
     };
-    const content = { ...M0_CONTENT, actions: { ...M0_CONTENT.actions, [action.id]: action } };
+    const content = { ...CORE_CONTENT, actions: { ...CORE_CONTENT.actions, [action.id]: action } };
     const scenario = arena();
-    const state = createM0Combat({ ...scenario, actors: scenario.actors.map((actor) => actor.id === "hero"
+    const state = createCoreCombat({ ...scenario, actors: scenario.actors.map((actor) => actor.id === "hero"
       ? { ...actor, innateActionIds: [action.id] } : actor) }, 44, content).state;
     const source = { kind: "innate", id: action.id } as const;
     const result = dispatchCombatCommand(state, command(state, "hero", source, { kind: "tile", position: { x: 1, y: 2 } }), content);
@@ -325,9 +329,9 @@ describe("issue #32 authoritative facing", () => {
   });
 
   it.each([undefined, "west"] as const)("Step north derives north despite client facing %s", (facing) => {
-    const state = createM0Combat(arena(), 44).state;
+    const state = createCoreCombat(arena(), 44).state;
     const result = dispatchCombatCommand(state, command(state, "hero", step,
-      { kind: "tile", position: { x: 1, y: 0 }, ...(facing ? { facing } : {}) }), M0_CONTENT);
+      { kind: "tile", position: { x: 1, y: 0 }, ...(facing ? { facing } : {}) }), CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.state.actors.hero?.facing).toBe("north");
     expect(result.events).toContainEqual({ type: "FACING_CHANGED", actorId: "hero", facing: "north" });
@@ -337,24 +341,24 @@ describe("issue #32 authoritative facing", () => {
   it.each(["stride", "fly"] as const)("%s uses the last segment, not the origin-to-destination direction", (id) => {
     const scenario = arena();
     const source = { kind: id === "fly" ? "innate" : "basic", id } as ActionSource;
-    const setup = createM0Combat(scenario, 44);
+    const setup = createCoreCombat(scenario, 44);
     const action = command(setup.state, "hero", source, { kind: "tile", position: { x: 3, y: 2 }, facing: "west" });
-    const result = dispatchCombatCommand(setup.state, action, M0_CONTENT);
+    const result = dispatchCombatCommand(setup.state, action, CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.events.find((event) => event.type === "ACTOR_MOVED")).toMatchObject({
       path: [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 2 }],
     });
     expect(result.state.actors.hero?.facing).toBe("south");
     expect(result.events).toContainEqual({ type: "FACING_CHANGED", actorId: "hero", facing: "south" });
-    const replay = replayCombat({ scenario, content: M0_CONTENT, contentIdentity: M0_CONTENT_IDENTITY }, createCombatReplay(result.state));
+    const replay = replayCombat({ scenario, content: CORE_CONTENT, contentIdentity: CORE_COMBAT.contentIdentity }, createCombatReplay(result.state));
     expect(replay.events).toEqual([...setup.events, ...result.events]);
     expect(hashCombatState(replay.state)).toBe(hashCombatState(result.state));
   });
 
   it.each(["north", "east", "south", "west"] as const)("in-place Step selects %s for one action without movement or reaction", (facing) => {
-    const state = createM0Combat(arena(), 44).state;
-    expect(listLegalTargets(state, "hero", step, M0_CONTENT)).toContainEqual({ kind: "tile", position: { x: 1, y: 1 }, costFeet: 0 });
-    const result = dispatchCombatCommand(state, command(state, "hero", step, { kind: "tile", position: { x: 1, y: 1 }, facing }), M0_CONTENT);
+    const state = createCoreCombat(arena(), 44).state;
+    expect(listLegalTargets(state, "hero", step, CORE_CONTENT)).toContainEqual({ kind: "tile", position: { x: 1, y: 1 }, costFeet: 0 });
+    const result = dispatchCombatCommand(state, command(state, "hero", step, { kind: "tile", position: { x: 1, y: 1 }, facing }), CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.state.actors.hero?.position).toEqual(state.actors.hero?.position);
     expect(result.state.actors.hero?.facing).toBe(facing);
@@ -365,43 +369,43 @@ describe("issue #32 authoritative facing", () => {
 
   it.each(["prone", "grabbed"] as const)("%s blocks in-place Step in query and dispatch", (id) => {
     const scenario = arena();
-    const state = createM0Combat({ ...scenario, actors: scenario.actors.map((actor) => actor.id === "hero"
+    const state = createCoreCombat({ ...scenario, actors: scenario.actors.map((actor) => actor.id === "hero"
       ? { ...actor, conditions: [{ id, sourceId: "test" }] } : actor) }, 44).state;
-    expect(listLegalTargets(state, "hero", step, M0_CONTENT)).toEqual([]);
-    const result = dispatchCombatCommand(state, command(state, "hero", step, { kind: "tile", position: { x: 1, y: 1 }, facing: "west" }), M0_CONTENT);
+    expect(listLegalTargets(state, "hero", step, CORE_CONTENT)).toEqual([]);
+    const result = dispatchCombatCommand(state, command(state, "hero", step, { kind: "tile", position: { x: 1, y: 1 }, facing: "west" }), CORE_CONTENT);
     expect(result.accepted).toBe(false);
     expect(result.state).toBe(state);
     expect(result.events).toEqual([]);
   });
 
   it("rejects in-place Step without a selected direction and Stride at the same position", () => {
-    const state = createM0Combat(arena(), 44).state;
+    const state = createCoreCombat(arena(), 44).state;
     for (const source of [step, { kind: "basic", id: "stride" } as const]) {
-      const result = dispatchCombatCommand(state, command(state, "hero", source, { kind: "tile", position: { x: 1, y: 1 } }), M0_CONTENT);
+      const result = dispatchCombatCommand(state, command(state, "hero", source, { kind: "tile", position: { x: 1, y: 1 } }), CORE_CONTENT);
       expect(result.accepted).toBe(false);
       expect(result.state).toBe(state);
     }
   });
 
   it("rejects a directly-behind Strike before rotating, without spending actions or RNG", () => {
-    const state = createM0Combat(heroFirstScenario({
+    const state = createCoreCombat(heroFirstScenario({
       hero: { position: { x: 2, y: 1 }, facing: "east" },
       "goblin-skirmisher": { position: { x: 1, y: 1 } },
       "goblin-brute": { position: { x: 8, y: 6 } },
     }), 44).state;
-    const result = dispatchCombatCommand(state, command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }), M0_CONTENT);
+    const result = dispatchCombatCommand(state, command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }), CORE_CONTENT);
     expect(result.accepted).toBe(false);
     expect(result.state).toBe(state);
     expect(result.events).toEqual([]);
   });
 
   it("a legal side Strike rotates before its check even on a miss", () => {
-    const state = createM0Combat(heroFirstScenario({
+    const state = createCoreCombat(heroFirstScenario({
       hero: { position: { x: 1, y: 1 }, facing: "east" },
       "goblin-skirmisher": { position: { x: 1, y: 2 }, authoredAc: 100 },
       "goblin-brute": { position: { x: 8, y: 6 } },
     }), 44).state;
-    const result = dispatchCombatCommand(state, command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }), M0_CONTENT);
+    const result = dispatchCombatCommand(state, command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }), CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.state.actors.hero?.facing).toBe("south");
     const check = result.events.find((event) => event.type === "CHECK_ROLLED");
@@ -411,27 +415,27 @@ describe("issue #32 authoritative facing", () => {
 
   it.each(["east", "west"] as const)("End Turn applies %s atomically before ending, with no Action cost, and replays exactly", (facing) => {
     const scenario = arena();
-    const setup = createM0Combat(scenario, 44);
+    const setup = createCoreCombat(scenario, 44);
     const end: CombatCommand = { type: "end-turn", facing, id: "end", actorId: "hero", sequence: 1 };
-    const result = dispatchCombatCommand(setup.state, end, M0_CONTENT);
+    const result = dispatchCombatCommand(setup.state, end, CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.state.actors.hero?.facing).toBe(facing);
     expect(result.events.some((event) => event.type === "ACTION_SPENT")).toBe(false);
     const changes = result.events.filter((event) => event.type === "FACING_CHANGED");
     expect(changes).toHaveLength(facing === "east" ? 0 : 1);
     if (changes.length) expect(result.events.indexOf(changes[0]!)).toBeLessThan(result.events.findIndex((event) => event.type === "TURN_ENDED"));
-    const replay = replayCombat({ scenario, content: M0_CONTENT, contentIdentity: M0_CONTENT_IDENTITY }, createCombatReplay(result.state));
+    const replay = replayCombat({ scenario, content: CORE_CONTENT, contentIdentity: CORE_COMBAT.contentIdentity }, createCombatReplay(result.state));
     expect(replay.events).toEqual([...setup.events, ...result.events]);
     expect(hashCombatState(replay.state)).toBe(hashCombatState(result.state));
   });
 });
 
-describe("M0 combat core", () => {
+describe("core combat rules", () => {
   it("builds an equipment-provenance deck and repeats the same initial hash", () => {
-    const first = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
-    const second = createM0Combat(cloneM0Scenario(), M0_DEFAULT_SEED).state;
+    const first = createCoreCombat(coreScenario(), CORE_SEED).state;
+    const second = createCoreCombat(coreScenario(), CORE_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("d47a28148f0b5c84");
+    expect(hashCombatState(first)).toBe("77d59960f529626b");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -446,18 +450,18 @@ describe("M0 combat core", () => {
     expect(resolveStatisticDC(
       first.actors.hero as NonNullable<typeof first.actors.hero>,
       { kind: "save", id: "reflex" },
-      { content: M0_CONTENT },
+      { content: CORE_CONTENT },
     ).value).toBe(16);
   });
 
   it("uses one pipeline for Interact, Raise Shield, and sustained effects", () => {
-    let state = createM0Combat(heroFirstScenario(), 10).state;
-    const interact = listLegalActions(state, "hero", M0_CONTENT).find((action) => action.actionId === "interact-lever");
+    let state = createCoreCombat(heroFirstScenario(), 10).state;
+    const interact = listLegalActions(state, "hero", CORE_CONTENT).find((action) => action.actionId === "interact-lever");
     expect(interact?.enabled).toBe(true);
     const usedLever = dispatchCombatCommand(
       state,
       command(state, "hero", interact?.source as ActionSource, { kind: "object", objectId: "gate-lever" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(usedLever.accepted).toBe(true);
     expect(usedLever.state.actors.hero?.facing).toBe("north");
@@ -465,18 +469,18 @@ describe("M0 combat core", () => {
     state = usedLever.state;
     expect(state.map.tiles["4,3"]?.traits.map((trait) => trait.id)).toContain("open");
 
-    const raise = listLegalActions(state, "hero", M0_CONTENT).find((action) => action.actionId === "raise-shield");
+    const raise = listLegalActions(state, "hero", CORE_CONTENT).find((action) => action.actionId === "raise-shield");
     const raised = dispatchCombatCommand(
       state,
       command(state, "hero", raise?.source as ActionSource, { kind: "none" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(raised.state.actors.hero?.shieldRaised).toBe(true);
     expect(raised.state.actors.hero?.facing).toBe(state.actors.hero?.facing);
     expect(raised.events.some((event) => event.type === "FACING_CHANGED")).toBe(false);
     expect(resolveArmorClass(
       raised.state.actors.hero as NonNullable<typeof raised.state.actors.hero>,
-      { content: M0_CONTENT },
+      { content: CORE_CONTENT },
     ).value).toBe(17);
 
     const beaconCard = raised.state.cardZones.hero?.hand.find(
@@ -486,7 +490,7 @@ describe("M0 combat core", () => {
     const beacon = dispatchCombatCommand(
       raised.state,
       command(raised.state, "hero", { kind: "card", id: beaconCard?.id as string }, { kind: "none" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(beacon.accepted).toBe(true);
     expect(beacon.state.actors.hero?.facing).toBe(raised.state.actors.hero?.facing);
@@ -497,9 +501,9 @@ describe("M0 combat core", () => {
   it("does not raise a non-shield item that carries malformed shield data", () => {
     const malformedId = "malformed-shield-boots";
     const malformedContent: CombatContent = {
-      ...M0_CONTENT,
+      ...CORE_CONTENT,
       equipment: {
-        ...M0_CONTENT.equipment,
+        ...CORE_CONTENT.equipment,
         [malformedId]: {
           id: malformedId,
           name: "Malformed Shield Boots",
@@ -510,7 +514,7 @@ describe("M0 combat core", () => {
         },
       },
     };
-    const state = createM0Combat(heroFirstScenario({ hero: { equipmentIds: [malformedId] } }), 10, malformedContent).state;
+    const state = createCoreCombat(heroFirstScenario({ hero: { equipmentIds: [malformedId] } }), 10, malformedContent).state;
     const raise = listLegalActions(state, "hero", malformedContent).find((action) => action.actionId === "raise-shield");
     expect(raise?.enabled).toBe(true);
 
@@ -530,15 +534,15 @@ describe("M0 combat core", () => {
       "goblin-skirmisher": { position: { x: 2, y: 2 }, hp: 100, maxHp: 100, facing: "east" },
       "goblin-brute": { position: { x: 8, y: 6 } },
     });
-    let state = createM0Combat(scenario, 22).state;
+    let state = createCoreCombat(scenario, 22).state;
     const strike = { kind: "basic" as const, id: "strike" };
-    expect(listLegalTargets(state, "hero", strike, M0_CONTENT)).toEqual([]);
+    expect(listLegalTargets(state, "hero", strike, CORE_CONTENT)).toEqual([]);
 
     const step = { kind: "basic" as const, id: "step" };
     const moved = dispatchCombatCommand(
       state,
       command(state, "hero", step, { kind: "tile", position: { x: 1, y: 2 }, facing: "east" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(moved.accepted).toBe(true);
     state = moved.state;
@@ -549,7 +553,7 @@ describe("M0 combat core", () => {
       "hero",
       strike,
       { kind: "actor", actorId: "goblin-skirmisher" },
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(preview.legal).toBe(true);
     expect(preview.notes).toContain("Off-Guard (rear) -2");
@@ -561,13 +565,13 @@ describe("M0 combat core", () => {
       "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 100, maxHp: 100 },
       "goblin-brute": { position: { x: 8, y: 6 } },
     });
-    let state = createM0Combat(scenario, 33).state;
+    let state = createCoreCombat(scenario, 33).state;
     const modifiers: number[] = [];
     for (let index = 0; index < 3; index += 1) {
       const result = dispatchCombatCommand(
         state,
         command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
-        M0_CONTENT,
+        CORE_CONTENT,
       );
       expect(result.accepted).toBe(true);
       const check = result.events.find((event) => event.type === "CHECK_ROLLED");
@@ -578,7 +582,7 @@ describe("M0 combat core", () => {
     const fourth = dispatchCombatCommand(
       state,
       command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(fourth.accepted).toBe(false);
     expect(fourth.error).toMatch(/actions/i);
@@ -590,13 +594,13 @@ describe("M0 combat core", () => {
       "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 100, maxHp: 100 },
       "goblin-brute": { position: { x: 8, y: 6 } },
     });
-    let state = createM0Combat(scenario, 33).state;
+    let state = createCoreCombat(scenario, 33).state;
     const previews: string[][] = [];
     for (let index = 0; index < 3; index += 1) {
       const source: ActionSource = { kind: "basic", id: "strike" };
       const target = { kind: "actor" as const, actorId: "goblin-skirmisher" };
-      const preview = previewAction(state, "hero", source, target, M0_CONTENT);
-      const result = dispatchCombatCommand(state, command(state, "hero", source, target), M0_CONTENT);
+      const preview = previewAction(state, "hero", source, target, CORE_CONTENT);
+      const result = dispatchCombatCommand(state, command(state, "hero", source, target), CORE_CONTENT);
       const check = result.events.find((event) => event.type === "CHECK_ROLLED");
       expect(check?.type === "CHECK_ROLLED" ? check.modifierSources : []).toEqual(preview.notes);
       previews.push([...preview.notes]);
@@ -611,9 +615,9 @@ describe("M0 combat core", () => {
   it("deals at least 1 damage when penalties sink the Strike, and doubles that on a critical", () => {
     // A large authored damage penalty is legal now that damage has its own modifier stack.
     const drainedContent: CombatContent = {
-      ...M0_CONTENT,
+      ...CORE_CONTENT,
       conditions: {
-        ...M0_CONTENT.conditions,
+        ...CORE_CONTENT.conditions,
         "damage-drained": {
           id: "damage-drained",
           name: "Damage Drained",
@@ -628,7 +632,7 @@ describe("M0 combat core", () => {
       "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 100, maxHp: 100, authoredAc: -100 },
       "goblin-brute": { position: { x: 8, y: 6 } },
     });
-    const state = createM0Combat(scenario, 33, drainedContent).state;
+    const state = createCoreCombat(scenario, 33, drainedContent).state;
 
     const preview = previewAction(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }, drainedContent);
     expect(preview.damageRange).toEqual([1, 1]);
@@ -651,11 +655,11 @@ describe("M0 combat core", () => {
       "goblin-skirmisher": { position: { x: 2, y: 1 }, facing: "west", initiative: 100 },
       "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
-    const state = createM0Combat(scenario, 21).state;
+    const state = createCoreCombat(scenario, 21).state;
     const result = dispatchCombatCommand(
       state,
       command(state, "goblin-skirmisher", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "hero" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(result.accepted).toBe(true);
     const check = result.events.find((event) => event.type === "CHECK_ROLLED");
@@ -676,7 +680,7 @@ describe("M0 combat core", () => {
         initiative: 100,
       },
     });
-    const initial = createM0Combat(scenario, 34).state;
+    const initial = createCoreCombat(scenario, 34).state;
     const first = dispatchCombatCommand(
       initial,
       command(
@@ -685,7 +689,7 @@ describe("M0 combat core", () => {
         { kind: "innate", id: "knockdown" },
         { kind: "actor", actorId: "hero" },
       ),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(first.accepted).toBe(true);
     expect(first.state.turn.actionsRemaining).toBe(1);
@@ -705,7 +709,7 @@ describe("M0 combat core", () => {
         { kind: "innate", id: "knockdown" },
         { kind: "actor", actorId: "hero" },
       ),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(second.accepted).toBe(false);
     expect(second.state).toBe(first.state);
@@ -713,7 +717,7 @@ describe("M0 combat core", () => {
   });
 
   it("reshuffles the discard pile deterministically before a turn draw", () => {
-    let state = createM0Combat(cloneM0Scenario(), 35).state;
+    let state = createCoreCombat(coreScenario(), 35).state;
     const order = state.turn.initiativeOrder;
     const heroIndex = order.indexOf("hero");
     const previousIndex = (heroIndex - 1 + order.length) % order.length;
@@ -732,7 +736,7 @@ describe("M0 combat core", () => {
       },
     };
 
-    const ended = dispatchCombatCommand(state, endTurnCommand(state), M0_CONTENT);
+    const ended = dispatchCombatCommand(state, endTurnCommand(state), CORE_CONTENT);
     expect(ended.accepted).toBe(true);
     expect(ended.state.turn.activeActorId).toBe("hero");
     expect(ended.state.cardZones.hero?.hand).toHaveLength(1);
@@ -744,7 +748,7 @@ describe("M0 combat core", () => {
   });
 
   it("increments rounds only on initiative wrap and refreshes reactions at the actor turn start", () => {
-    const initial = createM0Combat(heroFirstScenario(), 36).state;
+    const initial = createCoreCombat(heroFirstScenario(), 36).state;
     const order = initial.turn.initiativeOrder;
     const skippedActorId = order[1] as string;
     const nextActorId = order[2] as string;
@@ -759,13 +763,13 @@ describe("M0 combat core", () => {
       },
     };
 
-    state = dispatchCombatCommand(state, endTurnCommand(state), M0_CONTENT).state;
+    state = dispatchCombatCommand(state, endTurnCommand(state), CORE_CONTENT).state;
     expect(state.round).toBe(1);
     expect(state.turn.activeActorId).toBe(nextActorId);
     expect(state.turn.initiativeOrder).toEqual(order);
     expect(state.actors.hero?.reactionAvailable).toBe(false);
 
-    state = dispatchCombatCommand(state, endTurnCommand(state), M0_CONTENT).state;
+    state = dispatchCombatCommand(state, endTurnCommand(state), CORE_CONTENT).state;
     expect(state.round).toBe(2);
     expect(state.turn.activeActorId).toBe("hero");
     expect(state.turn.initiativeOrder).toEqual(order);
@@ -784,7 +788,7 @@ describe("M0 combat core", () => {
       },
       "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
-    let state = createM0Combat(scenario, 44).state;
+    let state = createCoreCombat(scenario, 44).state;
     const zones = state.cardZones.hero as NonNullable<typeof state.cardZones.hero>;
     const reactive = allCards(state, "hero").find((card) => card.definitionId === "card.reactive-strike");
     expect(reactive).toBeDefined();
@@ -812,7 +816,7 @@ describe("M0 combat core", () => {
         { kind: "basic", id: "stride" },
         { kind: "tile", position: { x: 3, y: 1 }, facing: "east" },
       ),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(movement.accepted).toBe(true);
     expect(movement.state.pendingReaction).not.toBeNull();
@@ -829,7 +833,7 @@ describe("M0 combat core", () => {
         triggerId: pending.triggerId,
         cardInstanceId: reactive?.id as string,
       },
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(reaction.accepted).toBe(true);
     expect(reaction.state.pendingReaction).toBeNull();
@@ -840,7 +844,7 @@ describe("M0 combat core", () => {
     const reactor = movement.state.actors.hero as NonNullable<CombatState["actors"][string]>;
     const reactiveCheck = reaction.events.find((event) => event.type === "CHECK_ROLLED");
     expect(reactiveCheck?.type === "CHECK_ROLLED" ? reactiveCheck.modifier : null)
-      .toBe(resolveStrike(reactor, { content: M0_CONTENT }).attackModifier);
+      .toBe(resolveStrike(reactor, { content: CORE_CONTENT }).attackModifier);
 
     const secondUse = dispatchCombatCommand(
       reaction.state,
@@ -852,7 +856,7 @@ describe("M0 combat core", () => {
         triggerId: pending.triggerId,
         cardInstanceId: reactive?.id as string,
       },
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(secondUse.accepted).toBe(false);
     expect(secondUse.error).toMatch(/unavailable/i);
@@ -869,7 +873,7 @@ describe("M0 combat core", () => {
       sequence: opened.sequence + 1,
       actorId: "hero-2",
       triggerId: pending.triggerId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
     expect(nonHeadPass.accepted).toBe(false);
     expect(nonHeadPass.state).toBe(opened);
 
@@ -881,7 +885,7 @@ describe("M0 combat core", () => {
       actorId: nonHead.actorId,
       triggerId: pending.triggerId,
       cardInstanceId: nonHead.cardInstanceId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
     expect(nonHeadUse.accepted).toBe(false);
     expect(nonHeadUse.state).toBe(opened);
 
@@ -893,7 +897,7 @@ describe("M0 combat core", () => {
       actorId: head.actorId,
       triggerId: pending.triggerId,
       cardInstanceId: head.cardInstanceId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
     expect(used.accepted).toBe(true);
     expect(used.state.pendingReaction?.candidates.map((candidate) => candidate.actorId)).toEqual(["hero-2"]);
     expect(used.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
@@ -904,7 +908,7 @@ describe("M0 combat core", () => {
       sequence: used.state.sequence + 1,
       actorId: "hero-2",
       triggerId: pending.triggerId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
     expect(passed.accepted).toBe(true);
     expect(passed.state.pendingReaction).toBeNull();
     expect(passed.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
@@ -921,7 +925,7 @@ describe("M0 combat core", () => {
           sequence: state.sequence + 1,
           actorId: "hero-2",
           triggerId,
-        }, M0_CONTENT);
+        }, CORE_CONTENT);
         expect(rejected.accepted).toBe(false);
         expect(rejected.state).toBe(state);
       }
@@ -933,7 +937,7 @@ describe("M0 combat core", () => {
           sequence: state.sequence + 1,
           actorId,
           triggerId,
-        }, M0_CONTENT);
+        }, CORE_CONTENT);
         expect(result.accepted).toBe(true);
         events.push(...result.events);
         state = result.state;
@@ -958,7 +962,7 @@ describe("M0 combat core", () => {
       actorId: head.actorId,
       triggerId: pending.triggerId,
       cardInstanceId: head.cardInstanceId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
 
     expect(killed.accepted).toBe(true);
     expect(killed.state.actors["goblin-skirmisher"]?.defeated).toBe(true);
@@ -985,7 +989,7 @@ describe("M0 combat core", () => {
       actorId: invalidatedHead.actorId,
       triggerId: invalidatedPending.triggerId,
       cardInstanceId: invalidatedHead.cardInstanceId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
     expect(skipped.state.pendingReaction).toBeNull();
     expect(skipped.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 3, y: 1 });
   });
@@ -1003,7 +1007,7 @@ describe("M0 combat core", () => {
       : opened;
     const pending = state.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
     expect(pending.continuation.path).toEqual([ally.position, { x: 3, y: 2 }]);
-    expect(validateMoveContinuation(state, pending.continuation, M0_CONTENT).legal).toBe(true);
+    expect(validateMoveContinuation(state, pending.continuation, CORE_CONTENT).legal).toBe(true);
 
     for (const candidate of pending.candidates) {
       const result = dispatchCombatCommand(state, {
@@ -1012,7 +1016,7 @@ describe("M0 combat core", () => {
         sequence: state.sequence + 1,
         actorId: candidate.actorId,
         triggerId: pending.triggerId,
-      }, M0_CONTENT);
+      }, CORE_CONTENT);
       expect(result.accepted).toBe(true);
       state = result.state;
     }
@@ -1029,14 +1033,14 @@ describe("M0 combat core", () => {
       actors: { ...opened.actors, [blocker.id]: { ...blocker, position: { x: 3, y: 1 } } },
     };
     const pending = state.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
-    expect(validateMoveContinuation(state, pending.continuation, M0_CONTENT).legal).toBe(false);
+    expect(validateMoveContinuation(state, pending.continuation, CORE_CONTENT).legal).toBe(false);
     const result = dispatchCombatCommand(state, {
       type: "pass-reaction",
       id: "enemy-path-pass",
       sequence: state.sequence + 1,
       actorId: pending.candidates[0]?.actorId as string,
       triggerId: pending.triggerId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.state.pendingReaction).toBeNull();
     expect(result.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
@@ -1054,14 +1058,14 @@ describe("M0 combat core", () => {
       },
     };
     const occupiedPending = occupied.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
-    expect(validateMoveContinuation(occupied, occupiedPending.continuation, M0_CONTENT).legal).toBe(false);
+    expect(validateMoveContinuation(occupied, occupiedPending.continuation, CORE_CONTENT).legal).toBe(false);
     const occupiedPass = dispatchCombatCommand(occupied, {
       type: "pass-reaction",
       id: "occupied-continuation-pass",
       sequence: occupied.sequence + 1,
       actorId: occupiedPending.candidates[0]?.actorId as string,
       triggerId: occupiedPending.triggerId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
     expect(occupiedPass.accepted).toBe(true);
     expect(occupiedPass.state.pendingReaction).toBeNull();
     expect(occupiedPass.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
@@ -1082,16 +1086,16 @@ describe("M0 combat core", () => {
       },
     };
     const withoutBoundary: CombatState = { ...changedPath, pendingReaction: null };
-    expect(listLegalTargets(withoutBoundary, "goblin-skirmisher", { kind: "basic", id: "stride" }, M0_CONTENT))
+    expect(listLegalTargets(withoutBoundary, "goblin-skirmisher", { kind: "basic", id: "stride" }, CORE_CONTENT))
       .toContainEqual(expect.objectContaining({ kind: "tile", position: { x: 3, y: 2 } }));
-    expect(validateMoveContinuation(changedPath, pathPending.continuation, M0_CONTENT).legal).toBe(false);
+    expect(validateMoveContinuation(changedPath, pathPending.continuation, CORE_CONTENT).legal).toBe(false);
     const changedPathPass = dispatchCombatCommand(changedPath, {
       type: "pass-reaction",
       id: "changed-path-pass",
       sequence: changedPath.sequence + 1,
       actorId: pathPending.candidates[0]?.actorId as string,
       triggerId: pathPending.triggerId,
-    }, M0_CONTENT);
+    }, CORE_CONTENT);
     expect(changedPathPass.accepted).toBe(true);
     expect(changedPathPass.state.pendingReaction).toBeNull();
     expect(changedPathPass.state.actors["goblin-skirmisher"]?.position).toEqual({ x: 2, y: 1 });
@@ -1110,7 +1114,7 @@ describe("M0 combat core", () => {
       },
       "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
-    let initial = createM0Combat(scenario, 1).state;
+    let initial = createCoreCombat(scenario, 1).state;
     const zones = initial.cardZones.hero as NonNullable<typeof initial.cardZones.hero>;
     const reactive = allCards(initial, "hero").find(
       (card) => card.definitionId === "card.reactive-strike",
@@ -1139,7 +1143,7 @@ describe("M0 combat core", () => {
         { kind: "basic", id: "stride" },
         { kind: "tile", position: { x: 3, y: 1 }, facing: "east" },
       ),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(stride.state.pendingReaction).not.toBeNull();
     expect(stride.events.some((event) => event.type === "REACTION_OPENED")).toBe(true);
@@ -1152,7 +1156,7 @@ describe("M0 combat core", () => {
         { kind: "basic", id: "step" },
         { kind: "tile", position: { x: 3, y: 1 }, facing: "east" },
       ),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(step.accepted).toBe(true);
     expect(step.state.pendingReaction).toBeNull();
@@ -1172,7 +1176,7 @@ describe("M0 combat core", () => {
       },
       "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
-    let state = createM0Combat(scenario, 1).state;
+    let state = createCoreCombat(scenario, 1).state;
     state = {
       ...state,
       actors: {
@@ -1190,7 +1194,7 @@ describe("M0 combat core", () => {
         { kind: "basic", id: "stride" },
         { kind: "tile", position: { x: 3, y: 1 }, facing: "east" },
       ),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     const pending = movement.state.pendingReaction as NonNullable<CombatState["pendingReaction"]>;
     const passed = dispatchCombatCommand(
@@ -1202,7 +1206,7 @@ describe("M0 combat core", () => {
         actorId: "hero",
         triggerId: pending.triggerId,
       },
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     state = passed.state;
     expect(passed.accepted).toBe(true);
@@ -1222,8 +1226,8 @@ describe("M0 combat core", () => {
         ],
       },
     });
-    let state = createM0Combat(scenario, 71).state;
-    const context = listLegalActions(state, "hero", M0_CONTENT).filter((action) => action.source.kind === "context");
+    let state = createCoreCombat(scenario, 71).state;
+    const context = listLegalActions(state, "hero", CORE_CONTENT).filter((action) => action.source.kind === "context");
     expect(context.map((action) => action.actionId)).toEqual(
       expect.arrayContaining(["stand", "escape-grab", "interact-lever", "raise-shield"]),
     );
@@ -1235,7 +1239,7 @@ describe("M0 combat core", () => {
     const stood = dispatchCombatCommand(
       state,
       command(state, "hero", { kind: "context", id: "stand" }, { kind: "none" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     state = stood.state;
     expect(state.actors.hero?.conditions.map((condition) => condition.id)).toEqual(["grabbed"]);
@@ -1253,10 +1257,10 @@ describe("M0 combat core", () => {
       resolution: { kind: "direct", effects: [{ kind: "remove-condition", owner: "actor", condition: "test-condition" }] },
     };
     const providerContent: CombatContent = {
-      ...M0_CONTENT,
-      actions: { ...M0_CONTENT.actions, [recoverTest.id]: recoverTest },
+      ...CORE_CONTENT,
+      actions: { ...CORE_CONTENT.actions, [recoverTest.id]: recoverTest },
       equipment: {
-        ...M0_CONTENT.equipment,
+        ...CORE_CONTENT.equipment,
         "trait-only-kit": {
           id: "trait-only-kit",
           name: "Trait-only Kit",
@@ -1266,7 +1270,7 @@ describe("M0 combat core", () => {
         },
       },
       traits: {
-        ...M0_CONTENT.traits,
+        ...CORE_CONTENT.traits,
         "test-recovery": {
           id: "test-recovery",
           name: "Test Recovery",
@@ -1275,7 +1279,7 @@ describe("M0 combat core", () => {
         },
       },
       conditions: {
-        ...M0_CONTENT.conditions,
+        ...CORE_CONTENT.conditions,
         "test-condition": {
           id: "test-condition",
           name: "Test Condition",
@@ -1301,7 +1305,7 @@ describe("M0 combat core", () => {
         conditions: [{ id: "test-condition", sourceId: "test" }],
       },
     });
-    const state = createM0Combat(scenario, 72, providerContent).state;
+    const state = createCoreCombat(scenario, 72, providerContent).state;
     const cards = allCards(state, "hero");
     expect(cards.filter((card) => card.definitionId === "card.trip")).toHaveLength(3);
     expect(cards.filter((card) => card.definitionId === "card.fly")).toHaveLength(2);
@@ -1323,7 +1327,7 @@ describe("M0 combat core", () => {
     });
     const source = { kind: "basic" as const, id: "strike" };
     const target = { kind: "actor" as const, actorId: "goblin-skirmisher" };
-    const initial = createM0Combat(scenario, 73).state;
+    const initial = createCoreCombat(scenario, 73).state;
     const cases: readonly CombatState[] = [
       { ...initial, turn: { ...initial.turn, actionsRemaining: 0 } },
       {
@@ -1337,19 +1341,19 @@ describe("M0 combat core", () => {
     ];
 
     for (const state of cases) {
-      const validation = validateActionIntent(state, "hero", source, target, M0_CONTENT);
-      const preview = previewAction(state, "hero", source, target, M0_CONTENT);
+      const validation = validateActionIntent(state, "hero", source, target, CORE_CONTENT);
+      const preview = previewAction(state, "hero", source, target, CORE_CONTENT);
       const dispatched = dispatchCombatCommand(
         state,
         command(state, "hero", source, target),
-        M0_CONTENT,
+        CORE_CONTENT,
       );
       expect(validation.legal).toBe(false);
       expect(preview.legal).toBe(validation.legal);
       expect(preview.reason).toBe(validation.reason);
       expect(dispatched.accepted).toBe(validation.legal);
       expect(dispatched.error).toBe(validation.reason);
-      expect(listLegalTargets(state, "hero", source, M0_CONTENT)).toEqual([]);
+      expect(listLegalTargets(state, "hero", source, CORE_CONTENT)).toEqual([]);
     }
 
     const reactionScenario = scenarioWith({
@@ -1361,7 +1365,7 @@ describe("M0 combat core", () => {
       },
       "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
-    const reactionSetup = createM0Combat(reactionScenario, 1).state;
+    const reactionSetup = createCoreCombat(reactionScenario, 1).state;
     const beforeReaction: CombatState = {
       ...reactionSetup,
       actors: {
@@ -1380,7 +1384,7 @@ describe("M0 combat core", () => {
         { kind: "basic", id: "stride" },
         { kind: "tile", position: { x: 3, y: 1 }, facing: "east" },
       ),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(opened.state.pendingReaction).not.toBeNull();
     const pendingSource = { kind: "basic" as const, id: "strike" };
@@ -1390,19 +1394,19 @@ describe("M0 combat core", () => {
       "goblin-skirmisher",
       pendingSource,
       pendingTarget,
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     const pendingPreview = previewAction(
       opened.state,
       "goblin-skirmisher",
       pendingSource,
       pendingTarget,
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     const pendingDispatch = dispatchCombatCommand(
       opened.state,
       command(opened.state, "goblin-skirmisher", pendingSource, pendingTarget),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(pendingValidation.reason).toMatch(/reaction/i);
     expect(pendingPreview.reason).toBe(pendingValidation.reason);
@@ -1413,12 +1417,12 @@ describe("M0 combat core", () => {
     const scenario = heroFirstScenario({
       hero: { conditions: [{ id: "grabbed", sourceId: "test" }] },
     });
-    const state = createM0Combat(scenario, 66).state;
+    const state = createCoreCombat(scenario, 66).state;
     const source = { kind: "context" as const, id: "escape-grab" };
     const escaped = dispatchCombatCommand(
       state,
       command(state, "hero", source, { kind: "none" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(escaped.accepted).toBe(true);
     expect(escaped.events).toContainEqual(
@@ -1437,47 +1441,47 @@ describe("M0 combat core", () => {
       "hero",
       source,
       { kind: "none" },
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     const retry = dispatchCombatCommand(
       escaped.state,
       command(escaped.state, "hero", source, { kind: "none" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     expect(preview.legal).toBe(false);
     expect(retry.accepted).toBe(false);
     expect(retry.error).toBe(preview.reason);
 
-    let nextTurn = dispatchCombatCommand(escaped.state, endTurnCommand(escaped.state), M0_CONTENT).state;
+    let nextTurn = dispatchCombatCommand(escaped.state, endTurnCommand(escaped.state), CORE_CONTENT).state;
     while (nextTurn.turn.activeActorId !== "hero") {
-      nextTurn = dispatchCombatCommand(nextTurn, endTurnCommand(nextTurn), M0_CONTENT).state;
+      nextTurn = dispatchCombatCommand(nextTurn, endTurnCommand(nextTurn), CORE_CONTENT).state;
     }
     expect(nextTurn.turn.lockedActionIds).toEqual([]);
     expect(
-      previewAction(nextTurn, "hero", source, { kind: "none" }, M0_CONTENT).legal,
+      previewAction(nextTurn, "hero", source, { kind: "none" }, CORE_CONTENT).legal,
     ).toBe(true);
   });
 
   it("replays accepted commands to the same final state and event sequence", () => {
     const scenario = heroFirstScenario();
-    const setup = createM0Combat(scenario, 55);
+    const setup = createCoreCombat(scenario, 55);
     let state = setup.state;
     const originalEvents = [...setup.events];
     const commands: CombatCommand[] = [];
-    const interactSource = listLegalActions(state, "hero", M0_CONTENT).find(
+    const interactSource = listLegalActions(state, "hero", CORE_CONTENT).find(
       (action) => action.actionId === "interact-lever",
     )?.source as ActionSource;
     commands.push(command(state, "hero", interactSource, { kind: "object", objectId: "gate-lever" }));
-    const interacted = dispatchCombatCommand(state, commands[0] as CombatCommand, M0_CONTENT);
+    const interacted = dispatchCombatCommand(state, commands[0] as CombatCommand, CORE_CONTENT);
     state = interacted.state;
     originalEvents.push(...interacted.events);
     commands.push(endTurnCommand(state));
-    const ended = dispatchCombatCommand(state, commands[1] as CombatCommand, M0_CONTENT);
+    const ended = dispatchCombatCommand(state, commands[1] as CombatCommand, CORE_CONTENT);
     state = ended.state;
     originalEvents.push(...ended.events);
 
     const replay = replayCombat(
-      { scenario, content: M0_CONTENT, contentIdentity: M0_CONTENT_IDENTITY },
+      { scenario, content: CORE_CONTENT, contentIdentity: CORE_COMBAT.contentIdentity },
       createCombatReplay(state),
     );
     expect(hashCombatState(replay.state)).toBe(hashCombatState(state));
@@ -1487,7 +1491,7 @@ describe("M0 combat core", () => {
 
   it("rejects replay content identity mismatches before executing commands", () => {
     const scenario = heroFirstScenario();
-    const setup = createM0Combat(scenario, 56);
+    const setup = createCoreCombat(scenario, 56);
     const replay = createCombatReplay(setup.state);
     const mismatched = {
       ...replay,
@@ -1496,7 +1500,7 @@ describe("M0 combat core", () => {
 
     expect(() =>
       replayCombat(
-        { scenario, content: M0_CONTENT, contentIdentity: M0_CONTENT_IDENTITY },
+        { scenario, content: CORE_CONTENT, contentIdentity: CORE_COMBAT.contentIdentity },
         mismatched,
       ),
     ).toThrow(/content mismatch/i);
@@ -1506,7 +1510,7 @@ describe("M0 combat core", () => {
 
   it("changes setup identity with loadout-derived actor setup and fails before replay commands", () => {
     const scenario = heroFirstScenario();
-    const setup = createM0Combat(scenario, 57);
+    const setup = createCoreCombat(scenario, 57);
     const replay = createCombatReplay(setup.state);
     const hero = scenario.actors.find((actor) => actor.id === "hero") as ActorSetup;
     const changedScenario: ScenarioDefinition = {
@@ -1521,7 +1525,7 @@ describe("M0 combat core", () => {
           }
         : actor),
     };
-    const changed = createM0Combat(changedScenario, 57);
+    const changed = createCoreCombat(changedScenario, 57);
     const statChangedScenario: ScenarioDefinition = {
       ...scenario,
       actors: scenario.actors.map((actor) => actor.id === hero.id
@@ -1554,30 +1558,30 @@ describe("M0 combat core", () => {
             }
         : actor),
     };
-    const statChanged = createM0Combat(statChangedScenario, 57);
+    const statChanged = createCoreCombat(statChangedScenario, 57);
 
     expect(changed.state.setupFingerprint).not.toBe(setup.state.setupFingerprint);
     expect(statChanged.state.setupFingerprint).not.toBe(setup.state.setupFingerprint);
     expect(() => replayCombat(
-      { scenario: changedScenario, content: M0_CONTENT, contentIdentity: M0_CONTENT_IDENTITY },
+      { scenario: changedScenario, content: CORE_CONTENT, contentIdentity: CORE_COMBAT.contentIdentity },
       replay,
     )).toThrow(/setup mismatch/i);
     expect(replay.commands).toEqual([]);
   });
 
   it("clones nested character profiles instead of sharing them across states", () => {
-    const state = createM0Combat(heroFirstScenario({
+    const state = createCoreCombat(heroFirstScenario({
       hero: { position: { x: 1, y: 1 }, facing: "east" },
       "goblin-skirmisher": { position: { x: 2, y: 1 }, authoredAc: -100 },
     }), 12).state;
     const struck = dispatchCombatCommand(
       state,
       command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     const before = state.actors.hero?.statProfile;
     const after = struck.state.actors.hero?.statProfile;
-    if (before?.kind !== "character" || after?.kind !== "character") throw new Error("The M0 hero must be a character.");
+    if (before?.kind !== "character" || after?.kind !== "character") throw new Error("The core fixture hero must be a Character.");
 
     expect(after).toEqual(before);
     expect(after.stats.defense).not.toBe(before.stats.defense);
@@ -1590,14 +1594,14 @@ describe("M0 combat core", () => {
       hero: { position: { x: 1, y: 1 }, facing: "east" },
       "goblin-skirmisher": { position: { x: 2, y: 1 }, authoredAc: -100 },
     });
-    const state = createM0Combat(scenario, 91).state;
+    const state = createCoreCombat(scenario, 91).state;
     const before = state.actors["goblin-skirmisher"] as NonNullable<typeof state.actors["goblin-skirmisher"]>;
     expect(before.hp).toBe(before.maxHp);
 
     const struck = dispatchCombatCommand(
       state,
       command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: "goblin-skirmisher" }),
-      M0_CONTENT,
+      CORE_CONTENT,
     );
     const after = struck.state.actors["goblin-skirmisher"] as NonNullable<typeof state.actors["goblin-skirmisher"]>;
 
@@ -1612,12 +1616,12 @@ describe("M0 combat core", () => {
       "goblin-skirmisher": { position: { x: 2, y: 1 }, hp: 1, maxHp: 1, authoredAc: -100 },
       "goblin-brute": { position: { x: 1, y: 2 }, hp: 1, maxHp: 1, authoredAc: -100 },
     });
-    let state = createM0Combat(scenario, 77).state;
+    let state = createCoreCombat(scenario, 77).state;
     for (const targetActorId of ["goblin-skirmisher", "goblin-brute"]) {
       const result = dispatchCombatCommand(
         state,
         command(state, "hero", { kind: "basic", id: "strike" }, { kind: "actor", actorId: targetActorId }),
-        M0_CONTENT,
+        CORE_CONTENT,
       );
       expect(result.accepted).toBe(true);
       state = result.state;
@@ -1631,7 +1635,7 @@ describe("M0 combat core", () => {
       "goblin-skirmisher": { position: { x: 6, y: 2 }, facing: "west", initiative: 100 },
       "goblin-brute": { position: { x: 8, y: 6 }, initiative: -101 },
     });
-    let state = createM0Combat(scenario, 66).state;
+    let state = createCoreCombat(scenario, 66).state;
     for (let index = 0; index < 30 && !state.outcome; index += 1) {
       const active = state.actors[state.turn.activeActorId];
       const nextCommand: CombatCommand | null = state.pendingReaction
@@ -1644,9 +1648,9 @@ describe("M0 combat core", () => {
           }
         : active?.team === "heroes"
           ? endTurnCommand(state)
-          : chooseAiCommand(state, M0_CONTENT);
+          : chooseAiCommand(state, CORE_CONTENT);
       expect(nextCommand).not.toBeNull();
-      const result = dispatchCombatCommand(state, nextCommand as CombatCommand, M0_CONTENT);
+      const result = dispatchCombatCommand(state, nextCommand as CombatCommand, CORE_CONTENT);
       expect(result.accepted).toBe(true);
       state = result.state;
     }

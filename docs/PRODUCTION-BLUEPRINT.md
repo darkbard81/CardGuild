@@ -108,13 +108,13 @@ content/m7/*.json → load-m7-content.ts → PRODUCTION_CONTENT
                                           └─ production gate / playtest
 ```
 
-`content/m6`(cardguild.m6@0.9.1)와 `content/m3`(cardguild.m4@0.6.1)은 **규칙 회귀 fixture**입니다.
-신규 production 콘텐츠를 그쪽에 넣지 않습니다. generic `content:check`만 적용되고 M7 volume
-정책은 적용되지 않습니다.
+**규칙 회귀 fixture는 `content/` 안에 없습니다.** `tests/fixtures/content`의 TypeScript
+factory(`cardguild.test.core`, `cardguild.test.character-rules`)가 그 역할을 하며, 신규
+production 콘텐츠를 그쪽에 넣지 않습니다. `content:check`는 이제 배포되는 pack만 봅니다 —
+fixture의 schema·semantic 검증은 content unit test가 합니다.
 
 production 코드는 barrel(`src/content/index.ts`)이 아니라 `production-content.ts`를 직접
-import합니다. barrel은 모든 milestone loader를 re-export하므로 fixture pack이 배포 번들에
-딸려 들어갑니다. 테스트는 barrel을 써도 됩니다.
+import합니다. fixture를 production 코드에서 import하는 것은 ESLint가 막습니다.
 
 ### 1.3 현재 release envelope
 
