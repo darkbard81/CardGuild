@@ -80,8 +80,8 @@
     "id": "goblin",
     "name": "Goblin",
     "source": "pf2e-remaster",
-    "category": "creature",
-    "description": "고블린입니다. 이 모험의 주요 적 무리를 묶는 크리처 분류입니다.",
+    "category": "ancestry",
+    "description": "고블린 혈통의 크리처임을 나타내는 종족 Trait입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
@@ -175,7 +175,7 @@
   {
     "id": "skill",
     "name": "Skill",
-    "source": "pf2e-remaster",
+    "source": "cardguild",
     "category": "action",
     "description": "기능 판정을 쓰는 행동입니다.",
     "cardGrants": [],

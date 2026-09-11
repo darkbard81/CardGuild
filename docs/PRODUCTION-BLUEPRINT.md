@@ -9,7 +9,7 @@ routine authoring의 선행 조건이 아닙니다.
 함께 적었습니다 — 문서가 코드보다 오래됐다고 의심되면 그 경로가 정답입니다.
 
 ```text
-작성 시점 baseline   cardguild.m7@0.5.0 / schema v10 / fnv1a64:352d6c3f8b950173
+작성 시점 baseline   cardguild.m7@0.5.0 / schema v10 / fnv1a64:aab2c37c8ccb6f4c
 지금 값 확인         npx tsx tools/content/check-content.ts && npx tsx tools/content/check-production-content.ts
 ```
 
@@ -170,7 +170,8 @@ gate를 우회하는 flag는 없습니다.
   `src/server/campaign-content-migration.ts`의 `REGISTERED_CONTENT_MIGRATIONS`가 정확히
   `from → to` 한 쌍을 등록하고, `verify()`가 현재 pack에서 그 변경만 되돌렸을 때 `from`의
   fingerprint가 재현되는지 검사합니다 (현재: `0.4.0 fnv1a64:8795c80164042fbf` → `0.5.0
-  fnv1a64:352d6c3f8b950173`, Trait `source/category/description`만 제거). gameplay 값이 하나라도
+  fnv1a64:aab2c37c8ccb6f4c`, Trait `source/category/description` 세 필드 제거 + `grabbed`/`prone`의
+  label을 이전 값으로 복원 — 복원 전에 현재 label이 정확히 `Grabbed`/`Prone`인지 검사). gameplay 값이 하나라도
   같이 바뀌면 `verify()`가 실패해 migration이 무효가 되고, 두 단계 전 identity(`0.3.0`)를 포함한
   나머지는 `SAVE_CONTENT_MISMATCH`로 거절하며 원본 저장을 보존합니다. 새 release를 낼 때는 등록
   항목을 **교체**하지 누적하지 않습니다.

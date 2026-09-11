@@ -86,8 +86,14 @@ describe("production trait vocabulary", () => {
     const remaster = traits.filter((trait) => trait.source === "pf2e-remaster").map((trait) => trait.id).sort();
     expect(remaster).toEqual([
       "agile", "attack", "cantrip", "cold", "concentrate", "emotion", "fear", "finesse", "fire", "flourish",
-      "focus", "goblin", "healing", "manipulate", "mental", "move", "parry", "propulsive", "reach", "skill",
-      "thrown", "trip", "undead", "vitality", "void",
+      "focus", "goblin", "healing", "manipulate", "mental", "move", "parry", "propulsive", "reach", "thrown",
+      "trip", "undead", "vitality", "void",
     ]);
+    // Remaster's Skill Trait marks Skill feats; CardGuild's `skill` marks a skill-check
+    // Action, a different meaning under the same word.
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["skill"]).toMatchObject({ source: "cardguild", category: "action" });
+    // Goblin is an Ancestry Trait in Player Core, and that is what a future ancestry
+    // invariant will look for, even while only creatures carry it.
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["goblin"]).toMatchObject({ source: "pf2e-remaster", category: "ancestry" });
   });
 });

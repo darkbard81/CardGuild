@@ -25,13 +25,16 @@ export interface ContentMigration {
 const TRAIT_VOCABULARY_FIELDS: readonly string[] = ["source", "category", "description"];
 
 /**
- * The two labels 0.5.0 renamed. They used to describe the provider role ("Grabbed
- * Recovery" grants the escape Action); now that `name` is the canonical chip label they
- * name the Condition itself. A label is not a rule, so the rename rides with the metadata.
+ * The two labels 0.5.0 renamed, as the exact pair this migration is about. They used to
+ * describe the provider role ("Grabbed Recovery" grants the escape Action); now that
+ * `name` is the canonical chip label they name the Condition itself. A label is not a
+ * rule, so the rename rides with the metadata — but only this rename: the current label
+ * must be exactly `to` before `from` is put back, or a later drift of either name would
+ * be quietly folded into the same migration.
  */
-const PREVIOUS_TRAIT_NAMES: Readonly<Record<string, string>> = {
-  grabbed: "Grabbed Recovery",
-  prone: "Prone Recovery",
+const RENAMED_TRAITS: Readonly<Record<string, { readonly from: string; readonly to: string }>> = {
+  grabbed: { from: "Grabbed Recovery", to: "Grabbed" },
+  prone: { from: "Prone Recovery", to: "Prone" },
 };
 
 /**
@@ -44,8 +47,11 @@ const PREVIOUS_TRAIT_NAMES: Readonly<Record<string, string>> = {
  */
 export const TRAIT_VOCABULARY_MIGRATION: ContentMigration = {
   from: { packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: "fnv1a64:8795c80164042fbf" },
-  to: { packId: "cardguild.m7", packVersion: "0.5.0", fingerprint: "fnv1a64:352d6c3f8b950173" },
+  to: { packId: "cardguild.m7", packVersion: "0.5.0", fingerprint: "fnv1a64:aab2c37c8ccb6f4c" },
   verify: (pack) => {
+    for (const [id, rename] of Object.entries(RENAMED_TRAITS)) {
+      if (pack.combatContent.traits[id]?.name !== rename.to) return false;
+    }
     const normalized = normalizeContentPack({
       manifest: pack.manifest,
       traits: Object.values(pack.combatContent.traits),
@@ -69,7 +75,7 @@ export const TRAIT_VOCABULARY_MIGRATION: ContentMigration = {
       // else must survive untouched.
       traits: normalized.traits.map((trait) => Object.fromEntries(Object.entries(trait)
         .filter(([key]) => !TRAIT_VOCABULARY_FIELDS.includes(key))
-        .map(([key, value]) => [key, key === "name" ? PREVIOUS_TRAIT_NAMES[trait.id] ?? value : value]))),
+        .map(([key, value]) => [key, key === "name" ? RENAMED_TRAITS[trait.id]?.from ?? value : value]))),
     };
     return fingerprintValue(previous) === TRAIT_VOCABULARY_MIGRATION.from.fingerprint;
   },
