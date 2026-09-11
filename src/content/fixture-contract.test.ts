@@ -143,7 +143,7 @@ describe("the JSON fixture pack", () => {
 
     const pack = compileContentPack(source as ContentPackSource);
     expect(pack.manifest.id).toBe(JSON_PACK_ID);
-    expect(pack.manifest.schemaVersion).toBe(9);
+    expect(pack.manifest.schemaVersion).toBe(10);
     expect(pack.fingerprint).toMatch(/^fnv1a64:[0-9a-f]{16}$/);
     // Small enough to read, complete enough to fight on.
     expect(Object.keys(pack.actorDefinitions)).toHaveLength(2);
@@ -154,7 +154,7 @@ describe("the JSON fixture pack", () => {
     const files = createJsonPackFiles();
 
     // A wrong schema version is turned away before anything is interpreted.
-    const legacy = { ...files, manifest: { ...(files.manifest as object), schemaVersion: 8 } };
+    const legacy = { ...files, manifest: { ...(files.manifest as object), schemaVersion: 9 } };
     expect(validateContentPackStructure(legacy, contentPackSchema)
       .some((issue) => issue.path.endsWith("/schemaVersion"))).toBe(true);
 

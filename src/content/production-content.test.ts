@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { getContentIdentity } from "./compile-content";
 import { createCharacterRulesContentSource } from "../../tests/fixtures/content";
 import { compileContentPack } from "./compile-content";
+import { TRAIT_CATEGORIES, TRAIT_SOURCES } from "../game/traits";
 import { M7_ADVENTURE_ID, M7_COMPILED_PACK } from "./load-m7-content";
 import { PRODUCTION_CONTENT } from "./production-content";
 
@@ -12,7 +13,7 @@ describe("production content selector", () => {
     // The authored revision is not pinned here. It moves with every gameplay data change,
     // and a second copy of it would turn a routine content edit into a surprise test failure.
     expect(PRODUCTION_CONTENT.pack.manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(PRODUCTION_CONTENT.pack.manifest.schemaVersion).toBe(9);
+    expect(PRODUCTION_CONTENT.pack.manifest.schemaVersion).toBe(10);
     expect(PRODUCTION_CONTENT.pack.manifest.rulesetId).toBe("cardguild.pf2e-remaster.v1");
   });
 
@@ -41,5 +42,40 @@ describe("production content selector", () => {
     expect(PRODUCTION_CONTENT.pack.manifest.id).not.toMatch(/^cardguild\.test\./);
     expect(PRODUCTION_CONTENT.pack.fingerprint).not.toBe(fixture.fingerprint);
     expect(Object.keys(PRODUCTION_CONTENT.pack.adventures)).toEqual(Object.keys(fixture.adventures));
+  });
+});
+
+describe("production trait vocabulary", () => {
+  const traits = Object.values(PRODUCTION_CONTENT.pack.combatContent.traits);
+
+  it("carries source, category and a description on every shipped Trait", () => {
+    expect(traits).toHaveLength(54);
+    for (const trait of traits) {
+      expect(TRAIT_SOURCES, trait.id).toContain(trait.source);
+      expect(TRAIT_CATEGORIES, trait.id).toContain(trait.category);
+      expect(trait.description.trim(), trait.id).toBe(trait.description);
+      expect(trait.description.length, trait.id).toBeGreaterThan(0);
+    }
+  });
+
+  it("classifies terrain and system markers, providers and composite meanings as CardGuild vocabulary", () => {
+    const cardguild = new Set(traits.filter((trait) => trait.source === "cardguild").map((trait) => trait.id));
+    for (const trait of traits) {
+      const provider = trait.cardGrants.length > 0 || trait.actionGrants.length > 0;
+      if (trait.category === "terrain" || trait.category === "system" || provider) {
+        expect(cardguild.has(trait.id), trait.id).toBe(true);
+      }
+    }
+    // The Remaster `open` Trait orders attacks; CardGuild's `open` is a floor tile.
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["open"]).toMatchObject({ source: "cardguild", category: "terrain" });
+  });
+
+  it("marks as PF2e Remaster only the weapon, action and damage vocabulary the engine reads the same way", () => {
+    const remaster = traits.filter((trait) => trait.source === "pf2e-remaster").map((trait) => trait.id).sort();
+    expect(remaster).toEqual([
+      "agile", "attack", "cantrip", "cold", "concentrate", "emotion", "fear", "finesse", "fire", "flourish",
+      "focus", "goblin", "healing", "manipulate", "mental", "move", "propulsive", "reach", "skill", "thrown",
+      "undead", "vitality", "void",
+    ]);
   });
 });

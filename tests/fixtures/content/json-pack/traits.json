@@ -2,42 +2,63 @@
   {
     "id": "actor",
     "name": "Actor",
+    "source": "cardguild",
+    "category": "system",
+    "description": "전투에 참여하는 모든 Actor가 가지는 CardGuild 시스템 표식입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "agile",
     "name": "Agile",
+    "source": "pf2e-remaster",
+    "category": "weapon",
+    "description": "가벼운 무기입니다. 같은 턴의 두 번째·세 번째 공격 페널티가 -4/-8로 줄어듭니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "attack",
     "name": "Attack",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "공격 행동입니다. 같은 턴에 반복하면 다중 공격 페널티가 누적됩니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "concentrate",
     "name": "Concentrate",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "집중이 필요한 행동입니다. CardGuild에서는 행동 종류 표시로만 쓰입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "condition",
     "name": "Condition",
+    "source": "cardguild",
+    "category": "condition",
+    "description": "상태 이상 정의에 붙는 CardGuild 시스템 표식입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "finesse",
     "name": "Finesse",
+    "source": "pf2e-remaster",
+    "category": "weapon",
+    "description": "정교한 무기입니다. 근접 공격에 STR과 DEX 중 높은 쪽을 씁니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "fly",
     "name": "Fly",
+    "source": "cardguild",
+    "category": "action",
+    "description": "비행입니다. 비행 이동 행동을 표시하고, 장비에 붙으면 Fly 카드 2장을 덱에 더합니다.",
     "cardGrants": [
       {
         "cardDefinitionId": "card.fly",
@@ -49,18 +70,27 @@
   {
     "id": "focus",
     "name": "Focus",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "집중 주문입니다. CardGuild에서는 주문 카드의 종류 표시로만 쓰입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "goblin",
     "name": "Goblin",
+    "source": "pf2e-remaster",
+    "category": "creature",
+    "description": "고블린입니다. 이 모험의 주요 적 무리를 묶는 크리처 분류입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "grabbed",
     "name": "Grabbed Recovery",
+    "source": "cardguild",
+    "category": "condition",
+    "description": "붙잡힌 상태입니다. 상태가 있는 동안 Escape 문맥 행동을 쓸 수 있습니다.",
     "cardGrants": [],
     "actionGrants": [
       {
@@ -72,24 +102,36 @@
   {
     "id": "hero",
     "name": "Hero",
+    "source": "cardguild",
+    "category": "system",
+    "description": "플레이어 파티의 영웅 Actor를 표시하는 CardGuild 시스템 표식입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "move",
     "name": "Move",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "이동 행동입니다. CardGuild에서는 행동 종류 표시로만 쓰입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "open",
     "name": "Open",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "탁 트인 바닥 칸입니다. 이동과 시선을 막지 않습니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "prone",
     "name": "Prone Recovery",
+    "source": "cardguild",
+    "category": "condition",
+    "description": "넘어진 상태입니다. 상태가 있는 동안 Stand 문맥 행동을 쓸 수 있습니다.",
     "cardGrants": [],
     "actionGrants": [
       {
@@ -101,18 +143,27 @@
   {
     "id": "reach",
     "name": "Reach",
+    "source": "pf2e-remaster",
+    "category": "weapon",
+    "description": "긴 무기입니다. 근접 사거리가 10피트로 늘어납니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "reaction",
     "name": "Reaction",
+    "source": "cardguild",
+    "category": "action",
+    "description": "반응 행동입니다. 자기 턴 밖에서 조건이 맞을 때 사용합니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "shield",
     "name": "Shield",
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "방패입니다. 장착하면 Raise Shield 문맥 행동을 쓸 수 있습니다.",
     "cardGrants": [],
     "actionGrants": [
       {
@@ -124,12 +175,18 @@
   {
     "id": "skill",
     "name": "Skill",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "기능 판정을 쓰는 행동입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
   {
     "id": "trip",
     "name": "Trip",
+    "source": "cardguild",
+    "category": "weapon",
+    "description": "넘어뜨리기에 알맞은 무기입니다. 장착하면 Trip 카드 3장을 덱에 더합니다.",
     "cardGrants": [
       {
         "cardDefinitionId": "card.trip",
@@ -141,6 +198,9 @@
   {
     "id": "weapon",
     "name": "Weapon",
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "무기 슬롯에 장착하는 장비를 표시하는 CardGuild 분류입니다.",
     "cardGrants": [],
     "actionGrants": []
   }

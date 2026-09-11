@@ -4,14 +4,16 @@ import contentPackSchema from "../../content/schema/content-pack.schema.json";
 import type { PartySetup } from "../adventure";
 import { createCombat, dispatchCombatCommand } from "../game/engine";
 import { listLegalActions } from "../game/queries";
-import type { CombatCommand } from "../game/types";
+import { findReachableTiles } from "../game/grid";
+import { resolveMapPenalty, resolveStrike } from "../game/offense";
+import type { CombatCommand, TraitDefinition } from "../game/types";
 import {
   clonePartyLoadout,
   createStartingCollection,
   deriveLoadoutSnapshot,
   validatePartyLoadout,
 } from "../loadout";
-import { compileContentPack, getCombatDefinition } from "./compile-content";
+import { ContentCompilationError, compileContentPack, getCombatDefinition } from "./compile-content";
 import type { ActorDefinition, ContentPackSource } from "./content-types";
 import { fingerprintContentPack } from "./fingerprint";
 import {
@@ -313,6 +315,9 @@ describe("content semantic validation and compilation", () => {
         {
           id: "custom-recovery",
           name: "Custom Recovery",
+          source: "cardguild",
+          category: "condition",
+          description: "테스트용 회복 Trait입니다.",
           cardGrants: [],
           actionGrants: [{ actionId: "recover-custom", contextGroup: "escape" }],
         },
@@ -784,6 +789,111 @@ describe("content semantic validation and compilation", () => {
   });
 });
 
+describe("trait vocabulary contract", () => {
+  function without(trait: TraitDefinition, key: keyof TraitDefinition): object {
+    return Object.fromEntries(Object.entries(trait).filter(([name]) => name !== key));
+  }
+
+  function withTrait(source: ContentPackSource, id: string, edit: (trait: TraitDefinition) => object): ContentPackSource {
+    return {
+      ...source,
+      traits: source.traits.map((trait) => (trait.id === id ? edit(trait) as TraitDefinition : trait)),
+    };
+  }
+
+  it("requires source, category and a non-empty description on every definition, by schema and by semantics", () => {
+    const source = sourceCopy();
+    const cases: readonly (readonly [string, (trait: TraitDefinition) => object, string])[] = [
+      ["missing source", (trait) => without(trait, "source"), "INVALID_TRAIT_SOURCE"],
+      ["invalid source", (trait) => ({ ...trait, source: "homebrew" }), "INVALID_TRAIT_SOURCE"],
+      ["missing category", (trait) => without(trait, "category"), "INVALID_TRAIT_CATEGORY"],
+      ["invalid category", (trait) => ({ ...trait, category: "spell" }), "INVALID_TRAIT_CATEGORY"],
+      ["missing description", (trait) => without(trait, "description"), "EMPTY_TRAIT_DESCRIPTION"],
+      ["empty description", (trait) => ({ ...trait, description: "" }), "EMPTY_TRAIT_DESCRIPTION"],
+      ["blank description", (trait) => ({ ...trait, description: "   " }), "EMPTY_TRAIT_DESCRIPTION"],
+    ];
+    for (const [label, edit, code] of cases) {
+      const invalid = withTrait(source, "agile", edit);
+      const structural = validateContentPackStructure(invalid, contentPackSchema);
+      // A description of spaces is a schema-legal string; the semantic pass is what refuses it.
+      if (label !== "blank description") {
+        expect(structural, label).toContainEqual(expect.objectContaining({ source: "traits", definitionId: "agile" }));
+      }
+      expect(validateContentPackSemantics(invalid), label).toContainEqual(expect.objectContaining({
+        source: "traits", definitionId: "agile", code, path: expect.stringMatching(/^\[\d+\]\.(source|category|description)$/),
+      }));
+    }
+    expect(validateContentPackStructure(source, contentPackSchema)).toEqual([]);
+    expect(validateContentPackSemantics(source)).toEqual([]);
+  });
+
+  it("keeps one ID one definition even when a duplicate names a different source", () => {
+    const source = sourceCopy();
+    const agile = source.traits.find((trait) => trait.id === "agile")!;
+    const duplicate: ContentPackSource = {
+      ...source,
+      traits: [...source.traits, { ...agile, source: agile.source === "cardguild" ? "pf2e-remaster" : "cardguild" }],
+    };
+    expect(validateContentPackSemantics(duplicate)).toContainEqual(expect.objectContaining({
+      source: "traits", code: "DUPLICATE_ID", definitionId: "agile",
+    }));
+    expect(() => compileContentPack(duplicate)).toThrow(ContentCompilationError);
+  });
+
+  it("keeps instances free of vocabulary metadata and still refuses an unknown instance", () => {
+    const source = sourceCopy();
+    const halberd = source.equipment.find((item) => item.id === "halberd")!;
+    const instance = halberd.traits[0]!;
+    expect(Object.keys(instance).sort()).toEqual(Object.keys(instance).filter((key) => key === "id" || key === "sourceId" || key === "params").sort());
+    const unknown: ContentPackSource = {
+      ...source,
+      equipment: source.equipment.map((item) => (item.id === "halberd" ? { ...item, traits: [{ id: "nope" }] } : item)),
+    };
+    expect(validateContentPackSemantics(unknown)).toContainEqual(expect.objectContaining({ code: "UNKNOWN_TRAIT", definitionId: "halberd" }));
+  });
+
+  it("leaves every rule reading trait IDs unmoved when source and category change", () => {
+    const source = characterRulesCopy();
+    const relabelled: ContentPackSource = {
+      ...source,
+      traits: source.traits.map((trait) => ({
+        ...trait,
+        source: trait.source === "cardguild" ? "pf2e-remaster" : "cardguild",
+        category: trait.category === "general" ? "system" : "general",
+        description: `relabelled ${trait.description}`,
+      })),
+    };
+    const before = compileContentPack(source);
+    const after = compileContentPack(relabelled);
+    expect(after.fingerprint).not.toBe(before.fingerprint);
+
+    // Attack, Agile MAP, finesse attribute choice, reach, provider grants and terrain cost
+    // all key off `id`, so the resolved numbers are identical under either labelling.
+    const hero = before.actorDefinitions["hero.aerin"] ?? Object.values(before.actorDefinitions).find((actor) => actor.statProfile.kind === "character")!;
+    for (const [id, definition] of Object.entries(before.combatContent.equipment)) {
+      if (!definition.weaponProfile) continue;
+      const armed = (pack: typeof before) => {
+        const combat = getCombatDefinition(pack, RUINED_GATE_ID);
+        const setup = combat.scenario.actors.find((actor) => actor.definitionId === hero.id)!;
+        const actor = { ...setup, equipmentIds: [id], reactionAvailable: true, shieldRaised: false, defeated: false };
+        return { strike: resolveStrike(actor, { content: pack.combatContent }), map: resolveMapPenalty(2, resolveStrike(actor, { content: pack.combatContent }).traits) };
+      };
+      expect(armed(after), id).toEqual(armed(before));
+    }
+    const beforeCombat = createCombat(getCombatDefinition(before, RUINED_GATE_ID), 7).state;
+    const afterCombat = createCombat(getCombatDefinition(after, RUINED_GATE_ID), 7).state;
+    const heroId = beforeCombat.turn.initiativeOrder.find((id) => beforeCombat.actors[id]?.team === "heroes")!;
+    const legal = (state: typeof beforeCombat, content: typeof before.combatContent) =>
+      listLegalActions(state, heroId, content).map((action) => [action.actionId, action.source.id, action.enabled, action.traits]);
+    expect(legal(afterCombat, after.combatContent)).toEqual(legal(beforeCombat, before.combatContent));
+    expect(deriveLoadoutSnapshot(hero, hero.starterLoadout, after.combatContent, "m").deck)
+      .toEqual(deriveLoadoutSnapshot(hero, hero.starterLoadout, before.combatContent, "m").deck);
+    const reach = (state: typeof beforeCombat) =>
+      findReachableTiles(state.map, state.actors, heroId, state.actors[heroId]!.position, 25, "land");
+    expect(reach(afterCombat)).toEqual(reach(beforeCombat));
+  });
+});
+
 describe("playable character content", () => {
   const characterRules = createCharacterRulesFixture();
 
@@ -840,7 +950,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 9,
+        schemaVersion: 10,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),

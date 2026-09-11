@@ -1,81 +1,488 @@
 [
-  { "id": "actor", "name": "Actor", "cardGrants": [], "actionGrants": [] },
-  { "id": "agile", "name": "Agile", "cardGrants": [], "actionGrants": [] },
-  { "id": "attack", "name": "Attack", "cardGrants": [], "actionGrants": [] },
-  { "id": "beast", "name": "Beast", "cardGrants": [], "actionGrants": [] },
-  { "id": "blocked", "name": "Blocked", "cardGrants": [], "actionGrants": [] },
-  { "id": "cantrip", "name": "Cantrip", "cardGrants": [], "actionGrants": [] },
-  { "id": "cold", "name": "Cold", "cardGrants": [], "actionGrants": [] },
-  { "id": "concentrate", "name": "Concentrate", "cardGrants": [], "actionGrants": [] },
-  { "id": "condition", "name": "Condition", "cardGrants": [], "actionGrants": [] },
-  { "id": "cultist", "name": "Cultist", "cardGrants": [], "actionGrants": [] },
-  { "id": "difficult", "name": "Difficult", "cardGrants": [], "actionGrants": [] },
-  { "id": "emotion", "name": "Emotion", "cardGrants": [], "actionGrants": [] },
-  { "id": "fear", "name": "Fear", "cardGrants": [], "actionGrants": [] },
+  {
+    "id": "actor",
+    "name": "Actor",
+    "source": "cardguild",
+    "category": "system",
+    "description": "전투에 참여하는 모든 Actor가 가지는 CardGuild 시스템 표식입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "agile",
+    "name": "Agile",
+    "source": "pf2e-remaster",
+    "category": "weapon",
+    "description": "가벼운 무기입니다. 같은 턴의 두 번째·세 번째 공격 페널티가 -4/-8로 줄어듭니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "attack",
+    "name": "Attack",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "공격 행동입니다. 같은 턴에 반복하면 다중 공격 페널티가 누적됩니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "beast",
+    "name": "Beast",
+    "source": "cardguild",
+    "category": "creature",
+    "description": "늑대·거미 같은 야수형 적을 묶는 CardGuild 크리처 분류입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "blocked",
+    "name": "Blocked",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "벽이나 닫힌 문처럼 이동과 시선을 완전히 막는 칸입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "cantrip",
+    "name": "Cantrip",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "캔트립 주문입니다. CardGuild에서는 주문 카드의 종류 표시로만 쓰입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "cold",
+    "name": "Cold",
+    "source": "pf2e-remaster",
+    "category": "damage",
+    "description": "냉기 피해를 주는 효과입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "concentrate",
+    "name": "Concentrate",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "집중이 필요한 행동입니다. CardGuild에서는 행동 종류 표시로만 쓰입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "condition",
+    "name": "Condition",
+    "source": "cardguild",
+    "category": "condition",
+    "description": "상태 이상 정의에 붙는 CardGuild 시스템 표식입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "cultist",
+    "name": "Cultist",
+    "source": "cardguild",
+    "category": "creature",
+    "description": "사교도 무리를 묶는 CardGuild 크리처 분류입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "difficult",
+    "name": "Difficult",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "험지입니다. 지상 이동으로 들어갈 때 5피트 대신 10피트가 듭니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "emotion",
+    "name": "Emotion",
+    "source": "pf2e-remaster",
+    "category": "general",
+    "description": "감정에 영향을 주는 효과입니다. CardGuild에서는 효과 종류 표시로만 쓰입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "fear",
+    "name": "Fear",
+    "source": "pf2e-remaster",
+    "category": "general",
+    "description": "공포를 일으키는 효과입니다. 주로 Frightened 상태를 주는 행동에 붙습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
   {
     "id": "field-medicine",
     "name": "Field Medicine",
-    "cardGrants": [{ "cardDefinitionId": "card.battle-medicine", "count": 2 }],
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "구급 장비입니다. 장착하면 Battle Medicine 카드 2장을 덱에 더합니다.",
+    "cardGrants": [{"cardDefinitionId": "card.battle-medicine", "count": 2}],
     "actionGrants": []
   },
-  { "id": "finesse", "name": "Finesse", "cardGrants": [], "actionGrants": [] },
-  { "id": "fire", "name": "Fire", "cardGrants": [], "actionGrants": [] },
-  { "id": "flourish", "name": "Flourish", "cardGrants": [], "actionGrants": [] },
-  { "id": "fly", "name": "Fly", "cardGrants": [{ "cardDefinitionId": "card.fly", "count": 2 }], "actionGrants": [] },
-  { "id": "focus", "name": "Focus", "cardGrants": [], "actionGrants": [] },
-  { "id": "gate", "name": "Gate", "cardGrants": [], "actionGrants": [] },
-  { "id": "gate-open", "name": "Open Gate", "cardGrants": [], "actionGrants": [] },
-  { "id": "goblin", "name": "Goblin", "cardGrants": [], "actionGrants": [] },
-  { "id": "grabbed", "name": "Grabbed Recovery", "cardGrants": [], "actionGrants": [{ "actionId": "escape-grab", "contextGroup": "escape" }] },
-  { "id": "healing", "name": "Healing", "cardGrants": [], "actionGrants": [] },
-  { "id": "hero", "name": "Hero", "cardGrants": [], "actionGrants": [] },
-  { "id": "impassable", "name": "Impassable", "cardGrants": [], "actionGrants": [] },
-  { "id": "interactable", "name": "Interactable", "cardGrants": [], "actionGrants": [] },
-  { "id": "lever", "name": "Lever", "cardGrants": [], "actionGrants": [] },
-  { "id": "manipulate", "name": "Manipulate", "cardGrants": [], "actionGrants": [] },
-  { "id": "mental", "name": "Mental", "cardGrants": [], "actionGrants": [] },
-  { "id": "move", "name": "Move", "cardGrants": [], "actionGrants": [] },
-  { "id": "open", "name": "Open", "cardGrants": [], "actionGrants": [] },
-  { "id": "parry", "name": "Parry", "cardGrants": [{ "cardDefinitionId": "card.dueling-parry", "count": 2 }], "actionGrants": [] },
-  { "id": "playable", "name": "Playable Character", "cardGrants": [], "actionGrants": [] },
-  { "id": "prone", "name": "Prone Recovery", "cardGrants": [], "actionGrants": [{ "actionId": "stand", "contextGroup": "escape" }] },
-  { "id": "propulsive", "name": "Propulsive", "cardGrants": [], "actionGrants": [] },
-  { "id": "reach", "name": "Reach", "cardGrants": [], "actionGrants": [] },
-  { "id": "reaction", "name": "Reaction", "cardGrants": [], "actionGrants": [] },
-  { "id": "shield", "name": "Shield", "cardGrants": [], "actionGrants": [{ "actionId": "raise-shield", "contextGroup": "shield" }] },
+  {
+    "id": "finesse",
+    "name": "Finesse",
+    "source": "pf2e-remaster",
+    "category": "weapon",
+    "description": "정교한 무기입니다. 근접 공격에 STR과 DEX 중 높은 쪽을 씁니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "fire",
+    "name": "Fire",
+    "source": "pf2e-remaster",
+    "category": "damage",
+    "description": "화염 피해를 주는 효과입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "flourish",
+    "name": "Flourish",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "화려한 기술입니다. CardGuild에서는 행동 종류 표시로만 쓰이며 사용 횟수를 제한하지 않습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "fly",
+    "name": "Fly",
+    "source": "cardguild",
+    "category": "action",
+    "description": "비행입니다. 비행 이동 행동을 표시하고, 장비에 붙으면 Fly 카드 2장을 덱에 더합니다.",
+    "cardGrants": [{"cardDefinitionId": "card.fly", "count": 2}],
+    "actionGrants": []
+  },
+  {
+    "id": "focus",
+    "name": "Focus",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "집중 주문입니다. CardGuild에서는 주문 카드의 종류 표시로만 쓰입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "gate",
+    "name": "Gate",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "닫힌 성문 칸입니다. 레버를 당기면 열린 성문으로 바뀝니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "gate-open",
+    "name": "Open Gate",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "열린 성문 칸입니다. 레버로 연 뒤에는 지나갈 수 있습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "goblin",
+    "name": "Goblin",
+    "source": "pf2e-remaster",
+    "category": "creature",
+    "description": "고블린입니다. 이 모험의 주요 적 무리를 묶는 크리처 분류입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "grabbed",
+    "name": "Grabbed Recovery",
+    "source": "cardguild",
+    "category": "condition",
+    "description": "붙잡힌 상태입니다. 상태가 있는 동안 Escape 문맥 행동을 쓸 수 있습니다.",
+    "cardGrants": [],
+    "actionGrants": [{"actionId": "escape-grab", "contextGroup": "escape"}]
+  },
+  {
+    "id": "healing",
+    "name": "Healing",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "HP를 회복시키는 효과입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "hero",
+    "name": "Hero",
+    "source": "cardguild",
+    "category": "system",
+    "description": "플레이어 파티의 영웅 Actor를 표시하는 CardGuild 시스템 표식입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "impassable",
+    "name": "Impassable",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "지상으로는 지나갈 수 없는 칸입니다. 비행으로는 넘을 수 있습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "interactable",
+    "name": "Interactable",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "상호작용할 수 있는 지형 오브젝트입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "lever",
+    "name": "Lever",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "당길 수 있는 레버입니다. 연결된 성문을 엽니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "manipulate",
+    "name": "Manipulate",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "손을 써서 조작하는 행동입니다. CardGuild에서는 행동 종류 표시로만 쓰입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "mental",
+    "name": "Mental",
+    "source": "pf2e-remaster",
+    "category": "general",
+    "description": "정신에 작용하는 효과입니다. CardGuild에서는 효과 종류 표시로만 쓰입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "move",
+    "name": "Move",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "이동 행동입니다. CardGuild에서는 행동 종류 표시로만 쓰입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "open",
+    "name": "Open",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "탁 트인 바닥 칸입니다. 이동과 시선을 막지 않습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "parry",
+    "name": "Parry",
+    "source": "cardguild",
+    "category": "weapon",
+    "description": "받아넘기기에 알맞은 무기입니다. 장착하면 Dueling Parry 카드 2장을 덱에 더합니다.",
+    "cardGrants": [{"cardDefinitionId": "card.dueling-parry", "count": 2}],
+    "actionGrants": []
+  },
+  {
+    "id": "playable",
+    "name": "Playable Character",
+    "source": "cardguild",
+    "category": "system",
+    "description": "플레이어가 고를 수 있는 캐릭터를 표시하는 CardGuild 시스템 표식입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "prone",
+    "name": "Prone Recovery",
+    "source": "cardguild",
+    "category": "condition",
+    "description": "넘어진 상태입니다. 상태가 있는 동안 Stand 문맥 행동을 쓸 수 있습니다.",
+    "cardGrants": [],
+    "actionGrants": [{"actionId": "stand", "contextGroup": "escape"}]
+  },
+  {
+    "id": "propulsive",
+    "name": "Propulsive",
+    "source": "pf2e-remaster",
+    "category": "weapon",
+    "description": "추진력 무기입니다. 원거리 피해에 STR 수정치의 절반(음수면 전부)을 더합니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "reach",
+    "name": "Reach",
+    "source": "pf2e-remaster",
+    "category": "weapon",
+    "description": "긴 무기입니다. 근접 사거리가 10피트로 늘어납니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "reaction",
+    "name": "Reaction",
+    "source": "cardguild",
+    "category": "action",
+    "description": "반응 행동입니다. 자기 턴 밖에서 조건이 맞을 때 사용합니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "shield",
+    "name": "Shield",
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "방패입니다. 장착하면 Raise Shield 문맥 행동을 쓸 수 있습니다.",
+    "cardGrants": [],
+    "actionGrants": [{"actionId": "raise-shield", "contextGroup": "shield"}]
+  },
   {
     "id": "shield-spike",
     "name": "Shield Spike",
-    "cardGrants": [{ "cardDefinitionId": "card.shield-press", "count": 2 }],
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "가시 달린 방패입니다. 장착하면 Shield Press 카드 2장을 덱에 더합니다.",
+    "cardGrants": [{"cardDefinitionId": "card.shield-press", "count": 2}],
     "actionGrants": []
   },
-  { "id": "skill", "name": "Skill", "cardGrants": [], "actionGrants": [] },
-  { "id": "spell", "name": "Spell", "cardGrants": [], "actionGrants": [] },
+  {
+    "id": "skill",
+    "name": "Skill",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "기능 판정을 쓰는 행동입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "spell",
+    "name": "Spell",
+    "source": "cardguild",
+    "category": "action",
+    "description": "주문입니다. 주문 카드와 행동을 표시하는 CardGuild 분류입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
   {
     "id": "spell-focus",
     "name": "Spell Focus",
-    "cardGrants": [{ "cardDefinitionId": "card.frostbite", "count": 2 }],
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "주문 매개체입니다. 장착하면 Frostbite 카드 2장을 덱에 더합니다.",
+    "cardGrants": [{"cardDefinitionId": "card.frostbite", "count": 2}],
     "actionGrants": []
   },
-  { "id": "stone", "name": "Stone", "cardGrants": [], "actionGrants": [] },
+  {
+    "id": "stone",
+    "name": "Stone",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "돌바닥 칸입니다. 표면 표시이며 이동 규칙을 바꾸지 않습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
   {
     "id": "sure-footed",
     "name": "Sure Footed",
-    "cardGrants": [{ "cardDefinitionId": "card.careful-advance", "count": 2 }],
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "안정된 신발입니다. 장착하면 Careful Advance 카드 2장을 덱에 더합니다.",
+    "cardGrants": [{"cardDefinitionId": "card.careful-advance", "count": 2}],
     "actionGrants": []
   },
-  { "id": "sustained", "name": "Sustained", "cardGrants": [], "actionGrants": [] },
-  { "id": "thrown", "name": "Thrown", "cardGrants": [], "actionGrants": [] },
-  { "id": "trip", "name": "Trip", "cardGrants": [{ "cardDefinitionId": "card.trip", "count": 3 }], "actionGrants": [] },
-  { "id": "undead", "name": "Undead", "cardGrants": [], "actionGrants": [] },
-  { "id": "vitality", "name": "Vitality", "cardGrants": [], "actionGrants": [] },
-  { "id": "void", "name": "Void", "cardGrants": [], "actionGrants": [] },
+  {
+    "id": "sustained",
+    "name": "Sustained",
+    "source": "cardguild",
+    "category": "action",
+    "description": "유지 중인 효과입니다. Sustain 문맥 행동으로 지속시킬 수 있습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "thrown",
+    "name": "Thrown",
+    "source": "pf2e-remaster",
+    "category": "weapon",
+    "description": "던지는 무기입니다. 원거리 공격이지만 피해에 STR 수정치를 더합니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "trip",
+    "name": "Trip",
+    "source": "cardguild",
+    "category": "weapon",
+    "description": "넘어뜨리기에 알맞은 무기입니다. 장착하면 Trip 카드 3장을 덱에 더합니다.",
+    "cardGrants": [{"cardDefinitionId": "card.trip", "count": 3}],
+    "actionGrants": []
+  },
+  {
+    "id": "undead",
+    "name": "Undead",
+    "source": "pf2e-remaster",
+    "category": "creature",
+    "description": "언데드입니다. 해골 무리를 묶는 크리처 분류입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "vitality",
+    "name": "Vitality",
+    "source": "pf2e-remaster",
+    "category": "damage",
+    "description": "생명력 에너지입니다. 살아 있는 대상을 치유하는 효과에 붙습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "void",
+    "name": "Void",
+    "source": "pf2e-remaster",
+    "category": "damage",
+    "description": "공허 에너지입니다. 생명력을 갉아먹는 효과에 붙습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
   {
     "id": "warded-charm",
     "name": "Warded Charm",
-    "cardGrants": [{ "cardDefinitionId": "card.arcane-ward", "count": 2 }],
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "수호 부적입니다. 장착하면 Arcane Ward 카드 2장을 덱에 더합니다.",
+    "cardGrants": [{"cardDefinitionId": "card.arcane-ward", "count": 2}],
     "actionGrants": []
   },
-  { "id": "weapon", "name": "Weapon", "cardGrants": [], "actionGrants": [] },
-  { "id": "web", "name": "Web", "cardGrants": [], "actionGrants": [] }
+  {
+    "id": "weapon",
+    "name": "Weapon",
+    "source": "cardguild",
+    "category": "equipment",
+    "description": "무기 슬롯에 장착하는 장비를 표시하는 CardGuild 분류입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "web",
+    "name": "Web",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "거미줄 칸입니다. 지상으로 들어가면 붙잡힐 수 있습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  }
 ]

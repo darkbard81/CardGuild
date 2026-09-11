@@ -62,4 +62,5 @@ export {
   resolveStatisticModifier,
 } from "./statistics";
 export type { StatisticResolutionContext } from "./statistics";
+export { TRAIT_CATEGORIES, TRAIT_SOURCES, isTraitCategory, isTraitSource } from "./traits";
 export type * from "./types";

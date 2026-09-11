@@ -313,6 +313,9 @@ describe("PF2e character statistic foundation", () => {
         nimble: {
           id: "nimble",
           name: "Nimble",
+          source: "cardguild",
+          category: "general",
+          description: "테스트용 내성 보너스 Trait입니다.",
           cardGrants: [],
           actionGrants: [],
           statModifiers: [{ selector: { kind: "save" }, type: "circumstance", value: 1, label: "Nimble" }],

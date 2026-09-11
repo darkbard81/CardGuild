@@ -435,7 +435,7 @@ describe("core combat rules", () => {
     const first = createCoreCombat(coreScenario(), CORE_SEED).state;
     const second = createCoreCombat(coreScenario(), CORE_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("77d59960f529626b");
+    expect(hashCombatState(first)).toBe("a459d8c7293cb1dd");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -1274,6 +1274,9 @@ describe("core combat rules", () => {
         "test-recovery": {
           id: "test-recovery",
           name: "Test Recovery",
+          source: "cardguild",
+          category: "condition",
+          description: "테스트용 회복 Trait입니다.",
           cardGrants: [],
           actionGrants: [{ actionId: recoverTest.id, contextGroup: "escape" }],
         },

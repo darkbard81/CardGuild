@@ -25,6 +25,8 @@ export interface TacticalFixture {
   loseAlly: () => void;
   bounds: (label: string) => { x: number; y: number; width: number; height: number } | null;
   boardText: () => string[];
+  /** Tear the whole screen down, the way leaving the battle does. */
+  destroy: () => void;
 }
 declare global { interface Window { tacticalFixture: TacticalFixture } }
 
@@ -139,6 +141,10 @@ async function start() {
     loseAlly() {
       fixture.state = { ...fixture.state, actors: { ...fixture.state.actors, ally: { ...fixture.state.actors.ally!, defeated: true } } };
       controller?.update(fixture.state, []);
+    },
+    destroy() {
+      controller?.destroy();
+      controller = null;
     },
   };
   fixture.reset("front");

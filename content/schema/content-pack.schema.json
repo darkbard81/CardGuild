@@ -480,13 +480,20 @@
         "contextGroup": { "enum": ["escape", "interact", "shield", "sustain"] }
       }
     },
+    "traitSource": { "enum": ["pf2e-remaster", "cardguild"] },
+    "traitCategory": {
+      "enum": ["system", "ancestry", "class", "personality", "creature", "action", "weapon", "equipment", "condition", "terrain", "damage", "general"]
+    },
     "traitDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "cardGrants", "actionGrants"],
+      "required": ["id", "name", "source", "category", "description", "cardGrants", "actionGrants"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
+        "source": { "$ref": "#/$defs/traitSource" },
+        "category": { "$ref": "#/$defs/traitCategory" },
+        "description": { "$ref": "#/$defs/nonEmptyString" },
         "cardGrants": { "type": "array", "items": { "$ref": "#/$defs/traitCardGrant" } },
         "actionGrants": { "type": "array", "items": { "$ref": "#/$defs/traitActionGrant" } },
         "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } }
@@ -1011,7 +1018,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": { "const": 9 },
+        "schemaVersion": { "const": 10 },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

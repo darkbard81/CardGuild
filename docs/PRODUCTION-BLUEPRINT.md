@@ -9,7 +9,7 @@ routine authoring의 선행 조건이 아닙니다.
 함께 적었습니다 — 문서가 코드보다 오래됐다고 의심되면 그 경로가 정답입니다.
 
 ```text
-작성 시점 baseline   cardguild.m7@0.4.0 / schema v9 / fnv1a64:8795c80164042fbf
+작성 시점 baseline   cardguild.m7@0.5.0 / schema v10 / fnv1a64:be3c7b8a374a3423
 지금 값 확인         npx tsx tools/content/check-content.ts && npx tsx tools/content/check-production-content.ts
 ```
 
@@ -53,7 +53,7 @@ AUTHORED GAMEPLAY          ← 여기에 콘텐츠를 씁니다
                  equipment.json actors.json scenarios.json adventures.json
 
 MACHINE CONTRACT           ← 무엇이 합법인지 정의합니다
-  content/schema/content-pack.schema.json   구조 (Draft 2020-12, schemaVersion 8)
+  content/schema/content-pack.schema.json   구조 (Draft 2020-12, schemaVersion 10)
   src/content/content-types.ts              authoring DTO
   src/content/validate-content.ts           schema 실행
   src/content/validate-semantics.ts         참조·배치·파생값 규칙 (63가지 오류 코드)
@@ -157,7 +157,7 @@ gate를 우회하는 flag는 없습니다.
   Condition은 접두사 없는 kebab-case (`spiked-shield`, `hex-bolt`, `frightened`).
 - **ID를 바꾸는 것은 새 정의를 만들고 옛 것을 지우는 것과 같습니다.** fingerprint가 바뀌고
   기존 replay/저장 상태는 거부됩니다(`CombatState`가 pack id/version/fingerprint를 들고 있음).
-- `manifest.json`: `schemaVersion` 8 고정, `id` `cardguild.m7`, `rulesetId`
+- `manifest.json`: `schemaVersion` 10 고정, `id` `cardguild.m7`, `rulesetId`
   `cardguild.pf2e-remaster.v1`.
 - **gameplay authored data를 바꾸면 `version`을 올립니다**(예: 0.2.0 → 0.3.0). 문서/asset만
   바뀌면 올리지 않습니다. 값은 `content/m7/manifest.json` **한 곳에만** 있습니다 — 테스트와
@@ -166,6 +166,14 @@ gate를 우회하는 flag는 없습니다.
   깨뜨립니다.
 - JSON shape을 호환 불가하게 바꾸면 `schemaVersion`을 올리고 명시적 migration을 추가합니다.
   기존 schema를 덮어써 조용히 재해석하지 않습니다.
+- **Campaign Save는 직전 production identity 하나만 명시적으로 이관합니다.**
+  `src/server/campaign-content-migration.ts`의 `REGISTERED_CONTENT_MIGRATIONS`가 정확히
+  `from → to` 한 쌍을 등록하고, `verify()`가 현재 pack에서 그 변경만 되돌렸을 때 `from`의
+  fingerprint가 재현되는지 검사합니다 (현재: `0.4.0 fnv1a64:8795c80164042fbf` → `0.5.0
+  fnv1a64:be3c7b8a374a3423`, Trait `source/category/description`만 제거). gameplay 값이 하나라도
+  같이 바뀌면 `verify()`가 실패해 migration이 무효가 되고, 두 단계 전 identity(`0.3.0`)를 포함한
+  나머지는 `SAVE_CONTENT_MISMATCH`로 거절하며 원본 저장을 보존합니다. 새 release를 낼 때는 등록
+  항목을 **교체**하지 누적하지 않습니다.
 - **fingerprint는 authoring 대상이 아닙니다.** `fingerprintContentPack()`이 정규화된 pack
   전체에서 계산합니다(정의 배열 순서, object key 순서, tile 입력 순서에 영향받지 않음).
 - **presentation asset은 gameplay fingerprint에 들어가지 않습니다.** 아이콘을 다시 그려도
@@ -232,10 +240,32 @@ primitive 조합으로만 표현하고, 조합이 불가능하면 §13으로 갑
 ### 3.3 Trait
 
 ```jsonc
-{ "id": "shield", "name": "Shield", "cardGrants": [], "actionGrants": [{ "actionId": "raise-shield", "contextGroup": "shield" }] }
-{ "id": "trip",   "name": "Trip",   "cardGrants": [{ "cardDefinitionId": "card.trip", "count": 2 }], "actionGrants": [] }
+{ "id": "shield", "name": "Shield", "source": "cardguild", "category": "equipment",
+  "description": "방패입니다. 장착하면 Raise Shield 문맥 행동을 쓸 수 있습니다.",
+  "cardGrants": [], "actionGrants": [{ "actionId": "raise-shield", "contextGroup": "shield" }] }
+{ "id": "agile",  "name": "Agile",  "source": "pf2e-remaster", "category": "weapon",
+  "description": "가벼운 무기입니다. 같은 턴의 두 번째·세 번째 공격 페널티가 -4/-8로 줄어듭니다.",
+  "cardGrants": [], "actionGrants": [] }
 ```
 
+- `id`가 **유일한 identity이자 규칙 lookup key**입니다. source namespace를 붙이지 않습니다
+  (`pf2e.agile` ✗). 같은 `id`는 source가 달라도 pack 안에 하나뿐입니다(`DUPLICATE_ID`).
+- `source` (`pf2e-remaster | cardguild`) / `category` (`system ancestry class personality creature
+  action weapon equipment condition terrain damage general`) / `description` (공백 아닌 문자열)은
+  **필수 metadata**입니다. schema와 semantic validator가 함께 검사합니다
+  (`INVALID_TRAIT_SOURCE`, `INVALID_TRAIT_CATEGORY`, `EMPTY_TRAIT_DESCRIPTION`). 세 값은
+  fingerprint에 들어가지만 **전투 규칙은 읽지 않습니다** — resolver·provider·statistic은
+  `id`만 봅니다. `category`로 legality나 수치를 분기하면 버그입니다.
+- **source 판단 기준**: 원전(PF2e Remaster)에 같은 이름의 Trait이 있고 **현재 CardGuild에서의
+  의미가 원전과 일치할 때만** `pf2e-remaster`입니다. 이름만 같은 경우(`open`은 원전에서 공격
+  순서 Trait, 여기서는 바닥 칸), terrain/system marker, Card·Context Action provider, 복합 의미,
+  판단이 불분명한 경우는 전부 `cardguild`입니다. 현재 audit 결과는
+  `src/content/production-content.test.ts`의 `production trait vocabulary`가 고정합니다.
+- `description`은 **지금 CardGuild가 구현한 의미**를 한두 문장으로 씁니다(한국어). 미구현
+  원전 효과를 약속하지 않고, 원문 규칙을 옮겨 적지 않습니다. UI는 이 문장만 보여 주며 화면별
+  설명을 따로 두지 않습니다(`src/dom/trait-view.ts`).
+- `TraitInstance.sourceId`(이 instance를 무엇이 부여했는가)와 `TraitDefinition.source`(이
+  vocabulary가 어디서 왔는가)는 다른 것이며 instance에 metadata를 복제하지 않습니다.
 - Trait은 **Card provider / Context Action provider / stat modifier 보유자**입니다.
 - Equipment·Condition이 카드나 컨텍스트 행동을 주는 유일한 경로가 이 pipeline입니다.
   개별 ID 분기는 없습니다.
@@ -1141,7 +1171,7 @@ main을 향한 PR은 `CI Full`(`check` → `build` → `npm test`)입니다. mer
 | `check-production-content` | 현재 M7 release policy: volume, reachability/reserve, tutorial prefix, starter loadout, 1P/2P/3P 구조적 조립, AI 정적 참조, visual coverage |
 | `check-assets` | 생성 asset 무결성 + Card/Equipment visual 정확 일치 |
 | Unit / Node | mechanics + content 회귀 (`src/**/*.test.ts`) |
-| Unit / Browser | 컴포넌트 하나의 DOM·PixiJS 계약 (서버 없이) |
+| Unit / Browser | 컴포넌트 하나의 DOM·PixiJS 계약 (서버 없이; Trait chip/tooltip 포함) |
 | Integration | server/session/progression 실제 경로 |
 | E2E | 브라우저/presentation/loadout 실제 경로 |
 | Recovery | 배포 산출물의 재시작·강제 종료 |
@@ -1159,6 +1189,8 @@ main을 향한 PR은 `CI Full`(`check` → `build` → `npm test`)입니다. mer
 - [ ] `npx tsx tools/assets/build-assets.ts`로 생성물 갱신 (asset을 건드렸다면)
 - [ ] `npm run check` 통과
 - [ ] gameplay data가 바뀌었으면 `manifest.json`의 `version`을 올렸다
+- [ ] 새 Trait에 `source` / `category` / `description`을 §3.3 기준으로 적었다
+- [ ] content identity가 바뀌었으면 §2의 Campaign Save migration을 **교체**하고 `verify()`가 직전 fingerprint를 재현한다
 - [ ] balance에 닿았으면 같은 seed playtest 전후 비교를 남겼다
 - [ ] 이 문서가 소유한 계약을 바꿨다면 **같은 PR에서 이 문서도 고쳤다**(§14)
 

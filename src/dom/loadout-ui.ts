@@ -10,7 +10,11 @@ import {
   type PartyMemberLoadout,
 } from "../loadout";
 import type { AssetCatalog } from "../presentation";
+import { HOVER_CLOSE_MS, HOVER_OPEN_MS, bindDismissal, bindPressGesture, placePopover } from "./detail-popover";
 import { progressionMeter, progressionText } from "./progression-view";
+
+/** Long enough that a tap to equip is never read as a request to inspect. */
+const LONG_PRESS_MS = 450;
 
 function required<T extends Element>(selector: string): T {
   const found = document.querySelector<T>(selector);
@@ -208,15 +212,7 @@ export class LoadoutUi {
     this.tooltip.addEventListener("pointerenter", () => clearTimeout(this.hideTimer));
     this.tooltip.addEventListener("pointerleave", () => { if (!this.pinned) this.hideTooltip(); });
     this.screen.append(header, nav, workspace, status, this.tooltip);
-    const dismiss = (event: Event): void => {
-      if (event.type === "scroll" && this.tooltip?.contains(event.target as Node)) return;
-      if (event instanceof KeyboardEvent && event.key !== "Escape") return;
-      if (event.type === "pointerdown" && (this.tooltip?.contains(event.target as Node) || this.tooltipAnchor?.contains(event.target as Node))) return;
-      this.hideTooltip();
-    };
-    document.addEventListener("pointerdown", dismiss); document.addEventListener("keydown", dismiss);
-    window.addEventListener("resize", dismiss); window.addEventListener("scroll", dismiss, true);
-    this.cleanup.push(() => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", dismiss); window.removeEventListener("resize", dismiss); window.removeEventListener("scroll", dismiss, true); });
+    this.cleanup.push(bindDismissal({ panel: this.tooltip, anchor: () => this.tooltipAnchor, hide: () => this.hideTooltip() }));
     this.screen.hidden = false;
     if (focusKey) this.screen.querySelectorAll<HTMLElement>("[data-focus-key]").forEach((node) => { if (node.dataset.focusKey === focusKey) node.focus({ preventScroll: true }); });
   }
@@ -293,27 +289,23 @@ export class LoadoutUi {
     const icon = element("span", "loadout-icon"); icon.setAttribute("aria-hidden", "true");
     if (tile.asset) Object.assign(icon.style, this.catalog.domAssetStyle(tile.asset, 52)); else { icon.classList.add("missing"); icon.textContent = "+"; }
     button.append(icon, element("span", "loadout-badge", unavailable ? `⊘ ${tile.badge}` : tile.badge), element("span", "sr-only", tile.label));
-    let timer: ReturnType<typeof setTimeout> | undefined; let held = false; let cancelled = false; let origin: { x: number; y: number } | null = null;
-    const clear = (): void => { clearTimeout(timer); timer = undefined; };
+    let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+    const clear = (): void => { clearTimeout(hoverTimer); hoverTimer = undefined; };
     const show = (): void => this.showTooltip(button, tile, preview);
-    button.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") { clear(); timer = setTimeout(show, 200); } });
-    button.addEventListener("pointerleave", () => { clear(); if (!this.pinned && this.tooltipAnchor === button) this.hideTimer = setTimeout(() => this.hideTooltip(), 150); });
+    button.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") { clear(); hoverTimer = setTimeout(show, HOVER_OPEN_MS); } });
+    button.addEventListener("pointerleave", () => { clear(); if (!this.pinned && this.tooltipAnchor === button) this.hideTimer = setTimeout(() => this.hideTooltip(), HOVER_CLOSE_MS); });
     button.addEventListener("focus", () => { if (button.matches(":focus-visible")) show(); });
     button.addEventListener("blur", () => { if (!this.pinned) this.hideTooltip(); });
-    button.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return; clear(); held = false; cancelled = false; origin = { x: event.clientX, y: event.clientY };
-      timer = setTimeout(() => { held = true; this.pinned = true; show(); }, 450);
+    button.addEventListener("pointerdown", clear);
+    // A hold inspects; a tap equips, unequips or navigates. The shared gesture keeps a
+    // moved, scrolled or cancelled press from being read as either.
+    const release = bindPressGesture(button, {
+      holdMs: LONG_PRESS_MS,
+      onHold: () => { this.pinned = true; show(); },
+      onTap: () => { clear(); if (tile.action) tile.action(); else if (tile.candidate) this.apply(tile); else { this.pinned = true; show(); } },
+      onCancel: () => this.hideTooltip(),
     });
-    button.addEventListener("pointermove", (event) => { if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 8) { clear(); cancelled = true; } });
-    button.addEventListener("pointerup", () => { clear(); origin = null; });
-    button.addEventListener("pointercancel", () => { clear(); origin = null; cancelled = true; this.hideTooltip(); });
-    button.addEventListener("contextmenu", (event) => event.preventDefault());
-    button.addEventListener("click", (event) => {
-      if ((held || cancelled) && event.detail !== 0) { event.preventDefault(); return; }
-      clear(); if (tile.action) tile.action(); else if (tile.candidate) this.apply(tile); else { this.pinned = true; show(); }
-    });
-    const cancel = (): void => { clear(); if (origin) cancelled = true; };
-    window.addEventListener("scroll", cancel, true); this.cleanup.push(() => { clear(); window.removeEventListener("scroll", cancel, true); });
+    this.cleanup.push(() => { clear(); release(); });
     return button;
   }
   private showTooltip(anchor: HTMLElement, tile: Tile, preview?: LoadoutPreview): void {
@@ -330,10 +322,7 @@ export class LoadoutUi {
       if (preview.after) tooltip.append(this.stats(preview));
     }
     if (!this.editableMemberIds.has(this.selectedMemberId)) tooltip.append(element("p", undefined, "Read-only · Only this character's owner can edit this loadout."));
-    tooltip.hidden = false; tooltip.style.left = "8px"; tooltip.style.top = "8px";
-    const rect = anchor.getBoundingClientRect(); const bounds = tooltip.getBoundingClientRect();
-    tooltip.style.left = `${Math.max(8, Math.min(rect.right + 10, window.innerWidth - bounds.width - 8))}px`;
-    tooltip.style.top = `${Math.max(8, Math.min(rect.top, window.innerHeight - bounds.height - 8))}px`;
+    placePopover(tooltip, anchor, "right");
   }
   private hideTooltip(): void { clearTimeout(this.hideTimer); if (this.tooltip) this.tooltip.hidden = true; this.tooltipAnchor?.removeAttribute("aria-describedby"); this.tooltipAnchor = null; this.pinned = false; }
   private disposeInteractions(): void { this.cleanup.forEach((cleanup) => cleanup()); this.cleanup = []; this.hideTooltip(); }

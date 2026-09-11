@@ -50,8 +50,8 @@ import합니다. barrel에는 이제 fixture가 없지만, 이 한 지점을 통
 각 pack directory는 다음 파일을 모두 가집니다.
 
 ```text
-manifest.json    schemaVersion(현재 9), pack ID/version, ruleset ID
-traits.json      모든 authored Trait과 Card/Action provider
+manifest.json    schemaVersion(현재 10), pack ID/version, ruleset ID
+traits.json      모든 authored Trait(source/category/description 포함)과 Card/Action provider
 conditions.json  Condition과 recovery provider Trait
 actions.json     GameCore가 이해하는 effect primitive 조합
 cards.json       Action을 참조하는 전술 카드
@@ -87,7 +87,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 씁니다. 현재 값은 **9**이며, 호환되지 않는 shape
+- `schemaVersion`은 JSON shape migration에 씁니다. 현재 값은 **10**이며, 호환되지 않는 shape
   변경은 기존 schema를 덮어써 조용히 재해석하지 말고 값을 올리고 명시적 migration을 추가합니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key, definition 배열, tile

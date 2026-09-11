@@ -176,6 +176,9 @@ describe("campaign save validation", () => {
       { packId: "other-pack" },
       { packVersion: "0.0.1" },
       { fingerprint: "stale-fingerprint" },
+      // Two releases back: M9-4's source identity is no longer registered, so it is refused
+      // rather than chained through a migration this build does not carry.
+      { packVersion: "0.3.0", fingerprint: "fnv1a64:887ee163d92faa57" },
     ]) {
       // A genuinely older save carries the same identity in its header and in its battle.
       const record = tamperedRecord(state, (save) => {
@@ -375,7 +378,7 @@ describe("campaign save validation", () => {
 
       expect(migration).not.toBeNull();
       expect(projection.contentIdentity).toEqual({
-        packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: FIXTURE_CONTEXT.pack.fingerprint,
+        packId: "cardguild.m7", packVersion: "0.5.0", fingerprint: FIXTURE_CONTEXT.pack.fingerprint,
       });
       // Progress is carried, never recomputed: no EXP is paid for anything already done.
       expect(projection.adventure.party.members["party.hero-1"]?.progression).toEqual({ level: 2, experience: 640 });

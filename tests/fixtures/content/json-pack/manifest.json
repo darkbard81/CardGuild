@@ -1,5 +1,5 @@
 {
-  "schemaVersion": 9,
+  "schemaVersion": 10,
   "id": "cardguild.test.json-pack",
   "version": "1.0.0",
   "rulesetId": "cardguild.pf2e-remaster.v1"

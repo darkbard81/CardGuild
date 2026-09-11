@@ -1,5 +1,6 @@
 import { positionKey } from "../game/grid";
 import { ATTRIBUTE_IDS, SAVE_IDS, SKILL_IDS, deriveMaxHp, isUntypedPenalty } from "../game/statistics";
+import { TRAIT_CATEGORIES, TRAIT_SOURCES, isTraitCategory, isTraitSource } from "../game/traits";
 import type {
   ActionCheckDefinition,
   ActionDefinition,
@@ -307,6 +308,17 @@ export function validateContentPackSemantics(
   const knownActors = new Set(source.actors.map((definition) => definition.id));
 
   source.traits.forEach((definition, definitionIndex) => {
+    // The v10 vocabulary metadata. Checked here as well as by the schema because a pack
+    // authored in TypeScript never meets the schema, and the DOM reads these fields as-is.
+    if (!isTraitSource(definition.source)) {
+      addIssue(context, "traits", `[${definitionIndex}].source`, "INVALID_TRAIT_SOURCE", `Trait "${definition.id}" source must be one of ${TRAIT_SOURCES.join(", ")}.`, definition.id);
+    }
+    if (!isTraitCategory(definition.category)) {
+      addIssue(context, "traits", `[${definitionIndex}].category`, "INVALID_TRAIT_CATEGORY", `Trait "${definition.id}" category must be one of ${TRAIT_CATEGORIES.join(", ")}.`, definition.id);
+    }
+    if (typeof definition.description !== "string" || definition.description.trim().length === 0) {
+      addIssue(context, "traits", `[${definitionIndex}].description`, "EMPTY_TRAIT_DESCRIPTION", `Trait "${definition.id}" needs a non-empty description.`, definition.id);
+    }
     validateStatModifiers(context, "traits", definition.id, `[${definitionIndex}].statModifiers`, definition.statModifiers);
     const grantKeys = new Set<string>();
     definition.cardGrants.forEach((grant, index) => {

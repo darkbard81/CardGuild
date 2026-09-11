@@ -656,9 +656,40 @@ export interface ContextActionOption {
   readonly group: ContextActionGroup;
 }
 
+/**
+ * Where a Trait's vocabulary is defined: the PF2e Remaster rules, or CardGuild itself.
+ * This is provenance of the *definition*. `TraitInstance.sourceId` is a different thing —
+ * what granted one instance to one actor — and the two are never merged.
+ */
+export type TraitSource = "pf2e-remaster" | "cardguild";
+
+/**
+ * CardGuild's presentation and authoring group for a Trait. It is metadata for the DOM
+ * and for future authoring invariants (a playable Character with exactly one `class`
+ * Trait), never a rule dispatch key: combat legality and statistics read `id` alone.
+ */
+export type TraitCategory =
+  | "system"
+  | "ancestry"
+  | "class"
+  | "personality"
+  | "creature"
+  | "action"
+  | "weapon"
+  | "equipment"
+  | "condition"
+  | "terrain"
+  | "damage"
+  | "general";
+
 export interface TraitDefinition {
+  /** The one identity a rule, a provider and the UI all look up. Never namespaced. */
   readonly id: TraitId;
   readonly name: string;
+  readonly source: TraitSource;
+  readonly category: TraitCategory;
+  /** Canonical short tooltip text; the only description any screen may show. */
+  readonly description: string;
   readonly cardGrants: readonly TraitCardGrant[];
   readonly actionGrants: readonly TraitActionGrant[];
   readonly statModifiers?: readonly StatisticModifierContribution[];

@@ -88,19 +88,19 @@ export function withProgression(
 }
 
 /**
- * The one previous content identity M9-4 migrates from. Written out rather than imported
+ * The one previous content identity M11-1 migrates from. Written out rather than imported
  * from the migration table so a test that checks the table cannot check it against itself.
  */
 export const LEGACY_CONTENT_IDENTITY = {
   packId: "cardguild.m7",
-  packVersion: "0.3.0",
-  fingerprint: "fnv1a64:887ee163d92faa57",
+  packVersion: "0.4.0",
+  fingerprint: "fnv1a64:8795c80164042fbf",
 } as const;
 
 /**
  * A stored row exactly as the previous build would have written it. The pack differs only
- * in EXP authoring, so a legacy save is the current projection carrying the old identity
- * and the setup fingerprint that old identity produces.
+ * in Trait vocabulary metadata, so a legacy save is the current projection carrying the old
+ * identity and the setup fingerprint that old identity produces.
  */
 export function legacyStoredSave(state: SessionCoreState): {
   readonly save: CampaignSaveV1;

@@ -21,15 +21,19 @@ export interface ContentMigration {
   readonly verify: (pack: CompiledContentPack) => boolean;
 }
 
+/** The fields `TraitDefinition` gained in schema v10, and nothing else. */
+const TRAIT_VOCABULARY_FIELDS: readonly string[] = ["source", "category", "description"];
+
 /**
- * M9-4's only migration: the M7 pack gained per-Encounter `experienceAwards` and nothing
- * else. Dropping that one authored field from the current pack and re-applying the previous
- * manifest has to reproduce `from.fingerprint` exactly; if it does not, the pack changed in
- * some other way and this save is not the save this migration was written for.
+ * M11-1's only migration: every Trait gained `source`, `category` and `description`, and
+ * nothing about gameplay moved. Stripping those three fields from the current pack and
+ * re-applying the previous manifest has to reproduce `from.fingerprint` exactly; if it
+ * does not, a provider grant, an Actor, an Action, an Encounter or a reward changed too,
+ * and this save is not the save this migration was written for.
  */
-export const EXPERIENCE_AUTHORING_MIGRATION: ContentMigration = {
-  from: { packId: "cardguild.m7", packVersion: "0.3.0", fingerprint: "fnv1a64:887ee163d92faa57" },
-  to: { packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: "fnv1a64:8795c80164042fbf" },
+export const TRAIT_VOCABULARY_MIGRATION: ContentMigration = {
+  from: { packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: "fnv1a64:8795c80164042fbf" },
+  to: { packId: "cardguild.m7", packVersion: "0.5.0", fingerprint: "fnv1a64:be3c7b8a374a3423" },
   verify: (pack) => {
     const normalized = normalizeContentPack({
       manifest: pack.manifest,
@@ -45,20 +49,20 @@ export const EXPERIENCE_AUTHORING_MIGRATION: ContentMigration = {
     const previous = {
       ...normalized,
       manifest: {
-        schemaVersion: 8,
-        id: EXPERIENCE_AUTHORING_MIGRATION.from.packId,
-        version: EXPERIENCE_AUTHORING_MIGRATION.from.packVersion,
+        schemaVersion: 9,
+        id: TRAIT_VOCABULARY_MIGRATION.from.packId,
+        version: TRAIT_VOCABULARY_MIGRATION.from.packVersion,
         rulesetId: normalized.manifest.rulesetId,
       },
-      // The one field v9 added. Everything else must survive untouched for this to pass.
-      adventures: normalized.adventures.map((adventure) =>
-        Object.fromEntries(Object.entries(adventure).filter(([key]) => key !== "experienceAwards"))),
+      // Only the three v10 fields come off. Everything else must survive untouched.
+      traits: normalized.traits.map((trait) =>
+        Object.fromEntries(Object.entries(trait).filter(([key]) => !TRAIT_VOCABULARY_FIELDS.includes(key)))),
     };
-    return fingerprintValue(previous) === EXPERIENCE_AUTHORING_MIGRATION.from.fingerprint;
+    return fingerprintValue(previous) === TRAIT_VOCABULARY_MIGRATION.from.fingerprint;
   },
 };
 
-export const REGISTERED_CONTENT_MIGRATIONS: readonly ContentMigration[] = [EXPERIENCE_AUTHORING_MIGRATION];
+export const REGISTERED_CONTENT_MIGRATIONS: readonly ContentMigration[] = [TRAIT_VOCABULARY_MIGRATION];
 
 function sameIdentity(left: ContentIdentity, right: ContentIdentity): boolean {
   return left.packId === right.packId

@@ -81,6 +81,9 @@ function weaponEquipment(id: string, profile: CharacterWeaponProfile): Equipment
 const TRIP: TraitDefinition = {
   id: "trip",
   name: "Trip",
+  source: "cardguild",
+  category: "weapon",
+  description: "테스트용 provider Trait입니다.",
   cardGrants: [{ cardDefinitionId: "card.trip", count: 3 }],
   actionGrants: [{ actionId: "trip", contextGroup: "escape" }],
   statModifiers: [{ selector: { kind: "attack" }, type: "circumstance", value: 1, label: "Trip haft" }],

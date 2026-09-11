@@ -530,11 +530,100 @@ button {
   font-size: 1rem;
 }
 
-.detail-traits {
+/*
+ * Trait chips: one shared vocabulary wherever a Trait is named. The category and source
+ * ride on the dataset so a colour is a selector here, never a branch in the renderer.
+ */
+.trait-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.28rem;
   margin: 0;
+}
+
+.trait-chip {
+  display: inline-block;
+  max-width: 100%;
+  padding: 0.12rem 0.48rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
   color: #87bfa4;
-  font-size: 0.68rem;
+  background: rgb(135 191 164 / 8%);
+  font-size: 0.66rem;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
+  white-space: nowrap;
+  cursor: help;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.trait-chip:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.trait-chip:not(:disabled):hover,
+.trait-chip[aria-describedby] {
+  border-color: var(--gold);
+  color: var(--gold-bright);
+  background: rgb(217 173 85 / 12%);
+}
+
+.trait-chip:focus-visible {
+  outline: 2px solid var(--gold-bright);
+  outline-offset: 1px;
+}
+
+.trait-chip[data-trait-category="terrain"] { color: #b9c1a6; }
+.trait-chip[data-trait-category="weapon"],
+.trait-chip[data-trait-category="equipment"] { color: #e0c07a; }
+.trait-chip[data-trait-category="damage"] { color: #e5a39b; }
+.trait-chip[data-trait-category="condition"] { color: #caa5ef; }
+.trait-chip[data-trait-category="creature"] { color: #d7b489; }
+.trait-chip[data-trait-category="system"] { color: var(--muted); }
+.trait-chip[data-trait-source="pf2e-remaster"] { border-style: solid; }
+.trait-chip[data-trait-source="cardguild"] { border-style: dashed; }
+
+/* The description lives on the body, above every panel, so no overflow can clip it. */
+.trait-tooltip {
+  position: fixed;
+  z-index: 120;
+  width: min(20rem, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--gold);
+  border-radius: 0.5rem;
+  color: var(--ink);
+  background: var(--panel-solid);
+  box-shadow: 0 0.7rem 1.6rem rgb(0 0 0 / 55%);
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
+.trait-tooltip-name {
+  margin: 0;
+  color: var(--gold-bright);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 0.98rem;
+}
+
+.trait-tooltip-meta {
+  margin: 0.15rem 0 0.4rem;
+  color: var(--muted);
+  font-size: 0.66rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.trait-tooltip-description {
+  margin: 0;
+  color: #d9d3c4;
+  overflow-wrap: anywhere;
 }
 
 .detail-warning {
@@ -839,7 +928,6 @@ button {
   box-shadow: 0 0.7rem 1.6rem rgb(0 0 0 / 55%);
   font-size: 0.74rem;
   line-height: 1.45;
-  pointer-events: none;
 }
 
 .card-detail p {

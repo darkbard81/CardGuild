@@ -21,6 +21,7 @@ import type {
   ScenarioDefinition,
 } from "../game";
 import { buildCombatLog, type CombatLogEntry } from "./combat-log";
+import { TraitView, type TraitChipList } from "./trait-view";
 import type { AssetCatalog } from "../presentation";
 import type { MoveBand } from "../pixi/BattleView";
 
@@ -185,6 +186,11 @@ export class BattleUi {
   /** The character sheet stays where the player left it across snapshots. */
   private heroDetailsOpen = false;
   private portraitDefinitionId: string | null = null;
+  /** One registry view for every Trait the battle shows, and one chip list per surface. */
+  private readonly traits: TraitView;
+  private readonly actionTraits: TraitChipList;
+  private readonly cardTraits: TraitChipList;
+  private readonly strikeTraits: TraitChipList;
 
   public constructor(
     private readonly content: CombatContent,
@@ -193,10 +199,16 @@ export class BattleUi {
     private readonly handlers: BattleUiHandlers,
   ) {
     this.resultAction.textContent = "Return to Adventure";
+    this.traits = new TraitView(content.traits);
+    this.actionTraits = this.traits.createList();
+    this.cardTraits = this.traits.createList();
+    this.strikeTraits = this.traits.createList();
     const listenerOptions = { signal: this.abortController.signal };
-    // Anything that is not the card being pressed puts its detail away again.
+    // Anything that is not the card being pressed, or the detail it opened, puts the
+    // detail away again; a Trait chip inside the detail is part of it.
     document.addEventListener("pointerdown", (event) => {
-      if (!(event.target instanceof Node) || !this.handCards.contains(event.target)) this.hideCardDetail();
+      const target = event.target;
+      if (!(target instanceof Node) || (!this.handCards.contains(target) && !this.cardDetail.contains(target))) this.hideCardDetail();
     }, listenerOptions);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") this.hideCardDetail();
@@ -213,6 +225,7 @@ export class BattleUi {
 
   public destroy(): void {
     this.hideCardDetail();
+    this.traits.destroy();
     this.abortController.abort();
     this.reactionModal.hidden = true;
     this.resultModal.hidden = true;
@@ -338,8 +351,9 @@ export class BattleUi {
     const context = { content: this.content };
     const strike = resolveStrike(hero, context);
     const armor = equippedArmor(hero, context);
-    const sheet = element("dl", "stats-grid");
-    const rows: readonly (readonly [string, string])[] = [
+    // `null` marks where the Strike's Trait chips go; the list is placed while the sheet is
+    // assembled so the chip being read is never detached before its focus is noted.
+    const rows: readonly (readonly [string, string | null])[] = [
       ["Perception", signed(resolveStatisticModifier(hero, { kind: "perception" }, context).value)],
       ["Initiative", signed(resolveInitiative(hero, context).value)],
       ["Class DC", String(resolveClassDC(hero, context).value)],
@@ -351,13 +365,18 @@ export class BattleUi {
       ["Strike", strikeLabel(strike)],
       ["Damage", `${strike.damage.damageType}`],
       ["Reach", `${strike.rangeFeet}ft`],
-      ["Traits", strike.traits.length ? strike.traits.join(" · ") : "—"],
+      ["Traits", strike.traits.length ? null : "—"],
       ["Armor", armor?.name ?? "Unarmored"],
     ];
-    for (const [label, value] of rows) {
-      sheet.append(element("dt", undefined, label), element("dd", undefined, value));
-    }
-    this.heroDetails.replaceChildren(sheet);
+    this.strikeTraits.render(strike.traits, (chips) => {
+      const sheet = element("dl", "stats-grid");
+      for (const [label, value] of rows) {
+        const cell = element("dd");
+        if (value === null) cell.append(chips); else cell.textContent = value;
+        sheet.append(element("dt", undefined, label), cell);
+      }
+      this.heroDetails.replaceChildren(sheet);
+    });
   }
 
   private applyHeroDetailsState(): void {
@@ -498,12 +517,12 @@ export class BattleUi {
   ): void {
     const heading = element("div", "detail-heading");
     heading.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
-    this.cardDetail.replaceChildren(
+    this.cardTraits.render(action.traits, (chips) => this.cardDetail.replaceChildren(
       heading,
       element("p", undefined, action.description),
-      element("p", "detail-traits", action.traits.join(" · ")),
+      chips,
       element("p", "detail-source", `Source: ${action.sourceLabel ?? card?.source.kind ?? "Character"}`),
-    );
+    ));
     if (action.reason) this.cardDetail.append(element("p", "detail-warning", action.reason));
     this.cardDetail.hidden = false;
     const stage = button.closest(".combat-stage")?.getBoundingClientRect();
@@ -518,27 +537,29 @@ export class BattleUi {
 
   public hideCardDetail(): void {
     this.cancelLongPress();
+    this.cardTraits.clear();
     this.cardDetail.hidden = true;
   }
 
   /** Replaces the inspector with one line, for a phase that has nothing to inspect. */
   public renderHint(text: string): void {
+    this.actionTraits.clear();
     this.selectedDetail.replaceChildren(element("p", "detail-hint", text));
   }
 
   public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null, state?: CombatState): void {
-    this.selectedDetail.replaceChildren();
     if (!action) {
-      this.selectedDetail.append(element("p", "detail-hint", DETAIL_HINT));
+      this.actionTraits.clear();
+      this.selectedDetail.replaceChildren(element("p", "detail-hint", DETAIL_HINT));
       return;
     }
     const heading = element("div", "detail-heading");
     heading.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
-    this.selectedDetail.append(
+    this.actionTraits.render(action.traits, (chips) => this.selectedDetail.replaceChildren(
       heading,
       element("p", undefined, action.description),
-      element("p", "detail-traits", action.traits.join(" · ")),
-    );
+      chips,
+    ));
     if (action.sourceLabel) this.selectedDetail.append(element("p", "detail-source", `Source: ${action.sourceLabel}`));
     if (action.reason) this.selectedDetail.append(element("p", "detail-warning", action.reason));
     if (!preview) return;
@@ -589,6 +610,7 @@ export class BattleUi {
 
   /** Inspector view for an actor the pointer is hovering on the board. */
   public renderActorDetail(actor: ActorState): void {
+    this.actionTraits.clear();
     this.selectedDetail.replaceChildren();
     const heading = element("div", "detail-heading");
     heading.append(
