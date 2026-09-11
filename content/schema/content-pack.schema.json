@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v9",
+  "title": "CardGuild Content Pack v10",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures"],

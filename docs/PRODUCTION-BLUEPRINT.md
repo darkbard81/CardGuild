@@ -9,7 +9,7 @@ routine authoring의 선행 조건이 아닙니다.
 함께 적었습니다 — 문서가 코드보다 오래됐다고 의심되면 그 경로가 정답입니다.
 
 ```text
-작성 시점 baseline   cardguild.m7@0.5.0 / schema v10 / fnv1a64:be3c7b8a374a3423
+작성 시점 baseline   cardguild.m7@0.5.0 / schema v10 / fnv1a64:352d6c3f8b950173
 지금 값 확인         npx tsx tools/content/check-content.ts && npx tsx tools/content/check-production-content.ts
 ```
 
@@ -170,7 +170,7 @@ gate를 우회하는 flag는 없습니다.
   `src/server/campaign-content-migration.ts`의 `REGISTERED_CONTENT_MIGRATIONS`가 정확히
   `from → to` 한 쌍을 등록하고, `verify()`가 현재 pack에서 그 변경만 되돌렸을 때 `from`의
   fingerprint가 재현되는지 검사합니다 (현재: `0.4.0 fnv1a64:8795c80164042fbf` → `0.5.0
-  fnv1a64:be3c7b8a374a3423`, Trait `source/category/description`만 제거). gameplay 값이 하나라도
+  fnv1a64:352d6c3f8b950173`, Trait `source/category/description`만 제거). gameplay 값이 하나라도
   같이 바뀌면 `verify()`가 실패해 migration이 무효가 되고, 두 단계 전 identity(`0.3.0`)를 포함한
   나머지는 `SAVE_CONTENT_MISMATCH`로 거절하며 원본 저장을 보존합니다. 새 release를 낼 때는 등록
   항목을 **교체**하지 누적하지 않습니다.
@@ -256,11 +256,16 @@ primitive 조합으로만 표현하고, 조합이 불가능하면 §13으로 갑
   (`INVALID_TRAIT_SOURCE`, `INVALID_TRAIT_CATEGORY`, `EMPTY_TRAIT_DESCRIPTION`). 세 값은
   fingerprint에 들어가지만 **전투 규칙은 읽지 않습니다** — resolver·provider·statistic은
   `id`만 봅니다. `category`로 legality나 수치를 분기하면 버그입니다.
-- **source 판단 기준**: 원전(PF2e Remaster)에 같은 이름의 Trait이 있고 **현재 CardGuild에서의
-  의미가 원전과 일치할 때만** `pf2e-remaster`입니다. 이름만 같은 경우(`open`은 원전에서 공격
-  순서 Trait, 여기서는 바닥 칸), terrain/system marker, Card·Context Action provider, 복합 의미,
-  판단이 불분명한 경우는 전부 `cardguild`입니다. 현재 audit 결과는
+- **source 판단 기준**: `source`는 **vocabulary의 출처**만 말합니다. 원전(PF2e Remaster)에 같은
+  이름의 Trait이 있고 **현재 CardGuild에서의 의미가 원전과 일치하면** `pf2e-remaster`입니다.
+  `cardGrants`/`actionGrants`/`statModifiers`는 그 Trait을 CardGuild가 **어떻게 활용하는가**이지
+  출처가 아니므로, `trip`·`parry`처럼 Player Core weapon Trait에 provider를 붙인 경우도
+  `pf2e-remaster`입니다. 이름만 같은 경우(`open`은 원전에서 공격 순서 Trait, 여기서는 바닥 칸),
+  terrain/system marker, 원전에 없는 단어(`spell`, `reaction`, `weapon`, `field-medicine` …),
+  판단이 불분명한 경우는 `cardguild`입니다. 현재 audit 결과는
   `src/content/production-content.test.ts`의 `production trait vocabulary`가 고정합니다.
+- `name`은 공용 chip의 canonical label입니다. provider 역할이 아니라 그 Trait 자체를 부릅니다
+  (`grabbed` → "Grabbed", "Grabbed Recovery" ✗).
 - `description`은 **지금 CardGuild가 구현한 의미**를 한두 문장으로 씁니다(한국어). 미구현
   원전 효과를 약속하지 않고, 원문 규칙을 옮겨 적지 않습니다. UI는 이 문장만 보여 주며 화면별
   설명을 따로 두지 않습니다(`src/dom/trait-view.ts`).

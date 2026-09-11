@@ -26,8 +26,10 @@ export interface PressGestureHandlers {
 /**
  * Reads a button's pointer events as "held" or "tapped" without letting one press mean
  * both. A press that moves more than a few pixels, that the browser cancels, or that a
- * scroll interrupts is neither, and its click is swallowed. The keyboard's synthetic click
- * (`detail === 0`) is always a tap: Enter and Space have no pointer to cancel.
+ * scroll interrupts is neither, and its click is swallowed. Leaving the control mid-press
+ * gives up the hold as well, so a finger that slides off a tile edge is not pinned to it
+ * later. The keyboard's synthetic click (`detail === 0`) is always a tap: Enter and Space
+ * have no pointer to cancel.
  */
 export function bindPressGesture(button: HTMLElement, handlers: PressGestureHandlers): () => void {
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -45,6 +47,7 @@ export function bindPressGesture(button: HTMLElement, handlers: PressGestureHand
       if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > PRESS_TOLERANCE_PX) { clear(); cancelled = true; }
     }],
     ["pointerup", () => { clear(); origin = null; }],
+    ["pointerleave", clear],
     ["pointercancel", () => { clear(); origin = null; cancelled = true; handlers.onCancel?.(); }],
     ["contextmenu", (event: Event) => event.preventDefault()],
     ["click", (event: MouseEvent) => {
@@ -96,7 +99,13 @@ export function bindDismissal(options: DismissalOptions): () => void {
       if (event.key !== "Escape" || panel.hidden) return;
       if (options.consumeEscape) event.stopPropagation();
     }
-    if (event.type === "pointerdown" && (panel.contains(event.target as Node) || options.anchor()?.contains(event.target as Node))) return;
+    if (event.type === "pointerdown") {
+      const anchor = options.anchor();
+      if (panel.contains(event.target as Node) || anchor?.contains(event.target as Node)) return;
+      // A press where the control is, even through something laid over it (a menu's
+      // backdrop passing the tap on), is a press on the control and not a dismissal.
+      if (anchor && event instanceof PointerEvent && pointWithin(anchor, event)) return;
+    }
     hide();
   };
   document.addEventListener("pointerdown", dismiss);
@@ -109,6 +118,11 @@ export function bindDismissal(options: DismissalOptions): () => void {
     window.removeEventListener("resize", dismiss);
     window.removeEventListener("scroll", dismiss, true);
   };
+}
+
+function pointWithin(element: HTMLElement, point: { readonly clientX: number; readonly clientY: number }): boolean {
+  const rect = element.getBoundingClientRect();
+  return point.clientX >= rect.left && point.clientX <= rect.right && point.clientY >= rect.top && point.clientY <= rect.bottom;
 }
 
 export type PopoverSide = "right" | "below";

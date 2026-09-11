@@ -58,11 +58,10 @@ describe("production trait vocabulary", () => {
     }
   });
 
-  it("classifies terrain and system markers, providers and composite meanings as CardGuild vocabulary", () => {
+  it("classifies terrain and system markers and CardGuild-only meanings as CardGuild vocabulary", () => {
     const cardguild = new Set(traits.filter((trait) => trait.source === "cardguild").map((trait) => trait.id));
     for (const trait of traits) {
-      const provider = trait.cardGrants.length > 0 || trait.actionGrants.length > 0;
-      if (trait.category === "terrain" || trait.category === "system" || provider) {
+      if (trait.category === "terrain" || trait.category === "system") {
         expect(cardguild.has(trait.id), trait.id).toBe(true);
       }
     }
@@ -70,12 +69,25 @@ describe("production trait vocabulary", () => {
     expect(PRODUCTION_CONTENT.pack.combatContent.traits["open"]).toMatchObject({ source: "cardguild", category: "terrain" });
   });
 
-  it("marks as PF2e Remaster only the weapon, action and damage vocabulary the engine reads the same way", () => {
+  it("keeps provenance apart from provider behaviour: a Remaster weapon Trait stays Remaster when CardGuild makes it grant cards", () => {
+    // `trip` and `parry` are Player Core weapon Traits; their cardGrants say what CardGuild
+    // does with them, not where the word came from.
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["trip"]).toMatchObject({ source: "pf2e-remaster", category: "weapon" });
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["parry"]).toMatchObject({ source: "pf2e-remaster", category: "weapon" });
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["trip"]?.cardGrants.length).toBeGreaterThan(0);
+    // Whereas a provider CardGuild invented outright is CardGuild's.
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["field-medicine"]).toMatchObject({ source: "cardguild" });
+    // Names are the chip labels now, so a Condition Trait is named after the Condition.
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["grabbed"]?.name).toBe("Grabbed");
+    expect(PRODUCTION_CONTENT.pack.combatContent.traits["prone"]?.name).toBe("Prone");
+  });
+
+  it("marks as PF2e Remaster only the vocabulary whose current meaning matches the Remaster Trait", () => {
     const remaster = traits.filter((trait) => trait.source === "pf2e-remaster").map((trait) => trait.id).sort();
     expect(remaster).toEqual([
       "agile", "attack", "cantrip", "cold", "concentrate", "emotion", "fear", "finesse", "fire", "flourish",
-      "focus", "goblin", "healing", "manipulate", "mental", "move", "propulsive", "reach", "skill", "thrown",
-      "undead", "vitality", "void",
+      "focus", "goblin", "healing", "manipulate", "mental", "move", "parry", "propulsive", "reach", "skill",
+      "thrown", "trip", "undead", "vitality", "void",
     ]);
   });
 });

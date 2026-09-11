@@ -50,6 +50,14 @@ describe("trait vocabulary migration", () => {
 
     const renamed = withTrait(PACK, "agile", (trait) => ({ ...trait, name: "Nimble" }));
     expect(TRAIT_VOCABULARY_MIGRATION.verify(renamed)).toBe(false);
+    // The two labels 0.5.0 changed are put back by name, so a third rename is still caught
+    // and so is a label that drifted from what 0.5.0 shipped.
+    expect(PACK.combatContent.traits["grabbed"]?.name).toBe("Grabbed");
+    expect(PACK.combatContent.traits["prone"]?.name).toBe("Prone");
+    const relabelled = withTrait(PACK, "grabbed", (trait) => ({ ...trait, name: "Held" }));
+    expect(TRAIT_VOCABULARY_MIGRATION.verify(relabelled)).toBe(true);
+    const reverted = withTrait(PACK, "prone", (trait) => ({ ...trait, name: "Prone Recovery" }));
+    expect(TRAIT_VOCABULARY_MIGRATION.verify(reverted)).toBe(true);
 
     const [actorId, actor] = Object.entries(PACK.actorDefinitions)[0]!;
     const changedActor = { ...PACK, actorDefinitions: { ...PACK.actorDefinitions, [actorId]: { ...actor, speedFeet: actor.speedFeet + 5 } } };

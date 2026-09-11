@@ -12,6 +12,16 @@ export interface RingMenuHandlers {
   readonly onDismiss: () => void;
 }
 
+export interface RingMenuOptions {
+  /**
+   * Controls beneath the backdrop a tap is passed on to instead of closing the menu. The
+   * backdrop covers the whole stage so that a press anywhere else is a dismissal and
+   * reaches neither the board nor the hand; the Trait chips in the inspector are the one
+   * thing under it a player is invited to read while the ring is open.
+   */
+  readonly passthrough?: string;
+}
+
 export interface RingAnchor {
   readonly x: number;
   readonly y: number;
@@ -22,6 +32,8 @@ const OPTION_HEIGHT = 46;
 const MIN_RADIUS = 92;
 const MAX_RADIUS = 200;
 const EDGE_MARGIN = 8;
+/** A backdrop press that travels further than this is a drag, not a tap to pass on. */
+const PASSTHROUGH_TAP_TOLERANCE = 8;
 
 function ringRadius(count: number): number {
   if (count < 2) return MIN_RADIUS;
@@ -54,10 +66,13 @@ export class RingMenu {
   private armedOptionId: string | null = null;
   /** A touch-armed option keeps the detail panel; the synthetic mouseleave must not clear it. */
   private armedByTouch = false;
+  /** A backdrop press that began over a passthrough control, until it lifts or moves away. */
+  private reaching: { readonly target: HTMLElement; readonly pointerId: number; readonly x: number; readonly y: number } | null = null;
 
   public constructor(
     private readonly root: HTMLElement,
     private readonly handlers: RingMenuHandlers,
+    private readonly options: RingMenuOptions = {},
   ) {
     const listenerOptions = { signal: this.abortController.signal };
     this.menu.className = "ring-menu";
@@ -68,10 +83,31 @@ export class RingMenu {
     this.root.addEventListener(
       "pointerdown",
       (event) => {
-        if (event.target === this.root) this.handlers.onDismiss();
+        if (event.target !== this.root) return;
+        const beneath = this.passthroughBeneath(event);
+        if (beneath) {
+          this.reaching = { target: beneath, pointerId: event.pointerId, x: event.clientX, y: event.clientY };
+          return;
+        }
+        this.handlers.onDismiss();
       },
       listenerOptions,
     );
+    // The backdrop keeps the pointer (a touch is captured by what it pressed), so the tap
+    // is completed here and handed to the control as the click it would have been. A
+    // press that moved or was cancelled hands over nothing, the same as on the control.
+    this.root.addEventListener(
+      "pointerup",
+      (event) => {
+        const reaching = this.reaching;
+        if (!reaching || event.pointerId !== reaching.pointerId) return;
+        this.reaching = null;
+        if (Math.hypot(event.clientX - reaching.x, event.clientY - reaching.y) > PASSTHROUGH_TAP_TOLERANCE) return;
+        if (reaching.target.isConnected) reaching.target.click();
+      },
+      listenerOptions,
+    );
+    this.root.addEventListener("pointercancel", () => { this.reaching = null; }, listenerOptions);
     window.addEventListener(
       "keydown",
       (event) => {
@@ -117,6 +153,7 @@ export class RingMenu {
 
   public hide(): void {
     this.armedOptionId = null;
+    this.reaching = null;
 
     if (!this.open) return;
     this.open = false;
@@ -131,6 +168,15 @@ export class RingMenu {
     this.connectors.remove();
     this.menu.remove();
     this.hub.remove();
+  }
+
+  /** The passthrough control under a backdrop press, if the press landed on one. */
+  private passthroughBeneath(event: PointerEvent): HTMLElement | null {
+    const selector = this.options.passthrough;
+    if (!selector) return null;
+    const beneath = document.elementsFromPoint(event.clientX, event.clientY)
+      .find((candidate) => !this.root.contains(candidate) && candidate instanceof HTMLElement && candidate.matches(selector));
+    return beneath instanceof HTMLElement && !beneath.matches(":disabled") ? beneath : null;
   }
 
   /**

@@ -157,6 +157,10 @@ export class BattleController {
       onSelect: (optionId) => this.handleRingSelect(optionId),
       onHover: (optionId) => this.handleRingHover(optionId),
       onDismiss: () => this.dismissRing(),
+    }, {
+      // The inspector describes the option under the finger; its Trait chips stay readable
+      // while the ring is up instead of closing it.
+      passthrough: "#selected-detail .trait-chip",
     });
     this.refreshMoveBands();
     window.addEventListener("keydown", this.keyHandler);

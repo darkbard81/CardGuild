@@ -25,15 +25,26 @@ export interface ContentMigration {
 const TRAIT_VOCABULARY_FIELDS: readonly string[] = ["source", "category", "description"];
 
 /**
- * M11-1's only migration: every Trait gained `source`, `category` and `description`, and
- * nothing about gameplay moved. Stripping those three fields from the current pack and
- * re-applying the previous manifest has to reproduce `from.fingerprint` exactly; if it
- * does not, a provider grant, an Actor, an Action, an Encounter or a reward changed too,
- * and this save is not the save this migration was written for.
+ * The two labels 0.5.0 renamed. They used to describe the provider role ("Grabbed
+ * Recovery" grants the escape Action); now that `name` is the canonical chip label they
+ * name the Condition itself. A label is not a rule, so the rename rides with the metadata.
+ */
+const PREVIOUS_TRAIT_NAMES: Readonly<Record<string, string>> = {
+  grabbed: "Grabbed Recovery",
+  prone: "Prone Recovery",
+};
+
+/**
+ * M11-1's only migration: every Trait gained `source`, `category` and `description`, two
+ * Traits were relabelled, and nothing about gameplay moved. Stripping those three fields,
+ * putting the two old labels back and re-applying the previous manifest has to reproduce
+ * `from.fingerprint` exactly; if it does not, a provider grant, an Actor, an Action, an
+ * Encounter or a reward changed too, and this save is not the save this migration was
+ * written for.
  */
 export const TRAIT_VOCABULARY_MIGRATION: ContentMigration = {
   from: { packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: "fnv1a64:8795c80164042fbf" },
-  to: { packId: "cardguild.m7", packVersion: "0.5.0", fingerprint: "fnv1a64:be3c7b8a374a3423" },
+  to: { packId: "cardguild.m7", packVersion: "0.5.0", fingerprint: "fnv1a64:352d6c3f8b950173" },
   verify: (pack) => {
     const normalized = normalizeContentPack({
       manifest: pack.manifest,
@@ -54,9 +65,11 @@ export const TRAIT_VOCABULARY_MIGRATION: ContentMigration = {
         version: TRAIT_VOCABULARY_MIGRATION.from.packVersion,
         rulesetId: normalized.manifest.rulesetId,
       },
-      // Only the three v10 fields come off. Everything else must survive untouched.
-      traits: normalized.traits.map((trait) =>
-        Object.fromEntries(Object.entries(trait).filter(([key]) => !TRAIT_VOCABULARY_FIELDS.includes(key)))),
+      // Only the three v10 fields come off and only the two labels go back. Everything
+      // else must survive untouched.
+      traits: normalized.traits.map((trait) => Object.fromEntries(Object.entries(trait)
+        .filter(([key]) => !TRAIT_VOCABULARY_FIELDS.includes(key))
+        .map(([key, value]) => [key, key === "name" ? PREVIOUS_TRAIT_NAMES[trait.id] ?? value : value]))),
     };
     return fingerprintValue(previous) === TRAIT_VOCABULARY_MIGRATION.from.fingerprint;
   },

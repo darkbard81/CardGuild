@@ -435,7 +435,7 @@ describe("core combat rules", () => {
     const first = createCoreCombat(coreScenario(), CORE_SEED).state;
     const second = createCoreCombat(coreScenario(), CORE_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("a459d8c7293cb1dd");
+    expect(hashCombatState(first)).toBe("19e85eb4a689863c");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),

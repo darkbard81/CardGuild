@@ -129,7 +129,7 @@ export const CORE_TRAITS: readonly TraitDefinition[] = [
   },
   {
     id: "grabbed",
-    name: "Grabbed Recovery",
+    name: "Grabbed",
     source: "cardguild",
     category: "condition",
     description: "붙잡힌 상태입니다. 상태가 있는 동안 Escape 문맥 행동을 쓸 수 있습니다.",
@@ -206,7 +206,7 @@ export const CORE_TRAITS: readonly TraitDefinition[] = [
   },
   {
     id: "prone",
-    name: "Prone Recovery",
+    name: "Prone",
     source: "cardguild",
     category: "condition",
     description: "넘어진 상태입니다. 상태가 있는 동안 Stand 문맥 행동을 쓸 수 있습니다.",
@@ -280,7 +280,7 @@ export const CORE_TRAITS: readonly TraitDefinition[] = [
   {
     id: "trip",
     name: "Trip",
-    source: "cardguild",
+    source: "pf2e-remaster",
     category: "weapon",
     description: "넘어뜨리기에 알맞은 무기입니다. 장착하면 Trip 카드 3장을 덱에 더합니다.",
     cardGrants: [

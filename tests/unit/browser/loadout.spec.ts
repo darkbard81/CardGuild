@@ -102,3 +102,21 @@ test("touch hold and cancelled gestures inspect without submitting", async ({ pa
   await expect(page.locator("#loadout-detail")).toBeHidden();
   expect(await page.evaluate(() => window.loadoutFixture.requests.length)).toBe(0);
 });
+
+test("gives up a hold when the finger leaves the tile before the hold fires", async ({ page }) => {
+  const weapon = page.locator('.equipment-slot[data-slot="weapon"]');
+  await weapon.dispatchEvent("pointerdown", { pointerType: "touch", button: 0, clientX: 100, clientY: 270 });
+  // A slide of less than the drag tolerance that still crosses the edge is a leave, not a
+  // move; the hold must not fire once the pointer is gone.
+  await weapon.dispatchEvent("pointermove", { pointerType: "touch", clientX: 104, clientY: 273 });
+  await weapon.dispatchEvent("pointerleave", { pointerType: "touch" });
+  // Real time on purpose: only outliving the 450ms hold shows it never fires.
+  await page.waitForTimeout(600);
+  await expect(page.locator("#loadout-detail")).toBeHidden();
+  expect(await page.evaluate(() => window.loadoutFixture.requests.length)).toBe(0);
+  // The tile is still a tile: the next hold works as before.
+  await weapon.dispatchEvent("pointerdown", { pointerType: "touch", button: 0, clientX: 100, clientY: 270 });
+  await expect(page.locator("#loadout-detail")).toBeVisible();
+  await weapon.dispatchEvent("pointerup", { pointerType: "touch" });
+  expect(await page.evaluate(() => window.loadoutFixture.requests.length)).toBe(0);
+});

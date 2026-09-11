@@ -81,7 +81,7 @@ function weaponEquipment(id: string, profile: CharacterWeaponProfile): Equipment
 const TRIP: TraitDefinition = {
   id: "trip",
   name: "Trip",
-  source: "cardguild",
+  source: "pf2e-remaster",
   category: "weapon",
   description: "테스트용 provider Trait입니다.",
   cardGrants: [{ cardDefinitionId: "card.trip", count: 3 }],

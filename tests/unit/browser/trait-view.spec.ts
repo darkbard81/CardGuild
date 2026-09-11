@@ -230,6 +230,53 @@ test.describe("touch", () => {
     await expect(page.locator("#card-detail")).toBeHidden();
   });
 
+  /**
+   * The ring's backdrop covers the stage so a stray tap closes the menu and reaches
+   * nothing else. The inspector under it describes the armed option, and its chips are
+   * the one thing the backdrop hands a tap on to.
+   */
+  test("reaches the inspector's chips through the open ring, and only with a tap", async ({ page }) => {
+    const canvas = page.locator("#pixi-canvas");
+    await canvas.tap({ position: await boardPoint(page, 2.5, 1.5) });
+    await page.locator('#ring-root [data-action-id="strike"]').tap();
+    const chip = page.locator('#selected-detail .trait-chip[data-trait-id="attack"]');
+    await expect(chip).toBeVisible();
+    const centre = async () => {
+      const box = (await chip.boundingBox())!;
+      return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    };
+    let at = await centre();
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(tooltip(page)).toBeVisible();
+    await expect(tooltip(page)).toHaveAttribute("data-pinned", "true");
+    await expect(tooltip(page).locator(".trait-tooltip-name")).toHaveText("Attack");
+    // The ring is still up, still armed on Strike, and nothing was sent.
+    await expect(page.locator("#ring-root")).toBeVisible();
+    await expect(chip).toBeVisible();
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+    at = await centre();
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(tooltip(page)).toBeHidden();
+    await expect(page.locator("#ring-root")).toBeVisible();
+
+    // A press that starts on a chip and travels is a drag on the backdrop, not a tap.
+    at = await centre();
+    const root = page.locator("#ring-root");
+    await root.dispatchEvent("pointerdown", { pointerType: "touch", pointerId: 7, button: 0, clientX: at.x, clientY: at.y });
+    await root.dispatchEvent("pointerup", { pointerType: "touch", pointerId: 7, clientX: at.x + 30, clientY: at.y + 30 });
+    await expect(tooltip(page)).toBeHidden();
+    await expect(page.locator("#ring-root")).toBeVisible();
+
+    // A tap anywhere else on the backdrop is still the dismissal it always was.
+    at = await centre();
+    await page.touchscreen.tap(at.x, at.y);
+    await expect(tooltip(page)).toBeVisible();
+    await page.touchscreen.tap(550, 550);
+    await expect(page.locator("#ring-root")).toBeHidden();
+    await expect(tooltip(page)).toBeHidden();
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+  });
+
   test("does not open on a press that moved or was cancelled", async ({ page }) => {
     await page.locator("#hero-details-toggle").tap();
     const chip = page.locator('#hero-details .trait-chip[data-trait-id="trip"]');
