@@ -12,16 +12,16 @@ Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Ad
 - npm 11 이상
 - 최소 지원 해상도 1024x768. 보드 투영은 HUD gutter를 제외한 영역 안에서 계산되며,
   gutter 크기는 `data-hud-gutter` 패널을 실제로 measure해서 얻습니다. style.css가
-  바뀌면 투영이 따라오고, smoke test는 어떤 패널도 보드 quad와 겹치지 않는지 검증합니다.
+  바뀌면 투영이 따라오고, E2E 테스트는 어떤 패널도 보드 quad와 겹치지 않는지 검증합니다.
 
 ```bash
 npm install
-npm run dev:coop
+npm run dev
 ```
 
 브라우저는 `http://127.0.0.1:4173`에서 엽니다. 호스트는 `Host sign in`으로 로그인한 뒤
 `New Campaign`으로 방을 만들고, 화면에 표시되는 Session ID만 B/C에게 전달합니다. 공개 방
-목록이나 matchmaking은 없고, 게스트는 계정 없이 그 ID로 `Join Host`합니다. `npm run dev:coop`은
+목록이나 matchmaking은 없고, 게스트는 계정 없이 그 ID로 `Join Host`합니다. `npm run dev`는
 개발용 계정(`dev-host-a` / `dev-host-b`)을 자동으로 심어 둡니다. 재접속 credential은 각 탭의
 `sessionStorage`에만 보관되며 URL이나 초대 코드에는 포함되지 않습니다. 로그인 토큰은
 `HttpOnly` 쿠키에만 있어 페이지 스크립트가 읽을 수 없습니다.
@@ -30,7 +30,7 @@ Production build는 client와 server entry를 모두 생성합니다.
 
 ```bash
 npm run build
-npm run start:production
+npm start
 ```
 
 운영 계정은 가입 라우트가 아니라 CLI로 만듭니다.
@@ -39,7 +39,7 @@ npm run start:production
 printf %s "$PASSWORD" | npm run account:create -- --username <아이디>
 ```
 
-`start:production`은 `deploy/cardguild.production.env`를 읽어 `127.0.0.1:3011`에서
+`npm start`는 `deploy/cardguild.production.env`를 읽어 `127.0.0.1:3011`에서
 `dist/` 정적 client와 `/api`, `/ws`를 같은 origin으로 제공합니다. 허용 origin은
 `https://card.krdp.ddns.net` 하나입니다. 운영 reverse proxy는 저장소 밖의 기존 Caddy
 설정에서 `127.0.0.1:3011`로 전달합니다.
@@ -264,13 +264,15 @@ off-turn MAP context가 결정합니다. `CHECK_ROLLED`는 `actionActorId`와 `r
 
 Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며 pack identity는
 `cardguild.m7`, contract는 schema v9입니다. 현재 authored revision과 fingerprint는
-`content/m7/manifest.json`과 `npm run content:check` 출력이 소유하므로 이 README에 복제하지
+`content/m7/manifest.json`과 `npx tsx tools/content/check-content.ts` 출력이 소유하므로 이 README에 복제하지
 않습니다. Client UI, battle rendering, WebSocket hello와 authoritative server는 모두
 `src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다.
-[`content/m6`](content/m6)의 `cardguild.m6@0.9.1`과 [`content/m3`](content/m3)의
-`cardguild.m4@0.6.1` pack은 규칙 회귀 fixture로 보존되며 production authoring 대상이 아닙니다.
-두 fixture는 Encounter별 EXP를 명시적 0으로 authoring해 성장 없는 회귀 의미를 유지합니다.
-디렉터리 안내는 [`content/README.md`](content/README.md)에 있습니다.
+규칙 회귀 fixture는 `content/`가 아니라 [`tests/fixtures/content`](tests/fixtures/content)의
+TypeScript factory입니다 — `cardguild.test.core`(기본 규칙)와
+`cardguild.test.character-rules`(그 위의 세 playable Character·무기·방어구·주문). 둘 다
+Encounter별 EXP를 명시적 0으로 두어 성장 없는 회귀 의미를 유지합니다. production 코드가
+fixture를 import하는 것은 ESLint가 막습니다. 디렉터리 안내는
+[`content/README.md`](content/README.md)에 있습니다.
 
 **신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md) 하나에 있습니다** — schema 계약,
@@ -280,8 +282,10 @@ Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며
 Trait provider는 engine TypeScript를 수정하지 않고 JSON으로 추가할 수 있습니다.
 
 Presentation path는 gameplay fingerprint에 포함되지 않습니다. 투영·광원·팔레트 기준은
-`art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리/QC 결과는
-`art/processed`에 있습니다. runtime 저장은 두 갈래입니다 — terrain/object/UI는 4096² WebP
+`art/STYLE.md`, 원본 PNG와 재생성 계획은 `art/source`, 투명 분리를 마친 정규화 프레임은
+`art/processed`에 있습니다. 같은 build가 만드는 `art/processed/qc`는 눈으로 보는
+미리보기라 tracked하지 않습니다 — 필요하면 `npx tsx tools/assets/build-assets.ts`가
+다시 만듭니다. runtime 저장은 두 갈래입니다 — terrain/object/UI는 4096² WebP
 atlas(`public/assets/m3-atlas.{webp,json}`), actor standee는 파일 한 장씩
 (`public/assets/actors/<namespace>/<name>/{front,back}.webp`). 논리 asset ID는 양쪽에서
 동일하고, atlas·ground/transition/object layer 및 Equipment/Card icon mapping은
@@ -360,27 +364,47 @@ Pan은 두 규칙 중 **느슨한 쪽**을 씁니다. 보드가 안전영역보�
 턴이 시작될 때 해당 액터가 안전영역 밖이면 최소 거리만 pan해 시야에 넣습니다(zoom 1에서는
 전체가 보이므로 아무 일도 하지 않습니다).
 
-설계 기준은 [`documents/dev_map_draft_v2.md`](documents/dev_map_draft_v2.md), M5 구현
-범위와 protocol 정정 사항은 GitHub 이슈 `#6`, M6-1 Character Stat Foundation은
-GitHub 이슈 `#7`을 따릅니다.
+보드·카메라·투영 계약은 위에 적힌 것이 전부이고, 그 값을 소유하는 코드는
+`src/pixi/battle/BoardProjection.ts`와 `BattleCamera.ts`, 그리고 두 파일 옆의 test입니다. 초기 설계 초안과 M5 구현 범위·protocol 정정 사항은 Git
+history와 GitHub 이슈 `#6`·`#7`에 남아 있습니다.
 
 ## 검증
 
+gate는 세 명령이고 서로 겹치지 않습니다. `check`는 파일을 만들지 않고, `build`는 검사하지
+않으며, `test`는 빌드하지 않습니다. Recovery가 배포 산출물을 쓰므로 순서는 지켜야 합니다.
+
 ```bash
-npm run content:check # 모든 pack의 Schema, references, compile, fingerprint
-npm run content:production-check # 현재 M7 release policy/reachability/1P-3P 구조 coverage
-npm run assets        # raw PNG cleanup -> normalized frames -> atlas/tilemap -> validation
-npm run assets:build  # 위 pipeline 산출물 재생성
-npm run assets:check  # alpha, anchors, 양면 standee, atlas/standalone 저장 파티션, layered tilemap 검증
-npm run check         # Content/asset, TypeScript, core 경계, ESLint, Vitest
-npm run build         # Content/asset 검증 후 production bundle
-npm run typecheck:server # DOM 없는 server/session/protocol type boundary
-npm run test:network # 실제 random-port HTTP/WebSocket 3-client integration
-npm run test:smoke   # 3 BrowserContext co-op + Chromium/PixiJS/DOM responsive smoke
-npm run test:recovery # 배포 빌드(dist-server + dist)로 서버 재시작·복구 E2E
-npm test             # unit + network + Playwright + recovery
-npm run playtest     # seeded 자동 플레이(밸런스 조사 도구, gate 아님)
+npm run check # 정적 검증: content·production policy·자산 검사, TypeScript 5종, ESLint
+npm run build # 배포 산출물: dist(client) + dist-server(server bundle)
+npm test      # 동적 검증: Unit/Node -> Unit/Browser -> Integration -> E2E -> Recovery
 ```
+
+CI는 이 셋을 두 시점에 나눠 씁니다. main이 아닌 branch로 push하면 `CI Quick`이
+`check → build → npx vitest run`만 돌려 빠르게 답하고(Chromium도 설치하지 않습니다), main을
+향한 PR에서 `CI Full`이 `check → build → npm test`로 다섯 계층 전부를 돌립니다. **merge
+가능성을 증명하는 것은 `CI Full` 하나뿐입니다.**
+
+`npm run playtest`는 seeded 자동 플레이로 밸런스를 살피는 조사 도구이고 gate가 아닙니다.
+
+일부만 돌릴 때는 조립용 alias 없이 underlying CLI를 직접 부릅니다.
+
+```bash
+npx tsx tools/content/check-content.ts            # 모든 pack의 Schema, references, compile, fingerprint
+npx tsx tools/content/check-production-content.ts # M7 release policy/reachability/1P-3P 구조 coverage
+npx tsx tools/assets/check-assets.ts              # alpha, anchors, 양면 standee, 저장 파티션, layered tilemap
+npx tsx tools/assets/build-assets.ts              # 자산 pipeline 산출물 재생성(gate가 아니라 사람이 돌린다)
+npx tsc --project tsconfig.server.json            # DOM 없는 server/session/protocol type boundary
+npx tsc --project tsconfig.tests.json             # tests 전체
+npx vitest run                                    # Unit / Node
+npx playwright test --config playwright.browser-unit.config.ts # Unit / Browser — 서버·DB 없이
+npx vitest run --config vitest.integration.config.ts           # Integration — 실제 SQLite·HTTP·WebSocket
+npx playwright test                               # E2E — 실제 앱을 실제 사용자처럼
+npx playwright test --config playwright.recovery.config.ts     # Recovery — build 선행
+```
+
+자산은 **추적된 산출물을 검증만** 합니다. 자산 입력이나 생성 대상 콘텐츠를 바꿨다면
+`build-assets`를 직접 돌리고 생성물을 함께 커밋하세요 — gate는 자산을 다시 만들지도, 최신인지
+판정하지도 않습니다. 계층별 책임과 비용은 [`docs/TESTING.md`](docs/TESTING.md)에 있습니다.
 
 Vitest는 Content schema v9 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
 typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
@@ -400,27 +424,14 @@ SQLite를 쓰는 durable Campaign 시나리오가 더해집니다 — 서버 재
 M9-5는 여기에 장애 매트릭스를 얹습니다: 첫 승리·4전 Level-Up·보상 선택·AI step·콘텐츠 이관
 각각의 COMMIT 직전/직후 `SIGKILL`과 복구, ACK만 유실된 동일 요청 재시도, 그리고 종료의
 멱등성과 종료 중 queue·DB 순서입니다.
+
+**계층별 책임·직접 실행 명령·비용·자원 격리는 [`docs/TESTING.md`](docs/TESTING.md)에
+있습니다.** 테스트는 무엇을 붙잡고 있는지로 나뉩니다 — 컴포넌트 하나(Unit/Browser)는 서버 없이
+돌고, 실제 저장·전송(Integration)은 파일을 직렬로 실행하며, 배포 산출물의 재시작(Recovery)은
+자기 포트와 임시 DB를 갖습니다.
 Playwright는 별도 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어,
 2P fallback, 3P 분산 제어와 hash 수렴, 그리고 Continue → Resume Lobby → 정확 재개를 검증하며
 기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
-
-## UI/UX 리뷰 캡쳐
-
-UI를 고치기 전후를 같은 자리에서 비교하려고, 실제 앱을 solo host로 한 판 돌리면서 화면별
-대표 이미지를 찍어 둡니다. 목업이 아니라 지금 코드가 그리는 화면입니다.
-
-```bash
-npm run ui:capture:baseline # 원본(개선 전) 캡쳐 -> docs/ui-review/baseline/
-npm run ui:capture          # 변경(개선 후) 캡쳐 -> docs/ui-review/current/
-npm run ui:compare          # docs/ui-review/index.html 좌우 비교 페이지만 재생성
-```
-
-세션 로비, 파티 편성, Adventure 진행, Loadout Builder 세 상태, 전투 HUD와 액션 링, 보상
-선택, 실패 화면을 1440x900과 1024x768로 찍습니다. 각 해상도의 `manifest.json`이 화면 ID와
-리뷰 포인트, 그리고 찍지 못한 화면과 그 이유를 함께 남기므로 캡쳐 순서가 바뀌어도 원본과
-변경이 화면 ID로 짝지어집니다. 자세한 사용법은 `docs/ui-review/README.md`에 있습니다.
-캡쳐는 `playwright.capture.config.ts`로만 돌아가고 `npm run test:smoke`는 이 파일을
-실행하지 않으므로, 테스트가 리뷰 자료를 덮어쓰지 않습니다.
 
 ## M5 범위 밖
 
@@ -437,7 +448,8 @@ Loadout preview는 같은 effective Character profile로 수치를 계산합니�
 runtime progression 때문에 다시 계산하지 않습니다.
 
 실제 EXP 지급과 Level-Up은 M9-4, 계정/저장/복구는 M9-2 이후 범위입니다.
-자세한 계약과 검증은 [M9-1 구현문서](docs/m9-1-character-progression-foundation.md)에 있습니다.
+계약을 소유하는 코드는 `src/adventure/progression.ts`와 `src/loadout/loadout.ts`이고,
+회귀는 `src/adventure/progression.test.ts`가 붙잡습니다.
 
 ## M9-2 Host Identity & Campaign Ownership
 
@@ -448,14 +460,21 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
 - 계정·auth session·Campaign metadata는 single-file SQLite(`node:sqlite`)에 저장합니다.
   경로는 `CARDGUILD_DB_PATH`(기본 `.data/cardguild.sqlite`)입니다. 개발과 Playwright는
   `.data/cardguild.dev.sqlite`를 따로 쓰며, `--seed-dev`는 그 경로에서만 동작합니다.
-- 가입 라우트는 없습니다. 계정은 `npm run account:create`로 만듭니다.
+- 로그인 화면과 랜딩의 **Create account**로 계정을 만들 수 있습니다(`POST /api/auth/register`).
+  가입은 곧바로 로그인까지 마치므로 다음 화면이 My Campaigns입니다. 비밀번호 재설정 경로는
+  없으므로 가입 화면은 비밀번호를 두 번 받습니다. 운영자가 직접 만들 때는 여전히
+  `npm run account:create`를 씁니다.
+- 서버가 공개적으로 접근 가능하다면 가입도 공개됩니다. 초대제로 운영하려면 리버스 프록시에서
+  `POST /api/auth/register`를 막고 `npm run account:create`만 쓰세요.
 - 비밀번호는 scrypt 해시로만, auth token은 digest로만 저장합니다. 쿠키는
   `HttpOnly`·`SameSite=Lax`이고 `Secure`는 `CARDGUILD_COOKIE_SECURE`로 정합니다.
 - 남의 Campaign은 "권한 없음"이 아니라 "없음"으로 보입니다.
 - account/campaign 식별자는 `SessionCoreState`에 들어가지 않으므로 gameplay hash와
   결정론은 그대로입니다. M9-2 자체는 wire protocol을 v5에서 바꾸지 않았습니다.
 
-자세한 계약과 검증은 [M9-2 구현문서](docs/m9-2-host-identity-campaign-ownership.md)에 있습니다.
+계약을 소유하는 코드는 `src/server/auth-service.ts`·`campaign-service.ts`·`password.ts`·
+`cookies.ts`이고, `tests/integration/auth-service.test.ts`·`account.test.ts`·
+`campaign-service.test.ts`가 실제 SQLite로 검증합니다.
 
 ## M9-3 Durable Campaign Save & Resume Lobby
 
@@ -481,7 +500,9 @@ gameplay 진행이 SQLite에 저장되고, Host는 My Campaigns에서 Continue�
 - 손상·미지원·다른 Content Pack의 save는 자동 보정하지 않고 409로 거절하며 row를 보존합니다.
 - 브라우저 저장소에는 여전히 reconnect credential만 둡니다.
 
-자세한 계약과 검증은 [M9-3 구현문서](docs/m9-3-durable-campaign-save.md)에 있습니다.
+저장 payload와 4단계 검증은 `src/server/campaign-save.ts`, COMMIT·CAS·공개 순서는
+`src/server/campaign-durability.ts`가 소유하고,
+`tests/integration/campaign-persistence.test.ts`와 `restart-matrix.test.ts`가 검증합니다.
 
 ## M9-4 Encounter EXP & Automatic Level-Up
 
@@ -509,7 +530,9 @@ Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 L
   pending reward·진행 중 전투를 보존하고 완료한 전투에 EXP를 소급하지 않습니다. 이관은
   Continue의 CAS COMMIT으로 한 번만 저장되고, 실패하면 새 세션을 공개하지 않습니다.
 
-자세한 계약과 검증은 [M9-4 구현문서](docs/m9-4-encounter-experience-level-up.md)에 있습니다.
+EXP를 authoring하는 방법은 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md)
+§9.1에 있고, 지급과 레벨업 계산은 `src/adventure/runtime.ts`, 이관은
+`src/server/campaign-content-migration.ts`가 소유합니다.
 
 ## M9-5 Server Restart Recovery
 
@@ -519,7 +542,7 @@ Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 L
 ```bash
 # 정상 재시작: SIGTERM 하나면 됩니다. 두 번 보내도 안전합니다.
 kill -TERM "$(pgrep -f dist-server/main.js)"
-npm run start:production
+npm start
 ```
 
 - **정상 종료**는 신규 HTTP·WebSocket 연결과 메시지를 먼저 막고, 이미 받은 작업과 모든
@@ -541,4 +564,7 @@ npm run start:production
   않습니다. 서버 AI의 저장 실패는 그 세션을 종료시키며, Host는 Continue로 마지막 저장 지점부터
   이어갑니다.
 
-자세한 계약과 실측은 [M9-5 구현문서](docs/m9-5-server-restart-recovery.md)에 있습니다.
+멱등한 종료는 `src/server/main.ts`가 소유하고, 장애 매트릭스는
+`tests/integration/restart-matrix.test.ts`, 배포 산출물의 실제 재시작은
+`tests/recovery/campaign.recovery.ts`가 검증합니다. 계층별 책임은
+[`docs/TESTING.md`](docs/TESTING.md)에 있습니다.

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { M6_COMBAT_DEFINITION, M6_CONTENT } from "../content/load-m6-content";
+import { createTacticalCombatFixture } from "../../tests/fixtures/content";
 import { buildResolvedActionPlan, resolveActionStatistic, turnMapContext } from "./action-plan";
 import { degreeProbabilities } from "./checks";
 import { createCombat, dispatchCombatCommand } from "./engine";
@@ -21,8 +21,12 @@ import type {
   ScenarioDefinition,
 } from "./types";
 
+/** The three-Character rules on the Ruined Gate board. */
+const CHARACTER_RULES_COMBAT = createTacticalCombatFixture({ rules: "character-rules" });
+const CHARACTER_RULES_CONTENT = CHARACTER_RULES_COMBAT.content;
+
 function scenarioWith(overrides: Readonly<Record<string, Partial<ActorSetup>>>): ScenarioDefinition {
-  const scenario = M6_COMBAT_DEFINITION.scenario;
+  const scenario = CHARACTER_RULES_COMBAT.scenario;
   return {
     ...scenario,
     actors: scenario.actors.map((actor) => ({ ...actor, ...overrides[actor.id] })),
@@ -40,7 +44,7 @@ function heroFirst(overrides: Readonly<Record<string, Partial<ActorSetup>>> = {}
           },
         }
       : { statProfile: { kind: "creature", stats: { ...actor.statProfile.stats, perception: wisdom } } };
-  const base = M6_COMBAT_DEFINITION.scenario.actors;
+  const base = CHARACTER_RULES_COMBAT.scenario.actors;
   const hero = base.find((actor) => actor.id === "hero") as ActorSetup;
   const skirmisher = base.find((actor) => actor.id === "goblin-skirmisher") as ActorSetup;
   const scenario = scenarioWith({
@@ -55,7 +59,7 @@ function heroFirst(overrides: Readonly<Record<string, Partial<ActorSetup>>> = {}
     },
     "goblin-brute": { position: { x: 8, y: 6 }, ...withInitiative(base.find((actor) => actor.id === "goblin-brute") as ActorSetup, -101) },
   });
-  return createCombat({ ...M6_COMBAT_DEFINITION, scenario }, 33).state;
+  return createCombat({ ...CHARACTER_RULES_COMBAT, scenario }, 33).state;
 }
 
 function useAction(state: CombatState, source: ActionSource, target: ActionTarget): CombatCommand {
@@ -89,8 +93,8 @@ function withCardInHand(state: CombatState, actorId: string, cardDefinitionId: s
 const ENEMY: ActionTarget = { kind: "actor", actorId: "goblin-skirmisher" };
 
 function classDcAction(id: string, owner: ActionParticipant): ActionDefinition {
-  const trip = M6_CONTENT.actions.trip as NonNullable<(typeof M6_CONTENT.actions)["trip"]>;
-  if (trip.resolution.kind !== "check") throw new Error("M6 Trip fixture is missing.");
+  const trip = CHARACTER_RULES_CONTENT.actions.trip as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["trip"]>;
+  if (trip.resolution.kind !== "check") throw new Error("The character rules fixture is missing Trip.");
   return {
     ...trip,
     id,
@@ -107,19 +111,19 @@ describe("resolved action plan", () => {
     const state = heroFirst();
     const hero = state.actors.hero as NonNullable<CombatState["actors"][string]>;
     const goblin = state.actors["goblin-skirmisher"] as NonNullable<CombatState["actors"][string]>;
-    const context = { content: M6_CONTENT };
+    const context = { content: CHARACTER_RULES_CONTENT };
 
     const strike = buildResolvedActionPlan(
-      M6_CONTENT.actions.strike as NonNullable<(typeof M6_CONTENT.actions)["strike"]>,
-      hero, ENEMY, { kind: "basic", id: "strike" }, state, M6_CONTENT, turnMapContext(state),
+      CHARACTER_RULES_CONTENT.actions.strike as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["strike"]>,
+      hero, ENEMY, { kind: "basic", id: "strike" }, state, CHARACTER_RULES_CONTENT, turnMapContext(state),
     );
     const trip = buildResolvedActionPlan(
-      M6_CONTENT.actions.trip as NonNullable<(typeof M6_CONTENT.actions)["trip"]>,
-      hero, ENEMY, { kind: "basic", id: "strike" }, state, M6_CONTENT, turnMapContext(state),
+      CHARACTER_RULES_CONTENT.actions.trip as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["trip"]>,
+      hero, ENEMY, { kind: "basic", id: "strike" }, state, CHARACTER_RULES_CONTENT, turnMapContext(state),
     );
     const escape = buildResolvedActionPlan(
-      M6_CONTENT.actions["escape-grab"] as NonNullable<(typeof M6_CONTENT.actions)["escape-grab"]>,
-      hero, { kind: "none" }, { kind: "context", id: "escape-grab" }, state, M6_CONTENT, turnMapContext(state),
+      CHARACTER_RULES_CONTENT.actions["escape-grab"] as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["escape-grab"]>,
+      hero, { kind: "none" }, { kind: "context", id: "escape-grab" }, state, CHARACTER_RULES_CONTENT, turnMapContext(state),
     );
     if (strike?.resolution.kind !== "strike" || trip?.resolution.kind !== "check" || escape?.resolution.kind !== "check") {
       throw new Error("Plans did not resolve.");
@@ -144,8 +148,8 @@ describe("resolved action plan", () => {
     const state = heroFirst();
     const hero = state.actors.hero as NonNullable<CombatState["actors"][string]>;
     const goblin = state.actors["goblin-skirmisher"] as NonNullable<CombatState["actors"][string]>;
-    const trip = M6_CONTENT.actions.trip as NonNullable<(typeof M6_CONTENT.actions)["trip"]>;
-    if (trip.resolution.kind !== "check") throw new Error("M6 Trip fixture is missing.");
+    const trip = CHARACTER_RULES_CONTENT.actions.trip as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["trip"]>;
+    if (trip.resolution.kind !== "check") throw new Error("The character rules fixture is missing Trip.");
     const tripResolution = trip.resolution;
     const withDc = (dc: ActionDcRef): ActionDefinition => ({
       ...trip,
@@ -165,7 +169,7 @@ describe("resolved action plan", () => {
       ENEMY,
       source,
       state,
-      M6_CONTENT,
+      CHARACTER_RULES_CONTENT,
       turnMapContext(state),
     );
     const targetClassDc = buildResolvedActionPlan(
@@ -174,16 +178,16 @@ describe("resolved action plan", () => {
       characterTarget,
       source,
       withCharacterTarget,
-      M6_CONTENT,
+      CHARACTER_RULES_CONTENT,
       turnMapContext(withCharacterTarget),
     );
     if (actorClassDc?.resolution.kind !== "check" || targetClassDc?.resolution.kind !== "check") {
       throw new Error("Character Class DC plans did not resolve.");
     }
-    expect(actorClassDc.resolution.check.dc).toBe(resolveClassDC(hero, { content: M6_CONTENT }).value);
+    expect(actorClassDc.resolution.check.dc).toBe(resolveClassDC(hero, { content: CHARACTER_RULES_CONTENT }).value);
     expect(targetClassDc.resolution.check.dc).toBe(resolveClassDC(
       withCharacterTarget.actors[characterTargetId] as NonNullable<CombatState["actors"][string]>,
-      { content: M6_CONTENT },
+      { content: CHARACTER_RULES_CONTENT },
     ).value);
 
     const creatureTargetPlan = () => buildResolvedActionPlan(
@@ -192,7 +196,7 @@ describe("resolved action plan", () => {
       ENEMY,
       source,
       state,
-      M6_CONTENT,
+      CHARACTER_RULES_CONTENT,
       turnMapContext(state),
     );
     const creatureActorPlan = () => buildResolvedActionPlan(
@@ -201,7 +205,7 @@ describe("resolved action plan", () => {
       characterTarget,
       source,
       withCharacterTarget,
-      M6_CONTENT,
+      CHARACTER_RULES_CONTENT,
       turnMapContext(withCharacterTarget),
     );
     expect(creatureTargetPlan).not.toThrow();
@@ -215,8 +219,8 @@ describe("resolved action plan", () => {
     const actionId = "class-dc-test";
     const action = classDcAction(actionId, "actor");
     const content: CombatContent = {
-      ...M6_CONTENT,
-      actions: { ...M6_CONTENT.actions, [actionId]: action },
+      ...CHARACTER_RULES_CONTENT,
+      actions: { ...CHARACTER_RULES_CONTENT.actions, [actionId]: action },
     };
     const source: ActionSource = { kind: "innate", id: actionId };
     const goblinId = "goblin-skirmisher";
@@ -267,8 +271,8 @@ describe("resolved action plan", () => {
       range: { kind: "feet", value: 10 },
     };
     const content: CombatContent = {
-      ...M6_CONTENT,
-      actions: { ...M6_CONTENT.actions, [actionId]: action },
+      ...CHARACTER_RULES_CONTENT,
+      actions: { ...CHARACTER_RULES_CONTENT.actions, [actionId]: action },
     };
     const source: ActionSource = { kind: "innate", id: actionId };
     const hero = opened.actors.hero as NonNullable<CombatState["actors"][string]>;
@@ -300,9 +304,9 @@ describe("resolved action plan", () => {
 
   it("reads a Skill's default Attribute and honours an override without touching the rank", () => {
     // Authored Attributes, not the initiative-forcing fixture, so WIS stays Aerin's own.
-    const state = createCombat(M6_COMBAT_DEFINITION, 33).state;
+    const state = createCombat(CHARACTER_RULES_COMBAT, 33).state;
     const hero = state.actors.hero as NonNullable<CombatState["actors"][string]>;
-    const context = { content: M6_CONTENT };
+    const context = { content: CHARACTER_RULES_CONTENT };
     const before = structuredClone(hero.statProfile);
 
     const byDefault = resolveActionStatistic(hero, { kind: "skill", skill: "arcana" }, context);
@@ -319,13 +323,13 @@ describe("resolved action plan", () => {
   it("applies MAP inside the turn sequence and never off-turn", () => {
     const state = heroFirst();
     const hero = state.actors.hero as NonNullable<CombatState["actors"][string]>;
-    const strike = M6_CONTENT.actions.strike as NonNullable<(typeof M6_CONTENT.actions)["strike"]>;
+    const strike = CHARACTER_RULES_CONTENT.actions.strike as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["strike"]>;
     const source: ActionSource = { kind: "basic", id: "strike" };
     const secondAttack: CombatState = { ...state, turn: { ...state.turn, attacksThisTurn: 1 } };
 
-    const first = buildResolvedActionPlan(strike, hero, ENEMY, source, state, M6_CONTENT, turnMapContext(state));
-    const second = buildResolvedActionPlan(strike, hero, ENEMY, source, secondAttack, M6_CONTENT, turnMapContext(secondAttack));
-    const offTurn = buildResolvedActionPlan(strike, hero, ENEMY, source, secondAttack, M6_CONTENT, { kind: "off-turn" });
+    const first = buildResolvedActionPlan(strike, hero, ENEMY, source, state, CHARACTER_RULES_CONTENT, turnMapContext(state));
+    const second = buildResolvedActionPlan(strike, hero, ENEMY, source, secondAttack, CHARACTER_RULES_CONTENT, turnMapContext(secondAttack));
+    const offTurn = buildResolvedActionPlan(strike, hero, ENEMY, source, secondAttack, CHARACTER_RULES_CONTENT, { kind: "off-turn" });
     if (first?.resolution.kind !== "strike" || second?.resolution.kind !== "strike" || offTurn?.resolution.kind !== "strike") {
       throw new Error("Plans did not resolve.");
     }
@@ -343,17 +347,17 @@ describe("resolved action plan", () => {
     const source: ActionSource = { kind: "basic", id: "strike" };
     const rngBefore = structuredClone(state.rng);
 
-    const preview = previewAction(state, "hero", source, ENEMY, M6_CONTENT);
+    const preview = previewAction(state, "hero", source, ENEMY, CHARACTER_RULES_CONTENT);
     expect(state.rng).toEqual(rngBefore);
     expect(preview.degreeProbabilities).toBeDefined();
     expect(preview.notes.some((note) => note.startsWith("Off-Guard (rear) -2"))).toBe(true);
     if (flanking) expect(preview.notes.some((note) => note.startsWith("Off-Guard (flanking) -2"))).toBe(true);
 
     const plan = buildResolvedActionPlan(
-      M6_CONTENT.actions.strike as NonNullable<(typeof M6_CONTENT.actions)["strike"]>,
-      hero, ENEMY, source, state, M6_CONTENT, turnMapContext(state),
+      CHARACTER_RULES_CONTENT.actions.strike as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["strike"]>,
+      hero, ENEMY, source, state, CHARACTER_RULES_CONTENT, turnMapContext(state),
     );
-    const result = dispatchCombatCommand(state, useAction(state, source, ENEMY), M6_CONTENT);
+    const result = dispatchCombatCommand(state, useAction(state, source, ENEMY), CHARACTER_RULES_CONTENT);
     const check = result.events.find((event) => event.type === "CHECK_ROLLED");
     if (check?.type !== "CHECK_ROLLED" || plan?.resolution.kind !== "strike") throw new Error("Strike did not resolve.");
     expect([check.modifier, check.dc]).toEqual([plan.resolution.check.modifier, plan.resolution.check.dc]);
@@ -372,7 +376,7 @@ describe("target-side save resolution", () => {
     return {
       ...injected,
       source,
-      result: dispatchCombatCommand(injected.state, useAction(injected.state, source, ENEMY), M6_CONTENT),
+      result: dispatchCombatCommand(injected.state, useAction(injected.state, source, ENEMY), CHARACTER_RULES_CONTENT),
       seed,
     };
   }
@@ -388,9 +392,9 @@ describe("target-side save resolution", () => {
     // The target rolls its own #7 Reflex; the DC is the caster's authored Skill DC.
     expect(check.rollerActorId).toBe("goblin-skirmisher");
     expect(check.actionActorId).toBe("hero");
-    expect(check.modifier).toBe(resolveStatisticModifier(goblin, { kind: "save", id: "reflex" }, { content: M6_CONTENT }).value);
+    expect(check.modifier).toBe(resolveStatisticModifier(goblin, { kind: "save", id: "reflex" }, { content: CHARACTER_RULES_CONTENT }).value);
     expect(check.dc).toBe(
-      resolveStatisticDC(hero, { kind: "skill", id: "arcana", attributeOverride: "wis" }, { content: M6_CONTENT }).value,
+      resolveStatisticDC(hero, { kind: "skill", id: "arcana", attributeOverride: "wis" }, { content: CHARACTER_RULES_CONTENT }).value,
     );
     // No Actor carries a spell attack or spell DC field of its own.
     expect(hero.statProfile.kind === "character" ? hero.statProfile.stats : {}).not.toHaveProperty("spellDc");
@@ -400,14 +404,14 @@ describe("target-side save resolution", () => {
     const { state, source } = castSpiritLance();
     const goblin = state.actors["goblin-skirmisher"] as NonNullable<CombatState["actors"][string]>;
     const hero = state.actors.hero as NonNullable<CombatState["actors"][string]>;
-    const modifier = resolveStatisticModifier(goblin, { kind: "save", id: "reflex" }, { content: M6_CONTENT }).value;
+    const modifier = resolveStatisticModifier(goblin, { kind: "save", id: "reflex" }, { content: CHARACTER_RULES_CONTENT }).value;
     const dc = resolveStatisticDC(
       hero,
       { kind: "skill", id: "arcana", attributeOverride: "wis" },
-      { content: M6_CONTENT },
+      { content: CHARACTER_RULES_CONTENT },
     ).value;
 
-    const preview = previewAction(state, "hero", source, ENEMY, M6_CONTENT);
+    const preview = previewAction(state, "hero", source, ENEMY, CHARACTER_RULES_CONTENT);
     expect(preview.check).toEqual({
       roller: "target",
       rollerActorId: "goblin-skirmisher",
@@ -421,7 +425,7 @@ describe("target-side save resolution", () => {
 
   it("runs a spell-tagged Card through the ordinary Card path and degree outcomes", () => {
     const { result } = castSpiritLance();
-    const spell = M6_CONTENT.actions["spirit-lance"] as NonNullable<(typeof M6_CONTENT.actions)["spirit-lance"]>;
+    const spell = CHARACTER_RULES_CONTENT.actions["spirit-lance"] as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["spirit-lance"]>;
     expect(spell.traits.map((trait) => trait.id)).toContain("spell");
     expect(spell.resolution.kind).toBe("check");
 
@@ -453,9 +457,9 @@ describe("target-side save resolution", () => {
 
 describe("card and action ownership", () => {
   it("keeps every Card a reference to an Action rather than a rules definition", () => {
-    for (const card of Object.values(M6_CONTENT.cards)) {
+    for (const card of Object.values(CHARACTER_RULES_CONTENT.cards)) {
       expect(Object.keys(card).sort()).toEqual(["actionId", "id", "name", "traits"]);
-      expect(M6_CONTENT.actions[card.actionId]).toBeDefined();
+      expect(CHARACTER_RULES_CONTENT.actions[card.actionId]).toBeDefined();
     }
   });
 
@@ -463,21 +467,21 @@ describe("card and action ownership", () => {
     const state = heroFirst();
     const injected = withCardInHand(state, "hero", "card.spirit-beacon");
     const cardPlan = buildResolvedActionPlan(
-      M6_CONTENT.actions["spirit-beacon"] as NonNullable<(typeof M6_CONTENT.actions)["spirit-beacon"]>,
+      CHARACTER_RULES_CONTENT.actions["spirit-beacon"] as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["spirit-beacon"]>,
       injected.state.actors.hero as NonNullable<CombatState["actors"][string]>,
       { kind: "none" },
       { kind: "card", id: injected.card.id },
       injected.state,
-      M6_CONTENT,
+      CHARACTER_RULES_CONTENT,
       turnMapContext(injected.state),
     );
     const innatePlan = buildResolvedActionPlan(
-      M6_CONTENT.actions["spirit-beacon"] as NonNullable<(typeof M6_CONTENT.actions)["spirit-beacon"]>,
+      CHARACTER_RULES_CONTENT.actions["spirit-beacon"] as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["spirit-beacon"]>,
       injected.state.actors.hero as NonNullable<CombatState["actors"][string]>,
       { kind: "none" },
       { kind: "innate", id: "spirit-beacon" },
       injected.state,
-      M6_CONTENT,
+      CHARACTER_RULES_CONTENT,
       turnMapContext(injected.state),
     );
     // Only the provenance differs; the resolution both sides execute is identical.
@@ -486,8 +490,8 @@ describe("card and action ownership", () => {
   });
 
   it("keeps a movement Card on the shared move resolution", () => {
-    const fly = M6_CONTENT.actions.fly as NonNullable<(typeof M6_CONTENT.actions)["fly"]>;
+    const fly = CHARACTER_RULES_CONTENT.actions.fly as NonNullable<(typeof CHARACTER_RULES_CONTENT.actions)["fly"]>;
     expect(fly.resolution).toEqual({ kind: "move", movementMode: "fly", step: false, triggersReactions: true });
-    expect(M6_CONTENT.cards["card.fly"]?.actionId).toBe("fly");
+    expect(CHARACTER_RULES_CONTENT.cards["card.fly"]?.actionId).toBe("fly");
   });
 });

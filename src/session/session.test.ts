@@ -379,7 +379,7 @@ function resumed(saved: SessionCoreState, sessionId = "session-resumed"): Sessio
   );
 }
 
-describe("M9-3 resume lobby", () => {
+describe("resume lobby", () => {
   it("rehydrates saved gameplay into a fresh session with the same gameplay hash", () => {
     const saved = beginAndStart(readyThreePlayers());
     const state = resumed(saved);

@@ -19,5 +19,12 @@
     "skipLibCheck": true,
     "types": ["vite/client"]
   },
-  "include": ["src"]
+  // `tests/fixtures` is checked here as well as by `tsconfig.tests.json`, so a fixture and
+  // the app code it feeds are compiled as one program and cannot drift apart unnoticed.
+  //
+  // This does not make fixtures Node-free. `types` only decides which `@types` packages are
+  // included automatically; `@types/node` still arrives through a dependency, so `node:fs`
+  // and `process` type-check here today. Keeping fixtures usable in the browser is a
+  // convention, not something this config enforces.
+  "include": ["src", "tests/fixtures"]
 }

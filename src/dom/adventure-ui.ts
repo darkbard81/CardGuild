@@ -320,7 +320,7 @@ export class AdventureUi {
    * opposite attribution would read better in that one case and be wrong in the commoner one:
    * two members who each start with a halberd would hide a third, genuinely unused halberd.
    *
-   * The shipped M7 rewards never duplicate worn starter gear — m7-tutorial.test.ts's "never
+   * The shipped M7 rewards never duplicate worn starter gear — production-tutorial.test.ts's "never
    * offers a starter a reward it already has equipped" holds that — so this only decides how
    * the notice behaves if a later pack starts handing out duplicates.
    */

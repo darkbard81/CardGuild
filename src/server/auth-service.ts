@@ -15,6 +15,14 @@ export const DEFAULT_AUTH_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const USERNAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{2,31}$/;
 const MIN_PASSWORD_LENGTH = 8;
 
+/**
+ * The rules above, in words. Owned here so the account CLI and the signup route cannot
+ * describe a validator that has since moved on without them.
+ */
+export const USERNAME_RULE =
+  "A username is 3-32 characters of ASCII letters, digits, dot, dash or underscore, starting with a letter or digit.";
+export const PASSWORD_RULE = `A password must be at least ${String(MIN_PASSWORD_LENGTH)} characters.`;
+
 export interface AuthSources {
   readonly now: () => number;
   readonly accountId: () => string;

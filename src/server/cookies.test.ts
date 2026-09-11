@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { AUTH_COOKIE, authCookie, clearedAuthCookie, deriveCookieSecure, parseCookies } from "./cookies";
 
-describe("M9-2 cookie parsing", () => {
+describe("cookie parsing", () => {
   it("reads one cookie out of a header that carries several", () => {
     const cookies = parseCookies(`theme=dark; ${AUTH_COOKIE}=abc123; other=1`);
     expect(cookies.get(AUTH_COOKIE)).toBe("abc123");
@@ -23,7 +23,7 @@ describe("M9-2 cookie parsing", () => {
   });
 });
 
-describe("M9-2 cookie attributes", () => {
+describe("cookie attributes", () => {
   it("keeps the session out of JavaScript and off cross-site requests", () => {
     const header = authCookie("token", { secure: false, ttlMs: 60_000 });
     expect(header).toContain("HttpOnly");
@@ -48,7 +48,7 @@ describe("M9-2 cookie attributes", () => {
   });
 });
 
-describe("M9-2 Secure derivation", () => {
+describe("Secure derivation", () => {
   it("follows the explicit setting over anything the origins imply", () => {
     expect(deriveCookieSecure(["http://localhost:4173"], "true")).toBe(true);
     expect(deriveCookieSecure(["https://card.example"], "false")).toBe(false);

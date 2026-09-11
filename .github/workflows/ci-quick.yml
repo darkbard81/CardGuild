@@ -1,0 +1,34 @@
+# Quick: "is it basically broken?"
+#
+# Runs on every push to a feature branch, and answers the question a developer asks a minute
+# after pushing. It deliberately stops before anything that needs a browser, a port or a
+# database: those take minutes and belong to the gate that decides a merge, not to the signal
+# that catches a typo. Chromium is not even installed here.
+name: CI Quick
+
+on:
+  push:
+    branches-ignore:
+      - main
+
+concurrency:
+  # A newer commit on the same branch makes the older run's answer worthless.
+  group: quick-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick:
+    name: Quick
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      # Content and asset validation, five TypeScript boundaries, ESLint. No files produced.
+      - run: npm run check
+      - run: npm run build
+      # Unit / Node only. The other four layers are the PR gate's job.
+      - run: npx vitest run

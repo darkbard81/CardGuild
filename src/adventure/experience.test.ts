@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { M3_ADVENTURE, M3_COMPILED_PACK } from "../content";
+import { FIXTURE_ADVENTURE_ID, createCoreContentSource } from "../../tests/fixtures/content";
+import { compileContentPack } from "../content";
 import { PRODUCTION_CONTENT } from "../content/production-content";
 import { createCombat } from "../game";
 import { buildAdventureEncounter } from "./combat-bridge";
@@ -20,10 +21,12 @@ const context: AdventureRuntimeContext = {
   actorDefinitions: pack.actorDefinitions,
   combatContent: pack.combatContent,
 };
-const M3_CONTEXT: AdventureRuntimeContext = {
-  definition: M3_ADVENTURE,
-  actorDefinitions: M3_COMPILED_PACK.actorDefinitions,
-  combatContent: M3_COMPILED_PACK.combatContent,
+/** The core fixture authors an explicit 0 EXP per Encounter, which is what makes it useful here. */
+const CORE_PACK = compileContentPack(createCoreContentSource());
+const ZERO_AWARD_CONTEXT: AdventureRuntimeContext = {
+  definition: CORE_PACK.adventures[FIXTURE_ADVENTURE_ID] as NonNullable<(typeof CORE_PACK.adventures)[string]>,
+  actorDefinitions: CORE_PACK.actorDefinitions,
+  combatContent: CORE_PACK.combatContent,
 };
 const HEROES = ["hero.aerin", "hero.brom", "hero.nera"] as const;
 
@@ -84,7 +87,7 @@ function withProgression(state: AdventureState, value: CharacterProgressionState
   };
 }
 
-describe("M9-4 experience arithmetic", () => {
+describe("experience arithmetic", () => {
   it("carries remainders, crosses several levels at once and never touches its input", () => {
     const cases: ReadonlyArray<readonly [CharacterProgressionState, number, CharacterProgressionState, number]> = [
       [{ level: 1, experience: 999 }, 1, { level: 2, experience: 0 }, 1],
@@ -116,7 +119,7 @@ describe("M9-4 experience arithmetic", () => {
   });
 });
 
-describe("M9-4 encounter growth", () => {
+describe("encounter growth", () => {
   it("pays the authored amount to every seat in order and publishes growth between completion and what comes next", () => {
     const state = begun(context, HEROES);
     const won = accept(state);
@@ -244,7 +247,7 @@ describe("M9-4 encounter growth", () => {
 
     // The M3 regression fixture authors an explicit 0, which must stay silent rather than
     // publishing an award of nothing.
-    const fixture = accept(begun(M3_CONTEXT), M3_CONTEXT);
+    const fixture = accept(begun(ZERO_AWARD_CONTEXT), ZERO_AWARD_CONTEXT);
     expect(fixture.accepted, fixture.error).toBe(true);
     expect(fixture.events.some((event) => event.type === "EXPERIENCE_GAINED" || event.type === "LEVEL_UP")).toBe(false);
     expect(fixture.state.party.members["party.hero-1"]?.progression).toEqual({ level: 1, experience: 0 });

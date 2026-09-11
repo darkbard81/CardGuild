@@ -9,7 +9,7 @@ import {
   fixtureDispatch,
   fixtureLobby,
   fixtureMidCombat,
-} from "./campaign-save.fixture";
+} from "../../tests/fixtures/campaign-save";
 import type { CampaignRepository, CampaignSaveCommit, CampaignSaveCommitResult } from "./persistence";
 
 interface Harness {
@@ -48,7 +48,7 @@ function harness(campaignRevision = 0): Harness {
   };
 }
 
-describe("M9-3 campaign durability", () => {
+describe("campaign durability", () => {
   it("writes nothing for a transition that leaves the gameplay hash alone", async () => {
     const { durability, commits } = harness();
     const state = fixtureMidCombat();

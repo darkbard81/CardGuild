@@ -1,26 +1,36 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  M3_ADVENTURE,
-  M3_COMPILED_PACK,
-  M3_GOBLIN_CHIEF_ID,
-  M3_ROAD_AMBUSH_ID,
-  M3_RUINED_GATE_ID,
-} from "../content";
+  FIXTURE_ADVENTURE_ID,
+  GOBLIN_CHIEF_ID,
+  ROAD_AMBUSH_ID,
+  RUINED_GATE_ID,
+  createCoreContentSource,
+} from "../../tests/fixtures/content";
+import { compileContentPack } from "../content";
 import { createCombat, resolveStatisticDC } from "../game";
 import { deriveLoadoutSnapshot } from "../loadout";
 import { buildAdventureEncounter } from "./combat-bridge";
 import { createAdventureSession, deriveCombatSeed, dispatchAdventureCommand } from "./runtime";
 import type { AdventureRuntimeContext, AdventureState, EncounterResult, PartySetup } from "./types";
 
+/**
+ * The Adventure bridge is the one place a whole pack has to exist: it walks Encounter ids
+ * into scenarios and rewards into a Collection, so a compiled pack is the subject, not a
+ * convenience.
+ */
+const CORE_PACK = compileContentPack(createCoreContentSource());
+const CORE_ADVENTURE = CORE_PACK.adventures[FIXTURE_ADVENTURE_ID] as NonNullable<
+  (typeof CORE_PACK.adventures)[string]
+>;
 const context: AdventureRuntimeContext = {
-  definition: M3_ADVENTURE,
-  actorDefinitions: M3_COMPILED_PACK.actorDefinitions,
-  combatContent: M3_COMPILED_PACK.combatContent,
+  definition: CORE_ADVENTURE,
+  actorDefinitions: CORE_PACK.actorDefinitions,
+  combatContent: CORE_PACK.combatContent,
 };
 
-const aerin = M3_COMPILED_PACK.actorDefinitions["hero.aerin"] as NonNullable<
-  (typeof M3_COMPILED_PACK.actorDefinitions)["hero.aerin"]
+const aerin = CORE_PACK.actorDefinitions["hero.aerin"] as NonNullable<
+  (typeof CORE_PACK.actorDefinitions)["hero.aerin"]
 >;
 
 function partyWithStarter(): PartySetup {
@@ -78,17 +88,17 @@ function resultFor(state: AdventureState, outcome: EncounterResult["outcome"]): 
 
 describe("Adventure runtime", () => {
   it("derives a stable, encounter-specific non-zero combat seed", () => {
-    expect(deriveCombatSeed(41, M3_ROAD_AMBUSH_ID)).toBe(deriveCombatSeed(41, M3_ROAD_AMBUSH_ID));
-    expect(deriveCombatSeed(41, M3_ROAD_AMBUSH_ID)).not.toBe(deriveCombatSeed(41, M3_RUINED_GATE_ID));
-    expect(deriveCombatSeed(41, M3_ROAD_AMBUSH_ID)).not.toBe(0);
+    expect(deriveCombatSeed(41, ROAD_AMBUSH_ID)).toBe(deriveCombatSeed(41, ROAD_AMBUSH_ID));
+    expect(deriveCombatSeed(41, ROAD_AMBUSH_ID)).not.toBe(deriveCombatSeed(41, RUINED_GATE_ID));
+    expect(deriveCombatSeed(41, ROAD_AMBUSH_ID)).not.toBe(0);
   });
 
   it("starts with transferable loadout ownership and retains rewards without consuming copies", () => {
     let state = start();
-    expect(state.currentEncounterId).toBe(M3_ROAD_AMBUSH_ID);
+    expect(state.currentEncounterId).toBe(ROAD_AMBUSH_ID);
     expect(state.collection.equipment).toEqual({ halberd: 1, shield: 1, "boots-of-fly": 1 });
 
-    for (const [index, encounterId] of [M3_ROAD_AMBUSH_ID, M3_RUINED_GATE_ID, M3_GOBLIN_CHIEF_ID].entries()) {
+    for (const [index, encounterId] of [ROAD_AMBUSH_ID, RUINED_GATE_ID, GOBLIN_CHIEF_ID].entries()) {
       expect(state.currentEncounterId).toBe(encounterId);
       state = dispatchAdventureCommand(
         state,
@@ -109,9 +119,9 @@ describe("Adventure runtime", () => {
 
     expect(state.phase).toBe("complete");
     expect(state.completedEncounterIds).toEqual([
-      M3_ROAD_AMBUSH_ID,
-      M3_RUINED_GATE_ID,
-      M3_GOBLIN_CHIEF_ID,
+      ROAD_AMBUSH_ID,
+      RUINED_GATE_ID,
+      GOBLIN_CHIEF_ID,
     ]);
     expect(state.collection.equipment).toEqual({ halberd: 1, "boots-of-fly": 2, shield: 2 });
   });
@@ -143,7 +153,7 @@ describe("Adventure runtime", () => {
       let state = createAdventureSession(context, partyWithSize(size), 23);
       state = dispatchAdventureCommand(state, { type: "start-adventure" }, context).state;
       state = dispatchAdventureCommand(state, { type: "start-encounter" }, context).state;
-      const encounter = buildAdventureEncounter(M3_COMPILED_PACK, state);
+      const encounter = buildAdventureEncounter(CORE_PACK, state);
       setupFingerprints.push(createCombat(encounter.definition, encounter.seed).state.setupFingerprint);
       const heroActors = encounter.definition.scenario.actors.filter((actor) => actor.team === "heroes");
 
@@ -151,7 +161,7 @@ describe("Adventure runtime", () => {
         Array.from({ length: size }, (_, index) => `party.hero-${index + 1}`),
       );
       expect(heroActors.map((actor) => actor.position)).toEqual(
-        M3_COMPILED_PACK.scenarioSources[M3_ROAD_AMBUSH_ID]?.partySpawnSlots
+        CORE_PACK.scenarioSources[ROAD_AMBUSH_ID]?.partySpawnSlots
           .slice(0, size)
           .map((slot) => slot.position),
       );
@@ -225,12 +235,12 @@ describe("Adventure runtime", () => {
     );
     expect(failed.accepted).toBe(true);
     expect(failed.state.phase).toBe("failed");
-    expect(failed.events).toContainEqual({ type: "ADVENTURE_FAILED", encounterId: M3_ROAD_AMBUSH_ID });
+    expect(failed.events).toContainEqual({ type: "ADVENTURE_FAILED", encounterId: ROAD_AMBUSH_ID });
   });
 
   it("builds a fresh CombatState from the shared derived loadout", () => {
     const state = start(77);
-    const encounter = buildAdventureEncounter(M3_COMPILED_PACK, state);
+    const encounter = buildAdventureEncounter(CORE_PACK, state);
     const first = createCombat(encounter.definition, encounter.seed).state;
     const second = createCombat(encounter.definition, encounter.seed).state;
     const hero = first.actors["party.hero-1"];
@@ -266,7 +276,7 @@ describe("Adventure runtime", () => {
     ).state;
     state = dispatchAdventureCommand(state, { type: "continue-adventure" }, context).state;
 
-    const encounter = buildAdventureEncounter(M3_COMPILED_PACK, state);
+    const encounter = buildAdventureEncounter(CORE_PACK, state);
     const combat = createCombat(encounter.definition, encounter.seed).state;
     const hero = combat.actors["party.hero-1"] as NonNullable<typeof combat.actors[string]>;
     expect(hero.equipmentIds).toEqual(preview.equipmentIds);

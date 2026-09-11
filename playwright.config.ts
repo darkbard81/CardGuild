@@ -1,13 +1,24 @@
 import { defineConfig } from "@playwright/test";
 
+const BASE_URL = "http://127.0.0.1:4173";
+
+/**
+ * E2E: the real app, opened and played the way a person would.
+ *
+ * This config collects `tests/e2e` and nothing else. Browser Unit has its own config with
+ * its own server, because the two layers disagree about what must be running — one needs the
+ * whole development bundle, the other must prove it needs none of it. Collecting both here
+ * would run every component test twice and let a Browser Unit test quietly start passing
+ * because a server it should not know about was up.
+ */
 export default defineConfig({
-  testDir: "./tests",
+  testDir: "./tests/e2e",
   testMatch: "**/*.spec.ts",
   fullyParallel: true,
   forbidOnly: true,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:4173",
+    baseURL: BASE_URL,
     browserName: "chromium",
     headless: true,
     // Both default to 0 — no timeout — so a click on a control that never becomes enabled
@@ -17,11 +28,20 @@ export default defineConfig({
     // dev server compile the app on demand.
     actionTimeout: 30_000,
     navigationTimeout: 60_000,
+    // Diagnosis costs nothing until something goes wrong: a screenshot is taken only for a
+    // test that failed. Tracing is deliberately left off. `retain-on-failure` sounds free —
+    // it throws the trace away when a test passes — but it records a screencast and DOM
+    // snapshots for every test first, and measuring it here cost about 30% of the wall clock
+    // of both browser suites. Reproduce a failure with `--trace on` instead.
+    screenshot: "only-on-failure",
   },
   webServer: {
-    command: "CARDGUILD_ADVENTURE_SEED=1 npm run dev:coop",
-    url: "http://127.0.0.1:4173",
-    reuseExistingServer: true,
+    command: "npm run dev",
+    url: BASE_URL,
+    // Locally, reusing the server someone already has running saves a minute per run. On CI
+    // there is nothing to reuse, and accepting a stranger on that port would mean testing
+    // something other than this checkout.
+    reuseExistingServer: !process.env["CI"],
     timeout: 120_000,
   },
 });

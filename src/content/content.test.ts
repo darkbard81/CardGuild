@@ -14,13 +14,22 @@ import {
 import { compileContentPack, getCombatDefinition } from "./compile-content";
 import type { ActorDefinition, ContentPackSource } from "./content-types";
 import { fingerprintContentPack } from "./fingerprint";
-import { M0_CONTENT_SOURCE, M0_SCENARIO_ID } from "./load-m0-content";
-import { M6_COMPILED_PACK, M6_CONTENT_SOURCE } from "./load-m6-content";
+import {
+  RUINED_GATE_ID,
+  createCharacterRulesContentSource,
+  createCharacterRulesFixture,
+  createCoreContentSource,
+} from "../../tests/fixtures/content";
 import { validateContentPackStructure } from "./validate-content";
 import { formatContentValidationIssue, validateContentPackSemantics } from "./validate-semantics";
 
 function sourceCopy(): ContentPackSource {
-  return structuredClone(M0_CONTENT_SOURCE);
+  return createCoreContentSource();
+}
+
+/** The character rules, which is where the weapon, armor and spell authoring lives. */
+function characterRulesCopy(): ContentPackSource {
+  return createCharacterRulesContentSource();
 }
 
 function withPerception(actor: ActorDefinition, value: number): ActorDefinition {
@@ -46,8 +55,8 @@ function withPerception(actor: ActorDefinition, value: number): ActorDefinition 
 }
 
 describe("content structural validation", () => {
-  it("accepts the M0 pack and rejects missing fields, invalid unions, and numeric ranges", () => {
-    expect(validateContentPackStructure(M0_CONTENT_SOURCE, contentPackSchema)).toEqual([]);
+  it("accepts the core pack and rejects missing fields, invalid unions, and numeric ranges", () => {
+    expect(validateContentPackStructure(createCoreContentSource(), contentPackSchema)).toEqual([]);
 
     const source = sourceCopy();
     const missingVersion = {
@@ -106,7 +115,7 @@ describe("content structural validation", () => {
     })[0];
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain(
-      "Pack: cardguild.m4\nSource: content/test/manifest.json",
+      "Pack: cardguild.test.core\nSource: content/test/manifest.json",
     );
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toContain("Path: /manifest/version");
   });
@@ -166,7 +175,7 @@ describe("content semantic validation and compilation", () => {
     expect(issue).toBeDefined();
     expect(formatContentValidationIssue(issue as NonNullable<typeof issue>)).toBe(
       [
-        "Pack: cardguild.m4",
+        "Pack: cardguild.test.core",
         "Source: content/test/equipment.json",
         "Definition: halberd",
         "Path: [0].traits[0].id",
@@ -343,7 +352,7 @@ describe("content semantic validation and compilation", () => {
     const authoredJson = JSON.parse(JSON.stringify(custom)) as unknown;
     expect(validateContentPackStructure(authoredJson, contentPackSchema)).toEqual([]);
     const pack = compileContentPack(authoredJson as ContentPackSource);
-    const definition = getCombatDefinition(pack, M0_SCENARIO_ID);
+    const definition = getCombatDefinition(pack, RUINED_GATE_ID);
     const setup = createCombat(definition, 72);
     const allCards = Object.values(setup.state.cardZones.hero ?? {}).flat() as readonly {
       readonly definitionId: string;
@@ -386,7 +395,7 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("requires playable actors to use bottom-up character statistics", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
     const playable = source.actors.find((actor) => actor.traits.some((trait) => trait.id === "playable"));
     if (!creature || !playable) throw new Error("M5 actor fixtures are missing.");
@@ -404,11 +413,11 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("keeps final AC and HP out of character authoring while creatures keep fixed stats", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const playable = source.actors.find((actor) => actor.traits.some((trait) => trait.id === "playable"));
     const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
     if (!playable || !creature || creature.statProfile.kind !== "creature") {
-      throw new Error("M6 actor fixtures are missing.");
+      throw new Error("The character rules fixture is missing actor.");
     }
 
     expect(creature.statProfile.stats.ac).toBeGreaterThan(0);
@@ -430,10 +439,10 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("requires an armor profile exactly on armor slot equipment", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const armor = source.equipment.find((definition) => definition.slot === "armor");
     const boots = source.equipment.find((definition) => definition.slot === "feet");
-    if (!armor || !boots) throw new Error("M6 equipment fixtures are missing.");
+    if (!armor || !boots) throw new Error("The character rules fixture is missing equipment.");
 
     const withoutProfile: ContentPackSource = {
       ...source,
@@ -467,10 +476,10 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("keeps a shield bonus on the shield slot it belongs to", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const boots = source.equipment.find((definition) => definition.slot === "feet");
     const shield = source.equipment.find((definition) => definition.shieldBonus !== undefined);
-    if (!boots || !shield) throw new Error("M6 equipment fixtures are missing.");
+    if (!boots || !shield) throw new Error("The character rules fixture is missing equipment.");
     expect(shield.slot).toBe("shield");
 
     const misplaced: ContentPackSource = {
@@ -490,9 +499,9 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("keeps final attack and Attribute-duplicating damage out of player weapon authoring", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const weapon = source.equipment.find((definition) => definition.slot === "weapon");
-    if (!weapon?.weaponProfile) throw new Error("M6 weapon fixtures are missing.");
+    if (!weapon?.weaponProfile) throw new Error("The character rules fixture is missing weapon.");
     const profile = weapon.weaponProfile;
     expect(profile).not.toHaveProperty("attackModifier");
     expect(profile.damage).not.toHaveProperty("modifier");
@@ -521,10 +530,10 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("requires a weapon profile exactly on weapon slot equipment", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const weapon = source.equipment.find((definition) => definition.slot === "weapon");
     const boots = source.equipment.find((definition) => definition.slot === "feet");
-    if (!weapon?.weaponProfile || !boots) throw new Error("M6 equipment fixtures are missing.");
+    if (!weapon?.weaponProfile || !boots) throw new Error("The character rules fixture is missing equipment.");
     const weaponProfile = weapon.weaponProfile;
 
     const withoutProfile: ContentPackSource = {
@@ -559,11 +568,11 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("requires complete offense authoring on characters and a fixed Strike on creatures", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const character = source.actors.find((actor) => actor.statProfile.kind === "character");
     const creature = source.actors.find((actor) => actor.statProfile.kind === "creature");
     if (character?.statProfile.kind !== "character" || creature?.statProfile.kind !== "creature") {
-      throw new Error("M6 actor fixtures are missing.");
+      throw new Error("The character rules fixture is missing actor.");
     }
     const characterStats = character.statProfile.stats;
     const creatureStats = creature.statProfile.stats;
@@ -631,9 +640,9 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("keeps Cards a reference to an Action instead of an authored modifier or DC", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const card = source.cards[0];
-    if (!card) throw new Error("M6 card fixtures are missing.");
+    if (!card) throw new Error("The character rules fixture is missing card.");
     expect(Object.keys(card).sort()).toEqual(["actionId", "id", "name", "traits"]);
 
     const authored = { ...source, cards: source.cards.map((entry, index) => index === 0 ? { ...entry, modifier: 7, dc: 18 } : entry) };
@@ -644,9 +653,9 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("rejects unknown statistic, attribute, and DC references in a check resolution", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const trip = source.actions.find((action) => action.id === "trip");
-    if (trip?.resolution.kind !== "check") throw new Error("M6 Trip fixture is missing.");
+    if (trip?.resolution.kind !== "check") throw new Error("The character rules fixture is missing Trip.");
     const tripResolution = trip.resolution;
     const tripCheck = tripResolution.check;
 
@@ -675,10 +684,10 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("requires all four degree outcomes and compatible targeting for a resolution", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const trip = source.actions.find((action) => action.id === "trip");
     const stand = source.actions.find((action) => action.id === "stand");
-    if (trip?.resolution.kind !== "check" || !stand) throw new Error("M6 action fixtures are missing.");
+    if (trip?.resolution.kind !== "check" || !stand) throw new Error("The character rules fixture is missing action.");
     const tripResolution = trip.resolution;
 
     const missingDegree = {
@@ -714,10 +723,10 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("allows weapon reach only where a weapon is actually involved", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const strike = source.actions.find((action) => action.id === "strike");
     const spell = source.actions.find((action) => action.id === "spirit-lance");
-    if (!strike || !spell) throw new Error("M6 action fixtures are missing.");
+    if (!strike || !spell) throw new Error("The character rules fixture is missing action.");
     expect(strike.range).toEqual({ kind: "weapon-reach" });
     expect(spell.range).toEqual({ kind: "feet", value: 30 });
 
@@ -745,7 +754,7 @@ describe("content semantic validation and compilation", () => {
   });
 
   it("rejects positive untyped modifiers because PF2e untyped contributions are penalties", () => {
-    const source = structuredClone(M6_CONTENT_SOURCE);
+    const source = characterRulesCopy();
     const equipment = source.equipment.find((definition) => definition.statModifiers.length > 0);
     if (!equipment) throw new Error("M5 equipment fixtures are missing stat modifiers.");
     const invalid: ContentPackSource = {
@@ -775,10 +784,12 @@ describe("content semantic validation and compilation", () => {
   });
 });
 
-describe("M5 playable character content", () => {
+describe("playable character content", () => {
+  const characterRules = createCharacterRulesFixture();
+
   it("compiles three distinct playable profiles with validator-safe starter loadouts", () => {
-    expect(validateContentPackStructure(M6_CONTENT_SOURCE, contentPackSchema)).toEqual([]);
-    const playable = Object.values(M6_COMPILED_PACK.actorDefinitions)
+    expect(validateContentPackStructure(characterRulesCopy(), contentPackSchema)).toEqual([]);
+    const playable = Object.values(characterRules.actorDefinitions)
       .filter((actor) => actor.traits.some((trait) => trait.id === "playable"));
     expect(playable.map((actor) => actor.id).sort()).toEqual([
       "hero.aerin",
@@ -789,9 +800,9 @@ describe("M5 playable character content", () => {
     const lyra = playable.find((actor) => actor.id === "hero.lyra");
     const brom = playable.find((actor) => actor.id === "hero.brom");
     if (!aerin || !lyra || !brom) throw new Error("Playable M5 profiles are missing.");
-    const aerinStats = deriveLoadoutSnapshot(aerin, aerin.starterLoadout, M6_COMPILED_PACK.combatContent, aerin.id).statistics;
-    const lyraStats = deriveLoadoutSnapshot(lyra, lyra.starterLoadout, M6_COMPILED_PACK.combatContent, lyra.id).statistics;
-    const bromStats = deriveLoadoutSnapshot(brom, brom.starterLoadout, M6_COMPILED_PACK.combatContent, brom.id).statistics;
+    const aerinStats = deriveLoadoutSnapshot(aerin, aerin.starterLoadout, characterRules.combatContent, aerin.id).statistics;
+    const lyraStats = deriveLoadoutSnapshot(lyra, lyra.starterLoadout, characterRules.combatContent, lyra.id).statistics;
+    const bromStats = deriveLoadoutSnapshot(brom, brom.starterLoadout, characterRules.combatContent, brom.id).statistics;
     expect(lyraStats.reflex.modifier).toBeGreaterThan(aerinStats.reflex.modifier);
     expect(lyraStats.initiative).toBeGreaterThan(aerinStats.initiative);
     expect(lyra?.speedFeet).toBeGreaterThan(aerin?.speedFeet ?? 0);
@@ -812,8 +823,8 @@ describe("M5 playable character content", () => {
         },
       ])),
     };
-    const collection = createStartingCollection(party, M6_COMPILED_PACK);
-    expect(validatePartyLoadout(party, collection, M6_COMPILED_PACK)).toEqual({ valid: true, issues: [] });
+    const collection = createStartingCollection(party, characterRules);
+    expect(validatePartyLoadout(party, collection, characterRules)).toEqual({ valid: true, issues: [] });
     expect(new Set(playable.map((actor) => JSON.stringify({
       equipment: actor.starterLoadout.equipment,
       baseCards: actor.baseCardGrants,

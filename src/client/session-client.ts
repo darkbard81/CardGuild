@@ -102,6 +102,12 @@ export class SessionClient {
     return account;
   }
 
+  /** Signing up signs you in: the server answers with the same auth cookie login would. */
+  public static async register(username: string, password: string): Promise<AccountIdentity> {
+    const { account } = await apiPost<{ account: AccountIdentity }>("/api/auth/register", { username, password });
+    return account;
+  }
+
   public static async logout(): Promise<void> {
     await apiPost<unknown>("/api/auth/logout", {});
   }

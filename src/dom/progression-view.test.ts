@@ -32,7 +32,7 @@ const FACTS = {
   lastCompletedEncounterId: "encounter.goblin-chief",
 } as const;
 
-describe("M9-4 growth summary", () => {
+describe("growth summary", () => {
   it("collapses several levels into one jump and reports the remainder each member kept", () => {
     const summary = summarizeGrowth(VICTORY);
     expect(summary).toEqual({
@@ -48,7 +48,7 @@ describe("M9-4 growth summary", () => {
   });
 });
 
-describe("M9-4 growth notice lifecycle", () => {
+describe("growth notice lifecycle", () => {
   const notice = trackGrowthSummary(null, FACTS, VICTORY) as GrowthNotice;
 
   it("raises a notice from a committed victory batch", () => {

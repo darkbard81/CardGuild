@@ -74,7 +74,7 @@ const expected = [
   ["hero.lyra", 26, 19, 8, 18], ["hero.nera", 28, 17, 6, 20],
 ] as const;
 
-describe("M9-1 runtime progression", () => {
+describe("runtime progression", () => {
   it("initializes every new character from authored level with independent EXP state", () => {
     const input = setup([aerin.id, "hero.lyra"]);
     const before = structuredClone(input);

@@ -11,7 +11,7 @@ import {
   fixtureMidCombat,
   legacyStoredSave,
   withProgression,
-} from "./campaign-save.fixture";
+} from "../../tests/fixtures/campaign-save";
 import type { CampaignSaveRecord } from "./persistence";
 
 type MutableSave = {
@@ -65,7 +65,7 @@ function refusal(record: CampaignSaveRecord): CampaignSaveError {
   throw new Error("Restoring the save was expected to fail.");
 }
 
-describe("M9-3 campaign save projection", () => {
+describe("campaign save projection", () => {
   it("round-trips mid-combat gameplay, non-default progression and the collection at the same hash", () => {
     const state = withProgression(fixtureMidCombat(), {
       "party.hero-1": { level: 3, experience: 750 },
@@ -134,7 +134,7 @@ describe("M9-3 campaign save projection", () => {
   });
 });
 
-describe("M9-3 campaign save validation", () => {
+describe("campaign save validation", () => {
   it("reports a malformed payload, a mismatched hash and inconsistent metadata as corruption", () => {
     const state = fixtureMidCombat();
 
@@ -339,7 +339,7 @@ describe("M9-3 campaign save validation", () => {
     }
   });
 
-  describe("M9-4 content migration", () => {
+  describe("content migration", () => {
     /** A stored row written by the previous build, with metadata consistent with it. */
     function legacyRecord(
       state: SessionCoreState,

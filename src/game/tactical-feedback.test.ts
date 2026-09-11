@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { M6_COMBAT_DEFINITION, M6_CONTENT } from "../content/load-m6-content";
+import { createTacticalCombatFixture } from "../../tests/fixtures/content";
 import { buildResolvedActionPlan } from "./action-plan";
 import { createCombat, dispatchCombatCommand } from "./engine";
 import { previewAction } from "./queries";
 import type { ActorState, CombatContent } from "./types";
 
+/** The three-Character rules on the Ruined Gate board. */
+const CHARACTER_RULES_COMBAT = createTacticalCombatFixture({ rules: "character-rules" });
+const CHARACTER_RULES_CONTENT = CHARACTER_RULES_COMBAT.content;
+
 function fixture(rear = false, flanking = false, penalty = 0) {
-  const opened = createCombat(M6_COMBAT_DEFINITION, 34).state;
+  const opened = createCombat(CHARACTER_RULES_COMBAT, 34).state;
   const attacker = { ...opened.actors.hero!, position: { x: 1, y: 1 }, facing: "east" as const };
   const target = { ...opened.actors["goblin-skirmisher"]!, hp: 100, maxHp: 100,
     position: { x: 2, y: 1 }, facing: rear ? "east" as const : "west" as const,
@@ -14,7 +18,7 @@ function fixture(rear = false, flanking = false, penalty = 0) {
   const ally = { ...attacker, id: "ally", position: { x: 3, y: 1 }, facing: "west" as const, defeated: !flanking };
   const state = { ...opened, actors: { hero: attacker, [target.id]: target, ally },
     turn: { ...opened.turn, activeActorId: attacker.id, initiativeOrder: [attacker.id, target.id, ally.id], activeIndex: 0 } };
-  const content: CombatContent = { ...M6_CONTENT, conditions: { ...M6_CONTENT.conditions,
+  const content: CombatContent = { ...CHARACTER_RULES_CONTENT, conditions: { ...CHARACTER_RULES_CONTENT.conditions,
     "test-penalty": { id: "test-penalty", name: "Test", traits: [], statModifiers: [{ selector: { kind: "ac" }, type: "circumstance", value: penalty, label: "Test AC" }] },
   } };
   return { state, attacker, target, content };

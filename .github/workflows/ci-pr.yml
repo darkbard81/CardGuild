@@ -1,0 +1,36 @@
+# Full: "may this go into main?"
+#
+# The merge gate. Everything Quick runs, plus the four layers that need a real browser, real
+# ports, a real database and the deployment build — Browser Unit, Integration, E2E and
+# Recovery. This is the run to make a required check on `main`.
+name: CI Full
+
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  # A new commit on the PR replaces the previous verdict, so the old run can go.
+  group: full-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  full:
+    name: Full
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      # Three commands that do not overlap: check validates, build produces, test runs. The
+      # asset outputs are tracked, so `check` verifies them and nothing here regenerates
+      # them — a gate that rewrote committed files would be reporting on its own work.
+      - run: npm run check
+      - run: npm run build
+      # All five layers in order, Recovery last against the build from the step above.
+      - run: npm test

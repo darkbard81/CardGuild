@@ -1,0 +1,21 @@
+[
+  {
+    "id": "adventure.probe",
+    "name": "Probe",
+    "description": "One battle, for the JSON boundary.",
+    "partySize": {
+      "min": 1,
+      "max": 1
+    },
+    "encounterIds": [
+      "encounter.probe"
+    ],
+    "rewards": [],
+    "experienceAwards": [
+      {
+        "afterEncounterId": "encounter.probe",
+        "amount": 0
+      }
+    ]
+  }
+]
