@@ -1,0 +1,53 @@
+# Release tag: "which commit is vX.Y.Z?"
+#
+# Fires once per PR merged into `main`. It reads the version out of package.json at the merge
+# commit and, if no `vX.Y.Z` tag exists for it yet, pushes an annotated one there. So bumping
+# the version in a PR is what makes it a release; a PR that leaves the version alone finds the
+# tag already present and skips. Nothing is built or tested here — CI Full already decided
+# the merge; this only records it.
+name: Release Tag
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  tag:
+    name: Tag
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The merge commit is what shipped, so that is what the tag names.
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+      - name: Read version
+        id: version
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::package.json version '$version' is not semver"
+            exit 1
+          fi
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+      - name: Create and push tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if git ls-remote --exit-code --tags origin "refs/tags/$TAG" >/dev/null; then
+            echo "$TAG already exists — version unchanged, nothing to tag" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG (PR #$PR)"
+          git push origin "refs/tags/$TAG"
+          echo "Tagged $TAG at $(git rev-parse --short HEAD)" >> "$GITHUB_STEP_SUMMARY"
