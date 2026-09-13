@@ -49,7 +49,7 @@ export function buildAdventureEncounter(
         position: { ...spawn.position },
         facing: spawn.facing,
       }, partyMember.loadout, pack.combatContent, partyMember.id,
-      resolveEffectiveCharacterStatProfile(actorDefinition, partyMember.progression));
+      resolveEffectiveCharacterStatProfile(actorDefinition, partyMember.progression, pack.characterRules));
     });
   const actors = [...partyActors, ...staticActors];
 

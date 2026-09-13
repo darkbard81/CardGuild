@@ -28,7 +28,7 @@ test.beforeEach(async ({ page }) => {
       equipment[id] = { ...prototype, id, name: `Test weapon ${index}` };
     }
     const pack = { ...content.pack, combatContent: { ...content.pack.combatContent, equipment } };
-    const initial = createAdventureSession({ definition: content.adventure, actorDefinitions: pack.actorDefinitions, combatContent: pack.combatContent }, {
+    const initial = createAdventureSession({ definition: content.adventure, actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules, combatContent: pack.combatContent }, {
       members: { hero: { id: "hero", seat: 1, actorDefinitionId: actor.id, loadout: actor.starterLoadout } },
     }, 1);
     const state = { ...initial, collection: { ...initial.collection, equipment: Object.fromEntries(Object.keys(equipment).map((id) => [id, 1])) } };

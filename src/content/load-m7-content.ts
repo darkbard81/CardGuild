@@ -7,6 +7,8 @@ import equipment from "../../content/m7/equipment.json";
 import manifest from "../../content/m7/manifest.json";
 import scenarios from "../../content/m7/scenarios.json";
 import traits from "../../content/m7/traits.json";
+import ancestries from "../../content/m7/ancestries.json";
+import classes from "../../content/m7/classes.json";
 import { getCombatDefinition, getContentIdentity, compileContentPack } from "./compile-content";
 import type { AdventureDefinition, ContentPackSource } from "./content-types";
 
@@ -19,6 +21,8 @@ export const M7_GOBLIN_CHIEF_ID = "encounter.goblin-chief";
 export const M7_CONTENT_SOURCE = {
   manifest,
   traits,
+  ancestries,
+  classes,
   conditions,
   actions,
   cards,

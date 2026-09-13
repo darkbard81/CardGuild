@@ -87,7 +87,7 @@ describe("campaign durability", () => {
       campaignId: "camp_1",
       ownerAccountId: "acc_owner",
       expectedCampaignRevision: 0,
-      saveSchemaVersion: 1,
+      saveSchemaVersion: 2,
       snapshotHash: hashSessionGameplayState(begun),
       updatedAt: 4_242,
     });

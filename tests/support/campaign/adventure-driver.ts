@@ -1,3 +1,4 @@
+import { chooseAdvancement } from "../../../tools/playtest/advancement-policy";
 import {
   gridDistance,
   listLegalActions,
@@ -131,7 +132,7 @@ export function equipIntent(adventure: AdventureState | null, grant: RewardGrant
     if (!definition) continue;
     const intent = wear(member) as Extract<SessionIntent, { type: "set-loadout" }>;
     // Judged against the Level the party actually carries, not the authored Level 1.
-    const effective = resolveEffectiveCharacterStatProfile(definition, member.progression);
+    const effective = resolveEffectiveCharacterStatProfile(definition, member.progression, PRODUCTION_CONTENT.pack.characterRules);
     const before = deriveLoadoutSnapshot(definition, member.loadout, CONTENT, member.id, effective);
     const after = deriveLoadoutSnapshot(definition, intent.loadout, CONTENT, member.id, effective);
     const damage = (snapshot: typeof before): number =>
@@ -149,4 +150,14 @@ export function reactionIntent(combat: CombatState): SessionIntent | null {
   if (!candidate) return { type: "pass-reaction", triggerId: pending.triggerId };
   if (combat.actors[candidate.actorId]?.team !== "heroes") return null;
   return { type: "use-reaction", triggerId: pending.triggerId, cardInstanceId: candidate.cardInstanceId };
+}
+
+/** One explicit growth choice; callers send it before entering the next battle. */
+export function advancementIntent(adventure: AdventureState | null): SessionIntent | null {
+  if (!adventure || (adventure.phase !== "ready" && adventure.phase !== "between-encounters")) return null;
+  for (const member of Object.values(adventure.party.members).sort((a, b) => a.seat - b.seat)) {
+    const choice = chooseAdvancement(member, PRODUCTION_CONTENT.pack);
+    if (choice) return { type: "advance-character", memberId: member.id, choice };
+  }
+  return null;
 }

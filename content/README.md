@@ -50,13 +50,15 @@ import합니다. barrel에는 이제 fixture가 없지만, 이 한 지점을 통
 각 pack directory는 다음 파일을 모두 가집니다.
 
 ```text
-manifest.json    schemaVersion(현재 10), pack ID/version, ruleset ID
+manifest.json    schemaVersion(현재 11), pack ID/version, ruleset ID
 traits.json      모든 authored Trait(source/category/description 포함)과 Card/Action provider
 conditions.json  Condition과 recovery provider Trait
 actions.json     GameCore가 이해하는 effect primitive 조합
 cards.json       Action을 참조하는 전술 카드
 equipment.json   slot, 능력치, 무기/방어구 profile, Trait
-actors.json      재사용 가능한 ActorDefinition (playable Character와 Creature)
+ancestries.json  ancestry Trait ID → HP / speed / fixed boosts 2개
+classes.json     class Trait ID → HP / key Attribute / starting proficiency / milestones
+actors.json      ActorSource: Character Build·성장 이력 또는 Creature fixed stats
 scenarios.json   Encounter placement, objective, map tiles/objects, seat별 partySpawnSlots
 adventures.json  linear Encounter 순서, 1–3P partySize, 고정 reward offer, Encounter별 EXP
 ```
@@ -87,10 +89,31 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 씁니다. 현재 값은 **10**이며, 호환되지 않는 shape
-  변경은 기존 schema를 덮어써 조용히 재해석하지 말고 값을 올리고 명시적 migration을 추가합니다.
+- `schemaVersion`은 JSON shape migration에 씁니다. 현재 값은 **11**이며, 호환되지 않는 shape
+  변경은 버전을 올리고 호환 정책을 명시합니다. M11-2는 Save v1 자동 migration을 등록하지 않습니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key, definition 배열, tile
   입력 순서에는 영향받지 않지만 gameplay 값이 바뀌면 달라집니다. 직접 authoring하지 않습니다.
 - replay의 pack ID/version/fingerprint가 로드된 pack과 다르면 GameCore는 command를 실행하기
   전에 거절합니다.
+
+
+## Character Build와 성장
+
+Character source는 `traits`에 ancestry/class를 정확히 하나씩 지정하고,
+`statProfile: { kind: "character", build: { freeBoosts, trainedSkills }, level, advancements }`를 작성합니다.
+Character의 최종 Attribute/Skill/Save/Armor/Weapon/Class DC와 `speedFeet`는 직접 작성하지 않습니다.
+NPC에도 같은 규칙을 적용하고, authored level까지 필요한 성장 이력을 빠짐없이 작성합니다.
+Creature는 `statProfile: { kind: "creature", stats: ... }`와 `speedFeet`를 그대로 작성합니다.
+
+`src/character`의 pure resolver가 Build와 runtime progression을 합성합니다. EXP는 선택을 자동으로
+채우지 않으며, pending 성장이 있으면 다음 전투가 막힙니다. Adventure의 Level-Up에서 현재
+조종자가 가장 이른 성장부터 확정합니다. 저장 COMMIT 이후에만 선택이 실제 상태가 됩니다.
+
+현재 production 클래스는 Player Core의 Bard/Cleric/Druid/Fighter/Ranger/Rogue/Witch/Wizard와
+예외로 허용된 Champion, 총 9종입니다. 원전 선택 분기는 클래스별 고정 preset입니다.
+[생성 규칙·preset·마이그레이션 표와 플레이테스트 비교](../docs/m11-2-character-progression-foundation.md)를 참조하세요.
+
+이 release는 schema 11 / pack 0.6.0 / AdventureState 4 / Save 2 / protocol 8을 사용합니다.
+SessionCoreState 3과 CombatState 4는 유지합니다. Save 1은 `SAVE_SCHEMA_UNSUPPORTED`,
+이전 gameplay content는 `SAVE_CONTENT_MISMATCH`로 거절하며 저장 row를 덮어쓰거나 삭제하지 않습니다.

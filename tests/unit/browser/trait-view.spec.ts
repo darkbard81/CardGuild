@@ -160,7 +160,7 @@ test("keeps focus and the pinned tooltip through a re-render of the same detail,
   const before = await chip.evaluate((node) => node.getBoundingClientRect().top);
   // A new snapshot rebuilds the hero sheet; the Strike row is the same, so nothing moves.
   await page.evaluate(() => window.tacticalFixture.nudgeHp(7));
-  await expect(page.locator(".hp-row strong").first()).toHaveText("7/21");
+  await expect(page.locator(".hp-row strong").first()).toHaveText("7/19");
   await expect(chip).toBeFocused();
   await expect(tooltip(page)).toBeVisible();
   await expect(tooltip(page)).toHaveAttribute("data-pinned", "true");
@@ -179,7 +179,7 @@ test("keeps focus and the pinned tooltip through a re-render of the same detail,
   await expect(page.locator("#selected-detail .trait-chip")).toHaveText(["Attack", "Skill", "Trip"]);
   // A snapshot resets the pick, so the inspector loses its subject: chips and tooltip go.
   await page.evaluate(() => window.tacticalFixture.nudgeHp(9));
-  await expect(page.locator(".hp-row strong").first()).toHaveText("9/21");
+  await expect(page.locator(".hp-row strong").first()).toHaveText("9/19");
   await expect(page.locator("#selected-detail .trait-chip")).toHaveCount(0);
   await expect(tooltip(page)).toBeHidden();
 });

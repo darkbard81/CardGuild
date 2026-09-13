@@ -255,7 +255,7 @@ test("equips in one click and fits the minimum loadout viewport", async ({ page 
   await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
   const feet = page.locator('.equipment-slot[data-slot="feet"]');
   await feet.hover();
-  await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
+  await expect(page.locator("#loadout-detail")).toContainText("17 → 16");
   await expect(page.locator("#loadout-detail")).toContainText("Fly ×2");
   await feet.click();
   await expect(feet).toContainText("Empty feet");

@@ -435,7 +435,7 @@ describe("core combat rules", () => {
     const first = createCoreCombat(coreScenario(), CORE_SEED).state;
     const second = createCoreCombat(coreScenario(), CORE_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("e33d48fd058cee56");
+    expect(hashCombatState(first)).toBe("e6c9f332c8ebb1dc");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -451,7 +451,7 @@ describe("core combat rules", () => {
       first.actors.hero as NonNullable<typeof first.actors.hero>,
       { kind: "save", id: "reflex" },
       { content: CORE_CONTENT },
-    ).value).toBe(16);
+    ).value).toBe(17);
   });
 
   it("uses one pipeline for Interact, Raise Shield, and sustained effects", () => {
@@ -481,7 +481,7 @@ describe("core combat rules", () => {
     expect(resolveArmorClass(
       raised.state.actors.hero as NonNullable<typeof raised.state.actors.hero>,
       { content: CORE_CONTENT },
-    ).value).toBe(17);
+    ).value).toBe(16);
 
     const beaconCard = raised.state.cardZones.hero?.hand.find(
       (card) => card.definitionId === "card.spirit-beacon",

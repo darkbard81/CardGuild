@@ -1,0 +1,11 @@
+[
+  {
+    "id": "human",
+    "hitPoints": 8,
+    "speedFeet": 25,
+    "fixedBoosts": [
+      "str",
+      "wis"
+    ]
+  }
+]

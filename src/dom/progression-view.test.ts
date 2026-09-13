@@ -9,8 +9,8 @@ function gained(memberId: string, amount: number, from: number, to: number, expe
     encounterId: "encounter.goblin-chief",
     memberId,
     amount,
-    previous: { level: from, experience: 0 },
-    next: { level: to, experience },
+    previous: { level: from, experience: 0, advancements: [] },
+    next: { level: to, experience, advancements: [] },
   };
 }
 

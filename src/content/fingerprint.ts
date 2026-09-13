@@ -1,4 +1,5 @@
 import type { ContentPackSource } from "./content-types";
+import { isCharacterActorSource } from "./content-types";
 import { fingerprintValue, stableSerialize } from "../game/determinism";
 
 function byId<T extends { readonly id: string }>(values: readonly T[]): readonly T[] {
@@ -9,11 +10,23 @@ export function normalizeContentPack(source: ContentPackSource): ContentPackSour
   return {
     manifest: source.manifest,
     traits: byId(source.traits),
+    ancestries: byId(source.ancestries).map(ancestry => ({ ...ancestry, fixedBoosts: [...ancestry.fixedBoosts].sort() as unknown as typeof ancestry.fixedBoosts })),
+    classes: byId(source.classes).map(definition => ({ ...definition, milestones: [...definition.milestones].sort((a, b) => a.level - b.level) })),
     conditions: byId(source.conditions),
     actions: byId(source.actions),
     cards: byId(source.cards),
     equipment: byId(source.equipment),
-    actors: byId(source.actors),
+    actors: byId(source.actors).map(actor => !isCharacterActorSource(actor) ? actor : {
+      ...actor, statProfile: { ...actor.statProfile,
+        build: { ...actor.statProfile.build,
+          freeBoosts: [...actor.statProfile.build.freeBoosts].sort() as unknown as typeof actor.statProfile.build.freeBoosts,
+          trainedSkills: [...actor.statProfile.build.trainedSkills].sort(),
+        },
+        advancements: [...actor.statProfile.advancements].sort((a, b) => a.level - b.level).map(choice => ({ ...choice,
+          ...(choice.attributeBoosts ? { attributeBoosts: [...choice.attributeBoosts].sort() as unknown as typeof choice.attributeBoosts } : {}),
+        })),
+      },
+    }),
     scenarios: byId(source.scenarios).map((scenario) => ({
       ...scenario,
       placements: [...scenario.placements].sort((left, right) => left.instanceId.localeCompare(right.instanceId)),

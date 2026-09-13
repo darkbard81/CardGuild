@@ -192,21 +192,15 @@ describe("starter build identity", () => {
     for (const actor of STARTERS) expect(`${actor.id}:${String(weakness(actor.id))}`).toBe(`${actor.id}:true`);
   });
 
-  it("makes the tactician the Class DC specialist and the weakest striker", () => {
-    const snapshot = (id: string) => {
-      const actor = PACK.actorDefinitions[id];
-      if (!actor) throw new Error(`${id} is missing.`);
-      const derived = deriveLoadoutSnapshot(actor, actor.starterLoadout, CONTENT, id);
-      return { ...derived.statistics, damage: derived.strike.damage.flatModifier };
-    };
-    const nera = snapshot("hero.nera");
-    const others = ["hero.aerin", "hero.lyra", "hero.brom"].map(snapshot);
-    // Expert Class DC is what makes a Class-DC card hers rather than anyone's.
-    for (const other of others) expect(nera.classDc).toBeGreaterThan(other.classDc);
-    // She pays for it with the lowest Strike damage and no shield.
-    for (const other of others) expect(nera.damage).toBeLessThanOrEqual(other.damage);
-    expect(PACK.actorDefinitions["hero.nera"]?.starterLoadout.equipment.shield).toBeUndefined();
+  it("makes Nera a trained Warpriest with support skills and a weak starting martial Strike", () => {
+    const actor = PACK.actorDefinitions["hero.nera"]!;
+    const view = deriveLoadoutSnapshot(actor, actor.starterLoadout, CONTENT, actor.id);
+    expect(view.statistics.classDc).toBe(16);
+    expect(view.strike.proficiencyRank).toBe("untrained");
+    expect(view.strike.attackModifier).toBe(1);
+    expect(actor.statProfile).toMatchObject({ stats: { skills: { medicine: "trained", religion: "trained", athletics: "untrained" } } });
   });
+
 });
 
 /** One starter on the board with a chosen kit, plus a live enemy to aim at. */
@@ -272,25 +266,25 @@ describe("starter signature actions", () => {
     );
   });
 
-  it("gives Brom the party's strongest Grapple", () => {
+  it("gives Brom a trained Grapple above the non-Strength starters", () => {
     const grappleModifier = (id: string): number => {
       const plan = planOf(actorWith(id), "grapple", ENEMY_TARGET);
       if (plan?.resolution.kind !== "check") throw new Error("Grapple must resolve as a check.");
       return plan.resolution.check.modifier;
     };
     const brom = grappleModifier("hero.brom");
-    for (const other of ["hero.aerin", "hero.lyra", "hero.nera"]) {
+    for (const other of ["hero.lyra", "hero.nera"]) {
       expect(`${other}:${String(brom > grappleModifier(other))}`).toBe(`${other}:true`);
     }
   });
 
-  it("rolls Nera's control against her expert Class DC", () => {
+  it("rolls Nera's control against her trained Class DC", () => {
     const nera = actorWith("hero.nera");
     const plan = planOf(nera, "iron-presence", ENEMY_TARGET);
     if (plan?.resolution.kind !== "check") throw new Error("Iron Presence must resolve as a check.");
     expect(plan.resolution.check.roller).toBe("target");
     expect(plan.resolution.check.dc).toBe(resolveClassDC(nera, { content: CONTENT }).value);
-    expect(plan.resolution.check.dc).toBe(19);
+    expect(plan.resolution.check.dc).toBe(16);
   });
 
   it("leaves Nera's Athletics cards legal but weak, and opens Combat Grab with a melee weapon", () => {
@@ -300,7 +294,7 @@ describe("starter signature actions", () => {
     for (const actionId of ["trip", "grapple"]) {
       const plan = planOf(nera, actionId, ENEMY_TARGET);
       if (plan?.resolution.kind !== "check") throw new Error(`${actionId} must resolve as a check.`);
-      expect(`${actionId}:${String(plan.resolution.check.modifier)}`).toBe(`${actionId}:0`);
+      expect(`${actionId}:${String(plan.resolution.check.modifier)}`).toBe(`${actionId}:1`);
     }
     // Combat Grab is closed by the weapon requirement alone, so a melee reward opens it.
     expect(planOf(nera, "combat-grab", ENEMY_TARGET)).toBeNull();

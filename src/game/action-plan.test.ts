@@ -310,12 +310,12 @@ describe("resolved action plan", () => {
     const before = structuredClone(hero.statProfile);
 
     const byDefault = resolveActionStatistic(hero, { kind: "skill", skill: "arcana" }, context);
-    const overridden = resolveActionStatistic(hero, { kind: "skill", skill: "arcana", attributeOverride: "wis" }, context);
+    const overridden = resolveActionStatistic(hero, { kind: "skill", skill: "arcana", attributeOverride: "str" }, context);
 
-    // Aerin: INT +1, WIS +3, arcana trained (+3) at level 1.
+    // Aerin: INT +1, STR +3, arcana trained (+3) at level 1.
     expect(byDefault.value).toBe(4);
     expect(overridden.value).toBe(6);
-    expect(overridden.sources.map((source) => source.label)).toEqual(["WIS", "Trained proficiency"]);
+    expect(overridden.sources.map((source) => source.label)).toEqual(["STR", "Trained proficiency"]);
     // The override selects an already-stored Attribute; it never rewrites the Character.
     expect(hero.statProfile).toEqual(before);
   });

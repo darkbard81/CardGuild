@@ -4,7 +4,7 @@ import { gridDistance, listLegalActions, listLegalTargets, type CombatState } fr
 import type { ClientIntentEnvelope, ServerMessage } from "../protocol";
 import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../session";
 import { CampaignWriterRetiredError, type SessionDurability } from "./campaign-durability";
-import { FIXTURE_CONTEXT, FIXTURE_PARTY, fixtureLobby } from "../../tests/fixtures/campaign-save";
+import { FIXTURE_CONTEXT, FIXTURE_PARTY, fixtureLobby, fixtureBegun, withProgression } from "../../tests/fixtures/campaign-save";
 import { createReconnectCredential } from "./credentials";
 import { SESSION_RETIRED_CLOSE_CODE, SessionHost, type SessionConnection } from "./session-host";
 
@@ -80,15 +80,15 @@ interface Harness {
   send(requestId: string, intent: SessionIntent): Promise<void>;
 }
 
-async function harness(): Promise<Harness> {
+async function harness(initial?: SessionCoreState): Promise<Harness> {
   const log: string[] = [];
   const durability = fakeDurability(log);
-  const state = fixtureLobby("session-host-test", "player-host");
+  const state = initial ?? fixtureLobby("session-host-test", "player-host");
   const credential = createReconnectCredential();
   const host = new SessionHost(state, FIXTURE_CONTEXT, credential.digest, { durability });
   const connection = new FakeConnection("socket-1", log);
   const attach = async (): Promise<void> => {
-    const result = await host.attach("player-host", credential.token, state.contentIdentity, connection);
+    const result = await host.attach(state.hostPlayerId, credential.token, state.contentIdentity, connection);
     expect(result.ok).toBe(true);
   };
   await attach();
@@ -97,17 +97,17 @@ async function harness(): Promise<Harness> {
     durability,
     log,
     connection,
-    hostPlayerId: "player-host",
+    hostPlayerId: state.hostPlayerId,
     attach,
     send(requestId, intent) {
       const envelope: ClientIntentEnvelope = {
-        v: 7,
+        v: 8,
         type: "intent",
         requestId,
         expectedRevision: host.state.revision,
         intent,
       };
-      return host.handleIntent("player-host", "socket-1", envelope);
+      return host.handleIntent(state.hostPlayerId, "socket-1", envelope);
     },
   };
 }
@@ -227,7 +227,7 @@ describe("commit before publish", () => {
 
     // A guest claim, a detach and a re-attach are accepted transitions that change no gameplay.
     const claim: ClientIntentEnvelope = {
-      v: 7,
+      v: 8,
       type: "intent",
       requestId: "claim",
       expectedRevision: harnessed.host.state.revision,
@@ -264,7 +264,7 @@ describe("commit before publish", () => {
     durability.commits.length = 0;
 
     await host.handleIntent(resumed.hostPlayerId, "socket-resume", {
-      v: 7,
+      v: 8,
       type: "intent",
       requestId: "resume",
       expectedRevision: 0,
@@ -313,7 +313,7 @@ describe("commit before publish", () => {
       .filter((message) => message.type === "snapshot" && message.cause?.kind === "server").length;
 
     await host.handleIntent("player-guest", "socket-stalled-guest", {
-      v: 7,
+      v: 8,
       type: "intent",
       requestId: "claim",
       expectedRevision: host.state.revision,
@@ -327,7 +327,7 @@ describe("commit before publish", () => {
     expect(host.state.combat?.turn.activeActorId).toBe(enemyId);
 
     await host.handleIntent(stalled.hostPlayerId, "socket-stalled-host", {
-      v: 7,
+      v: 8,
       type: "intent",
       requestId: "resume",
       expectedRevision: host.state.revision,
@@ -456,7 +456,7 @@ describe("growth is published only once the victory is durable", () => {
     );
     expect(attached.ok).toBe(true);
     await shared.host.handleIntent("player-guest", "socket-guest", {
-      v: 7,
+      v: 8,
       type: "intent",
       requestId: "claim",
       expectedRevision: shared.host.state.revision,
@@ -492,7 +492,7 @@ describe("growth is published only once the victory is durable", () => {
     expect(stalled.combat).not.toBeNull();
     expect(stalled.adventure?.completedEncounterIds).toEqual([]);
     for (const member of Object.values(stalled.adventure?.party.members ?? {})) {
-      expect(member.progression).toEqual({ level: 1, experience: 0 });
+      expect(member.progression).toEqual({ level: 1, experience: 0, advancements: [] });
     }
     // Nothing about the growth reached a client, because the campaign does not hold it.
     expect(growthEvents(harnessed)).toEqual([]);
@@ -507,12 +507,37 @@ describe("growth is published only once the victory is durable", () => {
     expect(settled.combat).toBeNull();
     expect(settled.adventure?.completedEncounterIds).toEqual(["encounter.road-ambush"]);
     for (const member of Object.values(settled.adventure?.party.members ?? {})) {
-      expect(member.progression).toEqual({ level: 1, experience: 200 });
+      expect(member.progression).toEqual({ level: 1, experience: 200, advancements: [] });
     }
     // Exactly one award per seat, and none of them a Level-Up at this amount.
     expect(growthEvents(harnessed).map((event) => event.type))
       .toEqual(["EXPERIENCE_GAINED", "EXPERIENCE_GAINED", "EXPERIENCE_GAINED"]);
     expect(harnessed.durability.commits.at(-1)?.adventure?.party.members["party.hero-1"]?.progression)
-      .toEqual({ level: 1, experience: 200 });
+      .toEqual({ level: 1, experience: 200, advancements: [] });
+  });
+});
+
+describe("Character choices commit before publication", () => {
+  it("holds state, events and ACK until COMMIT and permits an identical retry after a failed write", async () => {
+    const initial = withProgression(fixtureBegun(), { "party.hero-1": { level: 3, experience: 0, advancements: [] } });
+    const h = await harness(initial);
+    const intent: SessionIntent = { type: "advance-character", memberId: "party.hero-1", choice: { level: 3, skillIncrease: "athletics" } };
+    h.log.length = 0;
+    h.durability.failure = "transient";
+    await h.send("growth", intent);
+    expect(h.host.state).toBe(initial);
+    expect(h.log).toEqual(["ack", "error"]);
+    expect(h.connection.messages.some(m => m.type === "snapshot" && m.events.some(e => e.type === "CHARACTER_ADVANCED"))).toBe(false);
+    h.log.length = 0; h.durability.failure = "none"; h.durability.hold = true;
+    const waiting = h.send("growth", intent);
+    await Promise.resolve(); await Promise.resolve();
+    expect(h.host.state).toBe(initial); expect(h.log).toEqual([]);
+    h.durability.hold = false; h.durability.release(); await waiting;
+    expect(h.log).toEqual(["commit", "ack", "snapshot:intent"]);
+    expect(h.host.state.adventure!.party.members["party.hero-1"]!.progression.advancements).toEqual([intent.choice]);
+    const committed = h.host.state;
+    await h.send("growth-again", intent);
+    expect(h.host.state).toBe(committed);
+    expect(h.durability.commits).toHaveLength(1);
   });
 });

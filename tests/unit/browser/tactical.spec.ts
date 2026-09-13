@@ -317,12 +317,12 @@ test.describe("touch aiming off the map", () => {
  */
 test("plays a snapshot that lands mid-walk after the walk, not over it", async ({ page }) => {
   const hp = page.locator(".hp-row strong").first();
-  await expect(hp).toHaveText("21/21");
+  await expect(hp).toHaveText("19/19");
   await page.locator("#pixi-canvas").click({ position: await boardPoint(page, 3.5, 1.5) });
   await page.locator('#ring-root [data-action-id="stride"]').click();
   // The walk is under way; this is the next command of the same turn arriving behind it.
   await page.evaluate(() => window.tacticalFixture.nudgeHp(7));
-  expect(await hp.innerText()).toBe("21/21");
-  await expect(hp).toHaveText("7/21");
+  expect(await hp.innerText()).toBe("19/19");
+  await expect(hp).toHaveText("7/19");
   await expect.poll(() => page.evaluate(() => window.tacticalFixture.state.actors.hero!.position)).toEqual({ x: 3, y: 1 });
 });

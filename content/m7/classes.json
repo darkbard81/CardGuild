@@ -1,0 +1,673 @@
+[
+  {
+    "id": "bard",
+    "hpPerLevel": 8,
+    "keyAttribute": "cha",
+    "starting": {
+      "perception": "expert",
+      "saves": {
+        "fortitude": "trained",
+        "reflex": "trained",
+        "will": "expert"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "trained",
+        "medium": "untrained",
+        "heavy": "untrained"
+      },
+      "weapons": {
+        "unarmed": "trained",
+        "simple": "trained",
+        "martial": "trained",
+        "advanced": "untrained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 3,
+        "saves": {
+          "reflex": "expert"
+        }
+      },
+      {
+        "level": 9,
+        "saves": {
+          "fortitude": "expert",
+          "will": "master"
+        }
+      },
+      {
+        "level": 11,
+        "perception": "master",
+        "weapons": {
+          "unarmed": "expert",
+          "simple": "expert",
+          "martial": "expert"
+        }
+      },
+      {
+        "level": 13,
+        "armor": {
+          "unarmored": "expert",
+          "light": "expert"
+        }
+      },
+      {
+        "level": 17,
+        "saves": {
+          "will": "legendary"
+        }
+      }
+    ]
+  },
+  {
+    "id": "champion",
+    "hpPerLevel": 10,
+    "keyAttribute": "str",
+    "starting": {
+      "perception": "trained",
+      "saves": {
+        "fortitude": "expert",
+        "reflex": "trained",
+        "will": "expert"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "trained",
+        "medium": "trained",
+        "heavy": "trained"
+      },
+      "weapons": {
+        "unarmed": "trained",
+        "simple": "trained",
+        "martial": "trained",
+        "advanced": "untrained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 5,
+        "weapons": {
+          "unarmed": "expert",
+          "simple": "expert",
+          "martial": "expert"
+        }
+      },
+      {
+        "level": 7,
+        "armor": {
+          "unarmored": "expert",
+          "light": "expert",
+          "medium": "expert",
+          "heavy": "expert"
+        }
+      },
+      {
+        "level": 9,
+        "classDc": "expert",
+        "saves": {
+          "reflex": "expert",
+          "fortitude": "master"
+        }
+      },
+      {
+        "level": 11,
+        "perception": "expert",
+        "saves": {
+          "will": "master"
+        }
+      },
+      {
+        "level": 13,
+        "armor": {
+          "unarmored": "master",
+          "light": "master",
+          "medium": "master",
+          "heavy": "master"
+        },
+        "weapons": {
+          "unarmed": "master",
+          "simple": "master",
+          "martial": "master"
+        }
+      },
+      {
+        "level": 17,
+        "classDc": "master",
+        "armor": {
+          "unarmored": "legendary",
+          "light": "legendary",
+          "medium": "legendary",
+          "heavy": "legendary"
+        }
+      }
+    ]
+  },
+  {
+    "id": "cleric",
+    "hpPerLevel": 8,
+    "keyAttribute": "wis",
+    "starting": {
+      "perception": "trained",
+      "saves": {
+        "fortitude": "expert",
+        "reflex": "trained",
+        "will": "expert"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "trained",
+        "medium": "trained",
+        "heavy": "untrained"
+      },
+      "weapons": {
+        "unarmed": "trained",
+        "simple": "trained",
+        "martial": "untrained",
+        "advanced": "untrained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 3,
+        "weapons": {
+          "martial": "trained"
+        }
+      },
+      {
+        "level": 5,
+        "perception": "expert"
+      },
+      {
+        "level": 7,
+        "weapons": {
+          "unarmed": "expert",
+          "simple": "expert",
+          "martial": "expert"
+        }
+      },
+      {
+        "level": 9,
+        "saves": {
+          "will": "master"
+        }
+      },
+      {
+        "level": 11,
+        "saves": {
+          "reflex": "expert"
+        }
+      },
+      {
+        "level": 13,
+        "armor": {
+          "unarmored": "expert",
+          "light": "expert",
+          "medium": "expert"
+        }
+      },
+      {
+        "level": 15,
+        "saves": {
+          "fortitude": "master"
+        }
+      },
+      {
+        "level": 19,
+        "weapons": {
+          "unarmed": "master"
+        }
+      }
+    ]
+  },
+  {
+    "id": "druid",
+    "hpPerLevel": 8,
+    "keyAttribute": "wis",
+    "starting": {
+      "perception": "trained",
+      "saves": {
+        "fortitude": "trained",
+        "reflex": "trained",
+        "will": "expert"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "trained",
+        "medium": "trained",
+        "heavy": "untrained"
+      },
+      "weapons": {
+        "unarmed": "trained",
+        "simple": "trained",
+        "martial": "untrained",
+        "advanced": "untrained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 3,
+        "perception": "expert",
+        "saves": {
+          "fortitude": "expert"
+        }
+      },
+      {
+        "level": 5,
+        "saves": {
+          "reflex": "expert"
+        }
+      },
+      {
+        "level": 11,
+        "weapons": {
+          "unarmed": "expert",
+          "simple": "expert"
+        },
+        "saves": {
+          "will": "master"
+        }
+      },
+      {
+        "level": 13,
+        "armor": {
+          "unarmored": "expert",
+          "light": "expert",
+          "medium": "expert"
+        }
+      }
+    ]
+  },
+  {
+    "id": "fighter",
+    "hpPerLevel": 10,
+    "keyAttribute": "str",
+    "starting": {
+      "perception": "expert",
+      "saves": {
+        "fortitude": "expert",
+        "reflex": "expert",
+        "will": "trained"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "trained",
+        "medium": "trained",
+        "heavy": "trained"
+      },
+      "weapons": {
+        "unarmed": "expert",
+        "simple": "expert",
+        "martial": "expert",
+        "advanced": "trained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 3,
+        "saves": {
+          "will": "expert"
+        }
+      },
+      {
+        "level": 5,
+        "weapons": {
+          "unarmed": "master"
+        }
+      },
+      {
+        "level": 7,
+        "perception": "master"
+      },
+      {
+        "level": 9,
+        "saves": {
+          "fortitude": "master"
+        }
+      },
+      {
+        "level": 11,
+        "armor": {
+          "unarmored": "expert",
+          "light": "expert",
+          "medium": "expert",
+          "heavy": "expert"
+        },
+        "classDc": "expert"
+      },
+      {
+        "level": 13,
+        "weapons": {
+          "unarmed": "legendary",
+          "simple": "master",
+          "martial": "master",
+          "advanced": "expert"
+        }
+      },
+      {
+        "level": 15,
+        "saves": {
+          "reflex": "master"
+        }
+      },
+      {
+        "level": 17,
+        "armor": {
+          "unarmored": "master",
+          "light": "master",
+          "medium": "master",
+          "heavy": "master"
+        }
+      },
+      {
+        "level": 19,
+        "weapons": {
+          "simple": "legendary",
+          "martial": "legendary",
+          "advanced": "master"
+        },
+        "classDc": "master"
+      }
+    ]
+  },
+  {
+    "id": "ranger",
+    "hpPerLevel": 10,
+    "keyAttribute": "dex",
+    "starting": {
+      "perception": "expert",
+      "saves": {
+        "fortitude": "expert",
+        "reflex": "expert",
+        "will": "trained"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "trained",
+        "medium": "trained",
+        "heavy": "untrained"
+      },
+      "weapons": {
+        "unarmed": "trained",
+        "simple": "trained",
+        "martial": "trained",
+        "advanced": "untrained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 3,
+        "saves": {
+          "will": "expert"
+        }
+      },
+      {
+        "level": 5,
+        "weapons": {
+          "unarmed": "expert",
+          "simple": "expert",
+          "martial": "expert"
+        }
+      },
+      {
+        "level": 7,
+        "saves": {
+          "reflex": "master"
+        },
+        "perception": "master"
+      },
+      {
+        "level": 9,
+        "classDc": "expert"
+      },
+      {
+        "level": 11,
+        "saves": {
+          "fortitude": "master"
+        },
+        "armor": {
+          "unarmored": "expert",
+          "light": "expert",
+          "medium": "expert"
+        }
+      },
+      {
+        "level": 13,
+        "weapons": {
+          "unarmed": "master",
+          "simple": "master",
+          "martial": "master"
+        }
+      },
+      {
+        "level": 15,
+        "saves": {
+          "reflex": "legendary"
+        },
+        "perception": "legendary"
+      },
+      {
+        "level": 17,
+        "classDc": "master"
+      },
+      {
+        "level": 19,
+        "armor": {
+          "unarmored": "master",
+          "light": "master",
+          "medium": "master"
+        }
+      }
+    ]
+  },
+  {
+    "id": "rogue",
+    "hpPerLevel": 8,
+    "keyAttribute": "dex",
+    "starting": {
+      "perception": "expert",
+      "saves": {
+        "fortitude": "trained",
+        "reflex": "expert",
+        "will": "expert"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "trained",
+        "medium": "untrained",
+        "heavy": "untrained"
+      },
+      "weapons": {
+        "unarmed": "trained",
+        "simple": "trained",
+        "martial": "trained",
+        "advanced": "untrained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 5,
+        "weapons": {
+          "unarmed": "expert",
+          "simple": "expert",
+          "martial": "expert"
+        }
+      },
+      {
+        "level": 7,
+        "saves": {
+          "reflex": "master"
+        },
+        "perception": "master"
+      },
+      {
+        "level": 9,
+        "saves": {
+          "fortitude": "expert"
+        }
+      },
+      {
+        "level": 11,
+        "classDc": "expert"
+      },
+      {
+        "level": 13,
+        "saves": {
+          "reflex": "legendary"
+        },
+        "perception": "legendary",
+        "armor": {
+          "unarmored": "expert",
+          "light": "expert"
+        },
+        "weapons": {
+          "unarmed": "master",
+          "simple": "master",
+          "martial": "master"
+        }
+      },
+      {
+        "level": 17,
+        "saves": {
+          "will": "master"
+        }
+      },
+      {
+        "level": 19,
+        "classDc": "master",
+        "armor": {
+          "unarmored": "master",
+          "light": "master"
+        }
+      }
+    ]
+  },
+  {
+    "id": "witch",
+    "hpPerLevel": 6,
+    "keyAttribute": "int",
+    "starting": {
+      "perception": "trained",
+      "saves": {
+        "fortitude": "trained",
+        "reflex": "trained",
+        "will": "expert"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "untrained",
+        "medium": "untrained",
+        "heavy": "untrained"
+      },
+      "weapons": {
+        "unarmed": "trained",
+        "simple": "trained",
+        "martial": "untrained",
+        "advanced": "untrained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 5,
+        "saves": {
+          "fortitude": "expert"
+        }
+      },
+      {
+        "level": 9,
+        "saves": {
+          "reflex": "expert"
+        }
+      },
+      {
+        "level": 11,
+        "perception": "expert",
+        "weapons": {
+          "unarmed": "expert",
+          "simple": "expert"
+        }
+      },
+      {
+        "level": 13,
+        "armor": {
+          "unarmored": "expert"
+        }
+      },
+      {
+        "level": 17,
+        "saves": {
+          "will": "master"
+        }
+      }
+    ]
+  },
+  {
+    "id": "wizard",
+    "hpPerLevel": 6,
+    "keyAttribute": "int",
+    "starting": {
+      "perception": "trained",
+      "saves": {
+        "fortitude": "trained",
+        "reflex": "trained",
+        "will": "expert"
+      },
+      "armor": {
+        "unarmored": "trained",
+        "light": "untrained",
+        "medium": "untrained",
+        "heavy": "untrained"
+      },
+      "weapons": {
+        "unarmed": "trained",
+        "simple": "trained",
+        "martial": "untrained",
+        "advanced": "untrained"
+      },
+      "classDc": "trained"
+    },
+    "milestones": [
+      {
+        "level": 5,
+        "saves": {
+          "reflex": "expert"
+        }
+      },
+      {
+        "level": 9,
+        "saves": {
+          "fortitude": "expert"
+        }
+      },
+      {
+        "level": 11,
+        "perception": "expert",
+        "weapons": {
+          "unarmed": "expert",
+          "simple": "expert"
+        }
+      },
+      {
+        "level": 13,
+        "armor": {
+          "unarmored": "expert"
+        }
+      },
+      {
+        "level": 17,
+        "saves": {
+          "will": "master"
+        }
+      }
+    ]
+  }
+]

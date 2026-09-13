@@ -124,21 +124,21 @@ describe("production equipment pool", () => {
 });
 
 describe("weapon trade-offs the resolver actually sees", () => {
-  it("charges an advanced weapon its untrained proficiency", () => {
+  it("charges an advanced weapon the Fighter trained proficiency gap", () => {
     const great = resolveStrike(wearing(AERIN, "greatsword"), CONTEXT);
     const executioner = resolveStrike(wearing(AERIN, "executioner-axe"), CONTEXT);
-    // Same 1d12 die, but Aerin is expert with martial and untrained with advanced.
+    // Same 1d12 die, but Aerin is expert with martial and trained with advanced.
     expect(executioner.damage.sides).toBe(great.damage.sides);
     expect(executioner.attackModifier).toBeLessThan(great.attackModifier);
     expect(great.proficiencyRank).toBe("expert");
-    expect(executioner.proficiencyRank).toBe("untrained");
+    expect(executioner.proficiencyRank).toBe("trained");
   });
 
-  it("charges a simple weapon the gap between simple and martial rank", () => {
+  it("gives the Fighter equal simple and martial accuracy", () => {
     const halberd = resolveStrike(wearing(AERIN, "halberd"), CONTEXT);
     const spear = resolveStrike(wearing(AERIN, "boar-spear"), CONTEXT);
     expect(spear.rangeFeet).toBe(halberd.rangeFeet);
-    expect(spear.attackModifier).toBeLessThan(halberd.attackModifier);
+    expect(spear.attackModifier).toBe(halberd.attackModifier);
   });
 
   it("lets a finesse weapon pick the higher attribute for a DEX build", () => {
@@ -188,10 +188,8 @@ describe("armor and shield trade-offs", () => {
     expect(ac(4, "brigandine")).toBe(ac(4, "scale-mail") - 1);
   });
 
-  it("loses to every playable hero's own starter armor, which is why brigandine is reserve", () => {
-    // The scale-mail crossover above is real, but no hero sits on the winning side of it:
-    // the one with DEX 0 is also the one with heavy proficiency. Offering it as a reward
-    // would be offering a choice nobody can rationally take, so the reason is pinned here.
+  it("compares brigandine against each legal starter armor", () => {
+    // Aerin ties; Warpriest Nera can benefit from medium armor despite starting in leather.
     for (const definition of Object.values(M7_COMPILED_PACK.actorDefinitions)) {
       if (!definition.traits.some((trait) => trait.id === "playable")) continue;
       const starter = definition.starterLoadout.equipment.armor;
@@ -199,7 +197,8 @@ describe("armor and shield trade-offs", () => {
       const base = hero(definition.id);
       const own = resolveArmorClass(wearing(base, starter), CONTEXT).value;
       const swapped = resolveArmorClass(wearing(base, "brigandine"), CONTEXT).value;
-      expect(`${definition.id}:${String(swapped < own)}`).toBe(`${definition.id}:true`);
+      const expectedDelta: Record<string, number> = { "hero.aerin": 0, "hero.brom": -1, "hero.lyra": -3, "hero.nera": 2 };
+      expect(swapped - own, definition.id).toBe(expectedDelta[definition.id]);
     }
   });
 

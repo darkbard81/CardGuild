@@ -130,7 +130,7 @@ describe("crash recovery across every durable transition", () => {
   }
 
   async function startChild(file: string, marker: string): Promise<FaultChild> {
-    const child = await startFaultServer({ databasePath: file, markerPath: marker, origin: TEST_ORIGIN });
+    const child = await startFaultServer({ databasePath: file, markerPath: marker, origin: TEST_ORIGIN, adventureSeed: 2 });
     children.push(child);
     return child;
   }
@@ -150,7 +150,7 @@ describe("crash recovery across every durable transition", () => {
           const token = "reconnect-" + Math.random().toString(36).slice(2, 12);
           return { token, digest: digestReconnectToken(token) };
         },
-        adventureSeed: () => 1,
+        adventureSeed: () => 2,
       },
     });
     servers.push(server);
@@ -224,7 +224,7 @@ describe("crash recovery across every durable transition", () => {
           const token = "reconnect-" + Math.random().toString(36).slice(2, 12);
           return { token, digest: digestReconnectToken(token) };
         },
-        adventureSeed: () => 1,
+        adventureSeed: () => 2,
       },
     });
     let campaignId = previous?.campaignId ?? "";
@@ -279,7 +279,7 @@ describe("crash recovery across every durable transition", () => {
    * keep playing until the process dies at the named transition.
    *
    * Nothing here manufactures a winning position: the party fights with the shared driver
-   * against the production content at seed 1, so the transition the fault lands on is one
+   * against the production content at seed 2, so the transition the fault lands on is one
    * the real game produced.
    */
   async function crashAt(target: FaultTarget, when: "before" | "after", options: {
@@ -589,76 +589,58 @@ describe("crash recovery across every durable transition", () => {
     expect(reactingCreatures).toEqual([]);
   });
 
-  it("leaves a content migration either untouched or done, and never done twice", async () => {
-    for (const when of ["before", "after"] as const) {
-      const { file, marker } = workspace();
-      await seedAccount(file);
-
-      // Reach a real mid-combat save, then rewrite the row as the previous build wrote it.
-      const staging = await restart(file);
-      const cookie = await signIn(staging.origin);
-      const opened = await openCampaign(staging.origin, cookie);
-      const client = await SocketClient.connect(staging.origin, opened.credential);
-      sockets.push(client);
-      let snapshot = await client.snapshot();
-      snapshot = await play(client, snapshot, "party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
-      snapshot = await play(client, snapshot, "begin", { type: "begin-adventure" });
-      snapshot = await play(client, snapshot, "encounter", { type: "start-encounter" });
-      const beforeMigration = progressOf(snapshot.state.adventure);
-      await client.close();
-      sockets.splice(sockets.indexOf(client), 1);
-      await staging.close();
-      servers.splice(servers.indexOf(staging), 1);
-
-      const legacy = legacyStoredSave(snapshot.state);
-      const persistence = createSqlitePersistence(file);
-      const accountId = persistence.accounts.findByUsername(ACCOUNT.username)?.accountId ?? "";
-      const lookup = persistence.campaigns.loadOwnedSave(opened.campaignId, accountId);
-      if (lookup.status !== "loaded") throw new Error("Expected a stored save to roll back.");
-      const legacyRevision = lookup.record.campaignRevision;
-      persistence.close();
-      rewriteAsLegacy(file, opened.campaignId, legacy.save, legacy.snapshotHash);
-
-      // Continue is where the migration COMMIT happens, so that is where the crash lands.
-      const child = await startChild(file, marker);
-      const childCookie = await signIn(child.origin);
-      await child.arm({ when, target: "migration" });
-      const continued = fetch(new URL(`/api/campaigns/${opened.campaignId}/continue`, child.origin), {
-        method: "POST",
-        headers: { cookie: childCookie, "content-type": "application/json" },
-        body: "{}",
-      }).catch(() => undefined);
-      expect(await child.exited).toEqual({ code: null, signal: "SIGKILL" });
-      expect(child.marker()).toMatchObject({ when, target: "migration" });
-      await continued;
-      children.splice(0);
-
-      const stored = storedRecord(file, opened.campaignId);
-      if (when === "before") {
-        // Nothing was published and nothing was written: the legacy row is still legacy.
-        expect(stored.contentIdentity.fingerprint).toBe(LEGACY_CONTENT_IDENTITY.fingerprint);
-        expect(stored.campaignRevision).toBe(legacyRevision);
-      } else {
-        expect(stored.contentIdentity).toEqual(PRODUCTION_CONTENT.contentIdentity);
-        expect(stored.campaignRevision).toBe(legacyRevision + 1);
-      }
-
-      // Either way the next Continue succeeds, and it migrates at most once more.
-      const recovered = await recover(file, opened.campaignId);
-      expect(progressOf(recovered.snapshot.state.adventure)).toEqual(beforeMigration);
-      expect(recovered.campaignRevision).toBe(legacyRevision + 1);
-      const again = await api<SessionCredentialResponse>(
-        recovered.server.origin, recovered.cookie, "POST", `/api/campaigns/${opened.campaignId}/continue`, {});
-      expect(again.status).toBe(200);
-      expect(storedRevision(file, opened.campaignId)).toBe(legacyRevision + 1);
-
-      await Promise.all(sockets.splice(0).map((socket) => socket.close()));
-      for (const server of servers.splice(0)) await server.close();
+  it.each(["before", "after"] as const)("recovers a Character advancement killed %s COMMIT without duplicate growth", async when => {
+    const crashed = await crashAt("advancement", when, { from: await checkpoint(7) });
+    const recovered = await recover(crashed.file, crashed.campaignId);
+    const count = (snapshot: ServerSnapshot): number => Object.values(snapshot.state.adventure!.party.members)
+      .reduce((sum, member) => sum + member.progression.advancements.length, 0);
+    expect(count(recovered.snapshot)).toBe(when === "before" ? 0 : 1);
+    expect(recovered.snapshot.gameplayHash).toBe(storedRecord(crashed.file, crashed.campaignId).snapshotHash);
+    const resumed = await play(recovered.client, recovered.snapshot, "resume-growth", { type: "resume-adventure" });
+    const continued = await drive(recovered.client, { from: resumed.revision, prefix: "finish-growth",
+      until: snapshot => snapshot.state.adventure?.phase === "combat" });
+    expect(continued.died).toBe(false);
+    const final = continued.snapshot!;
+    expect(final.state.adventure?.currentEncounterId).toBe(ADVENTURE.encounterIds[7]);
+    expect(count(final)).toBe(3);
+    for (const member of Object.values(final.state.adventure!.party.members)) {
+      expect(member.progression.advancements).toHaveLength(1);
+      expect(member.progression.advancements[0]!.level).toBe(3);
     }
-  }, 300_000);
+  });
+
+  it("preserves a previous content row across repeated process restarts and refused Continue", async () => {
+    const { file } = workspace();
+    await seedAccount(file);
+    const staging = await restart(file);
+    const cookie = await signIn(staging.origin);
+    const opened = await openCampaign(staging.origin, cookie);
+    const client = await SocketClient.connect(staging.origin, opened.credential);
+    sockets.push(client);
+    let snapshot = await client.snapshot();
+    snapshot = await play(client, snapshot, "party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
+    snapshot = await play(client, snapshot, "begin", { type: "begin-adventure" });
+    snapshot = await play(client, snapshot, "encounter", { type: "start-encounter" });
+    await client.close(); sockets.splice(sockets.indexOf(client), 1);
+    await staging.close(); servers.splice(servers.indexOf(staging), 1);
+    const legacy = legacyStoredSave(snapshot.state);
+    rewriteAsLegacy(file, opened.campaignId, legacy.save, legacy.snapshotHash);
+    const before = storedRecord(file, opened.campaignId);
+    expect(before.contentIdentity).toEqual(LEGACY_CONTENT_IDENTITY);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const server = await restart(file);
+      const auth = await signIn(server.origin);
+      const result = await api<{ code: string }>(server.origin, auth, "POST", `/api/campaigns/${opened.campaignId}/continue`, {});
+      expect(result.status).toBe(409);
+      expect(JSON.stringify(result.body)).toContain("SAVE_CONTENT_MISMATCH");
+      expect(storedRecord(file, opened.campaignId)).toEqual(before);
+      await server.close(); servers.splice(servers.indexOf(server), 1);
+    }
+  });
+
 });
 
-/** Put the row back the way the previous build would have written it. */
+/** Write an incompatible content-identity fixture; this does not reconstruct a Save v1 payload. */
 function rewriteAsLegacy(
   file: string,
   campaignId: string,

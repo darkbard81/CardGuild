@@ -4,7 +4,7 @@ import { PRODUCTION_CONTENT } from "../../src/content";
 import { digestReconnectToken } from "../../src/server/credentials";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
 import type { SessionIntent } from "../../src/session";
-import { equipIntent, heroIntent, reactionIntent } from "../support/campaign/adventure-driver";
+import { equipIntent, heroIntent, reactionIntent, advancementIntent } from "../support/campaign/adventure-driver";
 import { hostSession, seededPersistence } from "../support/network/host-account";
 import { SocketClient, TEST_ORIGIN } from "../support/network/socket-client";
 
@@ -41,12 +41,9 @@ describe("the production adventure completes over a real co-op session", () => {
           const token = "reconnect-" + String(++tokenSequence);
           return { token, digest: digestReconnectToken(token) };
         },
-        // Chosen so the run both opens a hero reaction window and is winnable by the
-        // policy below. Balance across every starter and party size is #21's, not this
-        // test's: a scripted party only has to prove the path connects end to end. #21
-        // retuned the encounters, so this is simply a seed that still wins with the
-        // deliberately plain policy here. Balance evidence is `npm run playtest` (#21).
-        adventureSeed: () => 8,
+        // M11-2 legal Builds complete with this deterministic seed and the shared policy.
+        // Seed 1 before/after balance remains separately recorded by the playtest matrix.
+        adventureSeed: () => 2,
       },
     });
     running = server;
@@ -60,7 +57,7 @@ describe("the production adventure completes over a real co-op session", () => {
     const send = async (intent: SessionIntent): Promise<void> => {
       const requestId = `run-${String(++requestSequence)}`;
       const mark = client.mark();
-      client.send({ v: 7, type: "intent", requestId, expectedRevision: host.state.revision, intent });
+      client.send({ v: 8, type: "intent", requestId, expectedRevision: host.state.revision, intent });
       const ack = await client.ack(requestId, mark);
       expect(`${intent.type}:${String(ack.accepted)}`).toBe(`${intent.type}:true`);
       for (const message of client.messages.slice(mark)) {
@@ -93,6 +90,8 @@ describe("the production adventure completes over a real co-op session", () => {
       const adventure = host.state.adventure;
       if (!adventure) throw new Error("The session lost its adventure.");
       if (adventure.phase === "between-encounters") {
+        const growth = advancementIntent(adventure);
+        if (growth) { await send(growth); continue; }
         await send({ type: "start-encounter" });
         if (host.state.adventure?.currentEncounterId) played.push(host.state.adventure.currentEncounterId);
         continue;
@@ -147,7 +146,8 @@ describe("the production adventure completes over a real co-op session", () => {
       `${ADVENTURE.encounterIds[6] as string}:2->3`,
     ]);
     for (const member of Object.values(host.state.adventure?.party.members ?? {})) {
-      expect(member.progression).toEqual({ level: 3, experience: totalExperience % 1_000 });
+      expect(member.progression).toMatchObject({ level: 3, experience: totalExperience % 1_000 });
+      expect(member.progression.advancements).toHaveLength(1);
     }
     // Each reward's first choice is owned afterwards, in its own half of the collection.
     const collection = host.state.adventure?.collection;

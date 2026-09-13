@@ -1,10 +1,13 @@
 import { positionKey } from "../game/grid";
+import { resolveCharacterRules } from "../character";
+import type { CharacterRulesContext } from "../character";
 import type { ActorSetup, CombatDefinition, ContentIdentity, ScenarioDefinition } from "../game/types";
 import { deriveActorSetup } from "../loadout";
 import { placementAppliesToPartySize } from "./content-types";
 import type { PartyMemberLoadout } from "../loadout";
 import type {
   ActorDefinition,
+  ActorSource,
   CompiledContentPack,
   ContentPackSource,
   ContentSourceLocations,
@@ -78,6 +81,17 @@ export function compileScenario(
   };
 }
 
+export function compileActorSource(source: ActorSource, rules: CharacterRulesContext): ActorDefinition {
+  if (source.statProfile.kind === "creature") {
+    return { ...source, statProfile: source.statProfile, speedFeet: source.speedFeet! };
+  }
+  const { build, level, advancements } = source.statProfile;
+  const character = { build, level, advancements };
+  const resolved = resolveCharacterRules({ traits: source.traits, build: character.build,
+    progression: { level: character.level, experience: 0, advancements: character.advancements } }, rules);
+  return { ...source, character, statProfile: resolved.statProfile, speedFeet: resolved.speedFeet };
+}
+
 export function compileContentPack(
   source: ContentPackSource,
   locations: ContentSourceLocations = {},
@@ -86,7 +100,8 @@ export function compileContentPack(
   if (issues.length > 0) throw new ContentCompilationError(issues);
 
   const normalized = normalizeContentPack(source);
-  const actorDefinitions = recordById(normalized.actors);
+  const characterRules = { traits: recordById(normalized.traits), ancestries: recordById(normalized.ancestries), classes: recordById(normalized.classes) };
+  const actorDefinitions = recordById(normalized.actors.map(actor => compileActorSource(actor, characterRules)));
   const combatContent = {
     actions: recordById(normalized.actions),
     cards: recordById(normalized.cards),
@@ -100,6 +115,7 @@ export function compileContentPack(
     manifest: normalized.manifest,
     fingerprint: fingerprintContentPack(normalized),
     combatContent,
+    characterRules,
     actorDefinitions,
     scenarioSources: recordById(normalized.scenarios),
     scenarios,

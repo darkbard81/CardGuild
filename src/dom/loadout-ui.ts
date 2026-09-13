@@ -159,7 +159,7 @@ export class LoadoutUi {
       }
     }
     const snapshot = deriveLoadoutSnapshot(actor, member.loadout, this.pack.combatContent, member.id,
-      resolveEffectiveCharacterStatProfile(actor, member.progression));
+      resolveEffectiveCharacterStatProfile(actor, member.progression, this.pack.characterRules));
     sidebar.append(slots, element("p", "loadout-core-stats", `AC ${snapshot.statistics.ac} · HP ${snapshot.statistics.maxHp} · ATK ${signed(snapshot.strike.attackModifier)}`),
       element("p", "loadout-deck-count", `${snapshot.deck.totalCards} Tactical Cards`));
     const panel = element("section", `loadout-panel collection-panel${view.tab === "deck" ? " deck-panel" : ""}`);
@@ -267,7 +267,7 @@ export class LoadoutUi {
     const actor = member && this.pack.actorDefinitions[member.actorDefinitionId];
     if (!member || !actor) throw new Error("Loadout character is missing.");
     return previewLoadoutChange(this.state.party, this.state.collection, this.pack, this.selectedMemberId, candidate,
-      resolveEffectiveCharacterStatProfile(actor, member.progression));
+      resolveEffectiveCharacterStatProfile(actor, member.progression, this.pack.characterRules));
   }
   private apply(tile: Tile): void {
     if (!tile.candidate || this.waiting) return;
@@ -332,7 +332,7 @@ export class LoadoutUi {
     const actor = this.pack.actorDefinitions[member.actorDefinitionId];
     if (!actor) return element("div");
     const shown = preview?.after ?? deriveLoadoutSnapshot(actor, member.loadout, this.pack.combatContent, member.id,
-      resolveEffectiveCharacterStatProfile(actor, member.progression));
+      resolveEffectiveCharacterStatProfile(actor, member.progression, this.pack.characterRules));
     const stats = element("div", "loadout-stat-grid");
     const values: Array<[string, string]> = [
       ["AC", preview?.after ? `${preview.before.statistics.ac} → ${preview.after.statistics.ac}` : String(shown.statistics.ac)],

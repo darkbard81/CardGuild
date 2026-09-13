@@ -1,3 +1,5 @@
+import { CharacterAdvancementUi } from "./character-advancement-ui";
+import { pendingCharacterAdvancements, type CharacterAdvancementChoice } from "../character";
 import type { AdventureState } from "../adventure";
 import type { CompiledContentPack } from "../content";
 import { placementAppliesToPartySize } from "../content";
@@ -24,6 +26,7 @@ function element<K extends keyof HTMLElementTagNameMap>(
 }
 
 export interface AdventureUiHandlers {
+  readonly onAdvanceCharacter: (memberId: string, choice: CharacterAdvancementChoice) => boolean;
   readonly onStart: () => void;
   readonly onContinue: () => void;
   readonly onChooseReward: (rewardId: string, choiceIndex: number) => void;
@@ -33,6 +36,7 @@ export interface AdventureUiHandlers {
 
 export interface AdventureUiAccess {
   readonly isHost: boolean;
+  readonly editableMemberIds?: ReadonlySet<string>;
   /**
    * The last committed victory's growth, or nothing. The UI never derives this from state:
    * Level and EXP are in the snapshot, but "what just changed" only exists in the events
@@ -93,12 +97,15 @@ export class AdventureUi {
   private readonly collection = required<HTMLElement>("#adventure-collection");
   private readonly party = required<HTMLElement>("#adventure-party");
 
+  private readonly advancementUi: CharacterAdvancementUi;
+  private lastRender: { state: AdventureState; access: AdventureUiAccess } | null = null;
+
   public constructor(
     private readonly definition: AdventureDefinition,
     private readonly pack: CompiledContentPack,
     private readonly handlers: AdventureUiHandlers,
     private readonly catalog?: AssetCatalog,
-  ) {}
+  ) { this.advancementUi = new CharacterAdvancementUi(pack, handlers.onAdvanceCharacter); }
 
   /** The enemies this party will actually face, which party size decides (#16). */
   private threatPreview(state: AdventureState, encounterId: string): readonly string[] {
@@ -140,6 +147,9 @@ export class AdventureUi {
   }
 
   public render(state: AdventureState, access: AdventureUiAccess = { isHost: true }): void {
+    this.lastRender = { state, access };
+    const hasPending = Object.values(state.party.members).some(member =>
+      pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length > 0);
     this.screen.hidden = state.phase === "combat";
     if (state.phase !== "combat") {
       required<HTMLElement>("#reaction-modal").hidden = true;
@@ -158,14 +168,20 @@ export class AdventureUi {
           element("span", undefined, progressionText(member.progression)),
           progressionMeter(name, member.progression),
         );
+        const advancement = this.advancementUi.render(member, access.editableMemberIds?.has(member.id) ?? false,
+          state.phase === "ready" || state.phase === "between-encounters");
+        if (advancement) row.append(advancement);
         return row;
       }));
     this.content.replaceChildren();
+    if (hasPending && (state.phase === "ready" || state.phase === "between-encounters")) {
+      this.content.append(element("p", "advancement-notice", "모든 캐릭터의 성장 선택을 완료하면 다음 전투를 시작할 수 있습니다."));
+    }
 
     if (state.phase === "ready") {
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "Begin Adventure" : "Waiting for Host", this.handlers.onStart, access.isHost),
+        this.actionButton(access.isHost ? "Begin Adventure" : "Waiting for Host", this.handlers.onStart, access.isHost && !hasPending),
         this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
       );
       const partySize = Object.keys(state.party.members).length;
@@ -181,7 +197,7 @@ export class AdventureUi {
       const scenario = state.currentEncounterId ? this.pack.scenarios[state.currentEncounterId] : undefined;
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "Enter Encounter" : "Waiting for Host", this.handlers.onContinue, access.isHost),
+        this.actionButton(access.isHost ? "Enter Encounter" : "Waiting for Host", this.handlers.onContinue, access.isHost && !hasPending),
         this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
       );
       const step = state.currentEncounterId
@@ -387,6 +403,13 @@ export class AdventureUi {
     button.classList.add("adventure-action-secondary");
     return button;
   }
+
+  public reportError(message: string): void {
+    this.advancementUi.reportError(message);
+    if (this.lastRender && !this.screen.hidden) this.render(this.lastRender.state, this.lastRender.access);
+  }
+
+  public clear(): void { this.advancementUi.clear(); this.lastRender = null; }
 
   public setVisible(visible: boolean): void {
     this.screen.hidden = !visible;

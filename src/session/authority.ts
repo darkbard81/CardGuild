@@ -49,6 +49,7 @@ function adventureContext(context: SessionAuthorityContext): AdventureRuntimeCon
     definition,
     actorDefinitions: context.pack.actorDefinitions,
     combatContent: context.pack.combatContent,
+    characterRules: context.pack.characterRules,
   };
 }
 
@@ -304,6 +305,11 @@ export function dispatchSessionIntent(
   const runtime = adventureContext(context);
 
   switch (intent.type) {
+    case "advance-character": {
+      const result = dispatchAdventureCommand(state.adventure as AdventureState, intent, runtime);
+      if (!result.accepted) return reject(state, "DOMAIN_REJECTED", result.error ?? "Character advancement rejected.");
+      return commit(state, { ...state, adventure: result.state }, result.events);
+    }
     case "set-party-composition":
       return setPartyComposition(state, intent.actorDefinitionIds, context);
     case "select-character":

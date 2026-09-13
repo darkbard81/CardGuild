@@ -1,3 +1,4 @@
+import { completeAdvancements } from "../../tests/support/campaign/complete-advancements";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -21,7 +22,7 @@ const ADVENTURE = PRODUCTION_CONTENT.adventure;
 
 const CONTEXT: AdventureRuntimeContext = {
   definition: ADVENTURE,
-  actorDefinitions: PACK.actorDefinitions,
+  actorDefinitions: PACK.actorDefinitions, characterRules: PACK.characterRules,
   combatContent: CONTENT,
 };
 
@@ -77,6 +78,7 @@ function runToCompletion(roster: readonly string[]): {
   const rewards: string[] = [];
   for (let guard = 0; guard < 24 && state.phase !== "complete"; guard += 1) {
     if (state.phase === "between-encounters") {
+        state = completeAdvancements(state, PACK);
       const started = dispatchAdventureCommand(state, { type: "start-encounter" }, CONTEXT);
       expect(started.accepted).toBe(true);
       state = started.state;

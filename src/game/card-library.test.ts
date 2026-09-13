@@ -61,6 +61,8 @@ function withInitiative(actor: ActorSetup, value: number): Partial<ActorSetup> {
           stats: {
             ...actor.statProfile.stats,
             attributes: { ...actor.statProfile.stats.attributes, wis: value },
+            // Numeric rule arena explicitly satisfies the Medicine requirement.
+            skills: { ...actor.statProfile.stats.skills, medicine: "trained" },
           },
         },
       }

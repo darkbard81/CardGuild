@@ -16,6 +16,7 @@ export type FaultTarget =
   | "ai-command"
   | "encounter-complete"
   | "level-up"
+  | "advancement"
   | "adventure-complete"
   | "reward"
   | "migration";

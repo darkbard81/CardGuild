@@ -91,7 +91,7 @@ async function driver(
   if (!attached.ok) throw new Error(`Attach failed: ${attached.code}`);
   return async (requestId, intent) => {
     await host.handleIntent(playerId, connection.id, {
-      v: 7,
+      v: 8,
       type: "intent",
       requestId,
       expectedRevision: host.state.revision,
@@ -292,7 +292,7 @@ describe("campaign continue", () => {
     // A last gameplay intent is enqueued before Continue reaches the store, so Continue's
     // barrier must let it commit and must then read that newer save, not the older one.
     const lastPlay = host.handleIntent(played.playerId, connectionId, {
-      v: 7,
+      v: 8,
       type: "intent",
       requestId: "last-play",
       expectedRevision: host.state.revision,
@@ -346,7 +346,7 @@ describe("campaign continue", () => {
       .toMatchObject({ ok: false, code: "CAMPAIGN_NOT_FOUND" });
 
     harnessed.database
-      .prepare("UPDATE campaigns SET save_schema_version = 2, snapshot_json = json_set(snapshot_json, '$.saveSchemaVersion', 2) WHERE campaign_id = ?")
+      .prepare("UPDATE campaigns SET save_schema_version = 1, snapshot_json = json_set(snapshot_json, '$.saveSchemaVersion', 1) WHERE campaign_id = ?")
       .run(played.campaignId);
     expect(await harnessed.campaigns.continue("acc_owner", played.campaignId))
       .toMatchObject({ ok: false, code: "SAVE_SCHEMA_UNSUPPORTED" });
@@ -417,7 +417,7 @@ describe("campaign continue", () => {
   });
 });
 
-describe("campaign continue with content migration", () => {
+describe("campaign continue refuses incompatible Character saves", () => {
   /** Rewrite a campaign's stored row as the previous build would have written it. */
   function rollBackToPreviousContent(harnessed: Harness, played: PlayedCampaign): number {
     const legacy = legacyStoredSave(played.state);
@@ -438,65 +438,30 @@ describe("campaign continue with content migration", () => {
     return lookup.record.campaignRevision;
   }
 
-  it("migrates the stored save once, before the new session exists, and not again afterwards", async () => {
-    const harnessed = harness();
-    const played = await playedToCombat(harnessed);
-    const revisionBefore = rollBackToPreviousContent(harnessed, played);
-    // The live writer must be gone first, or Continue's barrier would re-save current content.
-    await harnessed.store.retire(played.sessionId, "previous build");
-
-    const result = await harnessed.campaigns.continue("acc_owner", played.campaignId, "Returning Host");
-
-    expect(result.ok).toBe(true);
-    if (!result.ok) throw new Error("Continue was expected to succeed.");
-    const migrated = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
-    if (migrated.status !== "loaded") throw new Error("Expected a stored save.");
-    // Exactly one revision for exactly one migration COMMIT.
-    expect(migrated.record.campaignRevision).toBe(revisionBefore + 1);
-    expect(migrated.record.contentIdentity).toEqual(PRODUCTION_CONTENT.contentIdentity);
-
-    const restored = harnessed.store.get(result.credential.sessionId);
-    if (!restored) throw new Error("Continue opened no live session.");
-    expect(restored.state.lifecycle).toBe("resume-lobby");
-    expect(restored.state.contentIdentity).toEqual(PRODUCTION_CONTENT.contentIdentity);
-    // Progress is preserved exactly: the migration pays no EXP for battles already fought.
-    expect(restored.state.adventure?.completedEncounterIds).toEqual(played.state.adventure?.completedEncounterIds);
-    expect(Object.values(restored.state.adventure?.party.members ?? {}).map((member) => member.progression))
-      .toEqual(Object.values(played.state.adventure?.party.members ?? {}).map((member) => member.progression));
-    expect(restored.state.combat?.commandLog).toEqual(played.state.combat?.commandLog);
-    expect(hashSessionGameplayState(restored.state)).toBe(migrated.record.snapshotHash);
-
-    // A second Continue finds a save that is already current, so it writes nothing.
-    const again = await harnessed.campaigns.continue("acc_owner", played.campaignId, "Returning Host");
-    expect(again.ok).toBe(true);
-    const after = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
-    if (after.status !== "loaded") throw new Error("Expected a stored save.");
-    expect(after.record.campaignRevision).toBe(migrated.record.campaignRevision);
-    expect(after.record.snapshotHash).toBe(migrated.record.snapshotHash);
-    harnessed.persistence.close();
-  });
-
-  it("publishes no session and keeps the stored row when the migration COMMIT loses the CAS", async () => {
-    const harnessed = harness();
-    const played = await playedToCombat(harnessed);
-    rollBackToPreviousContent(harnessed, played);
-    await harnessed.store.retire(played.sessionId, "previous build");
-    const before = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
-    if (before.status !== "loaded") throw new Error("Expected a stored save.");
-    const commitSave = vi.spyOn(harnessed.persistence.campaigns, "commitSave")
-      .mockReturnValue({ committed: false, reason: "revision-conflict" });
-
-    const result = await harnessed.campaigns.continue("acc_owner", played.campaignId);
-
-    expect(result).toMatchObject({ ok: false, code: "PERSISTENCE_FAILED" });
-    expect(harnessed.campaigns.liveSessionOf(played.campaignId)).toBeUndefined();
-    commitSave.mockRestore();
-    const after = harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
-    if (after.status !== "loaded") throw new Error("Expected a stored save.");
-    expect(after.record).toEqual(before.record);
-    // The refused Continue left a save a later attempt can still migrate.
-    expect((await harnessed.campaigns.continue("acc_owner", played.campaignId)).ok).toBe(true);
-    harnessed.persistence.close();
+  it.each([1, 2])("preserves old schema %i rows, publishes no session and performs no migration write", async version => {
+    const h = harness();
+    const played = await playedToCombat(h);
+    rollBackToPreviousContent(h, played);
+    await h.store.retire(played.sessionId, "previous build");
+    const lookup = h.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    if (lookup.status !== "loaded") throw new Error("Expected stored save.");
+    const payload = JSON.parse(lookup.record.snapshotJson);
+    payload.saveSchemaVersion = version;
+    if (version === 1) {
+      payload.adventure.version = 3;
+      for (const member of Object.values(payload.adventure.party.members) as { progression: Record<string, unknown> }[]) delete member.progression.advancements;
+    }
+    h.database.prepare("UPDATE campaigns SET snapshot_json = ?, save_schema_version = ? WHERE campaign_id = ?")
+      .run(JSON.stringify(payload), version, played.campaignId);
+    const before = h.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+    const commit = vi.spyOn(h.persistence.campaigns, "commitSave");
+    for (let attempt = 0; attempt < 2; attempt++) {
+      expect(await h.campaigns.continue("acc_owner", played.campaignId)).toMatchObject({ ok: false,
+        code: version === 1 ? "SAVE_SCHEMA_UNSUPPORTED" : "SAVE_CONTENT_MISMATCH" });
+      expect(h.campaigns.liveSessionOf(played.campaignId)).toBeUndefined();
+      expect(h.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner")).toEqual(before);
+    }
+    expect(commit).not.toHaveBeenCalled(); commit.mockRestore(); h.persistence.close();
   });
 
   it("refuses an unregistered previous pack and preserves its row", async () => {

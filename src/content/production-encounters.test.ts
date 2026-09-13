@@ -49,7 +49,7 @@ function activeFor(scenario: ScenarioSource, partySize: number): readonly Encoun
 
 const CONTEXT: AdventureRuntimeContext = {
   definition: M7_ADVENTURE,
-  actorDefinitions: PACK.actorDefinitions,
+  actorDefinitions: PACK.actorDefinitions, characterRules: PACK.characterRules,
   combatContent: PACK.combatContent,
 };
 

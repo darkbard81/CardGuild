@@ -69,7 +69,7 @@ async function snapshotOf(origin: string, credential: SessionCredentialResponse)
       });
     });
     socket.send(JSON.stringify({
-      v: 7,
+      v: 8,
       type: "hello",
       sessionId: credential.sessionId,
       playerId: credential.playerId,

@@ -16,6 +16,8 @@ import { formatContentValidationIssue } from "../../src/content/validate-semanti
 const CATEGORIES: readonly ContentSourceCategory[] = [
   "manifest",
   "traits",
+  "ancestries",
+  "classes",
   "conditions",
   "actions",
   "cards",

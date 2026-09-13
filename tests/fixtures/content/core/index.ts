@@ -1,3 +1,4 @@
+import { BUILD_ANCESTRIES, BUILD_CLASSES, BUILD_TRAITS } from "../character-build";
 import type { ContentPackSource } from "../../../../src/content";
 import { CORE_ACTIONS } from "./actions";
 import { CORE_ACTORS } from "./actors";
@@ -12,7 +13,9 @@ export { CORE_ACTIONS, CORE_ACTORS, CORE_ADVENTURES, CORE_CARDS, CORE_CONDITIONS
 
 /** Every core definition, as the pieces a source pack is built from. */
 export const CORE_DEFINITIONS = {
-  traits: CORE_TRAITS,
+  traits: [...CORE_TRAITS, ...BUILD_TRAITS],
+  ancestries: BUILD_ANCESTRIES,
+  classes: BUILD_CLASSES,
   conditions: CORE_CONDITIONS,
   actions: CORE_ACTIONS,
   cards: CORE_CARDS,

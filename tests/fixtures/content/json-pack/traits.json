@@ -203,5 +203,23 @@
     "description": "무기 슬롯에 장착하는 장비를 표시하는 CardGuild 분류입니다.",
     "cardGrants": [],
     "actionGrants": []
+  },
+  {
+    "id": "fighter",
+    "name": "Fighter",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Fighter 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "human",
+    "name": "Human",
+    "source": "pf2e-remaster",
+    "category": "ancestry",
+    "description": "Human 종족입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
   }
 ]

@@ -1,11 +1,10 @@
 import { buildAdventureEncounter } from "../adventure";
 import { getContentIdentity } from "../content/compile-content";
 import type { CompiledContentPack } from "../content/content-types";
-import { normalizeContentPack } from "../content/fingerprint";
-import { computeCombatSetupFingerprint, fingerprintValue } from "../game";
+import { computeCombatSetupFingerprint } from "../game";
 import type { CombatState, ContentIdentity } from "../game";
 import type { SessionAuthorityContext } from "../session";
-import type { CampaignSaveV1 } from "./campaign-save";
+import type { CampaignSaveV2 } from "./campaign-save";
 
 /**
  * One explicitly registered previous content identity and the identity it becomes.
@@ -21,67 +20,8 @@ export interface ContentMigration {
   readonly verify: (pack: CompiledContentPack) => boolean;
 }
 
-/** The fields `TraitDefinition` gained in schema v10, and nothing else. */
-const TRAIT_VOCABULARY_FIELDS: readonly string[] = ["source", "category", "description"];
-
-/**
- * The two labels 0.5.0 renamed, as the exact pair this migration is about. They used to
- * describe the provider role ("Grabbed Recovery" grants the escape Action); now that
- * `name` is the canonical chip label they name the Condition itself. A label is not a
- * rule, so the rename rides with the metadata — but only this rename: the current label
- * must be exactly `to` before `from` is put back, or a later drift of either name would
- * be quietly folded into the same migration.
- */
-const RENAMED_TRAITS: Readonly<Record<string, { readonly from: string; readonly to: string }>> = {
-  grabbed: { from: "Grabbed Recovery", to: "Grabbed" },
-  prone: { from: "Prone Recovery", to: "Prone" },
-};
-
-/**
- * M11-1's only migration: every Trait gained `source`, `category` and `description`, two
- * Traits were relabelled, and nothing about gameplay moved. Stripping those three fields,
- * putting the two old labels back and re-applying the previous manifest has to reproduce
- * `from.fingerprint` exactly; if it does not, a provider grant, an Actor, an Action, an
- * Encounter or a reward changed too, and this save is not the save this migration was
- * written for.
- */
-export const TRAIT_VOCABULARY_MIGRATION: ContentMigration = {
-  from: { packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: "fnv1a64:8795c80164042fbf" },
-  to: { packId: "cardguild.m7", packVersion: "0.5.0", fingerprint: "fnv1a64:aab2c37c8ccb6f4c" },
-  verify: (pack) => {
-    for (const [id, rename] of Object.entries(RENAMED_TRAITS)) {
-      if (pack.combatContent.traits[id]?.name !== rename.to) return false;
-    }
-    const normalized = normalizeContentPack({
-      manifest: pack.manifest,
-      traits: Object.values(pack.combatContent.traits),
-      conditions: Object.values(pack.combatContent.conditions),
-      actions: Object.values(pack.combatContent.actions),
-      cards: Object.values(pack.combatContent.cards),
-      equipment: Object.values(pack.combatContent.equipment),
-      actors: Object.values(pack.actorDefinitions),
-      scenarios: Object.values(pack.scenarioSources),
-      adventures: Object.values(pack.adventures),
-    });
-    const previous = {
-      ...normalized,
-      manifest: {
-        schemaVersion: 9,
-        id: TRAIT_VOCABULARY_MIGRATION.from.packId,
-        version: TRAIT_VOCABULARY_MIGRATION.from.packVersion,
-        rulesetId: normalized.manifest.rulesetId,
-      },
-      // Only the three v10 fields come off and only the two labels go back. Everything
-      // else must survive untouched.
-      traits: normalized.traits.map((trait) => Object.fromEntries(Object.entries(trait)
-        .filter(([key]) => !TRAIT_VOCABULARY_FIELDS.includes(key))
-        .map(([key, value]) => [key, key === "name" ? RENAMED_TRAITS[trait.id]?.from ?? value : value]))),
-    };
-    return fingerprintValue(previous) === TRAIT_VOCABULARY_MIGRATION.from.fingerprint;
-  },
-};
-
-export const REGISTERED_CONTENT_MIGRATIONS: readonly ContentMigration[] = [TRAIT_VOCABULARY_MIGRATION];
+/** M11-2 changes gameplay: old saves are retained, never silently reinterpreted. */
+export const REGISTERED_CONTENT_MIGRATIONS: readonly ContentMigration[] = [];
 
 function sameIdentity(left: ContentIdentity, right: ContentIdentity): boolean {
   return left.packId === right.packId
@@ -112,7 +52,7 @@ export function findContentMigration(
  * same definition re-fingerprinted under the target identity.
  */
 export function migrateCombatSetupFingerprint(
-  save: CampaignSaveV1,
+  save: CampaignSaveV2,
   combat: CombatState,
   migration: ContentMigration,
   context: SessionAuthorityContext,
@@ -149,10 +89,10 @@ export function migrateCombatSetupFingerprint(
  * that embeds it. No EXP is granted retroactively for battles already won.
  */
 export function migrateCampaignSave(
-  save: CampaignSaveV1,
+  save: CampaignSaveV2,
   migration: ContentMigration,
   setupFingerprint: string | null,
-): CampaignSaveV1 {
+): CampaignSaveV2 {
   return {
     ...save,
     contentIdentity: { ...migration.to },

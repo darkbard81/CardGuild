@@ -1,9 +1,9 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v10",
+  "title": "CardGuild Content Pack v11",
   "type": "object",
   "additionalProperties": false,
-  "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures"],
+  "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures", "ancestries", "classes"],
   "properties": {
     "manifest": { "$ref": "#/$defs/manifest" },
     "traits": { "type": "array", "items": { "$ref": "#/$defs/traitDefinition" } },
@@ -13,7 +13,9 @@
     "equipment": { "type": "array", "items": { "$ref": "#/$defs/equipmentDefinition" } },
     "actors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/actorDefinition" } },
     "scenarios": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/scenario" } },
-    "adventures": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/adventure" } }
+    "adventures": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/adventure" } },
+    "ancestries": {"type": "array", "items": {"$ref": "#/$defs/ancestryDefinition"}},
+    "classes": {"type": "array", "items": {"$ref": "#/$defs/classDefinition"}}
   },
   "$defs": {
     "nonEmptyString": { "type": "string", "minLength": 1 },
@@ -669,52 +671,6 @@
         "preparedCards": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } }
       }
     },
-    "characterAttributes": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["str", "dex", "con", "int", "wis", "cha"],
-      "properties": {
-        "str": { "type": "integer" },
-        "dex": { "type": "integer" },
-        "con": { "type": "integer" },
-        "int": { "type": "integer" },
-        "wis": { "type": "integer" },
-        "cha": { "type": "integer" }
-      }
-    },
-    "characterSaves": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["fortitude", "reflex", "will"],
-      "properties": {
-        "fortitude": { "$ref": "#/$defs/proficiencyRank" },
-        "reflex": { "$ref": "#/$defs/proficiencyRank" },
-        "will": { "$ref": "#/$defs/proficiencyRank" }
-      }
-    },
-    "characterSkills": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["acrobatics", "arcana", "athletics", "crafting", "deception", "diplomacy", "intimidation", "medicine", "nature", "occultism", "performance", "religion", "society", "stealth", "survival", "thievery"],
-      "properties": {
-        "acrobatics": { "$ref": "#/$defs/proficiencyRank" },
-        "arcana": { "$ref": "#/$defs/proficiencyRank" },
-        "athletics": { "$ref": "#/$defs/proficiencyRank" },
-        "crafting": { "$ref": "#/$defs/proficiencyRank" },
-        "deception": { "$ref": "#/$defs/proficiencyRank" },
-        "diplomacy": { "$ref": "#/$defs/proficiencyRank" },
-        "intimidation": { "$ref": "#/$defs/proficiencyRank" },
-        "medicine": { "$ref": "#/$defs/proficiencyRank" },
-        "nature": { "$ref": "#/$defs/proficiencyRank" },
-        "occultism": { "$ref": "#/$defs/proficiencyRank" },
-        "performance": { "$ref": "#/$defs/proficiencyRank" },
-        "religion": { "$ref": "#/$defs/proficiencyRank" },
-        "society": { "$ref": "#/$defs/proficiencyRank" },
-        "stealth": { "$ref": "#/$defs/proficiencyRank" },
-        "survival": { "$ref": "#/$defs/proficiencyRank" },
-        "thievery": { "$ref": "#/$defs/proficiencyRank" }
-      }
-    },
     "armorProficiencies": {
       "type": "object",
       "additionalProperties": false,
@@ -735,41 +691,6 @@
         "simple": { "$ref": "#/$defs/proficiencyRank" },
         "martial": { "$ref": "#/$defs/proficiencyRank" },
         "advanced": { "$ref": "#/$defs/proficiencyRank" }
-      }
-    },
-    "characterOffenseProfile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["keyAttribute", "weaponProficiencies", "classDcProficiency", "unarmedStrike"],
-      "properties": {
-        "keyAttribute": { "$ref": "#/$defs/attributeId" },
-        "weaponProficiencies": { "$ref": "#/$defs/weaponProficiencies" },
-        "classDcProficiency": { "$ref": "#/$defs/proficiencyRank" },
-        "unarmedStrike": { "$ref": "#/$defs/characterWeaponProfile" }
-      }
-    },
-    "characterDefenseProfile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["ancestryHp", "classHpPerLevel", "armorProficiencies"],
-      "properties": {
-        "ancestryHp": { "type": "integer", "minimum": 1 },
-        "classHpPerLevel": { "type": "integer", "minimum": 1 },
-        "armorProficiencies": { "$ref": "#/$defs/armorProficiencies" }
-      }
-    },
-    "characterStatProfile": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["level", "attributes", "perception", "saves", "skills", "defense", "offense"],
-      "properties": {
-        "level": { "type": "integer", "minimum": 1 },
-        "attributes": { "$ref": "#/$defs/characterAttributes" },
-        "perception": { "$ref": "#/$defs/proficiencyRank" },
-        "saves": { "$ref": "#/$defs/characterSaves" },
-        "skills": { "$ref": "#/$defs/characterSkills" },
-        "defense": { "$ref": "#/$defs/characterDefenseProfile" },
-        "offense": { "$ref": "#/$defs/characterOffenseProfile" }
       }
     },
     "fixedCreatureSaves": {
@@ -806,15 +727,7 @@
     },
     "actorStatProfile": {
       "oneOf": [
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind", "stats"],
-          "properties": {
-            "kind": { "const": "character" },
-            "stats": { "$ref": "#/$defs/characterStatProfile" }
-          }
-        },
+        {"$ref": "#/$defs/characterBuildSource"},
         {
           "type": "object",
           "additionalProperties": false,
@@ -841,7 +754,7 @@
     "actorDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "statProfile", "speedFeet", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
+      "required": ["id", "name", "statProfile", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
@@ -853,7 +766,18 @@
         "starterLoadout": { "$ref": "#/$defs/starterLoadout" },
         "innateActionIds": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
         "baseCardGrants": { "type": "array", "items": { "$ref": "#/$defs/cardGrant" } }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "statProfile": {"properties": {"kind": {"const": "character"}}, "required": ["kind"], "type": "object"}
+            }
+          },
+          "then": {"properties": {"speedFeet": false}},
+          "else": {"required": ["speedFeet"], "properties": {"speedFeet": {"type": "integer", "minimum": 0}}}
+        }
+      ]
     },
     "encounterActorPlacement": {
       "type": "object",
@@ -1018,10 +942,164 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": { "const": 10 },
+        "schemaVersion": {"const": 11},
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }
+      }
+    },
+    "characterBuild": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["freeBoosts", "trainedSkills"],
+      "properties": {
+        "freeBoosts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/attributeId"},
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true
+        },
+        "trainedSkills": {"type": "array", "items": {"$ref": "#/$defs/skillId"}, "uniqueItems": true}
+      }
+    },
+    "characterAdvancementChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level"],
+      "properties": {
+        "level": {"enum": [3, 5, 7, 9, 10, 11, 13, 15, 17, 19, 20]},
+        "skillIncrease": {"$ref": "#/$defs/skillId"},
+        "attributeBoosts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/attributeId"},
+          "minItems": 4,
+          "maxItems": 4,
+          "uniqueItems": true
+        }
+      }
+    },
+    "characterBuildSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "build", "level", "advancements"],
+      "properties": {
+        "kind": {"const": "character"},
+        "build": {"$ref": "#/$defs/characterBuild"},
+        "level": {"type": "integer", "minimum": 1},
+        "advancements": {"type": "array", "items": {"$ref": "#/$defs/characterAdvancementChoice"}}
+      }
+    },
+    "ancestryDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "hitPoints", "speedFeet", "fixedBoosts"],
+      "properties": {
+        "id": {"$ref": "#/$defs/nonEmptyString"},
+        "hitPoints": {"type": "integer", "minimum": 1},
+        "speedFeet": {"type": "integer", "minimum": 1, "multipleOf": 5},
+        "fixedBoosts": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/attributeId"},
+          "minItems": 2,
+          "maxItems": 2,
+          "uniqueItems": true
+        }
+      }
+    },
+    "classProficiencyProfile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["perception", "classDc", "saves", "armor", "weapons"],
+      "properties": {
+        "perception": {"$ref": "#/$defs/proficiencyRank"},
+        "classDc": {"$ref": "#/$defs/proficiencyRank"},
+        "saves": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["fortitude", "reflex", "will"],
+          "properties": {
+            "fortitude": {"$ref": "#/$defs/proficiencyRank"},
+            "reflex": {"$ref": "#/$defs/proficiencyRank"},
+            "will": {"$ref": "#/$defs/proficiencyRank"}
+          }
+        },
+        "armor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unarmored", "light", "medium", "heavy"],
+          "properties": {
+            "unarmored": {"$ref": "#/$defs/proficiencyRank"},
+            "light": {"$ref": "#/$defs/proficiencyRank"},
+            "medium": {"$ref": "#/$defs/proficiencyRank"},
+            "heavy": {"$ref": "#/$defs/proficiencyRank"}
+          }
+        },
+        "weapons": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["unarmed", "simple", "martial", "advanced"],
+          "properties": {
+            "unarmed": {"$ref": "#/$defs/proficiencyRank"},
+            "simple": {"$ref": "#/$defs/proficiencyRank"},
+            "martial": {"$ref": "#/$defs/proficiencyRank"},
+            "advanced": {"$ref": "#/$defs/proficiencyRank"}
+          }
+        }
+      }
+    },
+    "classProficiencyMilestone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["level"],
+      "properties": {
+        "perception": {"$ref": "#/$defs/proficiencyRank"},
+        "classDc": {"$ref": "#/$defs/proficiencyRank"},
+        "saves": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "fortitude": {"$ref": "#/$defs/proficiencyRank"},
+            "reflex": {"$ref": "#/$defs/proficiencyRank"},
+            "will": {"$ref": "#/$defs/proficiencyRank"}
+          }
+        },
+        "armor": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "unarmored": {"$ref": "#/$defs/proficiencyRank"},
+            "light": {"$ref": "#/$defs/proficiencyRank"},
+            "medium": {"$ref": "#/$defs/proficiencyRank"},
+            "heavy": {"$ref": "#/$defs/proficiencyRank"}
+          }
+        },
+        "weapons": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {
+            "unarmed": {"$ref": "#/$defs/proficiencyRank"},
+            "simple": {"$ref": "#/$defs/proficiencyRank"},
+            "martial": {"$ref": "#/$defs/proficiencyRank"},
+            "advanced": {"$ref": "#/$defs/proficiencyRank"}
+          }
+        },
+        "level": {"type": "integer", "minimum": 2, "maximum": 20}
+      }
+    },
+    "classDefinition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "hpPerLevel", "keyAttribute", "starting", "milestones"],
+      "properties": {
+        "id": {"$ref": "#/$defs/nonEmptyString"},
+        "hpPerLevel": {"type": "integer", "minimum": 1},
+        "keyAttribute": {"$ref": "#/$defs/attributeId"},
+        "starting": {"$ref": "#/$defs/classProficiencyProfile"},
+        "milestones": {"type": "array", "items": {"$ref": "#/$defs/classProficiencyMilestone"}}
       }
     }
   }

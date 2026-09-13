@@ -503,7 +503,7 @@ function checkPartySizeCoverage(
     try {
       session = createAdventureSession({
         definition: adventure,
-        actorDefinitions: pack.actorDefinitions,
+        actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules,
         combatContent: pack.combatContent,
       }, party, COVERAGE_SEED);
     } catch (error) {

@@ -13,7 +13,7 @@ describe("production content selector", () => {
     // The authored revision is not pinned here. It moves with every gameplay data change,
     // and a second copy of it would turn a routine content edit into a surprise test failure.
     expect(PRODUCTION_CONTENT.pack.manifest.version).toMatch(/^\d+\.\d+\.\d+$/);
-    expect(PRODUCTION_CONTENT.pack.manifest.schemaVersion).toBe(10);
+    expect(PRODUCTION_CONTENT.pack.manifest.schemaVersion).toBe(11);
     expect(PRODUCTION_CONTENT.pack.manifest.rulesetId).toBe("cardguild.pf2e-remaster.v1");
   });
 
@@ -49,7 +49,7 @@ describe("production trait vocabulary", () => {
   const traits = Object.values(PRODUCTION_CONTENT.pack.combatContent.traits);
 
   it("carries source, category and a description on every shipped Trait", () => {
-    expect(traits).toHaveLength(54);
+    expect(traits).toHaveLength(66);
     for (const trait of traits) {
       expect(TRAIT_SOURCES, trait.id).toContain(trait.source);
       expect(TRAIT_CATEGORIES, trait.id).toContain(trait.category);
@@ -85,10 +85,11 @@ describe("production trait vocabulary", () => {
   it("marks as PF2e Remaster only the vocabulary whose current meaning matches the Remaster Trait", () => {
     const remaster = traits.filter((trait) => trait.source === "pf2e-remaster").map((trait) => trait.id).sort();
     expect(remaster).toEqual([
+      "bard", "champion", "cleric", "druid", "fighter", "ranger", "rogue", "witch", "wizard", "dwarf", "elf", "human",
       "agile", "attack", "cantrip", "cold", "concentrate", "emotion", "fear", "finesse", "fire", "flourish",
       "focus", "goblin", "healing", "manipulate", "mental", "move", "parry", "propulsive", "reach", "thrown",
       "trip", "undead", "vitality", "void",
-    ]);
+    ].sort());
     // Remaster's Skill Trait marks Skill feats; CardGuild's `skill` marks a skill-check
     // Action, a different meaning under the same word.
     expect(PRODUCTION_CONTENT.pack.combatContent.traits["skill"]).toMatchObject({ source: "cardguild", category: "action" });

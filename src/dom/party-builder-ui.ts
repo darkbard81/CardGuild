@@ -66,6 +66,9 @@ function archetypeRank(
   // Healing is checked first: a medic is fast and lightly armoured, so the speed and
   // durability tests below would otherwise label them as something they are not.
   if (startsWithHealing(actor, pack)) return 3;
+  // Character creation can change starting HP/AC; Champion identity still describes
+  // the guardian role without depending on the previous final-stat thresholds.
+  if (actor.traits.some(trait => trait.id === "champion")) return 2;
   if (actor.speedFeet >= 30 || statistics.initiative >= 8) return 1;
   if (statistics.maxHp >= 24 || statistics.ac >= 20) return 2;
   return 0;

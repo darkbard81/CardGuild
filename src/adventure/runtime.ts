@@ -1,4 +1,5 @@
 import type { RewardGrant } from "../content/content-types";
+import { applyCharacterAdvancement, pendingCharacterAdvancements } from "../character";
 import { clonePartyLoadout, createStartingCollection, validatePartyLoadout } from "../loadout";
 import { applyExperience, assertAdventureInvariants, createCharacterProgression } from "./progression";
 import type {
@@ -123,7 +124,7 @@ export function createAdventureSession(
   const validation = validatePartyLoadout(clonedParty, collection, context);
   if (!validation.valid) throw new Error(`Invalid starting loadout: ${validation.issues[0]?.message ?? "unknown error"}`);
   const state: AdventureState = {
-    version: 3,
+    version: 4,
     adventureId: context.definition.id,
     phase: "ready",
     currentEncounterId: null,
@@ -140,6 +141,9 @@ export function createAdventureSession(
 function startEncounter(state: AdventureState): AdventureDispatchResult {
   if (state.phase !== "between-encounters" || !state.currentEncounterId) {
     return reject(state, "An encounter can only start between encounters.");
+  }
+  if (Object.values(state.party.members).some(member => pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length)) {
+    return reject(state, "Complete all pending Character advancements before starting an encounter.");
   }
   const combatSeed = deriveCombatSeed(state.adventureSeed, state.currentEncounterId);
   return {
@@ -159,6 +163,24 @@ export function dispatchAdventureCommand(
   if (state.adventureId !== definition.id) return reject(state, "Adventure definition does not match state.");
 
   switch (command.type) {
+    case "advance-character": {
+      if (state.phase !== "ready" && state.phase !== "between-encounters") {
+        return reject(state, "Character advancement is only available while ready or between encounters.");
+      }
+      const member = state.party.members[command.memberId];
+      if (!member) return reject(state, `Party member "${command.memberId}" is missing.`);
+      const actor = context.actorDefinitions[member.actorDefinitionId];
+      if (!actor?.character) return reject(state, "Character Build is missing.");
+      try {
+        const progression = applyCharacterAdvancement(member.progression, command.choice,
+          { traits: actor.traits, build: actor.character.build }, context.characterRules);
+        return {
+          accepted: true,
+          state: { ...state, party: { members: { ...state.party.members, [member.id]: { ...member, progression } } } },
+          events: [{ type: "CHARACTER_ADVANCED", memberId: member.id, choice: structuredClone(command.choice) }],
+        };
+      } catch (error) { return reject(state, error instanceof Error ? error.message : String(error)); }
+    }
     case "start-adventure": {
       if (state.phase !== "ready") return reject(state, "Adventure has already started.");
       const currentEncounterId = definition.encounterIds[0] ?? null;

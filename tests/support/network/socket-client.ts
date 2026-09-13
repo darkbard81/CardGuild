@@ -9,7 +9,7 @@ import type { SessionIntent } from "../../../src/session";
 export const TEST_ORIGIN = "http://cardguild.test";
 
 export function envelope(requestId: string, expectedRevision: number, intent: SessionIntent): ClientIntentEnvelope {
-  return { v: 7, type: "intent", requestId, expectedRevision, intent };
+  return { v: 8, type: "intent", requestId, expectedRevision, intent };
 }
 
 /** How a connection actually ended, as reported by the socket's own close event. */
@@ -96,7 +96,7 @@ export class SocketClient {
       socket.once("error", reject);
     });
     socket.send(JSON.stringify({
-      v: options.protocolVersion ?? 7,
+      v: options.protocolVersion ?? 8,
       type: "hello",
       sessionId: credential.sessionId,
       playerId: credential.playerId,

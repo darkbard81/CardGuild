@@ -1,9 +1,10 @@
-import { compileScenario } from "../../../src/content/compile-content";
+import { compileScenario, compileActorSource } from "../../../src/content/compile-content";
 import { normalizeContentPack } from "../../../src/content/fingerprint";
 import type { ContentPackSource, ScenarioSource } from "../../../src/content";
 import { fingerprintValue } from "../../../src/game";
 import type { ActorDefinitionId, CombatContent, CombatDefinition, ContentIdentity } from "../../../src/game";
 import type { LoadoutContent } from "../../../src/loadout";
+import type { CharacterRulesContext } from "../../../src/character";
 import { CHARACTER_RULES_DEFINITIONS } from "./character-rules";
 import { CORE_DEFINITIONS, RUINED_GATE_ID } from "./core";
 import { CHARACTER_RULES_PACK_ID, CORE_PACK_ID, FIXTURE_PACK_VERSION, fixtureManifest } from "./identity";
@@ -68,6 +69,8 @@ function canonicalDefinitionsFor(rules: FixtureRules): Omit<ContentPackSource, "
   const normalized = normalizeContentPack({ manifest: fixtureManifest(rules), ...definitionsFor(rules) });
   const definitions: Omit<ContentPackSource, "manifest"> = {
     traits: normalized.traits,
+    ancestries: normalized.ancestries,
+    classes: normalized.classes,
     conditions: normalized.conditions,
     actions: normalized.actions,
     cards: normalized.cards,
@@ -90,10 +93,16 @@ function combatContentOf(definitions: Omit<ContentPackSource, "manifest">): Comb
   };
 }
 
-function loadoutContentOf(rules: FixtureRules): LoadoutContent {
+function characterRulesOf(definitions: Omit<ContentPackSource, "manifest">) {
+  return { traits: byId(definitions.traits), ancestries: byId(definitions.ancestries), classes: byId(definitions.classes) };
+}
+
+type RulesFixture = LoadoutContent & { readonly characterRules: CharacterRulesContext };
+function loadoutContentOf(rules: FixtureRules): RulesFixture {
   const definitions = fresh(canonicalDefinitionsFor(rules));
   return {
-    actorDefinitions: byId(definitions.actors) as LoadoutContent["actorDefinitions"],
+    actorDefinitions: byId(definitions.actors.map(actor => compileActorSource(actor, characterRulesOf(definitions)))),
+    characterRules: characterRulesOf(definitions),
     combatContent: combatContentOf(definitions),
   };
 }
@@ -102,7 +111,7 @@ function loadoutContentOf(rules: FixtureRules): LoadoutContent {
  * The base rules: one Character, the tactical Action set, and the equipment and terrain the
  * combat, loadout and adventure rules are all written against.
  */
-export function createCoreRulesFixture(): LoadoutContent {
+export function createCoreRulesFixture(): RulesFixture {
   return loadoutContentOf("core");
 }
 
@@ -110,7 +119,7 @@ export function createCoreRulesFixture(): LoadoutContent {
  * The core rules plus the three playable Characters and the weapon, armor and spell
  * vocabulary that only matters once a player is choosing between them.
  */
-export function createCharacterRulesFixture(): LoadoutContent {
+export function createCharacterRulesFixture(): RulesFixture {
   return loadoutContentOf("character-rules");
 }
 
@@ -152,7 +161,7 @@ export function createTacticalCombatFixture(
   const source: ScenarioSource | undefined = definitions.scenarios.find((entry) => entry.id === scenarioId);
   if (!source) throw new Error(`Fixture scenario "${scenarioId}" is not defined.`);
   const content = combatContentOf(definitions);
-  const actorDefinitions = byId(definitions.actors);
+  const actorDefinitions = byId(definitions.actors.map(actor => compileActorSource(actor, characterRulesOf(definitions))));
   return {
     scenario: compileScenario(source, actorDefinitions, content),
     content,

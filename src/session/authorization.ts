@@ -112,6 +112,7 @@ export function authorizeSessionIntent(
         return "Only the host can choose a shared reward.";
       }
       return undefined;
+    case "advance-character":
     case "set-loadout":
       if (state.lifecycle !== "active") return "Loadout is not editable outside an active adventure.";
       if (state.adventure?.phase !== "ready" && state.adventure?.phase !== "between-encounters") {

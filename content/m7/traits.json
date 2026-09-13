@@ -27,6 +27,15 @@
     "actionGrants": []
   },
   {
+    "id": "bard",
+    "name": "Bard",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Bard 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
     "id": "beast",
     "name": "Beast",
     "source": "cardguild",
@@ -50,6 +59,24 @@
     "source": "pf2e-remaster",
     "category": "action",
     "description": "캔트립 주문입니다. CardGuild에서는 주문 카드의 종류 표시로만 쓰입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "champion",
+    "name": "Champion",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Champion 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "cleric",
+    "name": "Cleric",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Cleric 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
@@ -99,6 +126,33 @@
     "actionGrants": []
   },
   {
+    "id": "druid",
+    "name": "Druid",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Druid 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "dwarf",
+    "name": "Dwarf",
+    "source": "pf2e-remaster",
+    "category": "ancestry",
+    "description": "Dwarf 종족입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "elf",
+    "name": "Elf",
+    "source": "pf2e-remaster",
+    "category": "ancestry",
+    "description": "Elf 종족입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
     "id": "emotion",
     "name": "Emotion",
     "source": "pf2e-remaster",
@@ -122,7 +176,21 @@
     "source": "cardguild",
     "category": "equipment",
     "description": "구급 장비입니다. 장착하면 Battle Medicine 카드 2장을 덱에 더합니다.",
-    "cardGrants": [{"cardDefinitionId": "card.battle-medicine", "count": 2}],
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.battle-medicine",
+        "count": 2
+      }
+    ],
+    "actionGrants": []
+  },
+  {
+    "id": "fighter",
+    "name": "Fighter",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Fighter 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
     "actionGrants": []
   },
   {
@@ -158,7 +226,12 @@
     "source": "cardguild",
     "category": "action",
     "description": "비행입니다. 비행 이동 행동을 표시하고, 장비에 붙으면 Fly 카드 2장을 덱에 더합니다.",
-    "cardGrants": [{"cardDefinitionId": "card.fly", "count": 2}],
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.fly",
+        "count": 2
+      }
+    ],
     "actionGrants": []
   },
   {
@@ -204,7 +277,12 @@
     "category": "condition",
     "description": "붙잡힌 상태입니다. 상태가 있는 동안 Escape 문맥 행동을 쓸 수 있습니다.",
     "cardGrants": [],
-    "actionGrants": [{"actionId": "escape-grab", "contextGroup": "escape"}]
+    "actionGrants": [
+      {
+        "actionId": "escape-grab",
+        "contextGroup": "escape"
+      }
+    ]
   },
   {
     "id": "healing",
@@ -221,6 +299,15 @@
     "source": "cardguild",
     "category": "system",
     "description": "플레이어 파티의 영웅 Actor를 표시하는 CardGuild 시스템 표식입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "human",
+    "name": "Human",
+    "source": "pf2e-remaster",
+    "category": "ancestry",
+    "description": "Human 종족입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
@@ -293,7 +380,12 @@
     "source": "pf2e-remaster",
     "category": "weapon",
     "description": "받아넘기기에 알맞은 무기입니다. 장착하면 Dueling Parry 카드 2장을 덱에 더합니다.",
-    "cardGrants": [{"cardDefinitionId": "card.dueling-parry", "count": 2}],
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.dueling-parry",
+        "count": 2
+      }
+    ],
     "actionGrants": []
   },
   {
@@ -312,7 +404,12 @@
     "category": "condition",
     "description": "넘어진 상태입니다. 상태가 있는 동안 Stand 문맥 행동을 쓸 수 있습니다.",
     "cardGrants": [],
-    "actionGrants": [{"actionId": "stand", "contextGroup": "escape"}]
+    "actionGrants": [
+      {
+        "actionId": "stand",
+        "contextGroup": "escape"
+      }
+    ]
   },
   {
     "id": "propulsive",
@@ -320,6 +417,15 @@
     "source": "pf2e-remaster",
     "category": "weapon",
     "description": "추진력 무기입니다. 원거리 피해에 STR 수정치의 절반(음수면 전부)을 더합니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "ranger",
+    "name": "Ranger",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Ranger 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
     "cardGrants": [],
     "actionGrants": []
   },
@@ -342,13 +448,27 @@
     "actionGrants": []
   },
   {
+    "id": "rogue",
+    "name": "Rogue",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Rogue 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
     "id": "shield",
     "name": "Shield",
     "source": "cardguild",
     "category": "equipment",
     "description": "방패입니다. 장착하면 Raise Shield 문맥 행동을 쓸 수 있습니다.",
     "cardGrants": [],
-    "actionGrants": [{"actionId": "raise-shield", "contextGroup": "shield"}]
+    "actionGrants": [
+      {
+        "actionId": "raise-shield",
+        "contextGroup": "shield"
+      }
+    ]
   },
   {
     "id": "shield-spike",
@@ -356,7 +476,12 @@
     "source": "cardguild",
     "category": "equipment",
     "description": "가시 달린 방패입니다. 장착하면 Shield Press 카드 2장을 덱에 더합니다.",
-    "cardGrants": [{"cardDefinitionId": "card.shield-press", "count": 2}],
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.shield-press",
+        "count": 2
+      }
+    ],
     "actionGrants": []
   },
   {
@@ -383,7 +508,12 @@
     "source": "cardguild",
     "category": "equipment",
     "description": "주문 매개체입니다. 장착하면 Frostbite 카드 2장을 덱에 더합니다.",
-    "cardGrants": [{"cardDefinitionId": "card.frostbite", "count": 2}],
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.frostbite",
+        "count": 2
+      }
+    ],
     "actionGrants": []
   },
   {
@@ -401,7 +531,12 @@
     "source": "cardguild",
     "category": "equipment",
     "description": "안정된 신발입니다. 장착하면 Careful Advance 카드 2장을 덱에 더합니다.",
-    "cardGrants": [{"cardDefinitionId": "card.careful-advance", "count": 2}],
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2
+      }
+    ],
     "actionGrants": []
   },
   {
@@ -428,7 +563,12 @@
     "source": "pf2e-remaster",
     "category": "weapon",
     "description": "넘어뜨리기에 알맞은 무기입니다. 장착하면 Trip 카드 3장을 덱에 더합니다.",
-    "cardGrants": [{"cardDefinitionId": "card.trip", "count": 3}],
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.trip",
+        "count": 3
+      }
+    ],
     "actionGrants": []
   },
   {
@@ -464,7 +604,12 @@
     "source": "cardguild",
     "category": "equipment",
     "description": "수호 부적입니다. 장착하면 Arcane Ward 카드 2장을 덱에 더합니다.",
-    "cardGrants": [{"cardDefinitionId": "card.arcane-ward", "count": 2}],
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.arcane-ward",
+        "count": 2
+      }
+    ],
     "actionGrants": []
   },
   {
@@ -482,6 +627,24 @@
     "source": "cardguild",
     "category": "terrain",
     "description": "거미줄 칸입니다. 지상으로 들어가면 붙잡힐 수 있습니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "witch",
+    "name": "Witch",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Witch 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "wizard",
+    "name": "Wizard",
+    "source": "pf2e-remaster",
+    "category": "class",
+    "description": "Wizard 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
     "cardGrants": [],
     "actionGrants": []
   }

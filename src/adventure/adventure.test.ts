@@ -25,7 +25,7 @@ const CORE_ADVENTURE = CORE_PACK.adventures[FIXTURE_ADVENTURE_ID] as NonNullable
 >;
 const context: AdventureRuntimeContext = {
   definition: CORE_ADVENTURE,
-  actorDefinitions: CORE_PACK.actorDefinitions,
+  actorDefinitions: CORE_PACK.actorDefinitions, characterRules: CORE_PACK.characterRules,
   combatContent: CORE_PACK.combatContent,
 };
 

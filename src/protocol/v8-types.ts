@@ -1,20 +1,12 @@
 import type { ContentIdentity } from "../game";
 import type { SessionCoreState, SessionEvent, SessionIntent } from "../session";
 
-/**
- * v7 adds the Encounter growth contract. A victory's `ENCOUNTER_COMPLETED` is followed, in
- * this exact order, by one `EXPERIENCE_GAINED` per party member in seat order and then one
- * `LEVEL_UP` per level crossed, again in seat order, before `REWARD_OFFERED` or
- * `ADVENTURE_COMPLETED`. An award of 0 publishes neither. Like every other event, these
- * reach a client only after the durable COMMIT that made them authoritative, so a client
- * never sees growth the campaign save does not already hold. There is no client intent
- * that asks for EXP: it is decided entirely by the accepted combat result.
- */
-export const PROTOCOL_VERSION = 7 as const;
+/** v8 adds durable Character advancement choices and AdventureState v4 snapshots. */
+export const PROTOCOL_VERSION = 8 as const;
 export const MAX_WS_PAYLOAD_BYTES = 64 * 1024;
 
 export interface ClientHello {
-  readonly v: 7;
+  readonly v: 8;
   readonly type: "hello";
   readonly sessionId: string;
   readonly playerId: string;
@@ -23,7 +15,7 @@ export interface ClientHello {
 }
 
 export interface ClientIntentEnvelope {
-  readonly v: 7;
+  readonly v: 8;
   readonly type: "intent";
   readonly requestId: string;
   readonly expectedRevision: number;
@@ -57,7 +49,7 @@ export interface ServerControlView {
 }
 
 export interface ServerSnapshot {
-  readonly v: 7;
+  readonly v: 8;
   readonly type: "snapshot";
   readonly revision: number;
   readonly controlRevision: number;
@@ -72,7 +64,7 @@ export interface ServerSnapshot {
 }
 
 export interface ServerAck {
-  readonly v: 7;
+  readonly v: 8;
   readonly type: "ack";
   readonly requestId: string;
   readonly accepted: boolean;
@@ -80,7 +72,7 @@ export interface ServerAck {
 }
 
 export interface ServerError {
-  readonly v: 7;
+  readonly v: 8;
   readonly type: "error";
   readonly code: ProtocolErrorCode;
   readonly message: string;

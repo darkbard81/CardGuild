@@ -1,3 +1,4 @@
+import { CHARACTER_PROGRESSION_SCHEMA } from "../character/schema";
 import Ajv, { type ErrorObject } from "ajv";
 
 /**
@@ -154,12 +155,7 @@ const adventure = {
               seat: { enum: [1, 2, 3] },
               actorDefinitionId: nonEmptyString,
               loadout,
-              progression: {
-                type: "object",
-                additionalProperties: false,
-                required: ["level", "experience"],
-                properties: { level: { type: "integer", minimum: 1 }, experience: nonNegativeInteger },
-              },
+              progression: CHARACTER_PROGRESSION_SCHEMA,
             },
           },
         },
