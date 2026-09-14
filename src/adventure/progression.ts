@@ -1,9 +1,9 @@
 import type { ActorDefinition } from "../content/content-types";
-import { assertCharacterProgression, resolveCharacterRules } from "../character";
+import { assertCharacterProgression, pendingCharacterAdvancements, resolveCharacterRules } from "../character";
 import type { CharacterRulesContext } from "../character";
 export { assertCharacterProgression } from "../character";
 import type { ActorStatProfile } from "../game/types";
-import type { AdventureState, CharacterProgressionState } from "./types";
+import type { AdventureRuntimeContext, AdventureState, CharacterProgressionState } from "./types";
 
 export const EXPERIENCE_PER_LEVEL = 1000;
 
@@ -51,4 +51,21 @@ export function applyExperience(
 export function assertAdventureInvariants(state: AdventureState): void {
   if (state.version !== 4) throw new Error("AdventureState must use version 4.");
   for (const member of Object.values(state.party.members)) assertCharacterProgression(member.progression);
+}
+
+/** Content-aware ingress validation shared by live SessionHost and durable save restore. */
+export function assertAdventureCharacterInvariants(
+  state: AdventureState,
+  context: Pick<AdventureRuntimeContext, "actorDefinitions" | "characterRules">,
+): void {
+  assertAdventureInvariants(state);
+  for (const member of Object.values(state.party.members)) {
+    const actor = context.actorDefinitions[member.actorDefinitionId];
+    if (!actor) throw new Error(`Party member "${member.id}" references an unknown Character.`);
+    resolveEffectiveCharacterStatProfile(actor, member.progression, context.characterRules);
+    if (state.phase === "combat"
+      && pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length) {
+      throw new Error("An active encounter cannot contain pending Character advancements.");
+    }
+  }
 }

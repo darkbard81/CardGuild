@@ -211,3 +211,30 @@ Content identity는 `cardguild.m7@0.6.0`, `fnv1a64:e6430ce79e65bbdd`입니다.
 이는 수집된 test 수가 아니라 실제 실행 결과입니다. Build의 기존 chunk-size 안내는 남아 있습니다.
 최종 실행 전 수정한 회귀는 새 HP/Reflex DC/version 기대값과 Champion guardian 표시입니다.
 구현·밸런스 비교·완료 조건 대조 결과는 이 문서와 연결된 테스트·증거 파일에 기록했습니다.
+
+## 리뷰 보완: SessionHost 진입 검증
+
+[리뷰 5655936916](https://github.com/darkbard81/CardGuild/issues/55#issuecomment-5655936916)의
+blocker를 수용했습니다. 기존 Session invariant는 history의 shape/schedule/prefix까지만 검사하여
+Lv5 Athletics master처럼 형태는 맞지만 Character 규칙에 어긋나는 state를 생성자에서 받아들였습니다.
+
+`assertAdventureCharacterInvariants()`를 추출하여 Campaign Save restore와 SessionHost constructor가
+같은 Build·class·history resolver 검증을 실행합니다. SessionHost는 state를 보관하거나 attach snapshot을
+공개하기 전에 검증합니다. active Combat의 pending advancement도 두 경로에서 동일하게 거절합니다.
+합법적인 between-encounters pending은 저장·복구·snapshot에서 그대로 유지합니다.
+
+회귀 테스트는 early-master state가 기존 structural invariant를 통과한다는 전제부터 확인하고,
+constructor → attach 경로가 거절되어 message와 durable COMMIT이 모두 0개임을 검증합니다.
+실제 WebSocket reconnect 테스트도 불법 복구 state 거절 후 원래 세션의 정상 snapshot만 공개되는지 확인합니다.
+
+2026-09-14 리뷰 수정 후 `npm run check` → `npm run build` → `npm test`를 다시 실행하여 모두 exit 0을
+확인했습니다. Unit 586개, Browser Unit 43개, Integration 102개, E2E 25개, Recovery 4개로 총
+760개가 통과했습니다. 수정 전에는 추가한 ingress 회귀 테스트 중 두 개가 실패하여 누락을 재현했습니다.
+
+### 후속 정책 과제
+
+- 마지막 Encounter EXP로 선택 level에 도달하면 `complete` 상태에 pending이 남을 수 있습니다.
+  #55의 `ready | between-encounters` 선택 제한은 유지합니다. Campaign 간 Character 지속을 구현할 때
+  `complete`에서 정산할지 별도 post-adventure growth phase를 둘지 결정해야 합니다.
+- 현재 production은 일곱 번째 승리에서 Lv3에 도달하므로 위 경계가 마지막 전투에서 발생하지 않습니다.
+- 기록된 17/36 → 6/36 밸런스 변화는 별도 tuning 과제이며 이번 ingress 수정은 gameplay 수치를 바꾸지 않습니다.

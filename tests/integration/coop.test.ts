@@ -184,6 +184,10 @@ describe("a real WebSocket cooperative session", () => {
     expect(() => new SessionHost(restoredWith({ level: 2, experience: EXPERIENCE_PER_LEVEL, advancements: [] }), context, digest))
       .toThrow("experience");
     expect(() => new SessionHost(restoredWith(undefined), context, digest)).toThrow("Character progression must be an object");
+    expect(() => new SessionHost(restoredWith({ level: 5, experience: 0, advancements: [
+      { level: 3, skillIncrease: "athletics" },
+      { level: 5, skillIncrease: "athletics", attributeBoosts: ["str", "dex", "con", "wis"] },
+    ] }), context, digest)).toThrow('Skill "athletics" cannot increase at Level 5');
     expect(() => new SessionHost(
       { ...original.state, adventure: { ...adventure, version: 2 } } as unknown as SessionCoreState, context, digest,
     )).toThrow("version 4");

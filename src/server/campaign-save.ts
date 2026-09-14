@@ -1,5 +1,5 @@
-import { resolveCharacterRules, pendingCharacterAdvancements } from "../character";
 import {
+  assertAdventureCharacterInvariants,
   assertAdventureInvariants,
   type AdventureState,
 } from "../adventure";
@@ -204,16 +204,8 @@ function validateAdventure(save: CampaignSaveV2, context: SessionAuthorityContex
   if (savedMapping !== adventureMapping) {
     corrupt("Saved party slots and the saved Adventure party describe different characters.");
   }
-  for (const member of members) {
-    const actor = context.pack.actorDefinitions[member.actorDefinitionId];
-    if (!actor?.character) corrupt("Saved party member has no Character Build.");
-    try {
-      resolveCharacterRules({ traits: actor.traits, build: actor.character.build, progression: member.progression }, context.pack.characterRules);
-      if (adventure.phase === "combat" && pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length) {
-        corrupt("An active encounter cannot contain pending Character advancements.");
-      }
-    } catch (error) { corrupt(error instanceof Error ? error.message : String(error)); }
-  }
+  try { assertAdventureCharacterInvariants(adventure, context.pack); }
+  catch (error) { corrupt(error instanceof Error ? error.message : String(error)); }
   const loadouts = validatePartyLoadout(adventure.party, adventure.collection, {
     actorDefinitions: context.pack.actorDefinitions,
     combatContent: context.pack.combatContent,

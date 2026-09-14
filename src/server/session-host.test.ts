@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import { gridDistance, listLegalActions, listLegalTargets, type CombatState } from "../game";
 import type { ClientIntentEnvelope, ServerMessage } from "../protocol";
-import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../session";
+import { assertSessionInvariants, hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../session";
 import { CampaignWriterRetiredError, type SessionDurability } from "./campaign-durability";
-import { FIXTURE_CONTEXT, FIXTURE_PARTY, fixtureLobby, fixtureBegun, withProgression } from "../../tests/fixtures/campaign-save";
+import { FIXTURE_CONTEXT, FIXTURE_PARTY, fixtureLobby, fixtureBegun, fixtureMidCombat, withProgression } from "../../tests/fixtures/campaign-save";
 import { createReconnectCredential } from "./credentials";
 import { SESSION_RETIRED_CLOSE_CODE, SessionHost, type SessionConnection } from "./session-host";
 
@@ -116,6 +116,52 @@ async function begin(harnessed: Harness): Promise<void> {
   await harnessed.send("party", { type: "set-party-composition", actorDefinitionIds: [...FIXTURE_PARTY] });
   await harnessed.send("begin", { type: "begin-adventure" });
 }
+
+describe("Character rules at SessionHost ingress", () => {
+  it("rejects shape-valid early master before attach can publish or durability can run", async () => {
+    const state = withProgression(fixtureBegun(), {
+      "party.hero-1": { level: 5, experience: 0, advancements: [
+        { level: 3, skillIncrease: "athletics" },
+        { level: 5, skillIncrease: "athletics", attributeBoosts: ["str", "dex", "con", "wis"] },
+      ] },
+    });
+    // This is the gap: the structural session invariant accepts this history.
+    expect(() => assertSessionInvariants(state)).not.toThrow();
+    const before = structuredClone(state);
+    const credential = createReconnectCredential();
+    const log: string[] = [];
+    const connection = new FakeConnection("invalid-ingress", log);
+    const durability = fakeDurability(log);
+    expect(() => new SessionHost(state, FIXTURE_CONTEXT, credential.digest, { durability }))
+      .toThrow('Skill "athletics" cannot increase at Level 5');
+    await expect((async () => {
+      const host = new SessionHost(state, FIXTURE_CONTEXT, credential.digest, { durability });
+      await host.attach(state.hostPlayerId, credential.token, state.contentIdentity, connection);
+    })()).rejects.toThrow('Skill "athletics" cannot increase at Level 5');
+    expect(connection.messages).toEqual([]);
+    expect(durability.commits).toEqual([]);
+    expect(state).toEqual(before);
+  });
+
+  it("rejects pending growth in an active encounter at the same ingress boundary", () => {
+    const state = withProgression(fixtureMidCombat(), {
+      "party.hero-1": { level: 3, experience: 0, advancements: [] },
+    });
+    expect(() => assertSessionInvariants(state)).not.toThrow();
+    expect(() => new SessionHost(state, FIXTURE_CONTEXT, createReconnectCredential().digest))
+      .toThrow("An active encounter cannot contain pending Character advancements");
+  });
+
+  it("publishes legal committed history with pending between-encounter choices unchanged", async () => {
+    const state = withProgression(fixtureBegun(), {
+      "party.hero-1": { level: 5, experience: 25, advancements: [{ level: 3, skillIncrease: "athletics" }] },
+    });
+    const harnessed = await harness(state);
+    expect(harnessed.connection.messages[0]).toMatchObject({ type: "snapshot", state });
+    expect(harnessed.durability.commits).toEqual([]);
+    expect(harnessed.host.state).toBe(state);
+  });
+});
 
 describe("commit before publish", () => {
   it("commits the durable save before any ACK or snapshot leaves the host", async () => {
