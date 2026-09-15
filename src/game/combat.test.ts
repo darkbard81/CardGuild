@@ -1251,18 +1251,8 @@ describe("core combat rules", () => {
   });
 
   it("derives cards and context recovery actions from trait providers", () => {
-    const recoverTest: ActionDefinition = {
-      id: "recover-test",
-      name: "Recover Test",
-      description: "Provider regression action.",
-      timing: { kind: "turn", actions: 1 },
-      traits: [{ id: "move" }],
-      targeting: "self",
-      resolution: { kind: "direct", effects: [{ kind: "remove-condition", owner: "actor", condition: "test-condition" }] },
-    };
     const providerContent: CombatContent = {
       ...CORE_CONTENT,
-      actions: { ...CORE_CONTENT.actions, [recoverTest.id]: recoverTest },
       equipment: {
         ...CORE_CONTENT.equipment,
         "trait-only-kit": {
@@ -1282,13 +1272,13 @@ describe("core combat rules", () => {
           category: "condition",
           description: "테스트용 회복 Trait입니다.",
           cardGrants: [],
-          actionGrants: [{ actionId: recoverTest.id, contextGroup: "escape" }],
+          actionGrants: [{ actionId: "stand", contextGroup: "escape" }],
         },
       },
       conditions: {
         ...CORE_CONTENT.conditions,
-        "test-condition": {
-          id: "test-condition",
+        "prone": {
+          id: "prone",
           name: "Test Condition",
           traits: [{ id: "condition" }, { id: "test-recovery" }],
         },
@@ -1309,7 +1299,7 @@ describe("core combat rules", () => {
             source: { kind: "equipment-trait", equipmentId: "trait-only-kit", traitId: "fly" },
           },
         ],
-        conditions: [{ id: "test-condition", sourceId: "test" }],
+        conditions: [{ id: "prone", sourceId: "test" }],
       },
     });
     const state = createCoreCombat(scenario, 72, providerContent).state;
@@ -1323,7 +1313,7 @@ describe("core combat rules", () => {
     ).toBe(true);
     const actions = listLegalActions(state, "hero", providerContent);
     expect(actions.find((action) => action.actionId === "raise-shield")?.enabled).toBe(true);
-    expect(actions.find((action) => action.actionId === recoverTest.id)?.contextGroup).toBe("escape");
+    expect(actions.find((action) => action.actionId === "stand")?.contextGroup).toBe("escape");
   });
 
   it("shares action legality across preview, query, and dispatch", () => {

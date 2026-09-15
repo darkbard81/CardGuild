@@ -1,4 +1,4 @@
-import { canUseRuleTraits, isCardEligible, resolveEffectiveActionTraits } from "./capabilities";
+import { canUseRuleTraits, isCardEligible, isContextualBasicAction, resolveEffectiveActionTraits } from "./capabilities";
 import { actionRangeFeet, buildResolvedActionPlan, turnMapContext } from "./action-plan";
 import { degreeProbabilities } from "./checks";
 import {
@@ -71,7 +71,9 @@ export function getContextActionOptions(
     options.push({ source: { kind: "context", id: "sustain-spell" }, group: "sustain" });
   }
 
-  const unique = new Map(options.map((option) => [option.source.id, option]));
+  const unique = new Map(options
+    .filter((option) => isContextualBasicAction(option.source.id, option.group))
+    .map((option) => [option.source.id, option]));
   return [...unique.values()];
 }
 

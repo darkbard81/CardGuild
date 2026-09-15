@@ -524,7 +524,7 @@ Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 L
   승리 직후에는 보상·다음 전투·완료 화면에 `EXP +400`, `Lv.1 → Lv.2`, 잔여 EXP 요약이 뜹니다.
   요약은 COMMIT된 이벤트로만 만들고 저장하지 않으므로, 재로드나 새 Continue에서는 현재
   Level/EXP만 보이고 지난 요약은 재생되지 않습니다.
-- M11-2 현재 버전은 Content schema 11 / pack 0.6.0 / Save 2 / protocol 8입니다.
+- 현재 버전은 Content schema 11 / pack 0.7.0 / Save 3 / protocol 9입니다.
   이전 final-stat Character 저장은 자동 이관하지 않고 row를 보존한 채 명시적으로 거절합니다.
 
 EXP authoring은 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md) §9.1,

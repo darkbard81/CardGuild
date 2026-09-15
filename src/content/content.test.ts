@@ -283,18 +283,6 @@ describe("content semantic validation and compilation", () => {
     const source = sourceCopy();
     const custom: ContentPackSource = {
       ...source,
-      actions: [
-        ...source.actions,
-        {
-          id: "recover-custom",
-          name: "Recover Custom",
-          description: "Remove a custom authored condition.",
-          timing: { kind: "turn", actions: 1 },
-          traits: [{ id: "move" }],
-          targeting: "self",
-          resolution: { kind: "direct", effects: [{ kind: "remove-condition", owner: "actor", condition: "custom-condition" }] },
-        },
-      ],
       traits: [
         ...source.traits,
         {
@@ -304,17 +292,12 @@ describe("content semantic validation and compilation", () => {
           category: "condition",
           description: "테스트용 회복 Trait입니다.",
           cardGrants: [],
-          actionGrants: [{ actionId: "recover-custom", contextGroup: "escape" }],
+          actionGrants: [{ actionId: "stand", contextGroup: "escape" }],
         },
       ],
-      conditions: [
-        ...source.conditions,
-        {
-          id: "custom-condition",
-          name: "Custom Condition",
-          traits: [{ id: "condition" }, { id: "custom-recovery" }],
-        },
-      ],
+      conditions: source.conditions.map((condition) => condition.id === "prone"
+        ? { ...condition, traits: [{ id: "condition" }, { id: "custom-recovery" }] }
+        : condition),
       equipment: [
         ...source.equipment,
         {
@@ -334,7 +317,7 @@ describe("content semantic validation and compilation", () => {
                 ...actor.starterLoadout,
                 equipment: { shield: "trait-only-kit" },
               },
-              initialConditions: [{ id: "custom-condition", sourceId: "test" }],
+              initialConditions: [{ id: "prone", sourceId: "test" }],
             }
           : withPerception(actor, -100),
       ),
@@ -363,7 +346,7 @@ describe("content semantic validation and compilation", () => {
 
     const actions = listLegalActions(setup.state, "hero", pack.combatContent);
     expect(actions.find((action) => action.actionId === "raise-shield")?.enabled).toBe(true);
-    const recovery = actions.find((action) => action.actionId === "recover-custom");
+    const recovery = actions.find((action) => action.actionId === "stand");
     expect(recovery?.contextGroup).toBe("escape");
 
     const command: CombatCommand = {
@@ -380,7 +363,7 @@ describe("content semantic validation and compilation", () => {
     expect(result.events).toContainEqual({
       type: "CONDITION_REMOVED",
       actorId: "hero",
-      condition: "custom-condition",
+      condition: "prone",
     });
   });
 

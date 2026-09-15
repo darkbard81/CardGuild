@@ -3,7 +3,12 @@ import { describe, expect, it } from "vitest";
 import contentPackSchema from "../../content/schema/content-pack.schema.json";
 import type { ActionDefinition, ConditionDefinition } from "../game/types";
 import type { ContentPackSource } from "./content-types";
-import { M7_CONTENT_SOURCE } from "./load-m7-content";
+import { M7_COMPILED_PACK, M7_CONTENT_SOURCE } from "./load-m7-content";
+import { isCardEligible } from "../game/capabilities";
+import { createCombat, dispatchCombatCommand } from "../game/engine";
+import { resolveActionSource } from "../game/queries";
+import { getCombatDefinition } from "./compile-content";
+import { createStartingCollection, validatePartyLoadout } from "../loadout";
 import { validateContentPackStructure } from "./validate-content";
 import { validateContentPackSemantics } from "./validate-semantics";
 
@@ -27,6 +32,91 @@ function withCondition(id: string, mutate: (condition: ConditionDefinition) => C
 }
 
 describe("production capability authoring contract", () => {
+  const classCards: Readonly<Record<string, readonly string[]>> = {
+    "card.vicious-swing": ["fighter"],
+    "card.knockdown": ["fighter"],
+    "card.intimidating-strike": ["fighter"],
+    "card.combat-grab": ["fighter"],
+    "card.dueling-parry": ["fighter"],
+    "card.reactive-strike": ["fighter", "champion"],
+    "card.lay-on-hands": ["champion"],
+  };
+
+  it("audits Class eligibility for every production Card, including reserves", () => {
+    const content = M7_COMPILED_PACK.combatContent;
+    for (const card of Object.values(content.cards)) {
+      expect(card.traits.filter(trait => Object.hasOwn(content.classes, trait.id)).map(trait => trait.id).sort(), card.id)
+        .toEqual([...(classCards[card.id] ?? [])].sort());
+      for (const id of Object.keys(content.classes)) {
+        expect(isCardEligible({ statProfile: { kind: "character" }, traits: [{ id }] }, card, content), `${card.id}/${id}`)
+          .toBe(!classCards[card.id] || classCards[card.id]!.includes(id));
+      }
+    }
+  });
+
+  it("enforces production Class Cards in prepare and runtime even when owned", () => {
+    const pack = M7_COMPILED_PACK;
+    const content = pack.combatContent;
+    const opened = createCombat(getCombatDefinition(pack, "encounter.ruined-gate"), 1).state;
+    for (const definition of Object.values(pack.actorDefinitions).filter(actor => actor.traits.some(trait => trait.id === "playable"))) {
+      for (const [cardId, classes] of Object.entries(classCards)) {
+        const eligible = definition.traits.some(trait => classes.includes(trait.id));
+        const member = { id: "hero", actorDefinitionId: definition.id, loadout: { ...definition.starterLoadout, preparedCards: [cardId] } };
+        const party = { members: { hero: member } };
+        const starting = createStartingCollection(party, pack);
+        const collection = { ...starting, cards: { ...starting.cards, [cardId]: 1 } };
+        expect(validatePartyLoadout(party, collection, pack).issues.map(issue => issue.code), `${definition.id}/${cardId}`)
+          .toEqual(eligible ? [] : ["INELIGIBLE_CARD"]);
+        const actor = { ...opened.actors.hero!, traits: definition.traits };
+        const state = { ...opened, actors: { ...opened.actors, hero: actor },
+          turn: { ...opened.turn, activeActorId: "hero", activeIndex: opened.turn.initiativeOrder.indexOf("hero") },
+          cardZones: { ...opened.cardZones, hero: { ...opened.cardZones.hero!, hand: [{ id: "audit-card", definitionId: cardId, source: { kind: "prepared" as const, memberId: "hero" } }] } },
+        };
+        const action = { kind: "card" as const, id: "audit-card" };
+        expect(resolveActionSource(state, actor, action, content) !== null).toBe(eligible);
+        if (!eligible) {
+          const result = dispatchCombatCommand(state, { type: "use-action", actorId: "hero", action, target: { kind: "none" }, id: "audit", sequence: state.sequence + 1 }, content);
+          expect(result.accepted).toBe(false);
+          expect(result.state).toBe(state);
+        }
+      }
+    }
+  });
+
+  it("does not let a reward weapon bypass its granted Card's Class", () => {
+    const pack = M7_COMPILED_PACK;
+    for (const definition of Object.values(pack.actorDefinitions).filter(actor => actor.traits.some(trait => trait.id === "playable"))) {
+      const party = { members: { hero: { id: "hero", actorDefinitionId: definition.id,
+        loadout: { ...definition.starterLoadout, equipment: { ...definition.starterLoadout.equipment, weapon: "dueling-rapier" } },
+      } } };
+      const collection = createStartingCollection(party, pack);
+      const result = validatePartyLoadout(party, { ...collection, equipment: { ...collection.equipment, "dueling-rapier": 1 } }, pack);
+      expect(result.issues.map(issue => issue.code), definition.id)
+        .toEqual(definition.traits.some(trait => trait.id === "fighter") ? [] : ["INELIGIBLE_CARD"]);
+    }
+  });
+
+  it("keeps every reward useful to a starter and a usable choice in every offer for all starters", () => {
+    const pack = M7_COMPILED_PACK;
+    const starters = Object.values(pack.actorDefinitions).filter(actor => actor.traits.some(trait => trait.id === "playable"));
+    for (const reward of pack.adventures["adventure.goblin-trouble"]!.rewards) {
+      const usable = starters.map(definition => reward.choices.map(choice => {
+        const member = { id: "hero", actorDefinitionId: definition.id, loadout: definition.starterLoadout };
+        const party = { members: { hero: member } };
+        const collection = createStartingCollection(party, pack);
+        const loadout = choice.kind === "card"
+          ? { ...member.loadout, preparedCards: [...member.loadout.preparedCards, choice.definitionId] }
+          : { ...member.loadout, equipment: { ...member.loadout.equipment, [pack.combatContent.equipment[choice.definitionId]!.slot]: choice.definitionId } };
+        const owned = choice.kind === "card"
+          ? { ...collection, cards: { ...collection.cards, [choice.definitionId]: (collection.cards[choice.definitionId] ?? 0) + 1 } }
+          : { ...collection, equipment: { ...collection.equipment, [choice.definitionId]: (collection.equipment[choice.definitionId] ?? 0) + 1 } };
+        return validatePartyLoadout({ members: { hero: { ...member, loadout } } }, owned, pack).valid;
+      }));
+      starters.forEach((starter, index) => expect(usable[index]!.some(Boolean), `${reward.id}/${starter.id}`).toBe(true));
+      reward.choices.forEach((choice, index) => expect(usable.some(row => row[index]), `${reward.id}/${choice.definitionId}`).toBe(true));
+    }
+  });
+
   it("accepts the shipped pack under both structural and semantic validation", () => {
     expect(validateContentPackStructure(M7_CONTENT_SOURCE, contentPackSchema)).toEqual([]);
     expect(validateContentPackSemantics(M7_CONTENT_SOURCE)).toEqual([]);

@@ -85,7 +85,7 @@ const TRIP: TraitDefinition = {
   category: "weapon",
   description: "테스트용 provider Trait입니다.",
   cardGrants: [{ cardDefinitionId: "card.trip", count: 3 }],
-  actionGrants: [{ actionId: "trip", contextGroup: "escape" }],
+  actionGrants: [{ actionId: "stand", contextGroup: "escape" }],
   statModifiers: [{ selector: { kind: "attack" }, type: "circumstance", value: 1, label: "Trip haft" }],
 };
 
@@ -275,7 +275,7 @@ describe("weapon Trait source of truth", () => {
       expect(getEquipmentCardGrants(actor, context.content as CombatContent))
         .toContainEqual(expect.objectContaining({ cardDefinitionId: "card.trip", count: 3, traitId: "trip", sourceId: equipment.id }));
       expect(getEquipmentActionGrants(actor, context.content as CombatContent))
-        .toContainEqual(expect.objectContaining({ actionId: "trip" }));
+        .toContainEqual(expect.objectContaining({ actionId: "stand" }));
       // The Trait's own statModifiers reach the shared stack from either authoring site.
       expect(resolveStrike(actor, context).sources.map((source) => source.label)).toContain("Trip haft");
     },

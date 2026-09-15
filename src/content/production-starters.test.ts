@@ -1,4 +1,5 @@
 import { cardPlanSource } from "../../tests/fixtures/card-source";
+import { isCardEligible } from "../game/capabilities";
 import { describe, expect, it } from "vitest";
 import { createTacticalCombatFixture } from "../../tests/fixtures/content";
 
@@ -238,6 +239,8 @@ function planOf(actor: ActorState, actionId: string, target: ActionTarget) {
   const definition = CONTENT.actions[actionId];
   if (!definition) throw new Error(`Action "${actionId}" is missing.`);
   const card = cardPlanSource(CONTENT, actionId, actor.id);
+  const cardDefinition = Object.values(CONTENT.cards).find(card => card.actionId === actionId);
+  if (!cardDefinition || !isCardEligible(actor, cardDefinition, CONTENT)) return null;
   const state = { cardZones: card.cardZones, map: createCombat(createTacticalCombatFixture({ rules: "character-rules" }), 33).state.map, actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } };
   return buildResolvedActionPlan(
     definition, actor, target, card.source, state, CONTENT, { kind: "turn", attacksThisTurn: 0 },
@@ -258,9 +261,10 @@ describe("starter signature actions", () => {
     expect(planOf(aerin, "intimidating-strike", ENEMY_TARGET)).not.toBeNull();
   });
 
-  it("resolves Lyra's pin with a finesse weapon and her Acrobatics escape", () => {
+  it("resolves Lyra's Grapple and Acrobatics escape without a Fighter capability", () => {
     const lyra = actorWith("hero.lyra");
-    expect(planOf(lyra, "combat-grab", ENEMY_TARGET)).not.toBeNull();
+    expect(planOf(lyra, "grapple", ENEMY_TARGET)).not.toBeNull();
+    expect(planOf(lyra, "combat-grab", ENEMY_TARGET)).toBeNull();
     const slip = planOf(lyra, "slip-free", { kind: "none" });
     if (slip?.resolution.kind !== "check") throw new Error("Slip Free must resolve as a check.");
     expect(slip.resolution.check.modifier).toBe(
@@ -289,7 +293,7 @@ describe("starter signature actions", () => {
     expect(plan.resolution.check.dc).toBe(16);
   });
 
-  it("leaves Nera's Athletics cards legal but weak, and opens Combat Grab with a melee weapon", () => {
+  it("leaves Nera's Athletics cards legal but weak and rejects Fighter Cards even with a melee weapon", () => {
     // untrained is not a legality gate: only an authored `skill-rank` requirement checks a
     // rank, and Trip and Grapple author none. Nera's weakness is the modifier, not a ban.
     const nera = actorWith("hero.nera");
@@ -298,9 +302,9 @@ describe("starter signature actions", () => {
       if (plan?.resolution.kind !== "check") throw new Error(`${actionId} must resolve as a check.`);
       expect(`${actionId}:${String(plan.resolution.check.modifier)}`).toBe(`${actionId}:1`);
     }
-    // Combat Grab is closed by the weapon requirement alone, so a melee reward opens it.
+    // Equipment cannot bypass the Card's Class eligibility.
     expect(planOf(nera, "combat-grab", ENEMY_TARGET)).toBeNull();
-    expect(planOf(actorWith("hero.nera", ["light-blade", "leather-armor"]), "combat-grab", ENEMY_TARGET)).not.toBeNull();
+    expect(planOf(actorWith("hero.nera", ["light-blade", "leather-armor"]), "combat-grab", ENEMY_TARGET)).toBeNull();
   });
 
   it("keeps Battle Medicine aimed at a wounded teammate only", () => {

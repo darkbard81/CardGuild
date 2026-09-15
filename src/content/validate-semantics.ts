@@ -1,4 +1,4 @@
-import { isCardEligible } from "../game/capabilities";
+import { isCardEligible, isContextualBasicAction } from "../game/capabilities";
 import { assertAncestryDefinition, assertClassDefinition, pendingCharacterAdvancements, resolveCharacterRules } from "../character";
 import { positionKey } from "../game/grid";
 import { ATTRIBUTE_IDS, SAVE_IDS, SKILL_IDS, deriveMaxHp, isUntypedPenalty } from "../game/statistics";
@@ -99,7 +99,12 @@ function validateTraits(
   path: string,
   traits: readonly TraitInstance[],
 ): void {
+  const seen = new Set<string>();
   traits.forEach((trait, index) => {
+    if (seen.has(trait.id)) {
+      addIssue(context, category, `${path}[${index}].id`, "DUPLICATE_TRAIT", `Duplicate Trait ID "${trait.id}".`, definitionId);
+    }
+    seen.add(trait.id);
     if (!knownTraits.has(trait.id)) {
       addIssue(
         context,
@@ -351,6 +356,9 @@ export function validateContentPackSemantics(
     });
     definition.actionGrants.forEach((grant, index) => {
       const key = `action:${grant.actionId}:${grant.contextGroup}`;
+      if (!isContextualBasicAction(grant.actionId, grant.contextGroup)) {
+        addIssue(context, "traits", `[${definitionIndex}].actionGrants[${index}]`, "INVALID_CONTEXT_ACTION_GRANT", `Action "${grant.actionId}" is not a contextual Basic action in group "${grant.contextGroup}".`, definition.id);
+      }
       if (!knownActions.has(grant.actionId)) {
         addIssue(context, "traits", `[${definitionIndex}].actionGrants[${index}].actionId`, "UNKNOWN_ACTION", `Action "${grant.actionId}" is not defined.`, definition.id);
       }

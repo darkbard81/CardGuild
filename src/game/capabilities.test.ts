@@ -7,9 +7,9 @@ import { deriveTacticalDeck, validatePartyLoadout } from "../loadout/loadout";
 import { buildResolvedActionPlan, turnMapContext } from "./action-plan";
 import { isCardEligible, isRingAction, matchesEligibilityGroups, resolveEffectiveActionTraits } from "./capabilities";
 import { createCombat, dispatchCombatCommand } from "./engine";
-import { listLegalActions, previewAction, resolveActionSource } from "./queries";
+import { getContextActionOptions, listLegalActions, previewAction, resolveActionSource } from "./queries";
 import { createCombatReplay, hashCombatState, replayCombat } from "./replay";
-import type { ActionDefinition, ActionSource, CombatCommand, CombatState, TraitInstance } from "./types";
+import type { ActionDefinition, ActionSource, CombatCommand, CombatState, TraitActionGrant, TraitInstance } from "./types";
 
 const traits = (...ids: string[]): TraitInstance[] => ids.map(id => ({ id }));
 const fixture = createTacticalCombatFixture();
@@ -122,6 +122,85 @@ describe("canonical capability eligibility", () => {
     const state = arena();
     const actor = { ...state.actors.hero!, innateActionIds: ["trip"] };
     expect(resolveActionSource(state, actor, { kind: "innate", id: "trip" }, fixture.content)).toBeNull();
+  });
+});
+
+describe("contextual Basic provider boundary", () => {
+  const allowed: readonly TraitActionGrant[] = [
+    { actionId: "stand", contextGroup: "escape" },
+    { actionId: "escape-grab", contextGroup: "escape" },
+    { actionId: "interact-lever", contextGroup: "interact" },
+    { actionId: "raise-shield", contextGroup: "shield" },
+    { actionId: "sustain-spell", contextGroup: "sustain" },
+  ];
+  const forbidden: readonly TraitActionGrant[] = [
+    { actionId: "vicious-swing", contextGroup: "shield" },
+    { actionId: "trip", contextGroup: "escape" },
+    { actionId: "raise-shield", contextGroup: "escape" },
+  ];
+  function authoredGrant(grant: TraitActionGrant) {
+    const source = createCoreContentSource();
+    return { ...source,
+      actions: [...source.actions, { ...source.actions.find(action => action.id === "trip")!, id: "vicious-swing" }],
+      traits: source.traits.map(trait => trait.id === "shield" ? { ...trait, actionGrants: [grant] } : trait),
+    };
+  }
+
+  it.each(allowed)("preserves contextual Basic $actionId in $contextGroup", grant => {
+    const content = compileContentPack(authoredGrant(grant)).combatContent;
+    const initial = arena();
+    const state = { ...initial, actors: { ...initial.actors, hero: { ...initial.actors.hero!, equipmentIds: ["shield"] } } };
+    expect(getContextActionOptions(state, state.actors.hero, content)).toContainEqual({ source: { kind: "context", id: grant.actionId }, group: grant.contextGroup });
+    expect(resolveActionSource(state, state.actors.hero, { kind: "context", id: grant.actionId }, content)?.definition.id).toBe(grant.actionId);
+  });
+
+  it.each(forbidden)("rejects authored provider $actionId in $contextGroup", grant => {
+    const source = authoredGrant(grant);
+    expect(validateContentPackSemantics(source)).toContainEqual(expect.objectContaining({ code: "INVALID_CONTEXT_ACTION_GRANT", definitionId: "shield" }));
+    expect(() => compileContentPack(source)).toThrow(ContentCompilationError);
+  });
+
+  it.each(["equipment", "condition"] as const)("rejects invalid %s providers in malformed compiled content", provider => {
+    for (const grant of forbidden) {
+      const initial = arena();
+      const actor = { ...initial.actors.hero!, equipmentIds: provider === "equipment" ? ["review-kit"] : [],
+        conditions: provider === "condition" ? [{ id: "review-condition", sourceId: "test" }] : [],
+      };
+      const state = { ...initial, actors: { ...initial.actors, hero: actor } };
+      const content = { ...fixture.content,
+        actions: { ...fixture.content.actions, "vicious-swing": PRODUCTION_CONTENT.pack.combatContent.actions["vicious-swing"]! },
+        traits: { ...fixture.content.traits, shield: { ...fixture.content.traits.shield!, actionGrants: [grant] } },
+        equipment: { ...fixture.content.equipment, "review-kit": { id: "review-kit", name: "Review kit", slot: "shield" as const, traits: traits("shield"), statModifiers: [] } },
+        conditions: { ...fixture.content.conditions, "review-condition": { id: "review-condition", name: "Review condition", traits: traits("shield") } },
+      };
+      const source = { kind: "context" as const, id: grant.actionId };
+      expect(getContextActionOptions(state, actor, content).some(option => option.source.id === source.id)).toBe(false);
+      expect(resolveActionSource(state, actor, source, content)).toBeNull();
+      expect(listLegalActions(state, actor.id, content).some(action => action.source.kind === "context" && action.source.id === source.id)).toBe(false);
+      expect(previewAction(state, actor.id, source, target, content).legal).toBe(false);
+      const result = dispatchCombatCommand(state, command(state, source), content);
+      expect(result.accepted).toBe(false);
+      expect(hashCombatState(result.state)).toBe(hashCombatState(state));
+    }
+  });
+});
+
+describe("unique canonical Trait IDs", () => {
+  it.each([
+    [{ id: "fighter" }, { id: "fighter" }],
+    [{ id: "fighter", sourceId: "one", params: { value: 1 } }, { id: "fighter", sourceId: "two", params: { value: 2 } }],
+  ])("rejects duplicate Card IDs regardless of provenance or parameters: %j", (...duplicates) => {
+    const source = createCoreContentSource();
+    const invalid = { ...source, cards: source.cards.map(card => card.id === "card.trip" ? { ...card, traits: duplicates } : card) };
+    expect(validateContentPackSemantics(invalid)).toContainEqual(expect.objectContaining({ code: "DUPLICATE_TRAIT", definitionId: "card.trip" }));
+    expect(() => compileContentPack(invalid)).toThrow(ContentCompilationError);
+  });
+
+  it.each(["actions", "equipment", "actors", "conditions"] as const)("also rejects duplicate IDs in %s", category => {
+    const source = createCoreContentSource();
+    const invalid = { ...source, [category]: source[category].map((definition, index) => index === 0
+      ? { ...definition, traits: [...definition.traits, definition.traits[0]!] } : definition) };
+    expect(validateContentPackSemantics(invalid)).toContainEqual(expect.objectContaining({ code: "DUPLICATE_TRAIT", definitionId: source[category][0]!.id }));
   });
 });
 

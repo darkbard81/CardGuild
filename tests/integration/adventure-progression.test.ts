@@ -4,7 +4,7 @@ import { PRODUCTION_CONTENT } from "../../src/content";
 import { digestReconnectToken } from "../../src/server/credentials";
 import { startCardGuildServer, type RunningCardGuildServer } from "../../src/server/server";
 import type { SessionIntent } from "../../src/session";
-import { equipIntent, heroIntent, reactionIntent, advancementIntent } from "../support/campaign/adventure-driver";
+import { equipIntent, heroIntent, reactionIntent, advancementIntent, prepareHealingIntent, rewardChoiceIndex } from "../support/campaign/adventure-driver";
 import { hostSession, seededPersistence } from "../support/network/host-account";
 import { SocketClient, TEST_ORIGIN } from "../support/network/socket-client";
 
@@ -81,6 +81,7 @@ describe("the production adventure completes over a real co-op session", () => {
     const played: string[] = [];
     const rewards: string[] = [];
     const equipments: string[] = [];
+    const choices = new Map<string, number>();
     // Growth is read off the wire, not off the server's own state: a client only ever
     // learns what changed from the events published with the COMMIT.
     const experienceOnWire = new Map<string, number>();
@@ -92,6 +93,8 @@ describe("the production adventure completes over a real co-op session", () => {
       if (adventure.phase === "between-encounters") {
         const growth = advancementIntent(adventure);
         if (growth) { await send(growth); continue; }
+        const prepare = prepareHealingIntent(adventure);
+        if (prepare) { await send(prepare); continue; }
         await send({ type: "start-encounter" });
         if (host.state.adventure?.currentEncounterId) played.push(host.state.adventure.currentEncounterId);
         continue;
@@ -99,10 +102,12 @@ describe("the production adventure completes over a real co-op session", () => {
       if (adventure.phase === "reward" && adventure.pendingReward) {
         const offer = adventure.pendingReward;
         rewards.push(offer.rewardId);
-        await send({ type: "choose-reward", rewardId: offer.rewardId, choiceIndex: 0 });
+        const choiceIndex = rewardChoiceIndex(adventure);
+        choices.set(offer.rewardId, choiceIndex);
+        await send({ type: "choose-reward", rewardId: offer.rewardId, choiceIndex });
         // Taking a reward is only half the loop the adventure is built around; the party
         // has to be able to put it on before the next fight, over the same transport.
-        const grant = offer.choices[0];
+        const grant = offer.choices[choiceIndex];
         const equipped = grant ? equipIntent(host.state.adventure, grant) : null;
         if (equipped) {
           await send(equipped);
@@ -119,7 +124,7 @@ describe("the production adventure completes over a real co-op session", () => {
         await send(reaction ?? heroIntent(combat, combat.turn.activeActorId));
         continue;
       }
-      throw new Error(`The adventure stalled in phase "${adventure.phase}".`);
+      throw new Error(`The adventure stalled in phase "${adventure.phase}" after ${adventure.completedEncounterIds.join(", ")}. Loadouts: ${JSON.stringify(Object.values(adventure.party.members).map(member => ({ id: member.actorDefinitionId, prepared: member.loadout.preparedCards })))}`);
     }
 
     expect(host.state.adventure?.phase).toBe("complete");
@@ -128,6 +133,13 @@ describe("the production adventure completes over a real co-op session", () => {
       ADVENTURE.rewards.filter((reward) => reward.afterEncounterId === encounterId).map((reward) => reward.id));
     expect(rewards).toEqual(inPlayOrder);
     expect(host.state.combat).toBeNull();
+    const champion = Object.values(host.state.adventure?.party.members ?? {})
+      .find(member => member.actorDefinitionId === "hero.brom");
+    expect(champion?.loadout.preparedCards).toContain("card.lay-on-hands");
+    const healer = Object.values(host.state.adventure?.party.members ?? {})
+      .find(member => member.actorDefinitionId === "hero.nera");
+    expect(healer?.loadout.preparedCards).toContain("card.heal");
+    expect(healer?.loadout.preparedCards).not.toContain("card.lay-on-hands");
     // Every equipment reward taken is worn at the end, so the loadout path carried it.
     const worn = new Set(Object.values(host.state.adventure?.party.members ?? {})
       .flatMap((member) => Object.values(member.loadout.equipment).filter((id): id is string => Boolean(id))));
@@ -149,11 +161,11 @@ describe("the production adventure completes over a real co-op session", () => {
       expect(member.progression).toMatchObject({ level: 3, experience: totalExperience % 1_000 });
       expect(member.progression.advancements).toHaveLength(1);
     }
-    // Each reward's first choice is owned afterwards, in its own half of the collection.
+    // Every selected reward is owned afterwards, in its own half of the collection.
     const collection = host.state.adventure?.collection;
     for (const encounterId of ADVENTURE.encounterIds) {
       for (const reward of ADVENTURE.rewards.filter((entry) => entry.afterEncounterId === encounterId)) {
-        const choice = reward.choices[0];
+        const choice = reward.choices[choices.get(reward.id) ?? -1];
         if (!choice) throw new Error(`${reward.id} offers nothing.`);
         const owned = choice.kind === "card" ? collection?.cards : collection?.equipment;
         expect(`${reward.id}/${choice.definitionId}:${String((owned?.[choice.definitionId] ?? 0) > 0)}`)

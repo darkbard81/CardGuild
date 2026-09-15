@@ -394,9 +394,14 @@ describe("strike extensions", () => {
 
 describe("hp restoration", () => {
   const wounded = { ally: { hp: 4 } } as const;
+  function championCombat(overrides: Readonly<Record<string, Partial<ActorSetup>>>): CombatState {
+    const champion = buildActorSetup(M7_COMPILED_PACK.actorDefinitions["hero.brom"]!,
+      { instanceId: "hero", actorDefinitionId: "hero.brom", team: "heroes", position: { x: 1, y: 1 }, facing: "east" }, CONTENT);
+    return combat({ ...overrides, hero: { ...champion, ...withInitiative(champion, 100) } });
+  }
 
   it("raises current HP without passing max HP or touching max HP itself", () => {
-    const state = combat({ ally: { hp: 1 } });
+    const state = championCombat({ ally: { hp: 1 } });
     const played = withCard(state, "hero", "card.lay-on-hands");
     const result = dispatchCombatCommand(played.state, play(played.state, played.source, ALLY), CONTENT);
     expect(result.accepted).toBe(true);
@@ -406,7 +411,7 @@ describe("hp restoration", () => {
   });
 
   it("clamps to max HP", () => {
-    const state = combat({ ally: { hp: actor(combat(), "ally").maxHp - 1 } });
+    const state = championCombat({ ally: { hp: actor(combat(), "ally").maxHp - 1 } });
     const played = withCard(state, "hero", "card.lay-on-hands");
     const result = dispatchCombatCommand(played.state, play(played.state, played.source, ALLY), CONTENT);
     expect(result.accepted).toBe(true);
@@ -422,7 +427,7 @@ describe("hp restoration", () => {
   });
 
   it("never revives a defeated actor", () => {
-    const state = combat({ ally: { hp: 0 } });
+    const state = championCombat({ ally: { hp: 0 } });
     const defeated = {
       ...state,
       actors: { ...state.actors, ally: { ...actor(state, "ally"), hp: 0, defeated: true } },

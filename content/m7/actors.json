@@ -117,7 +117,7 @@
       },
       "preparedCards": [
         "card.slip-free",
-        "card.combat-grab"
+        "card.grapple"
       ]
     },
     "innateActionIds": [],
@@ -1220,7 +1220,7 @@
       },
       "preparedCards": [
         "card.battle-medicine",
-        "card.lay-on-hands",
+        "card.heal",
         "card.iron-presence"
       ]
     },

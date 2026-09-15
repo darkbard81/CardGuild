@@ -1,4 +1,16 @@
-import type { ActionDefinition, ActionSource, ActorStatProfile, CardDefinition, CombatContent, CombatState, LegalAction, TraitId, TraitInstance } from "./types";
+import type { ActionDefinition, ActionSource, ActorStatProfile, CardDefinition, CombatContent, CombatState, ContextActionGroup, LegalAction, TraitId, TraitInstance } from "./types";
+
+/** Context providers may expose only these Basic actions, never arbitrary Card capabilities. */
+const CONTEXTUAL_BASIC_ACTIONS: Readonly<Record<ContextActionGroup, readonly string[]>> = {
+  escape: ["stand", "escape-grab"],
+  interact: ["interact-lever"],
+  shield: ["raise-shield"],
+  sustain: ["sustain-spell"],
+};
+
+export function isContextualBasicAction(actionId: string, group: ContextActionGroup): boolean {
+  return Object.hasOwn(CONTEXTUAL_BASIC_ACTIONS, group) && CONTEXTUAL_BASIC_ACTIONS[group].includes(actionId);
+}
 
 /** OR within each identity registry, AND across registries; categories never dispatch rules. */
 export function matchesEligibilityGroups(
