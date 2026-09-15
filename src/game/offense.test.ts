@@ -98,6 +98,7 @@ const FRIGHTENED: ConditionDefinition = {
 
 function content(equipment: readonly EquipmentDefinition[] = []): CombatContent {
   return {
+    classes: {},
     actions: {},
     cards: {},
     conditions: { frightened: FRIGHTENED },

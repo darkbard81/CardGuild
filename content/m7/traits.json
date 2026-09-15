@@ -216,7 +216,7 @@
     "name": "Flourish",
     "source": "pf2e-remaster",
     "category": "action",
-    "description": "화려한 기술입니다. CardGuild에서는 행동 종류 표시로만 쓰이며 사용 횟수를 제한하지 않습니다.",
+    "description": "화려한 기술입니다. CardGuild에서는 같은 턴에 Flourish capability를 최대 한 번 사용할 수 있습니다.",
     "cardGrants": [],
     "actionGrants": []
   },

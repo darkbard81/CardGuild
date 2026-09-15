@@ -85,6 +85,7 @@ function canonicalDefinitionsFor(rules: FixtureRules): Omit<ContentPackSource, "
 
 function combatContentOf(definitions: Omit<ContentPackSource, "manifest">): CombatContent {
   return {
+    classes: byId(definitions.classes),
     actions: byId(definitions.actions),
     cards: byId(definitions.cards),
     equipment: byId(definitions.equipment),

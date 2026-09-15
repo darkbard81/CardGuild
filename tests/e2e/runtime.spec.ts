@@ -387,7 +387,13 @@ test("carries a reward loadout through the shared resolver into the next encount
   await page.locator("#pixi-canvas").click({ position: hero });
   // The shield came off in the loadout, so its context action is gone with it.
   await expect(page.locator('#ring-root .ring-option[data-action-id="raise-shield"]')).toHaveCount(0);
-  await expect(page.locator('#ring-root .ring-option[data-action-id="brace-behind-cover"]')).toBeVisible();
+  // The prepared capability belongs to Hand even when it targets the acting Character.
+  await expect(page.locator('#ring-root .ring-option[data-action-id="brace-behind-cover"]')).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  const brace = page.locator('#hand-cards .tactical-card[data-action-id="brace-behind-cover"]');
+  await expect(brace).toBeVisible();
+  await brace.click();
+  await expect(brace).toHaveCount(0);
   expect(runtimeErrors).toEqual([]);
 });
 

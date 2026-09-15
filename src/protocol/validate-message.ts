@@ -1,7 +1,7 @@
 import { CHARACTER_ADVANCEMENT_CHOICE_SCHEMA } from "../character/schema";
 import Ajv, { type ErrorObject } from "ajv";
 
-import { PROTOCOL_VERSION, type ClientMessage } from "./v8-types";
+import { PROTOCOL_VERSION, type ClientMessage } from "./v9-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {

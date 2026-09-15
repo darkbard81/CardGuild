@@ -1,3 +1,4 @@
+import { canUseRuleTraits, resolveEffectiveActionTraits } from "./capabilities";
 import { rollCheck } from "./checks";
 import { computeCombatSetupFingerprint } from "./determinism";
 import {
@@ -57,7 +58,7 @@ import type {
 } from "./types";
 
 interface CombatDraft {
-  version: 4;
+  version: 5;
   scenarioId: string;
   seed: number;
   contentIdentity: CombatState["contentIdentity"];
@@ -121,6 +122,7 @@ function cloneState(state: CombatState): CombatDraft {
       ...state.turn,
       initiativeOrder: [...state.turn.initiativeOrder],
       lockedActionIds: [...state.turn.lockedActionIds],
+      usedTraitsByActor: Object.fromEntries(Object.entries(state.turn.usedTraitsByActor).map(([id, traits]) => [id, [...traits]])),
     },
     actors: Object.fromEntries(Object.values(state.actors).map((actor) => [actor.id, cloneActor(actor)])),
     map: {
@@ -234,7 +236,7 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
   if (activeActor) actors[activeActorId] = { ...activeActor, reactionAvailable: true };
 
   const state: CombatState = {
-    version: 4,
+    version: 5,
     scenarioId: scenario.id,
     seed,
     contentIdentity: { ...contentIdentity },
@@ -248,6 +250,7 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
       attacksThisTurn: 0,
       turnNumber: 1,
       lockedActionIds: [],
+      usedTraitsByActor: {},
     },
     actors,
     map: {
@@ -629,7 +632,12 @@ function eligibleMoveReactions(
     })
     .flatMap((actor) => {
       const card = draft.cardZones[actor.id]?.hand.find(
-        (candidate) => content.cards[candidate.definitionId]?.actionId === "reactive-strike",
+        (candidate) => {
+          const source = { kind: "card" as const, id: candidate.id };
+          const resolved = resolveActionSource(asState(draft), actor, source, content);
+          return resolved?.definition.id === "reactive-strike" &&
+            canUseRuleTraits(asState(draft), actor.id, resolveEffectiveActionTraits(source, resolved.definition, asState(draft), content, actor.id));
+        },
       );
       return card
         ? [{ actorId: actor.id, cardInstanceId: card.id, actionId: "reactive-strike" }]
@@ -946,6 +954,7 @@ function advanceTurn(draft: CombatDraft, content: CombatContent, events: CombatE
     attacksThisTurn: 0,
     turnNumber: draft.turn.turnNumber + 1,
     lockedActionIds: [],
+    usedTraitsByActor: {},
   };
   drawCard(draft, activeActorId, events);
   events.push({ type: "TURN_STARTED", actorId: activeActorId, round: draft.round });
@@ -957,6 +966,13 @@ function validateSequence(state: CombatState, command: CombatCommand): string | 
   }
   if (state.commandLog.some((entry) => entry.id === command.id)) return `Duplicate command id: ${command.id}.`;
   return undefined;
+}
+
+function recordRuleTraits(draft: CombatDraft, actorId: string, traits: readonly string[]): void {
+  if (!traits.includes("flourish")) return;
+  draft.turn = { ...draft.turn, usedTraitsByActor: { ...draft.turn.usedTraitsByActor,
+    [actorId]: [...new Set([...(draft.turn.usedTraitsByActor[actorId] ?? []), "flourish"])],
+  } };
 }
 
 function beginAcceptedCommand(draft: CombatDraft, command: CombatCommand): void {
@@ -1005,10 +1021,11 @@ function useAction(
     // multi-action Strike declares how many attacks it counts as instead.
     attacksThisTurn:
       draft.turn.attacksThisTurn +
-      (resolved.definition.traits.some((trait) => trait.id === "attack")
+      (resolveEffectiveActionTraits(command.action, resolved.definition, state, content, actor.id).includes("attack")
         ? resolved.definition.mapAttackCount ?? 1
         : 0),
   };
+  recordRuleTraits(draft, actor.id, resolveEffectiveActionTraits(command.action, resolved.definition, state, content, actor.id));
   events.push({
     type: "ACTION_SPENT",
     actorId: actor.id,
@@ -1082,8 +1099,10 @@ function isReactionCandidateValid(
     !card ||
     content.cards[card.definitionId]?.actionId !== candidate.actionId
   ) return false;
-  const reaction = content.actions[candidate.actionId];
-  if (!reaction) return false;
+  const source = { kind: "card" as const, id: candidate.cardInstanceId };
+  const resolved = resolveActionSource(asState(draft), reactor, source, content);
+  const reaction = resolved?.definition;
+  if (!reaction || !canUseRuleTraits(asState(draft), reactor.id, resolveEffectiveActionTraits(source, reaction, asState(draft), content, reactor.id))) return false;
   return gridDistance(reactor.position, mover.position) <= actionRangeFeet(reaction, reactor, { content }) &&
     isInFrontOrSide(reactor, mover.position) &&
     hasLineOfSight(draft.map, reactor.position, mover.position);
@@ -1136,8 +1155,10 @@ function useReaction(
   if (!isInFrontOrSide(reactor, mover.position)) return fail(state, "Mover is outside the reaction facing arc.");
 
   const draft = cloneState(state);
+  if (!isReactionCandidateValid(draft, pending, candidate, content)) return fail(state, "Reaction source is unavailable.");
   const events: CombatEvent[] = [];
   beginAcceptedCommand(draft, command);
+  recordRuleTraits(draft, reactor.id, resolveEffectiveActionTraits({ kind: "card", id: candidate.cardInstanceId }, definition, state, content, reactor.id));
   replaceActor(draft, { ...reactor, reactionAvailable: false });
   discardCard(draft, reactor.id, candidate.cardInstanceId, events);
   events.push({ type: "REACTION_USED", triggerId: pending.triggerId, actorId: reactor.id, actionId: definition.id });

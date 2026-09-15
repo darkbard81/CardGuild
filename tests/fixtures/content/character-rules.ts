@@ -488,7 +488,8 @@ const CHARACTER_RULES_ADVENTURES: readonly AdventureDefinition[] = CORE_ADVENTUR
 export const CHARACTER_RULES_DEFINITIONS = {
   traits: [...CORE_TRAITS, ...BUILD_TRAITS, ...CHARACTER_RULES_TRAITS],
   actions: CHARACTER_RULES_ALL_ACTIONS,
-  cards: [...CORE_CARDS, ...CHARACTER_RULES_CARDS],
+  cards: override([...CORE_CARDS, ...CHARACTER_RULES_CARDS], "card.spirit-beacon",
+    card => ({ ...card, traits: [...card.traits, { id: "spell" }] })),
   equipment: [...CORE_EQUIPMENT, ...CHARACTER_RULES_EQUIPMENT],
   actors: CHARACTER_RULES_HERO_ACTORS,
   adventures: CHARACTER_RULES_ADVENTURES,

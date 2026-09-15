@@ -1,3 +1,4 @@
+import { cardPlanSource } from "../../tests/fixtures/card-source";
 import { describe, expect, it } from "vitest";
 
 import { buildActorSetup } from "../content/compile-content";
@@ -166,12 +167,13 @@ function cycleTo(state: CombatState, actorId: string): {
 function planFor(state: CombatState, actionId: string, target: ActionTarget, actorId = "hero") {
   const definition = CONTENT.actions[actionId];
   if (!definition) throw new Error(`Action "${actionId}" is missing.`);
+  const card = actionId === "strike" ? null : cardPlanSource(CONTENT, actionId, actorId);
   return buildResolvedActionPlan(
     definition,
     actor(state, actorId),
     target,
-    { kind: "card", id: "unused" },
-    state,
+    card?.source ?? { kind: "basic", id: "strike" },
+    card ? { ...state, cardZones: card.cardZones } : state,
     CONTENT,
     turnMapContext(state),
   );

@@ -5,7 +5,7 @@
  */
 import { buildAdventureEncounter } from "../../src/adventure";
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
-import { computeCombatSetupFingerprint } from "../../src/game";
+import { computeCombatSetupFingerprint, dispatchCombatCommand } from "../../src/game";
 import {
   createSessionCoreState,
   dispatchSessionIntent,
@@ -15,7 +15,7 @@ import {
   type SessionCoreState,
   type SessionIntent,
 } from "../../src/session";
-import { createCampaignSave, type CampaignSaveV2 } from "../../src/server/campaign-save";
+import { createCampaignSave, type CampaignSaveV3 } from "../../src/server/campaign-save";
 
 export const FIXTURE_PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
 
@@ -102,12 +102,12 @@ export const LEGACY_CONTENT_IDENTITY = {
  * content refusal independently of Save v1's earlier schema-version refusal.
  */
 export function legacyStoredSave(state: SessionCoreState): {
-  readonly save: CampaignSaveV2;
+  readonly save: CampaignSaveV3;
   readonly snapshotHash: string;
 } {
   const save = createCampaignSave(state);
   const combat = save.combat;
-  const legacy: CampaignSaveV2 = {
+  const legacy: CampaignSaveV3 = {
     ...save,
     contentIdentity: { ...LEGACY_CONTENT_IDENTITY },
     combat: combat
@@ -122,4 +122,25 @@ export function legacyStoredSave(state: SessionCoreState): {
       : null,
   };
   return { save: legacy, snapshotHash: hashSessionGameplayState(legacy) };
+}
+
+/** Inject a numerical arena, then spend a real production Flourish before serialization. */
+export function fixtureAfterFlourish(initial = fixtureMidCombat()): SessionCoreState {
+  const combat = initial.combat!;
+  const actorId = "party.hero-1";
+  const enemy = Object.values(combat.actors).find(actor => actor.team === "enemies")!;
+  const hero = combat.actors[actorId]!;
+  const state = { ...combat, actors: { ...combat.actors,
+    [actorId]: { ...hero, position: { x: 1, y: 1 }, facing: "east" as const },
+    [enemy.id]: { ...enemy, position: { x: 2, y: 1 }, hp: 200, maxHp: 200 },
+  }, turn: { ...combat.turn, activeActorId: actorId, activeIndex: combat.turn.initiativeOrder.indexOf(actorId), actionsRemaining: 3 },
+    cardZones: { ...combat.cardZones, [actorId]: { ...combat.cardZones[actorId]!, hand: ["first", "second"].map(id => ({
+      id: `flourish-${id}`, definitionId: "card.vicious-swing", source: { kind: "prepared" as const, memberId: actorId },
+    })) } },
+  };
+  const result = dispatchCombatCommand(state, { type: "use-action", id: `flourish-${state.sequence + 1}`, sequence: state.sequence + 1,
+    actorId, action: { kind: "card", id: "flourish-first" }, target: { kind: "actor", actorId: enemy.id },
+  }, FIXTURE_CONTEXT.pack.combatContent);
+  if (!result.accepted) throw new Error(result.error);
+  return { ...initial, combat: result.state };
 }

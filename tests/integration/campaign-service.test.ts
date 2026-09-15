@@ -91,7 +91,7 @@ async function driver(
   if (!attached.ok) throw new Error(`Attach failed: ${attached.code}`);
   return async (requestId, intent) => {
     await host.handleIntent(playerId, connection.id, {
-      v: 8,
+      v: 9,
       type: "intent",
       requestId,
       expectedRevision: host.state.revision,
@@ -292,7 +292,7 @@ describe("campaign continue", () => {
     // A last gameplay intent is enqueued before Continue reaches the store, so Continue's
     // barrier must let it commit and must then read that newer save, not the older one.
     const lastPlay = host.handleIntent(played.playerId, connectionId, {
-      v: 8,
+      v: 9,
       type: "intent",
       requestId: "last-play",
       expectedRevision: host.state.revision,
@@ -438,7 +438,7 @@ describe("campaign continue refuses incompatible Character saves", () => {
     return lookup.record.campaignRevision;
   }
 
-  it.each([1, 2])("preserves old schema %i rows, publishes no session and performs no migration write", async version => {
+  it.each([1, 2, 3])("preserves incompatible schema %i rows, publishes no session and performs no migration write", async version => {
     const h = harness();
     const played = await playedToCombat(h);
     rollBackToPreviousContent(h, played);
@@ -457,7 +457,7 @@ describe("campaign continue refuses incompatible Character saves", () => {
     const commit = vi.spyOn(h.persistence.campaigns, "commitSave");
     for (let attempt = 0; attempt < 2; attempt++) {
       expect(await h.campaigns.continue("acc_owner", played.campaignId)).toMatchObject({ ok: false,
-        code: version === 1 ? "SAVE_SCHEMA_UNSUPPORTED" : "SAVE_CONTENT_MISMATCH" });
+        code: version < 3 ? "SAVE_SCHEMA_UNSUPPORTED" : "SAVE_CONTENT_MISMATCH" });
       expect(h.campaigns.liveSessionOf(played.campaignId)).toBeUndefined();
       expect(h.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner")).toEqual(before);
     }

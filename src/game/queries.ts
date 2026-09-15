@@ -1,3 +1,4 @@
+import { canUseRuleTraits, isCardEligible, resolveEffectiveActionTraits } from "./capabilities";
 import { actionRangeFeet, buildResolvedActionPlan, turnMapContext } from "./action-plan";
 import { degreeProbabilities } from "./checks";
 import {
@@ -88,7 +89,7 @@ export function resolveActionSource(
     const card = getCardFromHand(state, actor.id, source.id);
     if (!card) return null;
     const cardDefinition = content.cards[card.definitionId];
-    if (!cardDefinition) return null;
+    if (!cardDefinition || !isCardEligible(actor, cardDefinition, content)) return null;
     const definition = content.actions[cardDefinition.actionId];
     if (!definition) return null;
     const sourceLabel = card.source.kind === "equipment-trait"
@@ -114,7 +115,7 @@ export function resolveActionSource(
   ) {
     return null;
   }
-  if (source.kind === "innate" && !actor.innateActionIds.includes(source.id)) return null;
+  if (source.kind === "innate" && (actor.statProfile.kind === "character" || !actor.innateActionIds.includes(source.id))) return null;
   return { definition };
 }
 
@@ -288,6 +289,9 @@ function validateActionBase(
   const resolved = resolveActionSource(state, actor, source, content);
   if (!resolved) return { legal: false, reason: "Action source is unavailable." };
   const definition = resolved.definition;
+  if (!canUseRuleTraits(state, actor.id, resolveEffectiveActionTraits(source, definition, state, content, actor.id))) {
+    return { legal: false, reason: "Only one Flourish capability can be used per turn.", actor, resolved };
+  }
   if (definition.timing.kind === "reaction") {
     return { legal: false, reason: "Requires a reaction trigger.", actor, resolved };
   }
@@ -403,7 +407,7 @@ export function listLegalActions(
         name: resolved.definition.name,
         description: resolved.definition.description,
         timing: resolved.definition.timing,
-        traits: resolved.definition.traits.map((trait) => trait.id),
+        traits: resolveEffectiveActionTraits(source, resolved.definition, state, content, actor.id),
         enabled: validation.legal,
         reason: validation.reason,
         sourceLabel: resolved.sourceLabel,

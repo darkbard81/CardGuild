@@ -1,3 +1,4 @@
+import { isCardEligible } from "../game/capabilities";
 import type { ActorDefinition, EncounterActorPlacement } from "../content/content-types";
 import { resolveStrike } from "../game/offense";
 import {
@@ -117,6 +118,13 @@ export function validatePartyLoadout(
         continue;
       }
       increment(usedCards, id);
+    }
+    const deck = deriveTacticalDeck(actor, member.loadout, content.combatContent, member.id);
+    for (const id of new Set(deck.contributions.map(entry => entry.cardDefinitionId))) {
+      const card = content.combatContent.cards[id];
+      if (card && !isCardEligible(actor, card, content.combatContent)) {
+        issues.push({ code: "INELIGIBLE_CARD", memberId: member.id, definitionId: id, message: `${actor.name} is not eligible to include ${card.name} in their deck.` });
+      }
     }
   }
 

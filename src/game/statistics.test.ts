@@ -86,7 +86,8 @@ const DEFENSE = {
 } as const satisfies CharacterDefenseProfile;
 
 const EMPTY_CONTENT: CombatContent = {
-  actions: {},
+  classes: {},
+    actions: {},
   cards: {},
   conditions: {},
   equipment: {},

@@ -14,6 +14,7 @@ export interface TacticalFixture {
   intents: SessionIntent[];
   rejectNext: boolean;
   rejectAfterSend: boolean;
+  capabilityCase: (condition?: "grabbed" | "prone" | "lever") => void;
   addStrikeCard: () => void;
   addStepCard: () => void;
   setActions: (remaining: number) => void;
@@ -81,6 +82,19 @@ async function start() {
       fixture.events.push(...result.events);
       queueMicrotask(() => controller?.update(fixture.state, result.events));
       return true;
+    },
+    capabilityCase(condition) {
+      fixture.reset("front");
+      const hero = { ...fixture.state.actors.hero!, equipmentIds: ["halberd", "shield", "boots-of-fly"],
+        conditions: condition && condition !== "lever" ? [{ id: condition, value: 1, sourceId: "fixture" }] : [],
+      };
+      const cards = ["card.trip", "card.fly"].map(id => ({ id: `cap-${id}`, definitionId: id, source: { kind: "prepared" as const, memberId: "hero" } }));
+      const object = Object.values(fixture.state.map.objects)[0]!;
+      fixture.state = { ...fixture.state, actors: { ...fixture.state.actors, hero },
+        cardZones: { ...fixture.state.cardZones, hero: { hand: cards, drawPile: [], discardPile: [] } },
+        ...(condition === "lever" ? { map: { ...fixture.state.map, objects: { [object.id]: { ...object, position: { x: 1, y: 2 }, used: false } } } } : {}),
+      };
+      controller?.update(fixture.state, [], true);
     },
     addStrikeCard() {
       content.cards["card.fixture-strike"] = { id: "card.fixture-strike", name: "Fixture Strike", actionId: "strike", traits: [] };

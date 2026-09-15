@@ -1,3 +1,5 @@
+import { fixtureAfterFlourish } from "../fixtures/campaign-save";
+import { listLegalActions, resolveActionSource } from "../../src/game";
 import { WebSocket } from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -34,7 +36,7 @@ async function post<T>(
 }
 
 function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
-  return { v: 8, type: "intent", requestId, expectedRevision, intent: value };
+  return { v: 9, type: "intent", requestId, expectedRevision, intent: value };
 }
 
 async function accepted(
@@ -108,6 +110,42 @@ describe("a real WebSocket cooperative session", () => {
     vi.restoreAllMocks();
   });
 
+  it("retains Flourish and Card eligibility in protocol v9 snapshots after reconnect", async () => {
+    const server = await start();
+    const credential = await create(server);
+    const original = server.store.get(credential.sessionId)!;
+    const preparing = await SocketClient.connect(server.origin, credential);
+    sockets.push(preparing);
+    await preparing.snapshot();
+    await accepted(preparing, original, "cap-party", { type: "set-party-composition", actorDefinitionIds: PARTY });
+    await accepted(preparing, original, "cap-begin", { type: "begin-adventure" });
+    await accepted(preparing, original, "cap-encounter", { type: "start-encounter" });
+    await preparing.close();
+    await original.whenIdle();
+    const seeded = new SessionHost(fixtureAfterFlourish(original.state),
+      { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId }, digestReconnectToken(credential.reconnectToken));
+    vi.spyOn(server.store, "get").mockReturnValue(seeded);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const client = await SocketClient.connect(server.origin, credential);
+      sockets.push(client);
+      const snapshot = await client.snapshot();
+      expect(snapshot.v).toBe(9);
+      expect(snapshot.gameplayHash).toBe(hashSessionGameplayState(seeded.state));
+      const combat = snapshot.state.combat!;
+      expect(combat.turn.usedTraitsByActor).toEqual({ "party.hero-1": ["flourish"] });
+      expect(listLegalActions(combat, "party.hero-1", PRODUCTION_CONTENT.pack.combatContent).find(action => action.source.id === "flourish-second"))
+        .toMatchObject({ enabled: false, reason: "Only one Flourish capability can be used per turn." });
+      expect(resolveActionSource(combat, { ...combat.actors["party.hero-1"]!, traits: [{ id: "wizard" }] },
+        { kind: "card", id: "flourish-second" }, PRODUCTION_CONTENT.pack.combatContent)).toBeNull();
+      const error = await rejected(client, seeded, `cap-rejected-${attempt}`, {
+        type: "use-action", action: { kind: "card", id: "flourish-second" }, target: { kind: "actor", actorId: "party.hero-1" },
+      });
+      expect(error.message).toContain("Flourish");
+      await client.close();
+      await seeded.whenIdle();
+    }
+  });
+
   it("transports nonzero runtime progression and recovers the same gameplay after reconnect", async () => {
     const server = await start();
     const credential = await create(server);
@@ -129,7 +167,7 @@ describe("a real WebSocket cooperative session", () => {
     const client = await SocketClient.connect(server.origin, credential);
     sockets.push(client);
     const first = await client.snapshot();
-    expect(first.v).toBe(8);
+    expect(first.v).toBe(9);
     expect(first.state.adventure?.version).toBe(4);
     expect(Object.values(first.state.adventure!.party.members).map(member => member.progression)).toEqual([
       { level: 2, experience: 375, advancements: [] }, { level: 3, experience: 376, advancements: [] }, { level: 4, experience: 377, advancements: [] },
@@ -568,7 +606,7 @@ describe("a real WebSocket cooperative session", () => {
       const mismatch = await legacy.waitFor(
         (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
       );
-      expect(mismatch.message).toContain("version 8");
+      expect(mismatch.message).toContain("version 9");
     }
   }, 30_000);
 

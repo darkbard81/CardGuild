@@ -12,6 +12,7 @@ export const CORE_CARDS: readonly CardDefinition[] = [
       {
         id: "attack",
       },
+      { id: "skill" },
       {
         id: "trip",
       },

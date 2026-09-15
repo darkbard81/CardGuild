@@ -1,3 +1,4 @@
+import { isCardEligible } from "../game/capabilities";
 import { assertAncestryDefinition, assertClassDefinition, pendingCharacterAdvancements, resolveCharacterRules } from "../character";
 import { positionKey } from "../game/grid";
 import { ATTRIBUTE_IDS, SAVE_IDS, SKILL_IDS, deriveMaxHp, isUntypedPenalty } from "../game/statistics";
@@ -428,6 +429,20 @@ export function validateContentPackSemantics(
       addIssue(context, "cards", `[${index}].actionId`, "UNKNOWN_ACTION", `Action "${definition.actionId}" is not defined.`, definition.id);
     }
     validateTraits(context, knownTraits, "cards", definition.id, `[${index}].traits`, definition.traits);
+    const action = source.actions.find(action => action.id === definition.actionId);
+    const requiredTraits = [
+      ...(action?.resolution.kind === "move" ? ["move"] : []),
+      ...(action?.timing.kind === "reaction" ? ["reaction"] : []),
+    ];
+    for (const id of requiredTraits) {
+      if (!definition.traits.some(trait => trait.id === id)) addIssue(context, "cards", `[${index}].traits`, "MISSING_CAPABILITY_TRAIT", `Card requires the "${id}" Trait for its execution primitive.`, definition.id);
+    }
+    for (const trait of definition.traits) {
+      // Authoring consistency only; eligibility itself uses registry membership.
+      if (source.traits.find(entry => entry.id === trait.id)?.category === "class" && !characterRules.classes[trait.id]) {
+        addIssue(context, "cards", `[${index}].traits`, "UNKNOWN_CLASS", `Class Trait "${trait.id}" has no ClassDefinition.`, definition.id);
+      }
+    }
   });
 
   source.equipment.forEach((definition, index) => {
@@ -464,6 +479,15 @@ export function validateContentPackSemantics(
         `Playable actor "${actor.id}" must use a character statistic profile.`,
         actor.id,
       );
+    }
+    if (actor.statProfile.kind === "character" && actor.innateActionIds.length > 0) {
+      addIssue(context, "actors", `[${index}].innateActionIds`, "CHARACTER_INNATE_FORBIDDEN", "Character special capabilities must be granted by Cards.", actor.id);
+    }
+    for (const cardId of [...actor.starterLoadout.preparedCards, ...actor.baseCardGrants.map(grant => grant.cardDefinitionId)]) {
+      const card = source.cards.find(card => card.id === cardId);
+      if (card && !isCardEligible(actor, card, characterRules)) {
+        addIssue(context, "actors", `[${index}]`, "INELIGIBLE_CARD", `Character cannot prepare or receive base Card "${cardId}".`, actor.id);
+      }
     }
     if (actor.statProfile.kind === "character") {
       try {

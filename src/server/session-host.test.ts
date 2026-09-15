@@ -101,7 +101,7 @@ async function harness(initial?: SessionCoreState): Promise<Harness> {
     attach,
     send(requestId, intent) {
       const envelope: ClientIntentEnvelope = {
-        v: 8,
+        v: 9,
         type: "intent",
         requestId,
         expectedRevision: host.state.revision,
@@ -273,7 +273,7 @@ describe("commit before publish", () => {
 
     // A guest claim, a detach and a re-attach are accepted transitions that change no gameplay.
     const claim: ClientIntentEnvelope = {
-      v: 8,
+      v: 9,
       type: "intent",
       requestId: "claim",
       expectedRevision: harnessed.host.state.revision,
@@ -310,7 +310,7 @@ describe("commit before publish", () => {
     durability.commits.length = 0;
 
     await host.handleIntent(resumed.hostPlayerId, "socket-resume", {
-      v: 8,
+      v: 9,
       type: "intent",
       requestId: "resume",
       expectedRevision: 0,
@@ -359,7 +359,7 @@ describe("commit before publish", () => {
       .filter((message) => message.type === "snapshot" && message.cause?.kind === "server").length;
 
     await host.handleIntent("player-guest", "socket-stalled-guest", {
-      v: 8,
+      v: 9,
       type: "intent",
       requestId: "claim",
       expectedRevision: host.state.revision,
@@ -373,7 +373,7 @@ describe("commit before publish", () => {
     expect(host.state.combat?.turn.activeActorId).toBe(enemyId);
 
     await host.handleIntent(stalled.hostPlayerId, "socket-stalled-host", {
-      v: 8,
+      v: 9,
       type: "intent",
       requestId: "resume",
       expectedRevision: host.state.revision,
@@ -502,7 +502,7 @@ describe("growth is published only once the victory is durable", () => {
     );
     expect(attached.ok).toBe(true);
     await shared.host.handleIntent("player-guest", "socket-guest", {
-      v: 8,
+      v: 9,
       type: "intent",
       requestId: "claim",
       expectedRevision: shared.host.state.revision,

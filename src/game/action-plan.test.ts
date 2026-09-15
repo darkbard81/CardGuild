@@ -257,9 +257,13 @@ describe("resolved action plan", () => {
         hero: { ...hero, innateActionIds: [...hero.innateActionIds, actionId] },
       },
     };
-    expect(listLegalActions(characterState, "hero", content).find((entry) => entry.actionId === actionId))
+    const cardContent = { ...content, cards: { ...content.cards, "card.class-dc-test": {
+      id: "card.class-dc-test", name: "Class DC", actionId, traits: action.traits,
+    } } };
+    const injected = withCardInHand(characterState, "hero", "card.class-dc-test");
+    expect(listLegalActions(injected.state, "hero", cardContent).find((entry) => entry.actionId === actionId))
       .toEqual(expect.objectContaining({ enabled: true, reason: undefined }));
-    expect(listLegalTargets(characterState, "hero", source, content))
+    expect(listLegalTargets(injected.state, "hero", { kind: "card", id: injected.card.id }, cardContent))
       .toContainEqual(expect.objectContaining({ kind: "actor", actorId: goblinId }));
   });
 
@@ -273,11 +277,12 @@ describe("resolved action plan", () => {
     const content: CombatContent = {
       ...CHARACTER_RULES_CONTENT,
       actions: { ...CHARACTER_RULES_CONTENT.actions, [actionId]: action },
+      cards: { ...CHARACTER_RULES_CONTENT.cards, "card.target-class-dc": { id: "card.target-class-dc", name: "Target Class DC", actionId, traits: action.traits } },
     };
-    const source: ActionSource = { kind: "innate", id: actionId };
+    const source: ActionSource = { kind: "card", id: "card-injected-card.target-class-dc" };
     const hero = opened.actors.hero as NonNullable<CombatState["actors"][string]>;
     const characterTargetId = "z-character-enemy";
-    const mixedState: CombatState = {
+    const mixedBase: CombatState = {
       ...opened,
       actors: {
         ...opened.actors,
@@ -291,6 +296,7 @@ describe("resolved action plan", () => {
         },
       },
     };
+    const mixedState = withCardInHand(mixedBase, "hero", "card.target-class-dc").state;
     const characterTarget: ActionTarget = { kind: "actor", actorId: characterTargetId };
 
     expect(listLegalActions(mixedState, "hero", content).find((entry) => entry.actionId === actionId))

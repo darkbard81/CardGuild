@@ -103,6 +103,7 @@ export function compileContentPack(
   const characterRules = { traits: recordById(normalized.traits), ancestries: recordById(normalized.ancestries), classes: recordById(normalized.classes) };
   const actorDefinitions = recordById(normalized.actors.map(actor => compileActorSource(actor, characterRules)));
   const combatContent = {
+    classes: characterRules.classes,
     actions: recordById(normalized.actions),
     cards: recordById(normalized.cards),
     equipment: recordById(normalized.equipment),

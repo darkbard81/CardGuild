@@ -1,3 +1,4 @@
+import { cardPlanSource } from "../../tests/fixtures/card-source";
 import { describe, expect, it } from "vitest";
 import { createTacticalCombatFixture } from "../../tests/fixtures/content";
 
@@ -236,9 +237,10 @@ const TARGET_ENEMY: ActorState = (() => {
 function planOf(actor: ActorState, actionId: string, target: ActionTarget) {
   const definition = CONTENT.actions[actionId];
   if (!definition) throw new Error(`Action "${actionId}" is missing.`);
-  const state = { map: createCombat(createTacticalCombatFixture({ rules: "character-rules" }), 33).state.map, actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } };
+  const card = cardPlanSource(CONTENT, actionId, actor.id);
+  const state = { cardZones: card.cardZones, map: createCombat(createTacticalCombatFixture({ rules: "character-rules" }), 33).state.map, actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } };
   return buildResolvedActionPlan(
-    definition, actor, target, { kind: "card", id: "unused" }, state, CONTENT, { kind: "turn", attacksThisTurn: 0 },
+    definition, actor, target, card.source, state, CONTENT, { kind: "turn", attacksThisTurn: 0 },
   );
 }
 
@@ -304,11 +306,12 @@ describe("starter signature actions", () => {
   it("keeps Battle Medicine aimed at a wounded teammate only", () => {
     const nera = actorWith("hero.nera");
     const wounded: ActorState = { ...actorWith("hero.brom"), id: "ally", hp: 4 };
-    const state = { actors: { hero: nera, ally: wounded, enemy: TARGET_ENEMY } } as unknown as CombatState;
+    const card = cardPlanSource(CONTENT, "battle-medicine", nera.id);
+    const state = { cardZones: card.cardZones, actors: { hero: nera, ally: wounded, enemy: TARGET_ENEMY } } as unknown as CombatState;
     const definition = CONTENT.actions["battle-medicine"];
     if (!definition) throw new Error("Battle Medicine is missing.");
     const aimed = (actorId: string) => buildResolvedActionPlan(
-      definition, nera, { kind: "actor", actorId }, { kind: "card", id: "unused" }, state, CONTENT,
+      definition, nera, { kind: "actor", actorId }, card.source, state, CONTENT,
       { kind: "turn", attacksThisTurn: 0 },
     );
     // Her Medicine expert satisfies the skill-rank requirement the card authors.

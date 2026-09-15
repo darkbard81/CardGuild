@@ -1,3 +1,4 @@
+import { isRingAction } from "../game/capabilities";
 import {
   hashCombatState,
   facingToward,
@@ -414,7 +415,7 @@ export class BattleController {
     const heroId = this.heroId();
     const grouped = new Map<string, { readonly entry: RingEntry; copies: number }>();
     for (const action of listLegalActions(this.state, heroId, this.definition.content)) {
-      if (!action.enabled || action.timing.kind === "reaction") continue;
+      if (!isRingAction(action) || !action.enabled || action.timing.kind === "reaction") continue;
       for (const target of this.targetsFor(action)) {
         if (!this.targetMatchesPick(target, pick, heroId)) continue;
         const key = `${action.actionId}|${action.sourceLabel ?? ""}|${targetKey(target)}`;

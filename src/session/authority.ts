@@ -449,6 +449,12 @@ export function assertSessionInvariants(state: SessionCoreState): void {
     }
   }
   if (state.combat) {
+    if (state.combat.version !== 5) throw new Error("CombatState must use version 5.");
+    for (const [actorId, traits] of Object.entries(state.combat.turn.usedTraitsByActor)) {
+      if (!state.combat.actors[actorId] || new Set(traits).size !== traits.length || traits.some(id => !id)) {
+        throw new Error("Turn Trait use requires known actors and unique nonempty Trait IDs.");
+      }
+    }
     if (state.combat.scenarioId !== state.adventure?.currentEncounterId) {
       throw new Error("Combat scenario must match the active Adventure encounter.");
     }

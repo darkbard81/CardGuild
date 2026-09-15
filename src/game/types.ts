@@ -377,6 +377,7 @@ export interface TurnState {
   readonly attacksThisTurn: number;
   readonly turnNumber: number;
   readonly lockedActionIds: readonly ActionId[];
+  readonly usedTraitsByActor: Readonly<Record<EntityId, readonly TraitId[]>>;
 }
 
 export type ActionSource =
@@ -452,7 +453,7 @@ export interface PendingReaction {
 }
 
 export interface CombatState {
-  readonly version: 4;
+  readonly version: 5;
   readonly scenarioId: string;
   readonly seed: number;
   readonly contentIdentity: ContentIdentity;
@@ -759,6 +760,7 @@ export interface ScenarioDefinition {
 }
 
 export interface CombatContent {
+  readonly classes: import("../character/types").CharacterRulesContext["classes"];
   readonly actions: Readonly<Record<ActionId, ActionDefinition>>;
   readonly cards: Readonly<Record<CardDefinitionId, CardDefinition>>;
   readonly equipment: Readonly<Record<EquipmentId, EquipmentDefinition>>;

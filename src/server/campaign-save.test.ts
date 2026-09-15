@@ -1,11 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { hashCombatState } from "../game";
+import { hashCombatState, listLegalActions, resolveActionSource } from "../game";
 import { hashSessionGameplayState, type SessionCoreState } from "../session";
 import { CampaignSaveError, createCampaignSave, restoreCampaignSave } from "./campaign-save";
 import {
   FIXTURE_CONTEXT,
   fixtureBegun,
+  fixtureAfterFlourish,
   fixtureDispatch,
   fixtureMidCombat,
   legacyStoredSave,
@@ -65,6 +66,30 @@ function refusal(record: CampaignSaveRecord): CampaignSaveError {
 }
 
 describe("campaign save projection", () => {
+  it("preserves spent Flourish and rechecks Card eligibility after durable restoration", () => {
+    const state = fixtureAfterFlourish();
+    const restored = restoreCampaignSave(storedRecord(state), FIXTURE_CONTEXT).projection;
+    expect(restored.combat!.turn.usedTraitsByActor).toEqual({ "party.hero-1": ["flourish"] });
+    expect(hashSessionGameplayState(restored)).toBe(hashSessionGameplayState(state));
+    const combat = restored.combat!;
+    const card = listLegalActions(combat, "party.hero-1", FIXTURE_CONTEXT.pack.combatContent).find(action => action.source.id === "flourish-second");
+    expect(card).toMatchObject({ enabled: false, reason: "Only one Flourish capability can be used per turn." });
+    const wizard = { ...combat.actors["party.hero-1"]!, traits: [{ id: "wizard" }] };
+    expect(resolveActionSource(combat, wizard, { kind: "card", id: "flourish-second" }, FIXTURE_CONTEXT.pack.combatContent)).toBeNull();
+  });
+
+  it("rejects malformed turn Trait bookkeeping instead of resetting restrictions", () => {
+    const state = fixtureAfterFlourish();
+    for (const value of [{ ghost: ["flourish"] }, { "party.hero-1": ["unknown-trait"] }, { "party.hero-1": ["flourish", "flourish"] }]) {
+      const record = tamperedRecord(state, save => {
+        (save.combat!["turn"] as Record<string, unknown>)["usedTraitsByActor"] = value;
+      });
+      // The hash agrees: this must be refused by shape/reference invariants themselves.
+      const decoded = JSON.parse(record.snapshotJson) as ReturnType<typeof createCampaignSave>;
+      expect(refusal({ ...record, snapshotHash: hashSessionGameplayState(decoded) }).code).toBe("SAVE_CORRUPT");
+    }
+  });
+
   it("round-trips mid-combat gameplay, non-default progression and the collection at the same hash", () => {
     const begun = withProgression(fixtureBegun(), {
       "party.hero-1": { level: 3, experience: 750, advancements: [{ level: 3, skillIncrease: "athletics" }] },
@@ -164,7 +189,7 @@ describe("campaign save validation", () => {
 
   it("refuses an unsupported save schema without guessing at its shape", () => {
     const state = fixtureMidCombat();
-    for (const version of [0, 1, 3, 99]) {
+    for (const version of [0, 1, 2, 4, 99]) {
       const record = tamperedRecord(state, (save) => { save.saveSchemaVersion = version; });
       expect(refusal(record).code).toBe("SAVE_SCHEMA_UNSUPPORTED");
     }
@@ -389,7 +414,7 @@ describe("Save v2 Character history", () => {
       "party.hero-1": { level: 5, experience: 25, advancements: [{ level: 3, skillIncrease: "athletics" }] },
     });
     const record = storedRecord(state);
-    expect(record.saveSchemaVersion).toBe(2);
+    expect(record.saveSchemaVersion).toBe(3);
     const restored = restoreCampaignSave(record, FIXTURE_CONTEXT).projection;
     expect(restored.adventure).toEqual(state.adventure);
     expect(hashSessionGameplayState(restored)).toBe(record.snapshotHash);

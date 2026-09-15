@@ -1,3 +1,4 @@
+import { cardPlanSource } from "../../tests/fixtures/card-source";
 import { describe, expect, it } from "vitest";
 
 import { buildResolvedActionPlan } from "../game/action-plan";
@@ -248,9 +249,10 @@ describe("armor and shield trade-offs", () => {
     if (!frostbite) throw new Error("Frostbite is missing.");
     const target: ActionTarget = { kind: "actor", actorId: ENEMY.id };
     const dcOf = (actor: ActorState): number => {
-      const state = { actors: { [actor.id]: actor, [ENEMY.id]: ENEMY } } as unknown as CombatState;
+      const card = cardPlanSource(CONTENT, "frostbite", actor.id);
+      const state = { cardZones: card.cardZones, actors: { [actor.id]: actor, [ENEMY.id]: ENEMY } } as unknown as CombatState;
       const plan = buildResolvedActionPlan(
-        frostbite, actor, target, { kind: "card", id: "unused" }, state, CONTENT,
+        frostbite, actor, target, card.source, state, CONTENT,
         { kind: "turn", attacksThisTurn: 0 },
       );
       if (plan?.resolution.kind !== "check") throw new Error("Frostbite must resolve as a check.");

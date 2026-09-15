@@ -276,6 +276,7 @@ const combat = {
         "attacksThisTurn",
         "turnNumber",
         "lockedActionIds",
+        "usedTraitsByActor",
       ],
       properties: {
         initiativeOrder: { type: "array", items: nonEmptyString },
@@ -285,6 +286,7 @@ const combat = {
         attacksThisTurn: nonNegativeInteger,
         turnNumber: nonNegativeInteger,
         lockedActionIds: { type: "array", items: nonEmptyString },
+        usedTraitsByActor: { type: "object", additionalProperties: { type: "array", uniqueItems: true, items: nonEmptyString } },
       },
     },
     actors: {
