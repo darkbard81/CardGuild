@@ -20,6 +20,8 @@ for (const touch of [false, true]) {
       if (touch) await page.locator("#ring-root").tap({ position: { x: 1, y: 1 } }); else await page.keyboard.press("Escape");
       const trip = page.locator('#hand-cards [data-action-id="trip"]');
       if (touch) await trip.tap(); else await trip.click();
+      await expect(trip).toHaveAttribute("aria-pressed", "true");
+      expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
       await expect(page.locator("#ring-root")).toBeHidden();
       await expect(page.locator("#selected-detail .detail-heading strong")).toHaveText("Trip");
       if (!touch) {
@@ -76,3 +78,40 @@ for (const touch of [false, true]) {
     }
   });
 }
+
+test.describe("touch hand selection and commit", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 768, height: 1024 } });
+  test.beforeEach(async ({ page }) => {
+    await mountComponent(page, "/tests/fixtures/tactical.ts");
+    await page.evaluate(() => window.tacticalFixture.capabilityCase());
+  });
+  test("hold keeps the selected card unchanged, then one fresh tap and one target tap execute Trip", async ({ page }) => {
+    const trip = page.locator('#hand-cards [data-action-id="trip"]');
+    const fly = page.locator('#hand-cards [data-action-id="fly"]');
+    await fly.tap();
+    await expect(fly).toHaveAttribute("aria-pressed", "true");
+    await trip.dispatchEvent("pointerdown", { pointerType: "touch", pointerId: 1, button: 0 });
+    await expect(page.locator("#card-detail")).toBeVisible();
+    await trip.dispatchEvent("pointerup", { pointerType: "touch", pointerId: 1 });
+    await trip.dispatchEvent("click", { detail: 1 });
+    await expect(trip).toHaveAttribute("aria-pressed", "false");
+    await expect(fly).toHaveAttribute("aria-pressed", "true");
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+    await trip.tap();
+    await expect(trip).toHaveAttribute("aria-pressed", "true");
+    await page.locator("#pixi-canvas").tap({ position: await boardPoint(page, 2.5, 1.5) });
+    await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
+    expect(await page.evaluate(() => window.tacticalFixture.intents[0])).toMatchObject({
+      type: "use-action", action: { kind: "card", id: "cap-card.trip" },
+    });
+  });
+  test("a card with no board target commits on its first short tap", async ({ page }) => {
+    await page.evaluate(() => window.tacticalFixture.addImmediateCard());
+    await page.locator('#hand-cards [data-source-id="fixture-shield"]').tap();
+    await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
+    expect(await page.evaluate(() => window.tacticalFixture.intents[0])).toMatchObject({
+      type: "use-action", action: { kind: "card", id: "fixture-shield" }, target: { kind: "none" },
+    });
+    expect(await page.evaluate(() => window.tacticalFixture.events.length)).toBeGreaterThan(0);
+  });
+});

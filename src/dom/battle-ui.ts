@@ -1,5 +1,6 @@
 import { createCardFace, formatActionCost } from "./card-face";
 import { requirementText } from "./card-level-view";
+import { bindPressGesture, type PressGestureBinding } from "./detail-popover";
 import {
   SAVE_IDS,
   equippedArmor,
@@ -173,8 +174,7 @@ export class BattleUi {
   private readonly cardDetail = required<HTMLElement>("#card-detail");
   /** The last history array rendered, so an unrelated re-render leaves the log alone. */
   private lastHistory: readonly CombatEvent[] | null = null;
-  private longPressTimer: number | null = null;
-  private longPressFired = false;
+  private readonly cardBindings: Array<{ press: PressGestureBinding; abort: AbortController }> = [];
   private readonly reactionModal = required<HTMLElement>("#reaction-modal");
   private readonly reactionDescription = required<HTMLElement>("#reaction-description");
   private readonly reactionUse = required<HTMLButtonElement>("#reaction-use");
@@ -225,6 +225,7 @@ export class BattleUi {
   }
 
   public destroy(): void {
+    this.clearCardBindings();
     this.hideCardDetail();
     this.traits.destroy();
     this.abortController.abort();
@@ -424,6 +425,7 @@ export class BattleUi {
     state: CombatState,
     actorId: string,
   ): void {
+    this.clearCardBindings();
     this.hideCardDetail();
     this.handCards.replaceChildren();
     if (actions.length === 0) {
@@ -461,49 +463,36 @@ export class BattleUi {
       catalog: this.catalog, cardId: card?.definitionId, name: action.name, timing: action.timing,
       badges: action.cardRequirement ? [`Lv. ${action.cardRequirement.requiredLevel}`] : [],
     }));
-    button.addEventListener("click", () => {
-      // The press that opened the detail is not the press that plays the card.
-      if (this.longPressFired) {
-        this.longPressFired = false;
-        return;
-      }
-      if (action.enabled) this.handlers.onCard(action);
+    const abort = new AbortController();
+    const listenerOptions = { signal: abort.signal };
+    const press = bindPressGesture(button, {
+      holdMs: LONG_PRESS_MS,
+      onHold: () => this.showCardDetail(button, action, card),
+      onTap: () => { if (action.enabled) this.handlers.onCard(action); },
     });
-    button.addEventListener("pointerdown", () => this.startLongPress(button, action, card));
-    for (const type of ["pointerup", "pointerleave", "pointercancel"] as const) {
-      button.addEventListener(type, () => this.cancelLongPress());
-    }
-    button.addEventListener("mouseenter", () => this.handlers.onCardHover(action));
+    this.cardBindings.push({ press, abort });
+    button.addEventListener("pointerenter", event => {
+      if (event.pointerType === "mouse") this.handlers.onCardHover(action);
+    }, listenerOptions);
     button.addEventListener("focus", () => {
-      // Pointer focus must still wait for the hold timer before suppressing its click.
       if (button.matches(":focus-visible")) this.showCardDetail(button, action, card);
-    });
-    button.addEventListener("blur", () => this.hideCardDetail());
-    button.addEventListener("mouseleave", () => this.handlers.onCardHover(null));
+    }, listenerOptions);
+    button.addEventListener("blur", () => {
+      // Focusing another card must not cancel that new card's pointerdown.
+      press.cancel();
+      this.hideCardDetail(false);
+    }, listenerOptions);
+    button.addEventListener("pointerleave", event => {
+      if (event.pointerType === "mouse") this.handlers.onCardHover(null);
+    }, listenerOptions);
     return button;
   }
 
-  /**
-   * The card face carries a name, a cost and a picture — enough to pick from. The words
-   * behind it are a press away, which is what a finger has instead of a hover.
-   */
-  private startLongPress(
-    button: HTMLElement,
-    action: LegalAction,
-    card: CombatState["cardZones"][string]["hand"][number] | undefined,
-  ): void {
-    this.cancelLongPress();
-    this.longPressTimer = window.setTimeout(() => {
-      this.longPressTimer = null;
-      this.longPressFired = true;
-      this.showCardDetail(button, action, card);
-    }, LONG_PRESS_MS);
-  }
-
-  private cancelLongPress(): void {
-    if (this.longPressTimer === null) return;
-    window.clearTimeout(this.longPressTimer);
-    this.longPressTimer = null;
+  private clearCardBindings(): void {
+    for (const { press, abort } of this.cardBindings.splice(0)) {
+      press();
+      abort.abort();
+    }
   }
 
   private showCardDetail(
@@ -532,8 +521,8 @@ export class BattleUi {
     this.cardDetail.style.bottom = `${stage.bottom - anchor.top + 10}px`;
   }
 
-  public hideCardDetail(): void {
-    this.cancelLongPress();
+  public hideCardDetail(cancelPresses = true): void {
+    if (cancelPresses) for (const { press } of this.cardBindings) press.cancel();
     this.cardTraits.clear();
     this.cardDetail.hidden = true;
   }

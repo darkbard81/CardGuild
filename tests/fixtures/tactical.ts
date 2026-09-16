@@ -17,6 +17,7 @@ export interface TacticalFixture {
   capabilityCase: (condition?: "grabbed" | "prone" | "lever") => void;
   addStrikeCard: () => void;
   addStepCard: () => void;
+  addImmediateCard: () => void;
   setCardLevel: (id: string, level: number) => void;
   setActions: (remaining: number) => void;
   nudgeHp: (hp: number) => void;
@@ -114,6 +115,15 @@ async function start() {
       fixture.state = { ...fixture.state, cardZones: { ...fixture.state.cardZones, hero: { ...zones,
         hand: [{ id: "fixture-step", definitionId: "card.fixture-step", source: { kind: "prepared", memberId: "hero" } }, ...zones.hand] } } };
       controller?.update(fixture.state, []);
+    },
+    addImmediateCard() {
+      content.cards["card.fixture-shield"] = { id: "card.fixture-shield", name: "Fixture Shield", actionId: "raise-shield", level: 1, traits: [] };
+      const hero = fixture.state.actors.hero!;
+      const zones = fixture.state.cardZones.hero!;
+      fixture.state = { ...fixture.state, actors: { ...fixture.state.actors, hero: { ...hero, equipmentIds: [...new Set([...hero.equipmentIds, "shield"])] } },
+        cardZones: { ...fixture.state.cardZones, hero: { ...zones,
+          hand: [{ id: "fixture-shield", definitionId: "card.fixture-shield", source: { kind: "prepared", memberId: "hero" } }, ...zones.hand] } } };
+      controller?.update(fixture.state, [], true);
     },
     /** A second snapshot with something visible in it, delivered the way the server does. */
     nudgeHp(hp) {

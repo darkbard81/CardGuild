@@ -23,6 +23,13 @@ export interface PressGestureHandlers {
   readonly onCancel?: () => void;
 }
 
+export interface PressGestureBinding {
+  /** Remove listeners and any pending hold timer. */
+  (): void;
+  /** Cancel the current press while keeping the control available for a fresh press. */
+  cancel(): void;
+}
+
 /**
  * Reads a button's pointer events as "held" or "tapped" without letting one press mean
  * both. A press that moves more than a few pixels, that the browser cancels, or that a
@@ -31,12 +38,13 @@ export interface PressGestureHandlers {
  * later. The keyboard's synthetic click (`detail === 0`) is always a tap: Enter and Space
  * have no pointer to cancel.
  */
-export function bindPressGesture(button: HTMLElement, handlers: PressGestureHandlers): () => void {
+export function bindPressGesture(button: HTMLElement, handlers: PressGestureHandlers): PressGestureBinding {
   let timer: ReturnType<typeof setTimeout> | undefined;
   let held = false;
   let cancelled = false;
   let origin: { x: number; y: number } | null = null;
   const clear = (): void => { clearTimeout(timer); timer = undefined; };
+  const cancel = (): void => { clear(); origin = null; cancelled = true; handlers.onCancel?.(); };
   const listeners: Array<[string, (event: never) => void]> = [
     ["pointerdown", (event: PointerEvent) => {
       if (event.button !== 0) return;
@@ -48,7 +56,7 @@ export function bindPressGesture(button: HTMLElement, handlers: PressGestureHand
     }],
     ["pointerup", () => { clear(); origin = null; }],
     ["pointerleave", clear],
-    ["pointercancel", () => { clear(); origin = null; cancelled = true; handlers.onCancel?.(); }],
+    ["pointercancel", cancel],
     ["contextmenu", (event: Event) => event.preventDefault()],
     ["click", (event: MouseEvent) => {
       if ((held || cancelled) && event.detail !== 0) { event.preventDefault(); return; }
@@ -59,11 +67,11 @@ export function bindPressGesture(button: HTMLElement, handlers: PressGestureHand
   for (const [type, listener] of listeners) button.addEventListener(type, listener as EventListener);
   const scrolled = (): void => { clear(); if (origin) cancelled = true; };
   window.addEventListener("scroll", scrolled, true);
-  return () => {
+  return Object.assign(() => {
     clear();
     for (const [type, listener] of listeners) button.removeEventListener(type, listener as EventListener);
     window.removeEventListener("scroll", scrolled, true);
-  };
+  }, { cancel });
 }
 
 export interface DismissalOptions {
