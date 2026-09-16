@@ -79,7 +79,7 @@ describe("canonical capability eligibility", () => {
       cards: source.cards.map(entry => entry.id === card.id ? card : entry),
     });
     expect(isCardEligible(pack.actorDefinitions["hero.aerin"]!, card, pack.combatContent)).toBe(true);
-    expect(isCardEligible({ statProfile: { kind: "character" }, traits: traits("barbarian") }, card, pack.combatContent)).toBe(true);
+    expect(isCardEligible({ statProfile: { kind: "character", stats: { level: 1 } }, traits: traits("barbarian") }, card, pack.combatContent)).toBe(true);
   });
 
   it("prevents equipment grants from bypassing deck eligibility", () => {
@@ -290,7 +290,7 @@ describe("reaction capability validation", () => {
 describe("Flourish once per turn", () => {
   it("shares a Trait restriction across Cards, resets on turn change, and replays exactly", () => {
     const flourish: ActionDefinition = { id: "flourish-test", name: "Flourish", description: "Synthetic rule capability", timing: { kind: "turn", actions: 1 }, traits: [], targeting: "self", range: { kind: "feet", value: 0 }, resolution: { kind: "direct", effects: [] } };
-    const cards = ["one", "two", "ordinary"].map(id => ({ id, name: id, actionId: flourish.id, traits: id === "ordinary" ? [] : traits("flourish") }));
+    const cards = ["one", "two", "ordinary"].map(id => ({ id, name: id, actionId: flourish.id, level: 1, traits: id === "ordinary" ? [] : traits("flourish") }));
     const content = { ...fixture.content, actions: { ...fixture.content.actions, [flourish.id]: flourish }, cards: Object.fromEntries(cards.map(card => [card.id, card])) };
     const definition = { ...fixture, content, scenario: { ...fixture.scenario, actors: fixture.scenario.actors.map(actor => ({ ...actor,
       deckContributions: cards.map(card => ({ cardDefinitionId: card.id, count: 1, source: { kind: "base" as const, sourceId: "test" } })),

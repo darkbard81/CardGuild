@@ -6,7 +6,7 @@ import {
 import type { AdventureDefinition } from "../content/content-types";
 import { getContentIdentity } from "../content/compile-content";
 import type { CombatState, ContentIdentity } from "../game";
-import { validatePartyLoadout } from "../loadout";
+import { assertSessionCardInvariants } from "../session/card-invariants";
 import {
   assertSessionInvariants,
   createResumedSessionCoreState,
@@ -206,13 +206,8 @@ function validateAdventure(save: CampaignSaveV3, context: SessionAuthorityContex
   }
   try { assertAdventureCharacterInvariants(adventure, context.pack); }
   catch (error) { corrupt(error instanceof Error ? error.message : String(error)); }
-  const loadouts = validatePartyLoadout(adventure.party, adventure.collection, {
-    actorDefinitions: context.pack.actorDefinitions,
-    combatContent: context.pack.combatContent,
-  });
-  if (!loadouts.valid) {
-    corrupt("Saved party loadout is not legal: " + loadouts.issues.map((issue) => issue.message).join(" "));
-  }
+  try { assertSessionCardInvariants(save, context.pack); }
+  catch (error) { corrupt(error instanceof Error ? error.message : String(error)); }
   for (const [definitionId] of Object.entries(adventure.collection.equipment)) {
     if (!context.pack.combatContent.equipment[definitionId]) {
       corrupt(`Saved collection equipment "${definitionId}" is unknown.`);

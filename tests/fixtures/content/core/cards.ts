@@ -8,6 +8,7 @@ export const CORE_CARDS: readonly CardDefinition[] = [
     id: "card.trip",
     name: "Trip",
     actionId: "trip",
+    level: 1,
     traits: [
       {
         id: "attack",
@@ -22,6 +23,7 @@ export const CORE_CARDS: readonly CardDefinition[] = [
     id: "card.fly",
     name: "Fly",
     actionId: "fly",
+    level: 1,
     traits: [
       {
         id: "move",
@@ -35,6 +37,7 @@ export const CORE_CARDS: readonly CardDefinition[] = [
     id: "card.spirit-beacon",
     name: "Spirit Beacon",
     actionId: "spirit-beacon",
+    level: 1,
     traits: [
       {
         id: "focus",
@@ -48,6 +51,7 @@ export const CORE_CARDS: readonly CardDefinition[] = [
     id: "card.reactive-strike",
     name: "Reactive Strike",
     actionId: "reactive-strike",
+    level: 1,
     traits: [
       {
         id: "attack",

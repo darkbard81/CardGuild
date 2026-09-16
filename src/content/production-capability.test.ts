@@ -1,3 +1,4 @@
+import { rewardAvailability } from "../../tools/content/reward-availability";
 import { describe, expect, it } from "vitest";
 
 import contentPackSchema from "../../content/schema/content-pack.schema.json";
@@ -48,7 +49,7 @@ describe("production capability authoring contract", () => {
       expect(card.traits.filter(trait => Object.hasOwn(content.classes, trait.id)).map(trait => trait.id).sort(), card.id)
         .toEqual([...(classCards[card.id] ?? [])].sort());
       for (const id of Object.keys(content.classes)) {
-        expect(isCardEligible({ statProfile: { kind: "character" }, traits: [{ id }] }, card, content), `${card.id}/${id}`)
+        expect(isCardEligible({ statProfile: { kind: "character", stats: { level: 20 } }, traits: [{ id }] }, card, content), `${card.id}/${id}`)
           .toBe(!classCards[card.id] || classCards[card.id]!.includes(id));
       }
     }
@@ -60,13 +61,14 @@ describe("production capability authoring contract", () => {
     const opened = createCombat(getCombatDefinition(pack, "encounter.ruined-gate"), 1).state;
     for (const definition of Object.values(pack.actorDefinitions).filter(actor => actor.traits.some(trait => trait.id === "playable"))) {
       for (const [cardId, classes] of Object.entries(classCards)) {
-        const eligible = definition.traits.some(trait => classes.includes(trait.id));
+        const classEligible = definition.traits.some(trait => classes.includes(trait.id));
+        const eligible = classEligible && (cardId === "card.vicious-swing" || cardId === "card.lay-on-hands" || (cardId === "card.reactive-strike" && definition.id === "hero.aerin"));
         const member = { id: "hero", actorDefinitionId: definition.id, loadout: { ...definition.starterLoadout, preparedCards: [cardId] } };
         const party = { members: { hero: member } };
         const starting = createStartingCollection(party, pack);
         const collection = { ...starting, cards: { ...starting.cards, [cardId]: 1 } };
         expect(validatePartyLoadout(party, collection, pack).issues.map(issue => issue.code), `${definition.id}/${cardId}`)
-          .toEqual(eligible ? [] : ["INELIGIBLE_CARD"]);
+          .toEqual(eligible ? [] : [classEligible ? "CARD_LEVEL_TOO_LOW" : "INELIGIBLE_CARD"]);
         const actor = { ...opened.actors.hero!, traits: definition.traits };
         const state = { ...opened, actors: { ...opened.actors, hero: actor },
           turn: { ...opened.turn, activeActorId: "hero", activeIndex: opened.turn.initiativeOrder.indexOf("hero") },
@@ -92,7 +94,7 @@ describe("production capability authoring contract", () => {
       const collection = createStartingCollection(party, pack);
       const result = validatePartyLoadout(party, { ...collection, equipment: { ...collection.equipment, "dueling-rapier": 1 } }, pack);
       expect(result.issues.map(issue => issue.code), definition.id)
-        .toEqual(definition.traits.some(trait => trait.id === "fighter") ? [] : ["INELIGIBLE_CARD"]);
+        .toEqual(definition.traits.some(trait => trait.id === "fighter") ? ["CARD_LEVEL_TOO_LOW"] : ["INELIGIBLE_CARD"]);
     }
   });
 
@@ -100,20 +102,9 @@ describe("production capability authoring contract", () => {
     const pack = M7_COMPILED_PACK;
     const starters = Object.values(pack.actorDefinitions).filter(actor => actor.traits.some(trait => trait.id === "playable"));
     for (const reward of pack.adventures["adventure.goblin-trouble"]!.rewards) {
-      const usable = starters.map(definition => reward.choices.map(choice => {
-        const member = { id: "hero", actorDefinitionId: definition.id, loadout: definition.starterLoadout };
-        const party = { members: { hero: member } };
-        const collection = createStartingCollection(party, pack);
-        const loadout = choice.kind === "card"
-          ? { ...member.loadout, preparedCards: [...member.loadout.preparedCards, choice.definitionId] }
-          : { ...member.loadout, equipment: { ...member.loadout.equipment, [pack.combatContent.equipment[choice.definitionId]!.slot]: choice.definitionId } };
-        const owned = choice.kind === "card"
-          ? { ...collection, cards: { ...collection.cards, [choice.definitionId]: (collection.cards[choice.definitionId] ?? 0) + 1 } }
-          : { ...collection, equipment: { ...collection.equipment, [choice.definitionId]: (collection.equipment[choice.definitionId] ?? 0) + 1 } };
-        return validatePartyLoadout({ members: { hero: { ...member, loadout } } }, owned, pack).valid;
-      }));
-      starters.forEach((starter, index) => expect(usable[index]!.some(Boolean), `${reward.id}/${starter.id}`).toBe(true));
-      reward.choices.forEach((choice, index) => expect(usable.some(row => row[index]), `${reward.id}/${choice.definitionId}`).toBe(true));
+      const availability = starters.map(starter => rewardAvailability(pack, pack.adventures["adventure.goblin-trouble"]!, starter, reward));
+      starters.forEach((starter, index) => expect(availability[index]!.immediate.some(Boolean), `${reward.id}/${starter.id}`).toBe(true));
+      reward.choices.forEach((choice, index) => expect(availability.some(row => row.eventual[index]), `${reward.id}/${choice.definitionId}`).toBe(true));
     }
   });
 

@@ -1,3 +1,4 @@
+import { requirementText } from "./card-level-view";
 import {
   SAVE_IDS,
   equippedArmor,
@@ -444,7 +445,7 @@ export class BattleUi {
   ): HTMLButtonElement {
     const button = element("button", "tactical-card");
     button.type = "button";
-    button.disabled = !action.enabled;
+    button.setAttribute("aria-disabled", String(!action.enabled));
     button.dataset.actionId = action.actionId;
     button.dataset.sourceId = action.source.id;
     button.dataset.sourceKind = action.source.kind;
@@ -454,7 +455,7 @@ export class BattleUi {
     }
     button.setAttribute("aria-pressed", String(selected?.source.id === action.source.id));
     if (selected?.source.id === action.source.id) button.classList.add("selected");
-    button.title = action.reason ?? action.description;
+    button.title = [action.cardRequirement && requirementText(action.cardRequirement), action.reason ?? action.description].filter(Boolean).join(" · ");
 
     const title = element("span", action.name.length > LONG_CARD_NAME ? "card-title long" : "card-title");
     title.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
@@ -470,19 +471,25 @@ export class BattleUi {
       art.textContent = action.name.slice(0, 1);
     }
     button.append(title, art);
+    if (action.cardRequirement) button.append(element("span", "card-level", `Lv. ${action.cardRequirement.requiredLevel}`));
     button.addEventListener("click", () => {
       // The press that opened the detail is not the press that plays the card.
       if (this.longPressFired) {
         this.longPressFired = false;
         return;
       }
-      this.handlers.onCard(action);
+      if (action.enabled) this.handlers.onCard(action);
     });
     button.addEventListener("pointerdown", () => this.startLongPress(button, action, card));
     for (const type of ["pointerup", "pointerleave", "pointercancel"] as const) {
       button.addEventListener(type, () => this.cancelLongPress());
     }
     button.addEventListener("mouseenter", () => this.handlers.onCardHover(action));
+    button.addEventListener("focus", () => {
+      // Pointer focus must still wait for the hold timer before suppressing its click.
+      if (button.matches(":focus-visible")) this.showCardDetail(button, action, card);
+    });
+    button.addEventListener("blur", () => this.hideCardDetail());
     button.addEventListener("mouseleave", () => this.handlers.onCardHover(null));
     return button;
   }
@@ -520,6 +527,7 @@ export class BattleUi {
     this.cardTraits.render(action.traits, (chips) => this.cardDetail.replaceChildren(
       heading,
       element("p", undefined, action.description),
+      ...(action.cardRequirement ? [element("p", "card-level-detail", requirementText(action.cardRequirement))] : []),
       chips,
       element("p", "detail-source", `Source: ${action.sourceLabel ?? card?.source.kind ?? "Character"}`),
     ));

@@ -316,7 +316,7 @@ describe("issue #32 authoritative facing", () => {
       resolution: { kind: "direct", effects: [] },
     };
     const content = { ...CORE_CONTENT, actions: { ...CORE_CONTENT.actions, [action.id]: action },
-      cards: { ...CORE_CONTENT.cards, "card.tile-test": { id: "card.tile-test", name: "Tile Test", actionId: action.id, traits: [] } } };
+      cards: { ...CORE_CONTENT.cards, "card.tile-test": { id: "card.tile-test", name: "Tile Test", actionId: action.id, level: 1, traits: [] } } };
     const opened = createCoreCombat(arena(), 44, content).state;
     const state: CombatState = { ...opened, cardZones: { ...opened.cardZones, hero: { ...opened.cardZones.hero!, hand: [
       { id: "tile-test", definitionId: "card.tile-test", source: { kind: "prepared", memberId: "hero" } },
@@ -439,7 +439,7 @@ describe("core combat rules", () => {
     const first = createCoreCombat(coreScenario(), CORE_SEED).state;
     const second = createCoreCombat(coreScenario(), CORE_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("21a18b5c95bbb7d2");
+    expect(hashCombatState(first)).toBe("752be905ae042df2");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),

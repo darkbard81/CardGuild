@@ -40,6 +40,41 @@ test.beforeEach(async ({ page }) => {
   });
 });
 
+test("shows a locked owned card and equipment grant, then unlocks both at the current level", async ({ page }) => {
+  await page.evaluate(() => {
+    const fixture = window.loadoutFixture;
+    fixture.state = { ...fixture.state, collection: { ...fixture.state.collection, cards: { ...fixture.state.collection.cards, "card.combat-grab": 1 } } };
+    fixture.ui.render(fixture.state, new Set(["hero"]));
+  });
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
+  const card = page.locator('[data-option-id="card.combat-grab"]');
+  await expect(card).toHaveAttribute("aria-disabled", "true");
+  await card.hover();
+  await expect(page.locator("#loadout-detail")).toContainText("요구 레벨 2 · 현재 레벨 1");
+  await card.dispatchEvent("click");
+  expect(await page.evaluate(() => window.loadoutFixture.requests)).toHaveLength(0);
+  await page.evaluate(() => {
+    const fixture = window.loadoutFixture;
+    const member = fixture.state.party.members.hero!;
+    fixture.state = { ...fixture.state, party: { members: { hero: { ...member, progression: { ...member.progression, level: 2 } } } } };
+    fixture.ui.render(fixture.state, new Set(["hero"]));
+  });
+  await expect(card).toHaveAttribute("aria-disabled", "false");
+  await card.hover();
+  await expect(page.locator("#loadout-detail")).toContainText("요구 레벨 2 · 현재 레벨 2");
+  await card.click();
+  expect(await page.evaluate(() => window.loadoutFixture.requests[0]?.preparedCards)).toContain("card.combat-grab");
+});
+
+test("explains the level of a Card granted by reward equipment", async ({ page }) => {
+  await page.getByRole("tab", { name: "무기", exact: true }).click();
+  const equipment = page.locator('[data-option-id="dueling-rapier"]');
+  await expect(equipment).toHaveAttribute("aria-disabled", "true");
+  await equipment.hover();
+  await expect(page.locator("#loadout-detail")).toContainText("Dueling Parry");
+  await expect(page.locator("#loadout-detail")).toContainText("요구 레벨 2 · 현재 레벨 1");
+});
+
 test("paginates a full grid, remembers pages and resets filters", async ({ page }) => {
   await expect(page.locator(".loadout-items .loadout-tile")).toHaveCount(24);
   await expect(page.locator(".loadout-items .loadout-tile").last()).toBeInViewport();

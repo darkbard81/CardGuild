@@ -17,6 +17,7 @@ export interface TacticalFixture {
   capabilityCase: (condition?: "grabbed" | "prone" | "lever") => void;
   addStrikeCard: () => void;
   addStepCard: () => void;
+  setCardLevel: (id: string, level: number) => void;
   setActions: (remaining: number) => void;
   nudgeHp: (hp: number) => void;
   placeHero: (x: number, y: number) => { width: number; height: number };
@@ -53,6 +54,10 @@ async function start() {
   const opened = createCombat(combat, 34).state;
   const fixture: TacticalFixture = {
     state: opened, events: [], intents: [], rejectNext: false, rejectAfterSend: false,
+    setCardLevel(id, level) {
+      content.cards[id] = { ...content.cards[id]!, level };
+      controller?.update(fixture.state, [], true);
+    },
     reset(mode) {
       const hero = { ...opened.actors.hero!, position: { x: 1, y: 1 }, facing: "east" as const };
       const enemy = { ...opened.actors["goblin-skirmisher"]!, position: { x: 2, y: 1 }, hp: 200, maxHp: 200,
@@ -97,14 +102,14 @@ async function start() {
       controller?.update(fixture.state, [], true);
     },
     addStrikeCard() {
-      content.cards["card.fixture-strike"] = { id: "card.fixture-strike", name: "Fixture Strike", actionId: "strike", traits: [] };
+      content.cards["card.fixture-strike"] = { id: "card.fixture-strike", name: "Fixture Strike", actionId: "strike", level: 1, traits: [] };
       const zones = fixture.state.cardZones.hero!;
       fixture.state = { ...fixture.state, cardZones: { ...fixture.state.cardZones, hero: { ...zones,
         hand: [{ id: "fixture-strike", definitionId: "card.fixture-strike", source: { kind: "prepared", memberId: "hero" } }, ...zones.hand] } } };
       controller?.update(fixture.state, []);
     },
     addStepCard() {
-      content.cards["card.fixture-step"] = { id: "card.fixture-step", name: "Fixture Step", actionId: "step", traits: [] };
+      content.cards["card.fixture-step"] = { id: "card.fixture-step", name: "Fixture Step", actionId: "step", level: 1, traits: [] };
       const zones = fixture.state.cardZones.hero!;
       fixture.state = { ...fixture.state, cardZones: { ...fixture.state.cardZones, hero: { ...zones,
         hand: [{ id: "fixture-step", definitionId: "card.fixture-step", source: { kind: "prepared", memberId: "hero" } }, ...zones.hand] } } };

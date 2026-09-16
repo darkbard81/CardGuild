@@ -1,4 +1,4 @@
-import { canUseRuleTraits, isCardEligible, isContextualBasicAction, resolveEffectiveActionTraits } from "./capabilities";
+import { canUseRuleTraits, isCardEligible, resolveCardEligibility, isContextualBasicAction, resolveEffectiveActionTraits } from "./capabilities";
 import { actionRangeFeet, buildResolvedActionPlan, turnMapContext } from "./action-plan";
 import { degreeProbabilities } from "./checks";
 import {
@@ -87,11 +87,23 @@ export function resolveActionSource(
   source: ActionSource,
   content: CombatContent,
 ): ResolvedAction | null {
+  const resolved = lookupActionSource(state, actor, source, content);
+  if (resolved?.card && !isCardEligible(actor, content.cards[resolved.card.definitionId]!, content)) return null;
+  return resolved;
+}
+
+/** Identity lookup for disabled-card presentation; execution uses resolveActionSource. */
+function lookupActionSource(
+  state: CombatState,
+  actor: ActorState,
+  source: ActionSource,
+  content: CombatContent,
+): ResolvedAction | null {
   if (source.kind === "card") {
     const card = getCardFromHand(state, actor.id, source.id);
     if (!card) return null;
     const cardDefinition = content.cards[card.definitionId];
-    if (!cardDefinition || !isCardEligible(actor, cardDefinition, content)) return null;
+    if (!cardDefinition) return null;
     const definition = content.actions[cardDefinition.actionId];
     if (!definition) return null;
     const sourceLabel = card.source.kind === "equipment-trait"
@@ -288,8 +300,12 @@ function validateActionBase(
   if (state.outcome) return { legal: false, reason: "Combat has ended." };
   if (state.pendingReaction) return { legal: false, reason: "A reaction decision is pending." };
   if (state.turn.activeActorId !== actor.id) return { legal: false, reason: "Not this actor's turn." };
-  const resolved = resolveActionSource(state, actor, source, content);
+  const resolved = lookupActionSource(state, actor, source, content);
   if (!resolved) return { legal: false, reason: "Action source is unavailable." };
+  if (resolved.card) {
+    const eligibility = resolveCardEligibility(actor, content.cards[resolved.card.definitionId]!, content);
+    if (!eligibility.eligible) return { legal: false, reason: eligibility.reason, actor, resolved };
+  }
   const definition = resolved.definition;
   if (!canUseRuleTraits(state, actor.id, resolveEffectiveActionTraits(source, definition, state, content, actor.id))) {
     return { legal: false, reason: "Only one Flourish capability can be used per turn.", actor, resolved };
@@ -384,7 +400,7 @@ export function listLegalActions(
   ];
 
   return sources.flatMap((source) => {
-    const resolved = resolveActionSource(state, actor, source, content);
+    const resolved = lookupActionSource(state, actor, source, content);
     if (!resolved) return [];
     const base = validateActionBase(state, actor.id, source, content);
     let validation: ActionValidationResult;
@@ -414,6 +430,10 @@ export function listLegalActions(
         reason: validation.reason,
         sourceLabel: resolved.sourceLabel,
         contextGroup: contextOptions.find((option) => option.source.id === source.id)?.group,
+        ...(resolved.card ? { cardRequirement: (() => {
+          const { requiredLevel, currentLevel } = resolveCardEligibility(actor, content.cards[resolved.card.definitionId]!, content);
+          return { requiredLevel, currentLevel };
+        })() } : {}),
       },
     ];
   });

@@ -1,4 +1,5 @@
 import type { ActorDefinition, CompiledContentPack } from "../content/content-types";
+import type { CharacterProgressionState } from "../character";
 import type {
   ActorDefinitionId,
   ArmorCategory,
@@ -20,6 +21,8 @@ export interface LoadoutPartyMember {
   readonly id: string;
   readonly actorDefinitionId: ActorDefinitionId;
   readonly loadout: PartyMemberLoadout;
+  /** Absent only for static authored setups; runtime PartyMemberState requires this. */
+  readonly progression?: CharacterProgressionState;
 }
 
 export interface LoadoutParty {
@@ -32,6 +35,7 @@ export interface LoadoutCollection {
 }
 
 export interface LoadoutContent {
+  readonly characterRules: CompiledContentPack["characterRules"];
   readonly actorDefinitions: CompiledContentPack["actorDefinitions"];
   readonly combatContent: CompiledContentPack["combatContent"];
 }
@@ -41,6 +45,7 @@ export type LoadoutValidationCode =
   | "UNKNOWN_EQUIPMENT"
   | "UNKNOWN_CARD"
   | "INELIGIBLE_CARD"
+  | "CARD_LEVEL_TOO_LOW"
   | "SLOT_MISMATCH"
   | "EQUIPMENT_COPIES_EXCEEDED"
   | "CARD_COPIES_EXCEEDED"

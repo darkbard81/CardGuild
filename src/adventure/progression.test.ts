@@ -131,7 +131,7 @@ describe("runtime progression", () => {
     const view = deriveLoadoutSnapshot(actor, member.loadout, pack.combatContent, member.id, effective);
     expect(view.statistics).toMatchObject({ maxHp, ac, classDc });
     expect(view.strike.attackModifier).toBe(strike);
-    const preview = previewLoadoutChange(state.party, state.collection, pack, member.id, { ...member.loadout, equipment: {} }, effective);
+    const preview = previewLoadoutChange(state.party, state.collection, pack, member.id, { ...member.loadout, equipment: {} });
     expect(preview.before).toEqual(view);
     expect(preview.after!.statistics.maxHp).toBe(maxHp);
     const candidateSetup = deriveActorSetup(actor, { instanceId: member.id, actorDefinitionId: id, team: "heroes", position: { x: 0, y: 0 }, facing: "north" },

@@ -1,4 +1,5 @@
 import { assertAdventureCharacterInvariants } from "../adventure";
+import { assertSessionCardInvariants } from "../session/card-invariants";
 import { fingerprintValue } from "../game/determinism";
 import { chooseAiCommand, type CombatCommand } from "../game";
 import {
@@ -78,6 +79,7 @@ export class SessionHost {
     // constructor is the only place left to reject a restored state.
     assertSessionInvariants(state);
     if (state.adventure) assertAdventureCharacterInvariants(state.adventure, context.pack);
+    assertSessionCardInvariants(state, context.pack);
     this.stateValue = state;
     this.reconnectDigests.set(state.hostPlayerId, hostReconnectDigest);
     this.durability = options.durability;

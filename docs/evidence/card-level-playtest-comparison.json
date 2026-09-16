@@ -1,0 +1,596 @@
+{
+  "command": "npm run playtest -- --seeds 1 --json <output>",
+  "baseline": {
+    "commit": "ad3b380",
+    "packId": "cardguild.m7",
+    "packVersion": "0.7.0",
+    "fingerprint": "fnv1a64:8bc04f907be49acd",
+    "adventureId": "adventure.goblin-trouble"
+  },
+  "candidate": {
+    "commit": "ad3b380",
+    "packId": "cardguild.m7",
+    "packVersion": "0.8.0",
+    "fingerprint": "fnv1a64:e0e1f48fdba2154f",
+    "adventureId": "adventure.goblin-trouble"
+  },
+  "candidateWorktree": "uncommitted implementation on the recorded baseline commit",
+  "runs": [
+    {
+      "specId": "1P-aerin-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 9
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.bone-cellar",
+        "rejectedCommands": 0,
+        "rounds": 16
+      }
+    },
+    {
+      "specId": "1P-aerin-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 15
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 11
+      }
+    },
+    {
+      "specId": "1P-aerin-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 9
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.bone-cellar",
+        "rejectedCommands": 0,
+        "rounds": 16
+      }
+    },
+    {
+      "specId": "1P-aerin-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 11
+      },
+      "after": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 31
+      }
+    },
+    {
+      "specId": "1P-lyra-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 9
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 9
+      }
+    },
+    {
+      "specId": "1P-lyra-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 12
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 12
+      }
+    },
+    {
+      "specId": "1P-lyra-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 9
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 9
+      }
+    },
+    {
+      "specId": "1P-lyra-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 12
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 12
+      }
+    },
+    {
+      "specId": "1P-brom-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 15
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.bone-cellar",
+        "rejectedCommands": 0,
+        "rounds": 44
+      }
+    },
+    {
+      "specId": "1P-brom-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 20
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 13
+      }
+    },
+    {
+      "specId": "1P-brom-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 15
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.bone-cellar",
+        "rejectedCommands": 0,
+        "rounds": 44
+      }
+    },
+    {
+      "specId": "1P-brom-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 17
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 19
+      }
+    },
+    {
+      "specId": "1P-nera-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 33
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 33
+      }
+    },
+    {
+      "specId": "1P-nera-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 5
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 5
+      }
+    },
+    {
+      "specId": "1P-nera-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 33
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 33
+      }
+    },
+    {
+      "specId": "1P-nera-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 8
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 8
+      }
+    },
+    {
+      "specId": "2P-aerin+lyra-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 11
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 18
+      }
+    },
+    {
+      "specId": "2P-aerin+lyra-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.wolf-run",
+        "rejectedCommands": 0,
+        "rounds": 35
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 12
+      }
+    },
+    {
+      "specId": "2P-aerin+lyra-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 11
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 18
+      }
+    },
+    {
+      "specId": "2P-aerin+lyra-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 13
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 13
+      }
+    },
+    {
+      "specId": "2P-aerin+nera-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 38
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.wolf-run",
+        "rejectedCommands": 0,
+        "rounds": 32
+      }
+    },
+    {
+      "specId": "2P-aerin+nera-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 43
+      },
+      "after": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 38
+      }
+    },
+    {
+      "specId": "2P-aerin+nera-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 38
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.wolf-run",
+        "rejectedCommands": 0,
+        "rounds": 32
+      }
+    },
+    {
+      "specId": "2P-aerin+nera-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 14
+      },
+      "after": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 35
+      }
+    },
+    {
+      "specId": "2P-brom+lyra-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 30
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 28
+      }
+    },
+    {
+      "specId": "2P-brom+lyra-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.archer-perch",
+        "rejectedCommands": 0,
+        "rounds": 58
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.archer-perch",
+        "rejectedCommands": 0,
+        "rounds": 61
+      }
+    },
+    {
+      "specId": "2P-brom+lyra-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 30
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 28
+      }
+    },
+    {
+      "specId": "2P-brom+lyra-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 27
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 24
+      }
+    },
+    {
+      "specId": "3P-aerin+lyra+nera-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 51
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 24
+      }
+    },
+    {
+      "specId": "3P-aerin+lyra+nera-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 37
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.bone-cellar",
+        "rejectedCommands": 0,
+        "rounds": 41
+      }
+    },
+    {
+      "specId": "3P-aerin+lyra+nera-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 51
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 24
+      }
+    },
+    {
+      "specId": "3P-aerin+lyra+nera-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 20
+      },
+      "after": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 45
+      }
+    },
+    {
+      "specId": "3P-brom+nera+lyra-first-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 33
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 22
+      }
+    },
+    {
+      "specId": "3P-brom+nera+lyra-first-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 25
+      },
+      "after": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 65
+      }
+    },
+    {
+      "specId": "3P-brom+nera+lyra-last-authored",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.spear-line",
+        "rejectedCommands": 0,
+        "rounds": 33
+      },
+      "after": {
+        "completed": false,
+        "failedAt": "encounter.ruined-gate",
+        "rejectedCommands": 0,
+        "rounds": 22
+      }
+    },
+    {
+      "specId": "3P-brom+nera+lyra-last-adapt",
+      "seed": 1,
+      "before": {
+        "completed": false,
+        "failedAt": "encounter.goblin-chief",
+        "rejectedCommands": 0,
+        "rounds": 25
+      },
+      "after": {
+        "completed": true,
+        "failedAt": null,
+        "rejectedCommands": 0,
+        "rounds": 58
+      }
+    }
+  ]
+}

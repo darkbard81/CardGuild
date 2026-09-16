@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v11",
+  "title": "CardGuild Content Pack v12",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures", "ancestries", "classes"],
@@ -456,11 +456,13 @@
     "cardDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "actionId", "traits"],
+      "required": ["id", "name", "actionId", "traits", "level"],
       "properties": {
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
         "actionId": { "$ref": "#/$defs/nonEmptyString" },
+        "level": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+        "levelByClass": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 } },
         "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
       }
     },
@@ -942,7 +944,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": {"const": 11},
+        "schemaVersion": {"const": 12},
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

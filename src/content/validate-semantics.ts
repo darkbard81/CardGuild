@@ -1,4 +1,5 @@
-import { isCardEligible, isContextualBasicAction } from "../game/capabilities";
+import { resolveCardEligibility, isContextualBasicAction } from "../game/capabilities";
+import { equipmentTraits } from "../game/rules";
 import { assertAncestryDefinition, assertClassDefinition, pendingCharacterAdvancements, resolveCharacterRules } from "../character";
 import { positionKey } from "../game/grid";
 import { ATTRIBUTE_IDS, SAVE_IDS, SKILL_IDS, deriveMaxHp, isUntypedPenalty } from "../game/statistics";
@@ -433,6 +434,18 @@ export function validateContentPackSemantics(
   });
 
   source.cards.forEach((definition, index) => {
+    const validLevel = (value: unknown): boolean => typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
+    if (!validLevel(definition.level)) addIssue(context, "cards", `[${index}].level`, "INVALID_CARD_LEVEL", "Card level must be a positive safe integer.", definition.id);
+    if (definition.levelByClass !== undefined) {
+      if (!definition.levelByClass || typeof definition.levelByClass !== "object" || Array.isArray(definition.levelByClass)) {
+        addIssue(context, "cards", `[${index}].levelByClass`, "INVALID_CARD_LEVEL", "Class levels must be an object.", definition.id);
+      } else for (const [id, level] of Object.entries(definition.levelByClass)) {
+        if (!validLevel(level)) addIssue(context, "cards", `[${index}].levelByClass.${id}`, "INVALID_CARD_LEVEL", "Class level must be a positive safe integer.", definition.id);
+        if (!Object.hasOwn(characterRules.classes, id) || !definition.traits.some(trait => trait.id === id)) {
+          addIssue(context, "cards", `[${index}].levelByClass.${id}`, "INVALID_CARD_LEVEL_CLASS", "Level override requires a registered Class present in the Card Traits.", definition.id);
+        }
+      }
+    }
     if (!knownActions.has(definition.actionId)) {
       addIssue(context, "cards", `[${index}].actionId`, "UNKNOWN_ACTION", `Action "${definition.actionId}" is not defined.`, definition.id);
     }
@@ -491,10 +504,17 @@ export function validateContentPackSemantics(
     if (actor.statProfile.kind === "character" && actor.innateActionIds.length > 0) {
       addIssue(context, "actors", `[${index}].innateActionIds`, "CHARACTER_INNATE_FORBIDDEN", "Character special capabilities must be granted by Cards.", actor.id);
     }
-    for (const cardId of [...actor.starterLoadout.preparedCards, ...actor.baseCardGrants.map(grant => grant.cardDefinitionId)]) {
+    const equipmentCards = Object.values(actor.starterLoadout.equipment).flatMap(id => {
+      const equipment = id && equipmentById.get(id);
+      return equipment ? equipmentTraits(equipment).flatMap(trait => characterRules.traits[trait.id]?.cardGrants.map(grant => grant.cardDefinitionId) ?? []) : [];
+    });
+    const eligibilityActor = { traits: actor.traits, statProfile: actor.statProfile.kind === "character"
+      ? { kind: "character" as const, stats: { level: actor.statProfile.level } } : actor.statProfile };
+    for (const cardId of new Set([...actor.starterLoadout.preparedCards, ...actor.baseCardGrants.map(grant => grant.cardDefinitionId), ...equipmentCards])) {
       const card = source.cards.find(card => card.id === cardId);
-      if (card && !isCardEligible(actor, card, characterRules)) {
-        addIssue(context, "actors", `[${index}]`, "INELIGIBLE_CARD", `Character cannot prepare or receive base Card "${cardId}".`, actor.id);
+      const eligibility = card && resolveCardEligibility(eligibilityActor, card, characterRules);
+      if (eligibility && !eligibility.eligible) {
+        addIssue(context, "actors", `[${index}]`, eligibility.code, `Character cannot receive Card "${cardId}": ${eligibility.reason}`, actor.id);
       }
     }
     if (actor.statProfile.kind === "character") {

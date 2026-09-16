@@ -48,8 +48,8 @@
         "feet": "boots-of-fly"
       },
       "preparedCards": [
-        "card.knockdown",
-        "card.intimidating-strike"
+        "card.vicious-swing",
+        "card.demoralize"
       ]
     },
     "innateActionIds": [],
@@ -193,7 +193,7 @@
     "innateActionIds": [],
     "baseCardGrants": [
       {
-        "cardDefinitionId": "card.reactive-strike",
+        "cardDefinitionId": "card.shield-press",
         "count": 2,
         "sourceId": "feat.guardian-sentinel"
       },

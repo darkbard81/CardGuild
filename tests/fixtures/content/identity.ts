@@ -18,7 +18,7 @@ export const FIXTURE_PACK_VERSION = "1.0.0";
  */
 export function fixtureManifest(name: string): ContentPackManifest {
   return {
-    schemaVersion: 11,
+    schemaVersion: 12,
     id: `cardguild.test.${name}`,
     version: FIXTURE_PACK_VERSION,
     rulesetId: "cardguild.pf2e-remaster.v1",

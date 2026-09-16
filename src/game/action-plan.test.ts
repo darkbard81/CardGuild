@@ -258,7 +258,7 @@ describe("resolved action plan", () => {
       },
     };
     const cardContent = { ...content, cards: { ...content.cards, "card.class-dc-test": {
-      id: "card.class-dc-test", name: "Class DC", actionId, traits: action.traits,
+      id: "card.class-dc-test", name: "Class DC", actionId, level: 1, traits: action.traits,
     } } };
     const injected = withCardInHand(characterState, "hero", "card.class-dc-test");
     expect(listLegalActions(injected.state, "hero", cardContent).find((entry) => entry.actionId === actionId))
@@ -277,7 +277,7 @@ describe("resolved action plan", () => {
     const content: CombatContent = {
       ...CHARACTER_RULES_CONTENT,
       actions: { ...CHARACTER_RULES_CONTENT.actions, [actionId]: action },
-      cards: { ...CHARACTER_RULES_CONTENT.cards, "card.target-class-dc": { id: "card.target-class-dc", name: "Target Class DC", actionId, traits: action.traits } },
+      cards: { ...CHARACTER_RULES_CONTENT.cards, "card.target-class-dc": { id: "card.target-class-dc", name: "Target Class DC", actionId, level: 1, traits: action.traits } },
     };
     const source: ActionSource = { kind: "card", id: "card-injected-card.target-class-dc" };
     const hero = opened.actors.hero as NonNullable<CombatState["actors"][string]>;
@@ -464,7 +464,7 @@ describe("target-side save resolution", () => {
 describe("card and action ownership", () => {
   it("keeps every Card a reference to an Action rather than a rules definition", () => {
     for (const card of Object.values(CHARACTER_RULES_CONTENT.cards)) {
-      expect(Object.keys(card).sort()).toEqual(["actionId", "id", "name", "traits"]);
+      expect(Object.keys(card).sort()).toEqual(["actionId", "id", "level", "name", "traits"]);
       expect(CHARACTER_RULES_CONTENT.actions[card.actionId]).toBeDefined();
     }
   });

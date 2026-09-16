@@ -574,7 +574,7 @@ describe("content semantic validation and compilation", () => {
     const source = characterRulesCopy();
     const card = source.cards[0];
     if (!card) throw new Error("The character rules fixture is missing card.");
-    expect(Object.keys(card).sort()).toEqual(["actionId", "id", "name", "traits"]);
+    expect(Object.keys(card).sort()).toEqual(["actionId", "id", "level", "name", "traits"]);
 
     const authored = { ...source, cards: source.cards.map((entry, index) => index === 0 ? { ...entry, modifier: 7, dc: 18 } : entry) };
     expect(validateContentPackStructure(authored as ContentPackSource, contentPackSchema)).toContainEqual(expect.objectContaining({
@@ -878,7 +878,7 @@ describe("content fingerprint", () => {
         rulesetId: source.manifest.rulesetId,
         version: source.manifest.version,
         id: source.manifest.id,
-        schemaVersion: 11,
+        schemaVersion: 12,
       },
       traits: [...source.traits].reverse(),
       conditions: [...source.conditions].reverse(),

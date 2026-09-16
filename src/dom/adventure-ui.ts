@@ -1,3 +1,5 @@
+import { cardLevelSummary } from "./card-level-view";
+import { equipmentTraits } from "../game/rules";
 import { CharacterAdvancementUi } from "./character-advancement-ui";
 import { pendingCharacterAdvancements, type CharacterAdvancementChoice } from "../character";
 import type { AdventureState } from "../adventure";
@@ -68,7 +70,7 @@ function rewardDetail(grant: RewardGrant, pack: CompiledContentPack): string {
     const cost = action.timing.kind === "reaction"
       ? "반응"
       : `${String(action.timing.actions)} 액션`;
-    return `${cost} · ${action.description}`;
+    return `${cardLevelSummary(card!, content)} · ${cost} · ${action.description}`;
   }
   const equipment = content.equipment[grant.definitionId];
   if (!equipment) return "새 장비입니다.";
@@ -81,10 +83,11 @@ function rewardDetail(grant: RewardGrant, pack: CompiledContentPack): string {
   if (armor) parts.push(`${armor.category} 방어구 · AC ${signed(armor.acItemBonus)} · DEX 상한 ${String(armor.dexCap)}`);
   if (equipment.shieldBonus) parts.push(`Raise Shield로 AC ${signed(equipment.shieldBonus)}`);
   for (const modifier of equipment.statModifiers) parts.push(`${modifier.label} ${signed(modifier.value)}`);
-  for (const trait of equipment.traits) {
+  for (const trait of equipmentTraits(equipment)) {
     for (const cardGrant of content.traits[trait.id]?.cardGrants ?? []) {
       const name = content.cards[cardGrant.cardDefinitionId]?.name ?? cardGrant.cardDefinitionId;
-      parts.push(`${name} 카드 ×${String(cardGrant.count)}`);
+      const card = content.cards[cardGrant.cardDefinitionId];
+      parts.push(`${name} 카드 ×${String(cardGrant.count)}${card ? ` · ${cardLevelSummary(card, content)}` : ""}`);
     }
   }
   return parts.length > 0 ? parts.join(" · ") : `${equipment.slot} 슬롯 장비입니다.`;

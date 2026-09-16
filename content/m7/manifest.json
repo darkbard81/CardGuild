@@ -1,6 +1,6 @@
 {
-  "schemaVersion": 11,
+  "schemaVersion": 12,
   "id": "cardguild.m7",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "rulesetId": "cardguild.pf2e-remaster.v1"
 }

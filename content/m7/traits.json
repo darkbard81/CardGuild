@@ -562,11 +562,11 @@
     "name": "Trip",
     "source": "pf2e-remaster",
     "category": "weapon",
-    "description": "넘어뜨리기에 알맞은 무기입니다. 장착하면 Trip 카드 3장을 덱에 더합니다.",
+    "description": "넘어뜨리기에 알맞은 무기입니다. 장착하면 Trip 카드 1장을 덱에 더합니다.",
     "cardGrants": [
       {
         "cardDefinitionId": "card.trip",
-        "count": 3
+        "count": 1
       }
     ],
     "actionGrants": []

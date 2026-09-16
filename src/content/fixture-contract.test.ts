@@ -143,7 +143,7 @@ describe("the JSON fixture pack", () => {
 
     const pack = compileContentPack(source as ContentPackSource);
     expect(pack.manifest.id).toBe(JSON_PACK_ID);
-    expect(pack.manifest.schemaVersion).toBe(11);
+    expect(pack.manifest.schemaVersion).toBe(12);
     expect(pack.fingerprint).toMatch(/^fnv1a64:[0-9a-f]{16}$/);
     // Small enough to read, complete enough to fight on.
     expect(Object.keys(pack.actorDefinitions)).toHaveLength(2);

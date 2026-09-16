@@ -252,13 +252,13 @@ const ENEMY_TARGET: ActionTarget = { kind: "actor", actorId: "enemy" };
 describe("starter signature actions", () => {
   it("resolves Aerin's reach control at her authored weapon reach", () => {
     const aerin = actorWith("hero.aerin");
-    const knockdown = planOf(aerin, "knockdown", ENEMY_TARGET);
-    if (knockdown?.resolution.kind !== "strike") throw new Error("Knockdown must resolve as a Strike.");
-    expect(knockdown.resolution.strike.rangeFeet).toBe(10);
-    expect(knockdown.resolution.outcomes.success.some((effect) =>
-      effect.kind === "apply-condition" && effect.condition === "prone")).toBe(true);
-    // Intimidating Strike carries a melee requirement her halberd satisfies.
-    expect(planOf(aerin, "intimidating-strike", ENEMY_TARGET)).not.toBeNull();
+    const swing = planOf(aerin, "vicious-swing", ENEMY_TARGET);
+    if (swing?.resolution.kind !== "strike") throw new Error("Vicious Swing must resolve as a Strike.");
+    expect(swing.resolution.strike.rangeFeet).toBe(10);
+    expect(planOf(aerin, "trip", ENEMY_TARGET)?.resolution.kind).toBe("check");
+    expect(planOf(aerin, "demoralize", ENEMY_TARGET)).not.toBeNull();
+    expect(planOf(aerin, "knockdown", ENEMY_TARGET)).toBeNull();
+    expect(planOf(aerin, "intimidating-strike", ENEMY_TARGET)).toBeNull();
   });
 
   it("resolves Lyra's Grapple and Acrobatics escape without a Fighter capability", () => {

@@ -2,16 +2,19 @@ import type { AdventureState } from "../adventure";
 import { resolveEffectiveCharacterStatProfile } from "../adventure/progression";
 import type { CompiledContentPack } from "../content";
 import type { DeckContributionSource, EquipmentSlotId, ResolvedStrikeProfile } from "../game";
+import { equipmentTraits } from "../game/rules";
 import {
   EQUIPMENT_SLOT_ORDER,
   deriveLoadoutSnapshot,
   previewLoadoutChange,
+  resolveLoadoutStatProfile,
   type LoadoutPreview,
   type PartyMemberLoadout,
 } from "../loadout";
 import type { AssetCatalog } from "../presentation";
 import { HOVER_CLOSE_MS, HOVER_OPEN_MS, bindDismissal, bindPressGesture, placePopover } from "./detail-popover";
 import { progressionMeter, progressionText } from "./progression-view";
+import { cardLevelSummary } from "./card-level-view";
 
 /** Long enough that a tap to equip is never read as a request to inspect. */
 const LONG_PRESS_MS = 450;
@@ -242,7 +245,10 @@ export class LoadoutUi {
   }
   private cardDescription(id: string): string {
     const card = this.pack.combatContent.cards[id]; const action = card ? this.pack.combatContent.actions[card.actionId] : undefined;
-    return action ? `${action.timing.kind === "reaction" ? "반응" : `${action.timing.actions} 액션`} · ${action.description}` : "";
+    const member = this.state?.party.members[this.selectedMemberId];
+    const actor = member && this.pack.actorDefinitions[member.actorDefinitionId];
+    const ruleActor = actor && member ? { ...actor, statProfile: resolveLoadoutStatProfile(member, this.pack) } : undefined;
+    return card && action ? `${cardLevelSummary(card, this.pack.combatContent, ruleActor)} · ${action.timing.kind === "reaction" ? "반응" : `${action.timing.actions} 액션`} · ${action.description}` : "";
   }
   private equipmentDescription(id: string): string {
     const equipment = this.pack.combatContent.equipment[id];
@@ -254,10 +260,10 @@ export class LoadoutUi {
     if (armor) parts.push(`${armor.category} · AC ${signed(armor.acItemBonus)} · DEX cap ${armor.dexCap ?? "none"}`);
     if (equipment.shieldBonus) parts.push(`Raise Shield · AC ${signed(equipment.shieldBonus)}`);
     for (const modifier of equipment.statModifiers) parts.push(`${modifier.label} ${signed(modifier.value)}`);
-    for (const trait of equipment.traits) {
+    for (const trait of equipmentTraits(equipment)) {
       const definition = this.pack.combatContent.traits[trait.id];
       parts.push(definition?.name ?? trait.id);
-      for (const grant of definition?.cardGrants ?? []) parts.push(`${this.pack.combatContent.cards[grant.cardDefinitionId]?.name ?? grant.cardDefinitionId} ×${grant.count}`);
+      for (const grant of definition?.cardGrants ?? []) parts.push(`${this.pack.combatContent.cards[grant.cardDefinitionId]?.name ?? grant.cardDefinitionId} ×${grant.count} · ${this.cardDescription(grant.cardDefinitionId)}`);
     }
     return parts.join(" · ");
   }
@@ -266,8 +272,7 @@ export class LoadoutUi {
     const member = this.state.party.members[this.selectedMemberId];
     const actor = member && this.pack.actorDefinitions[member.actorDefinitionId];
     if (!member || !actor) throw new Error("Loadout character is missing.");
-    return previewLoadoutChange(this.state.party, this.state.collection, this.pack, this.selectedMemberId, candidate,
-      resolveEffectiveCharacterStatProfile(actor, member.progression, this.pack.characterRules));
+    return previewLoadoutChange(this.state.party, this.state.collection, this.pack, this.selectedMemberId, candidate);
   }
   private apply(tile: Tile): void {
     if (!tile.candidate || this.waiting) return;

@@ -111,7 +111,10 @@ describe("a live session that loses an ACK", () => {
     let snapshot = await client.snapshot();
     snapshot = await play(client, snapshot, "party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
     snapshot = await play(client, snapshot, "begin", { type: "begin-adventure" });
-    return await play(client, snapshot, "encounter", { type: "start-encounter" });
+    snapshot = await play(client, snapshot, "encounter", { type: "start-encounter" });
+    const ready = await settle(client, snapshot.revision);
+    if (!ready) throw new Error("The encounter closed before player input.");
+    return ready;
   }
 
   it("answers an identical retry from its journal and writes nothing a second time", async () => {

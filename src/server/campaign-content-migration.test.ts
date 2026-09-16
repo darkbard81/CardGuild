@@ -10,6 +10,6 @@ describe("Character Build release compatibility", () => {
       ["0.5.0", "fnv1a64:aab2c37c8ccb6f4c"],
       ["0.6.0", "fnv1a64:75ca529c9c9d0ec5"],
     ]) expect(findContentMigration({ packId: "cardguild.m7", packVersion: packVersion!, fingerprint: fingerprint! }, PRODUCTION_CONTENT.pack)).toBeUndefined();
-    expect(PRODUCTION_CONTENT.pack.manifest).toMatchObject({ schemaVersion: 11, version: "0.7.0" });
+    expect(PRODUCTION_CONTENT.pack.manifest).toMatchObject({ schemaVersion: 12, version: "0.8.0" });
   });
 });

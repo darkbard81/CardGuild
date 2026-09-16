@@ -1,4 +1,4 @@
-import type { ActionDefinition, ActionSource, ActorStatProfile, CardDefinition, CombatContent, CombatState, ContextActionGroup, LegalAction, TraitId, TraitInstance } from "./types";
+import type { ActionDefinition, ActionSource, CardDefinition, CombatContent, CombatState, ContextActionGroup, LegalAction, TraitId, TraitInstance } from "./types";
 
 /** Context providers may expose only these Basic actions, never arbitrary Card capabilities. */
 const CONTEXTUAL_BASIC_ACTIONS: Readonly<Record<ContextActionGroup, readonly string[]>> = {
@@ -25,12 +25,43 @@ export function matchesEligibilityGroups(
   });
 }
 
-export function isCardEligible(
-  actor: { readonly statProfile: { readonly kind: ActorStatProfile["kind"] }; readonly traits: readonly TraitInstance[] },
+export interface CardEligibilityActor {
+  readonly statProfile: { readonly kind: "character"; readonly stats: { readonly level: number } } | { readonly kind: "creature" };
+  readonly traits: readonly TraitInstance[];
+}
+
+export type CardEligibility = {
+  readonly requiredLevel: number;
+  readonly currentLevel?: number;
+} & ({ readonly eligible: true } | {
+  readonly eligible: false;
+  readonly code: "INELIGIBLE_CARD" | "CARD_LEVEL_TOO_LOW";
+  readonly reason: string;
+});
+
+/** Provider provenance never overrides the capability's Class or level requirements. */
+export function resolveCardEligibility(
+  actor: CardEligibilityActor,
   card: CardDefinition,
   content: Pick<CombatContent, "classes">,
-): boolean {
-  return actor.statProfile.kind === "creature" || matchesEligibilityGroups(card.traits, actor.traits, [content.classes]);
+): CardEligibility {
+  if (actor.statProfile.kind === "creature") return { eligible: true, requiredLevel: card.level };
+  const matchingClasses = card.traits.filter(trait => Object.hasOwn(content.classes, trait.id)
+    && actor.traits.some(identity => identity.id === trait.id));
+  const requiredLevel = matchingClasses.length
+    ? Math.min(...matchingClasses.map(trait => card.levelByClass?.[trait.id] ?? card.level)) : card.level;
+  const currentLevel = actor.statProfile.stats.level;
+  if (!matchesEligibilityGroups(card.traits, actor.traits, [content.classes])) {
+    return { eligible: false, requiredLevel, currentLevel, code: "INELIGIBLE_CARD", reason: `${card.name}: Class 조건을 충족하지 않습니다.` };
+  }
+  if (!Number.isSafeInteger(currentLevel) || !Number.isSafeInteger(requiredLevel) || requiredLevel < 1 || currentLevel < requiredLevel) {
+    return { eligible: false, requiredLevel, currentLevel, code: "CARD_LEVEL_TOO_LOW", reason: `${card.name}: 요구 레벨 ${requiredLevel} · 현재 레벨 ${currentLevel}` };
+  }
+  return { eligible: true, requiredLevel, currentLevel };
+}
+
+export function isCardEligible(actor: CardEligibilityActor, card: CardDefinition, content: Pick<CombatContent, "classes">): boolean {
+  return resolveCardEligibility(actor, card, content).eligible;
 }
 
 /** Card instance identity survives hand/discard/shuffle; never fall back to Action traits. */

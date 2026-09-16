@@ -90,13 +90,15 @@ export const M7_PRODUCTION_POLICY = {
    * reward offer opened the last two #17 build directions.
    */
   reachableMinimum: {
-    playerCards: 26,
+    playerCards: 24,
     equipment: 21,
     enemies: 14,
     scenarios: 8,
   },
 
   reserveCards: [
+    { id: "card.intimidating-strike", reason: "Level 2 capability removed from the level 1 starter; no current reward offers it.", followUp: "#21" },
+    { id: "card.knockdown", reason: "Level 4 Slam Down capability removed from the level 1 starter; outside this Adventure progression.", followUp: "#21" },
     {
       id: "card.aimed-shot",
       reason:

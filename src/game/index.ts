@@ -1,4 +1,4 @@
-export { resolveEffectiveActionTraits, matchesEligibilityGroups, isCardEligible, isRingAction } from "./capabilities";
+export { resolveEffectiveActionTraits, matchesEligibilityGroups, isCardEligible, resolveCardEligibility, isRingAction } from "./capabilities";
 export {
   actionRangeFeet,
   buildResolvedActionPlan,

@@ -20,7 +20,7 @@ export interface ContentMigration {
   readonly verify: (pack: CompiledContentPack) => boolean;
 }
 
-/** M11-2 and M12-1 change gameplay: old saves are retained, never silently reinterpreted. */
+/** Build, capability, and Card-level changes retain old saves without silently reinterpreting them. */
 export const REGISTERED_CONTENT_MIGRATIONS: readonly ContentMigration[] = [];
 
 function sameIdentity(left: ContentIdentity, right: ContentIdentity): boolean {

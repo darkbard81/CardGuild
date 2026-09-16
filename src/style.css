@@ -970,14 +970,14 @@ button {
 
 /* A finger cannot hover, and a tap would leave the state stuck on as if selected. */
 @media (hover: hover) {
-  .tactical-card:hover:not(:disabled) {
+  .tactical-card:hover:not([aria-disabled="true"]) {
     border-color: var(--gold-bright);
     box-shadow: 0 0 0 2px rgb(255 218 121 / 22%);
     transform: translateY(-2px);
   }
 }
 
-.tactical-card:disabled {
+.tactical-card[aria-disabled="true"] {
   cursor: not-allowed;
   filter: saturate(0.3);
   opacity: 0.48;
@@ -2191,3 +2191,5 @@ button {
   font: inherit;
 }
 .adventure-action:disabled, .advancement-commit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.card-level { position: absolute; bottom: 4px; right: 5px; padding: 1px 4px; border-radius: 3px; background: #17212ee6; color: #fff; font-size: 11px; }

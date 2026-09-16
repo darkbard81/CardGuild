@@ -17,6 +17,7 @@ import { startCardGuildServer, type RunningCardGuildServer } from "../../src/ser
 import type { SessionCredentialResponse } from "../../src/server/session-store";
 import { createAuthService } from "../../src/server/auth-service";
 import { SocketClient, TEST_ORIGIN, envelope, play } from "../support/network/socket-client";
+import { settle } from "../support/campaign/campaign-drive";
 import { SessionStore } from "../../src/server/session-store";
 import { attachWebSocketGateway } from "../../src/server/ws-gateway";
 
@@ -162,7 +163,10 @@ describe("graceful shutdown", () => {
     let snapshot = await client.waitFor((message): message is ServerSnapshot => message.type === "snapshot");
     snapshot = await play(client, snapshot, "party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
     snapshot = await play(client, snapshot, "begin", { type: "begin-adventure" });
-    return await play(client, snapshot, "encounter", { type: "start-encounter" });
+    snapshot = await play(client, snapshot, "encounter", { type: "start-encounter" });
+    const ready = await settle(client, snapshot.revision);
+    if (!ready) throw new Error("The encounter closed before player input.");
+    return ready;
   }
 
   /** What the file holds, read the way Continue would read it. */

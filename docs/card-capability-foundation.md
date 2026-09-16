@@ -31,6 +31,9 @@ capabilities must otherwise be supplied as Cards.
 
 ## Flourish and compatibility
 
+The version transitions in this table describe the preceding #56 foundation.
+The subsequent Card level content change is documented below.
+
 `TurnState.usedTraitsByActor` maps actor IDs to used rule Trait IDs. Currently only
 `flourish` is recorded. Acceptance consumes the restriction even when a roll fails;
 rejected commands consume nothing. Different Cards share the same Trait restriction.
@@ -59,10 +62,10 @@ No previous-content migration is registered for this gameplay change.
 ## Production audit
 
 The #56 non-blocking decision is **Class Trait authoring**. The production pack
-is `cardguild.m7@0.7.0`; the audit below covers all 32 Cards, including reserves.
+is `cardguild.m7@0.8.0`; the audit below covers all 32 Cards, including reserves.
 Class-specific PF2e capabilities declare the supported Class identities directly on
-the Card. Class eligibility does not implement feat levels, prerequisites, archetype
-acquisition, spell traditions, or change the existing Action's adapted effects.
+the Card. Card eligibility also enforces the minimum Character levels below. It does not implement
+feat prerequisites, archetype acquisition, spell traditions, or change adapted Action effects.
 
 | Cards (`card.` prefix omitted) | Authored Class eligibility | Basis |
 | --- | --- | --- |
@@ -89,12 +92,13 @@ Starter and acquisition adjustments:
 
 - Lyra (Rogue): prepared Combat Grab becomes Grapple, preserving a control option.
 - Nera (Cleric): prepared Lay on Hands becomes Heal, preserving a healing option.
-- Aerin and Brom retain their eligible starter Cards, including Reactive Strike.
+- Aerin prepares Vicious Swing and Demoralize; Fighter Reactive Strike remains a base grant.
+- Brom receives Shield Press ×2 instead of the level-6 Champion Reactive Strike.
 - Spear Line adds Combat Grab; Ruined Gate adds Lay on Hands alongside Vicious Swing.
   Each offer retains unrestricted choices for other Classes. Ownership remains
-  unrestricted, while prepare/use validates the selected actor's Class.
-- Dueling Rapier still grants Dueling Parry through `parry`. Its derived deck is now
-  Fighter-only; the weapon provider never overrides Card eligibility. Other weapon
+  unrestricted, while prepare/use validates the selected actor's Class and current level.
+- Dueling Rapier still grants Dueling Parry through `parry`. Its derived deck requires
+  Fighter level 2; the weapon provider never overrides Card eligibility. Other weapon
   rewards remain available to non-Fighters.
 
 Every starter loadout, reward Card, and reward equipment grant is checked against
@@ -131,3 +135,114 @@ Trait arrays checked by the shared semantic validator.
   Flourish, Card eligibility, and the server-side refusal of another Flourish.
 - Existing action requirement, Creature AI, card library, campaign, E2E, and Recovery suites
   remain part of the full `npm run check` → `npm run build` → `npm test` gate.
+
+
+## Minimum Character level (content 0.8.0)
+
+`CardDefinition.level` is the minimum Character level for preparation and use.
+`levelByClass` optionally replaces that requirement for a registered Class already
+present in the Card Traits. It cannot grant access to another Class. Both fields
+require positive safe integers. The default is explicitly authored, never supplied
+by a loader. Creature fixed-stat capabilities keep the existing Character-rule bypass.
+
+`resolveCardEligibility` supplies Class/level eligibility, the effective requirement,
+current level, and rejection reason. `isCardEligible` is its boolean wrapper. Collection
+ownership is unrestricted. Base, prepared, and equipment-granted Cards all follow the
+same preparation and execution gates, including Reaction offering and revalidation.
+An item whose Card grants are ineligible cannot be equipped; it does not silently lose
+its Cards. Locked hand Cards remain visible with no legal targets or executable intent.
+Rejected commands do not consume state, Cards, actions, Reactions, or RNG.
+
+Runtime loadout validation and previews resolve the member's actual progression through
+Character rules. Only static setups without progression use their compiled authored
+profile. The Host publishing boundary and durable restore share Card invariants for
+loadout and all combat Card zones, and refuse a combat level/Class inconsistent with the
+Character's progression/definition. Nothing repairs or strips an invalid deck.
+
+### Authoring audit
+
+| Card | Level | Class override / basis |
+| --- | ---: | --- |
+| Aimed Shot | 1 | CardGuild original |
+| Arcane Ward | 1 | CardGuild original |
+| Battle Medicine | 1 | [Battle Medicine, Feat 1](https://2e.aonprd.com/Feats.aspx?ID=5125) |
+| Brace Behind Cover | 1 | CardGuild original |
+| Careful Advance | 1 | CardGuild original |
+| Combat Grab | 2 | [Combat Grab, Feat 2](https://2e.aonprd.com/Feats.aspx?ID=4780) |
+| Daze | 1 | Current non-feat spell/general capability policy |
+| Demoralize | 1 | Current non-feat spell/general capability policy |
+| Dueling Parry | 2 | [Dueling Parry, Feat 2](https://2e.aonprd.com/Feats.aspx?ID=4781) |
+| Ember Lash | 1 | CardGuild original |
+| Fear | 1 | Current non-feat spell/general capability policy |
+| Fly | 1 | Current non-feat spell/general capability policy |
+| Force Barrage | 1 | Current non-feat spell/general capability policy |
+| Frostbite | 1 | Current non-feat spell/general capability policy |
+| Grapple | 1 | Current non-feat spell/general capability policy |
+| Harm | 1 | Current non-feat spell/general capability policy |
+| Heal | 1 | Current non-feat spell/general capability policy |
+| Hover Step | 1 | CardGuild original |
+| Intimidating Strike | 2 | [Intimidating Strike, Feat 2](https://2e.aonprd.com/Feats.aspx?ID=4782) |
+| Iron Presence | 1 | CardGuild original |
+| Knockdown | 4 | [Slam Down, Feat 4](https://2e.aonprd.com/Feats.aspx?ID=4794); adapted Action retained |
+| Lay on Hands | 1 | Current non-feat spell/general capability policy |
+| Reactive Strike | 1 | [Fighter 1](https://2e.aonprd.com/Classes.aspx?ID=35), [Champion 6](https://2e.aonprd.com/Feats.aspx?ID=5832) |
+| Shield Press | 1 | CardGuild original |
+| Slip Free | 1 | Current non-feat spell/general capability policy |
+| Soothe | 1 | Current non-feat spell/general capability policy |
+| Spirit Beacon | 1 | CardGuild original |
+| Spirit Edge | 1 | CardGuild original |
+| Spirit Lance | 1 | CardGuild original |
+| Telekinetic Projectile | 1 | Current non-feat spell/general capability policy |
+| Trip | 1 | Current non-feat spell/general capability policy |
+| Vicious Swing | 1 | [Vicious Swing, Feat 1](https://2e.aonprd.com/Feats.aspx?ID=4775) |
+
+Current non-feat spells/general capabilities and all CardGuild originals explicitly
+use level 1. Spell-rank conversion, feat prerequisites, new acquisition paths, and
+automatic level-up Card grants remain outside this change. Class names and Card names
+remain English; explanations shown to players are Korean.
+
+### Starter and release changes
+
+- Aerin: prepared Knockdown/Intimidating Strike → Vicious Swing/Demoralize.
+- Brom: base Reactive Strike ×2 → Shield Press ×2, retaining the provider identity.
+- Shared Trip weapon Trait: 3 → 1 Card on Halberd, Executioner Axe, and Flick Mace.
+  Its Korean description matches the new grant. Aerin's deck is 8 Cards; Brom's is 7.
+- Intimidating Strike and Knockdown become reserves tracked under the existing #21
+  acquisition follow-up. Reachable Card floor changes explicitly from 26 to 24;
+  all 32 definitions remain authored and validated.
+- Reward lists and EXP stay unchanged. Release QA checks each starter has an immediately
+  usable choice at each offer, and each individual reward is usable by some starter at
+  an attainable later preparation boundary. The shared growth resolver and explicit
+  legal advancement choices establish those levels. Combat Grab is collected at level 1
+  after Spear Line and usable at level 2 after Goblin Chief; Dueling Rapier is judged at
+  the level-2 reward boundary, not against the authored level-1 Fighter.
+- Loadout/Card details expose selected-Character requirements; reward descriptions expose
+  general and Class-specific requirements without disabling ownership. No new assets.
+
+### Compatibility and verification
+
+Content schema 12 and `cardguild.m7@0.8.0` fingerprint the new requirements, starters,
+and Trip count. CampaignSave 3, CombatState 5, AdventureState 4, SessionCoreState 3,
+and WebSocket protocol 9 retain their shapes. Legal-action requirement metadata is
+query-only. Previous content identity is refused for saves/replays; no content migration
+is registered, and stored rows are retained.
+
+The tests cover invalid authoring, Class-specific boundaries, preparation and equipment
+grants after growth, locked hand display/preview/dispatch, Reaction revalidation, Host
+and restore ingress, and the real UI campaign from Spear Line ownership through level-2
+preparation and next-encounter use. UI state-injection tests remain Browser Unit tests.
+Durability test setup waits for a published player-input boundary after encounter start:
+deck shuffles share the seeded RNG with initiative, so changing deck size can make an
+enemy act first even with the same Adventure seed.
+The release gate is `npm run check` → `npm run build` → `npm test`.
+
+Implementation verification: `check` and `build` passed. Across the full test run and
+the affected-suite reruns after fixes, Node Unit 644, Browser Unit 59, Integration 104,
+E2E 26, and Recovery 4 unique cases passed (837 total). The real UI level-unlock case
+passed at seed 1 in 4.1 minutes and used Combat Grab in Bone Cellar round 2. Keyboard
+focus inspection and mouse/touch hold inspection were checked separately.
+
+Same-seed balance evidence is in [card-level-playtest-comparison.json](evidence/card-level-playtest-comparison.json).
+It compares all 36 existing policy/party runs at seed 1, not a selected winning subset.
+Completion changes from 5/36 to 6/36; individual routes both improve and regress.
+This is measured gameplay impact, not a claim that every party can complete the campaign.

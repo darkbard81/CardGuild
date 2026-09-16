@@ -1,4 +1,4 @@
-import { isCardEligible } from "../game/capabilities";
+import { isCardEligible, resolveCardEligibility } from "../game/capabilities";
 import { completeAdvancements } from "../../tests/support/campaign/complete-advancements";
 import { describe, expect, it } from "vitest";
 
@@ -242,10 +242,10 @@ describe("tutorial onboarding prefix", () => {
           };
           const issues = validatePartyLoadout(prepared, {
             equipment: Object.fromEntries(Object.values(definition.starterLoadout.equipment).filter(Boolean).map((id) => [id as string, 1])),
-            cards: { ...collection.cards, ...Object.fromEntries(definition.starterLoadout.preparedCards.map((id) => [id, 1])) },
+            cards: { ...Object.fromEntries(definition.starterLoadout.preparedCards.map((id) => [id, 1])), [choice.definitionId]: 1 + definition.starterLoadout.preparedCards.filter(id => id === choice.definitionId).length },
           }, PACK).issues;
-          const eligible = isCardEligible(definition, PACK.combatContent.cards[choice.definitionId]!, PACK.combatContent);
-          expect(issues.map(issue => issue.code), `${definition.id}/${choice.definitionId}`).toEqual(eligible ? [] : ["INELIGIBLE_CARD"]);
+          const eligibility = resolveCardEligibility(definition, PACK.combatContent.cards[choice.definitionId]!, PACK.combatContent);
+          expect(issues.map(issue => issue.code), `${definition.id}/${choice.definitionId}`).toEqual(eligibility.eligible ? [] : [eligibility.code]);
           expect(validatePartyLoadout({ members: { [member.id]: member } }, {
             equipment: Object.fromEntries(Object.values(definition.starterLoadout.equipment).filter(Boolean).map(id => [id as string, 1])),
             cards: { ...collection.cards, ...Object.fromEntries(definition.starterLoadout.preparedCards.map(id => [id, 1])) },

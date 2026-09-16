@@ -165,6 +165,7 @@ const CHARACTER_RULES_CARDS: readonly CardDefinition[] = [
     id: "card.spirit-lance",
     name: "Spirit Lance",
     actionId: "spirit-lance",
+    level: 1,
     traits: [
       {
         id: "spell",

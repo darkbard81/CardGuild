@@ -631,6 +631,9 @@ export interface CardDefinition {
   readonly name: string;
   readonly actionId: ActionId;
   readonly traits: readonly TraitInstance[];
+  /** Minimum Character level to prepare or use this capability. */
+  readonly level: number;
+  readonly levelByClass?: Readonly<Partial<Record<TraitId, number>>>;
 }
 
 export interface CardGrant {
@@ -901,6 +904,7 @@ export interface LegalAction {
   readonly reason?: string;
   readonly sourceLabel?: string;
   readonly contextGroup?: ContextActionGroup;
+  readonly cardRequirement?: { readonly requiredLevel: number; readonly currentLevel?: number };
 }
 
 export interface ActionValidationResult {
