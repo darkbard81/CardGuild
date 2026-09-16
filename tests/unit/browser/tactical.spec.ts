@@ -147,15 +147,27 @@ test("shows real AC when another circumstance penalty wins", async ({ page }) =>
 
 test.describe("touch tactical feedback", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 1024, height: 768 } });
-  test("inspects through the ring, turns by tapping a square and retains card one-tap execution", async ({ page }) => {
+  test("holds to inspect without executing, then activates Strike with one fresh tap", async ({ page }) => {
     await page.evaluate(() => window.tacticalFixture.reset("both"));
     const canvas = page.locator("#pixi-canvas");
     await canvas.tap({ position: await boardPoint(page, 2.5, 1.5) });
-    await page.locator('#ring-root [data-action-id="strike"]').tap();
+    const strike = page.locator('#ring-root [data-action-id="strike"]');
+    await strike.dispatchEvent("pointerdown", { pointerType: "touch", pointerId: 1, button: 0, clientX: 100, clientY: 100 });
     await expect(page.locator(".off-guard-causes")).toHaveText("Rear · Flanking");
     expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
-    await page.touchscreen.tap(550, 550);
+    await strike.dispatchEvent("pointerup", { pointerType: "touch", pointerId: 1 });
+    await strike.dispatchEvent("click", { detail: 1 });
+    await expect(page.locator(".off-guard-causes")).toHaveText("Rear · Flanking");
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+    await strike.tap();
+    await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
+    expect(await page.evaluate(() => window.tacticalFixture.intents[0])).toMatchObject({ type: "use-action", action: { kind: "basic", id: "strike" } });
+    expect(await page.evaluate(() => window.tacticalFixture.events.some((event) => event.type === "CHECK_ROLLED"))).toBe(true);
     await expect(page.locator("#ring-root")).toBeHidden();
+  });
+
+  test("turns by tapping a square and retains card one-tap execution", async ({ page }) => {
+    const canvas = page.locator("#pixi-canvas");
     await page.locator("#end-turn").tap();
     const hash = await page.locator("#app").getAttribute("data-state-hash");
     await expect(canvas).toHaveAttribute("data-facing-position", "1,1");
@@ -169,7 +181,83 @@ test.describe("touch tactical feedback", () => {
     await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
     expect(await page.evaluate(() => window.tacticalFixture.events.some((event) => event.type === "CHECK_ROLLED" && event.tactical?.causes.length === 2))).toBe(true);
   });
+
+  test("executes an uninspected Strike and Stride with one short tap each", async ({ page }) => {
+    const canvas = page.locator("#pixi-canvas");
+    await canvas.tap({ position: await boardPoint(page, 2.5, 1.5) });
+    await page.locator('#ring-root [data-action-id="strike"]').tap();
+    await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
+    expect(await page.evaluate(() => window.tacticalFixture.intents[0])).toMatchObject({ type: "use-action", action: { kind: "basic", id: "strike" } });
+    expect(await page.evaluate(() => window.tacticalFixture.events.some(event => event.type === "CHECK_ROLLED"))).toBe(true);
+    await canvas.tap({ position: await boardPoint(page, 3.5, 1.5) });
+    await page.locator('#ring-root [data-action-id="stride"]').tap();
+    await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(2);
+    expect(await page.evaluate(() => window.tacticalFixture.intents[1])).toMatchObject({ type: "use-action", action: { kind: "basic", id: "stride" } });
+    expect(await page.evaluate(() => window.tacticalFixture.state.actors.hero!.position)).toEqual({ x: 3, y: 1 });
+  });
+
+  test("selects in-place Step with one tap but waits for a board direction", async ({ page }) => {
+    const canvas = page.locator("#pixi-canvas");
+    await canvas.tap({ position: await boardPoint(page, 1.5, 1.5) });
+    await page.locator('#ring-root [data-action-id="step"]').tap();
+    await expect(canvas).toHaveAttribute("data-facing-position", "1,1");
+    await expect(page.locator("#ring-root")).toBeHidden();
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+    await canvas.tap({ position: await boardPoint(page, 1.5, 0.5) });
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([
+      { type: "use-action", action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 1, y: 1 }, facing: "north" } },
+    ]);
+  });
+
+  for (const cancel of ["move", "pointercancel", "scroll"] as const) {
+    test(`does not execute after ${cancel}, but accepts a fresh short tap`, async ({ page }) => {
+      await page.locator("#pixi-canvas").tap({ position: await boardPoint(page, 2.5, 1.5) });
+      const strike = page.locator('#ring-root [data-action-id="strike"]');
+      await strike.dispatchEvent("pointerdown", { pointerType: "touch", pointerId: 1, button: 0, clientX: 100, clientY: 100 });
+      if (cancel === "move") await strike.dispatchEvent("pointermove", { pointerType: "touch", pointerId: 1, clientX: 130, clientY: 100 });
+      else if (cancel === "scroll") await page.evaluate(() => document.dispatchEvent(new Event("scroll")));
+      else await strike.dispatchEvent("pointercancel", { pointerType: "touch", pointerId: 1 });
+      await strike.dispatchEvent("pointerup", { pointerType: "touch", pointerId: 1 });
+      await strike.dispatchEvent("click", { detail: 1 });
+      await expect(page.locator("#ring-root")).toBeVisible();
+      expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+      await strike.tap();
+      await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
+    });
+  }
+
+  test("dismisses a fresh menu on a backdrop tap without an intent", async ({ page }) => {
+    await page.locator("#pixi-canvas").tap({ position: await boardPoint(page, 2.5, 1.5) });
+    await page.locator("#ring-root").tap({ position: { x: 1, y: 1 } });
+    await expect(page.locator("#ring-root")).toBeHidden();
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+  });
 });
+
+test.describe("iPad mini portrait ring input", () => {
+  test.use({ hasTouch: true, isMobile: true, viewport: { width: 768, height: 1024 } });
+  test("executes Strike with a single native touch tap", async ({ page }) => {
+    await page.locator("#pixi-canvas").tap({ position: await boardPoint(page, 2.5, 1.5) });
+    await page.locator('#ring-root [data-action-id="strike"]').tap();
+    await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
+    expect(await page.evaluate(() => window.tacticalFixture.events.some(event => event.type === "CHECK_ROLLED"))).toBe(true);
+  });
+});
+
+for (const key of ["Enter", "Space"]) {
+  test(`previews a keyboard-focused option and executes it once with ${key}`, async ({ page }) => {
+    await page.locator("#pixi-canvas").click({ position: await boardPoint(page, 1.5, 0.5) });
+    const stride = page.locator('#ring-root [data-action-id="stride"]');
+    // The menu initially focuses Step. Tab is an intentional inspection of Stride.
+    await page.keyboard.press("Tab");
+    await expect(stride).toBeFocused();
+    await expect(page.locator("#selected-detail .detail-heading strong")).toHaveText("Stride");
+    expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
+    await page.keyboard.press(key);
+    await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
+    expect(await page.evaluate(() => window.tacticalFixture.intents[0])).toMatchObject({ type: "use-action", action: { kind: "basic", id: "stride" } });
+  });
+}
 
 test("leaves a refused End Turn facing open, since it has no way back", async ({ page }) => {
   await page.locator("#end-turn").click();

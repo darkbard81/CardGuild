@@ -1078,9 +1078,9 @@ button {
   font-weight: 900;
 }
 
-/* `armed` is the touch half of hover: the first tap shows the option's odds. */
+/* Inspection highlights a preview; it is never an activation gate. */
 .ring-option:focus-visible,
-.ring-option.armed {
+.ring-option.inspected {
   border-color: var(--gold-bright);
   background: linear-gradient(#57492f, #2c2720);
   outline: none;
@@ -1613,7 +1613,19 @@ button {
    supported minimum screen; spend less space on margins before hiding information. */
 @media (min-width: 901px) and (max-height: 800px) {
   .adventure-screen { padding-block: 1rem; }
-  .adventure-map-card { padding: 1rem; }
+  .adventure-map-card {
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100dvh - 2rem);
+    padding: 1rem;
+  }
+  .adventure-map-card .adventure-collection {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+  .adventure-map-card .adventure-progress { flex-shrink: 0; }
+  .adventure-map-card .collection-chips { min-height: 0; }
 }
 
 .adventure-map-card h2,

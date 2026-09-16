@@ -65,6 +65,13 @@ for (const touch of [false, true]) {
         if (touch) await canvas.tap({ position }); else await canvas.click({ position });
         await expect(page.locator(`#ring-root [data-action-id="${actionId}"]`)).toBeVisible();
         await expect(page.locator('#ring-root [data-action-id="trip"], #ring-root [data-action-id="fly"]')).toHaveCount(0);
+        const option = page.locator(`#ring-root [data-action-id="${actionId}"]`);
+        if (touch) await option.tap(); else await option.click();
+        await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);
+        expect(await page.evaluate(() => window.tacticalFixture.intents[0])).toMatchObject({
+          type: "use-action", action: { kind: "context", id: actionId },
+        });
+        expect(await page.evaluate(() => window.tacticalFixture.events.length)).toBeGreaterThan(0);
       });
     }
   });

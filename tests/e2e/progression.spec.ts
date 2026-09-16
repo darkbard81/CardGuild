@@ -18,6 +18,14 @@ test("shows authoritative starting progression through the real Host flow", asyn
   const mapBounds = await page.locator(".adventure-map-card").boundingBox();
   expect(mapBounds!.y).toBeGreaterThanOrEqual(0);
   expect(mapBounds!.y + mapBounds!.height).toBeLessThanOrEqual(768);
+  // A full starting party's equipment and portrait cards scroll inside the rail.
+  const card = page.locator(".collection-card").last();
+  await card.scrollIntoViewIfNeeded();
+  const collection = (await page.locator(".collection-chips").boundingBox())!;
+  const cardBounds = (await card.boundingBox())!;
+  expect(cardBounds.width / cardBounds.height).toBeCloseTo(2 / 3, 2);
+  expect(cardBounds.y).toBeGreaterThanOrEqual(collection.y);
+  expect(cardBounds.y + cardBounds.height).toBeLessThanOrEqual(collection.y + collection.height + 1);
   await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 1 · EXP 0 / 1000");
   await expect(page.locator(".loadout-pagination")).toBeInViewport();

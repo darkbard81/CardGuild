@@ -1,3 +1,5 @@
+import { bindPressGesture } from "./detail-popover";
+
 export interface RingMenuOption {
   readonly id: string;
   readonly actionId: string;
@@ -32,6 +34,7 @@ const OPTION_HEIGHT = 46;
 const MIN_RADIUS = 92;
 const MAX_RADIUS = 200;
 const EDGE_MARGIN = 8;
+const INSPECT_HOLD_MS = 380;
 /** A backdrop press that travels further than this is a drag, not a tap to pass on. */
 const PASSTHROUGH_TAP_TOLERANCE = 8;
 
@@ -55,17 +58,11 @@ export class RingMenu {
   private readonly connectors = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   private readonly abortController = new AbortController();
   private open = false;
-  /**
-   * A finger cannot hover, so a touch player would fire an action without ever seeing
-   * its odds. The first tap on an option only arms it — and the detail panel fills —
-   * and the second tap on the same option runs it. A mouse is unaffected: hovering has
-   * already armed the option under the cursor, so its click still runs on the first
-   * press. Tracked here rather than from the selection state because iOS synthesises a
-   * mouseover on the same tap that produces the click.
-   */
-  private armedOptionId: string | null = null;
-  /** A touch-armed option keeps the detail panel; the synthetic mouseleave must not clear it. */
-  private armedByTouch = false;
+  /** Presentation only: inspection is never a prerequisite for activation. */
+  private inspectedOptionId: string | null = null;
+  private inspectionPinned = false;
+  private focusingInitialOption = false;
+  private readonly optionCleanups: Array<() => void> = [];
   /** A backdrop press that began over a passthrough control, until it lifts or moves away. */
   private reaching: { readonly target: HTMLElement; readonly pointerId: number; readonly x: number; readonly y: number } | null = null;
 
@@ -108,6 +105,13 @@ export class RingMenu {
       listenerOptions,
     );
     this.root.addEventListener("pointercancel", () => { this.reaching = null; }, listenerOptions);
+    this.root.addEventListener("pointermove", (event) => {
+      const reaching = this.reaching;
+      if (reaching && event.pointerId === reaching.pointerId &&
+          Math.hypot(event.clientX - reaching.x, event.clientY - reaching.y) > PASSTHROUGH_TAP_TOLERANCE) {
+        this.reaching = null;
+      }
+    }, listenerOptions);
     window.addEventListener(
       "keydown",
       (event) => {
@@ -122,7 +126,7 @@ export class RingMenu {
   }
 
   public show(anchor: RingAnchor, title: string, options: readonly RingMenuOption[]): void {
-    this.arm(null);
+    this.clearOptions();
     // The menu is named after whatever the player picked on the board.
     this.menu.setAttribute("aria-label", title);
     this.menu.replaceChildren();
@@ -148,12 +152,16 @@ export class RingMenu {
     });
 
     this.open = true;
-    this.menu.querySelector<HTMLButtonElement>(".ring-option")?.focus({ preventScroll: true });
+    this.focusingInitialOption = true;
+    try {
+      this.menu.querySelector<HTMLButtonElement>(".ring-option")?.focus({ preventScroll: true });
+    } finally {
+      this.focusingInitialOption = false;
+    }
   }
 
   public hide(): void {
-    this.armedOptionId = null;
-    this.reaching = null;
+    this.clearOptions();
 
     if (!this.open) return;
     this.open = false;
@@ -179,22 +187,25 @@ export class RingMenu {
     return beneath instanceof HTMLElement && !beneath.matches(":disabled") ? beneath : null;
   }
 
-  /**
-   * Tapping an option makes the browser send mouseenter and then, as the finger lifts,
-   * mouseleave. Letting that clear the detail would undo the whole point of the first tap.
-   */
   private clearHover(optionId: string): void {
-    if (this.armedByTouch && this.armedOptionId === optionId) return;
-    this.handlers.onHover(null);
+    if (this.inspectionPinned || this.inspectedOptionId !== optionId) return;
+    this.inspect(null);
   }
 
-  /** Marks which option a second tap would run, so touch has hover's visual cue. */
-  private arm(optionId: string | null): void {
-    this.armedOptionId = optionId;
-    if (optionId === null) this.armedByTouch = false;
+  private inspect(optionId: string | null, pinned = false): void {
+    this.inspectedOptionId = optionId;
+    this.inspectionPinned = pinned;
     for (const option of this.menu.querySelectorAll<HTMLElement>(".ring-option")) {
-      option.classList.toggle("armed", option.dataset.optionId === optionId);
+      option.classList.toggle("inspected", option.dataset.optionId === optionId);
     }
+    this.handlers.onHover(optionId);
+  }
+
+  private clearOptions(): void {
+    for (const cleanup of this.optionCleanups.splice(0)) cleanup();
+    this.inspectedOptionId = null;
+    this.inspectionPinned = false;
+    this.reaching = null;
   }
 
   private optionButton(option: RingMenuOption, x: number, y: number): HTMLButtonElement {
@@ -213,29 +224,25 @@ export class RingMenu {
     cost.className = "ring-cost";
     cost.textContent = option.cost;
     button.append(label, cost);
-    button.addEventListener("pointerdown", (event) => {
-      if (event.pointerType !== "mouse") return;
-      this.armedByTouch = false;
-      this.arm(option.id);
+    const abortController = new AbortController();
+    const listenerOptions = { signal: abortController.signal };
+    const unbindPress = bindPressGesture(button, {
+      holdMs: INSPECT_HOLD_MS,
+      onHold: () => this.inspect(option.id, true),
+      onTap: () => this.handlers.onSelect(option.id),
     });
-    button.addEventListener("click", () => {
-      if (this.armedOptionId !== option.id) {
-        this.armedByTouch = true;
-        this.arm(option.id);
-        this.handlers.onHover(option.id);
-        return;
-      }
-      this.handlers.onSelect(option.id);
-    });
-    button.addEventListener("mouseenter", () => this.handlers.onHover(option.id));
+    this.optionCleanups.push(() => { unbindPress(); abortController.abort(); });
+    button.addEventListener("pointerenter", (event) => {
+      if (event.pointerType === "mouse") this.inspect(option.id);
+    }, listenerOptions);
     // The menu focuses its first option when it opens; that must not overwrite the detail
     // panel, which is showing what the player just picked on the board. Only a focus the
     // player drove — keyboard, not the programmatic one — counts as pointing at an option.
     button.addEventListener("focus", () => {
-      if (button.matches(":focus-visible")) this.handlers.onHover(option.id);
-    });
-    button.addEventListener("mouseleave", () => this.clearHover(option.id));
-    button.addEventListener("blur", () => this.clearHover(option.id));
+      if (!this.focusingInitialOption && button.matches(":focus-visible")) this.inspect(option.id);
+    }, listenerOptions);
+    button.addEventListener("pointerleave", () => this.clearHover(option.id), listenerOptions);
+    button.addEventListener("blur", () => this.clearHover(option.id), listenerOptions);
     return button;
   }
 

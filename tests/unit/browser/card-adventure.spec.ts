@@ -40,8 +40,10 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
       expect(size!.width / size!.height).toBeCloseTo(2 / 3, 2);
       await expect(card.locator(".card-face-art")).toHaveCSS("background-size", "contain");
     }
+    await page.locator(".collection-card").last().scrollIntoViewIfNeeded();
     const collection = (await page.locator(".collection-chips").boundingBox())!;
     const lastCard = (await page.locator(".collection-card").last().boundingBox())!;
+    expect(lastCard.y).toBeGreaterThanOrEqual(collection.y);
     expect(lastCard.y + lastCard.height).toBeLessThanOrEqual(collection.y + collection.height + 1);
     expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
     await expect(page.locator(".reward-card-choice button")).toHaveCount(0);
