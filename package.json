@@ -8,6 +8,8 @@
     "npm": ">=11.0.0"
   },
   "scripts": {
+    "assets:cards": "tsx tools/assets/build-card-art.ts",
+    "assets:build": "tsx tools/assets/build-assets.ts",
     "dev": "CARDGUILD_ADVENTURE_SEED=1 CARDGUILD_DB_PATH=.data/cardguild.dev.sqlite tsx tools/dev-coop.ts",
     "check": "tsx tools/content/check-content.ts && tsx tools/content/check-production-content.ts && tsx tools/assets/check-assets.ts && tsc --noEmit && tsc --project tsconfig.game.json && tsc --project tsconfig.tools.json && tsc --project tsconfig.server.json && tsc --project tsconfig.tests.json && eslint .",
     "build": "vite build && esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist-server/main.js --external:ws",

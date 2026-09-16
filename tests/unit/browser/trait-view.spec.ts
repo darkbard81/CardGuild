@@ -36,11 +36,12 @@ async function holdCard(page: Page, card: Locator): Promise<void> {
   await card.dispatchEvent("pointerup", { pointerType: "touch" });
 }
 
+// Park on a noninteractive HUD panel: fixed coordinates can land on portrait cards.
 /** Picks a card from the hand, which puts its Action in the inspector with no ring over it. */
 async function selectTrip(page: Page): Promise<void> {
   await tripCard(page).click();
   await expect(tripCard(page)).toHaveAttribute("aria-pressed", "true");
-  await page.mouse.move(600, 600);
+  await page.locator(".objective-card").hover();
   await expect(page.locator("#selected-detail .trait-chips .trait-chip")).toHaveText(["Attack", "Skill", "Trip"]);
 }
 
@@ -89,18 +90,18 @@ test("hovers to peek, clicks to pin, and closes on Escape before the detail bene
   await expect(tooltip(page)).toBeVisible();
   await expect(tooltip(page)).toHaveAttribute("data-pinned", "false");
   await expectInsideViewport(page, tooltip(page));
-  await page.mouse.move(600, 600);
+  await page.locator(".objective-card").hover();
   await expect(tooltip(page)).toBeHidden();
 
   await chip.click();
   await expect(tooltip(page)).toBeVisible();
   await expect(tooltip(page)).toHaveAttribute("data-pinned", "true");
-  await page.mouse.move(600, 600);
+  await page.locator(".objective-card").hover();
   await expect(tooltip(page)).toBeVisible();
   // Pressing the chip was about the chip: the card stays picked and nothing was sent.
   await expect(tripCard(page)).toHaveAttribute("aria-pressed", "true");
   expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([]);
-  await page.mouse.click(600, 600);
+  await page.locator(".objective-card").click();
   await expect(tooltip(page)).toBeHidden();
 
   await holdCard(page, tripCard(page));
@@ -133,7 +134,7 @@ test("reads with the keyboard: focus peeks, Enter pins, a second Enter closes, E
   await page.keyboard.press("Tab");
   // Pinned: leaving the chip keeps it. Only Escape or a press elsewhere lets go.
   await expect(tooltip(page)).toBeVisible();
-  await page.mouse.click(600, 600);
+  await page.locator(".objective-card").click();
   await expect(tooltip(page)).toBeHidden();
 
   // In the inspector, Escape takes the tooltip and nothing else: the card stays picked.

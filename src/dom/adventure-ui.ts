@@ -1,3 +1,4 @@
+import { createCardFace } from "./card-face";
 import { cardLevelSummary } from "./card-level-view";
 import { equipmentTraits } from "../game/rules";
 import { CharacterAdvancementUi } from "./character-advancement-ui";
@@ -256,7 +257,16 @@ export class AdventureUi {
         const assetId = grant.kind === "card"
           ? this.catalog?.cardVisual(grant.definitionId) ?? null
           : this.catalog?.equipmentVisual(grant.definitionId) ?? null;
-        button.prepend(this.icon(assetId, name));
+        if (grant.kind === "card") {
+          const card = this.pack.combatContent.cards[grant.definitionId];
+          button.classList.add("reward-card-choice");
+          button.replaceChildren(createCardFace({
+            catalog: this.catalog, cardId: grant.definitionId, name,
+            timing: card ? this.pack.combatContent.actions[card.actionId]?.timing : undefined,
+          }));
+        } else {
+          button.prepend(this.icon(assetId, name));
+        }
         button.append(
           element("span", "reward-kind", grant.kind),
           element("span", "reward-detail", rewardDetail(grant, this.pack)),
@@ -378,8 +388,17 @@ export class AdventureUi {
     const chips = [
       ...Object.entries(state.collection.equipment).map(([id, count]) =>
         this.chip(this.catalog?.equipmentVisual(id) ?? null, content.equipment[id]?.name ?? id, count, "equipment")),
-      ...Object.entries(state.collection.cards).map(([id, count]) =>
-        this.chip(this.catalog?.cardVisual(id) ?? null, content.cards[id]?.name ?? id, count, "card")),
+      ...Object.entries(state.collection.cards).map(([id, count]) => {
+        const card = content.cards[id];
+        const face = createCardFace({
+          catalog: this.catalog, cardId: id, name: card?.name ?? id,
+          timing: card ? content.actions[card.actionId]?.timing : undefined,
+          badges: count > 1 ? [`×${count}`] : [],
+        });
+        face.classList.add("collection-card");
+        face.dataset.rewardKind = "card";
+        return face;
+      }),
     ];
     const heading = element("strong", undefined, "Collection");
     this.collection.append(heading);

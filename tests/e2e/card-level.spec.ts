@@ -76,6 +76,7 @@ test("Spear Line reward stays locked until level 2, then prepares and executes i
     expect(adventure.phase, `campaign failed at ${adventure.currentEncounterId}`).not.toBe("failed");
     await expect(page.locator("#app")).toHaveAttribute("data-session-revision", String(snapshot.revision));
     const member = adventure.party.members["party.hero-1"]!;
+    let attemptedAction: string = adventure.phase;
     if (adventure.phase === "reward") {
       const offer = adventure.pendingReward!;
       const index = offer.rewardId === "reward.spear-line"
@@ -155,6 +156,7 @@ test("Spear Line reward stays locked until level 2, then prepares and executes i
             command = { ...command, target: { ...command.target, position: destination.position } };
           }
         }
+        attemptedAction = `${combat.scenarioId}/${JSON.stringify(command)}`;
         await test.step(`${combat.scenarioId}/${combat.round}/${command.actorId}/${JSON.stringify(command)}`, () => play(page, combat, command));
         if (grab && target) {
           await expect.poll(() => latest?.revision).toBeGreaterThan(snapshot.revision);
@@ -164,7 +166,7 @@ test("Spear Line reward stays locked until level 2, then prepares and executes i
         }
       }
     } else throw new Error(`Unexpected campaign phase ${adventure.phase}`);
-    if (!used) await expect.poll(() => latest?.revision).toBeGreaterThan(snapshot.revision);
+    if (!used) await expect.poll(() => latest?.revision, { message: `No committed change after ${attemptedAction}` }).toBeGreaterThan(snapshot.revision);
   }
   expect({ checkedLocked, prepared, used }).toEqual({ checkedLocked: true, prepared: true, used: true });
   expect(errors).toEqual([]);

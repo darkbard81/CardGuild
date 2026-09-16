@@ -4,6 +4,7 @@ import { chooseFacing } from "../support/browser/facing-input";
 
 // The same pattern the asset build generates actor paths from, so a request-shape
 // assertion here cannot describe a narrower contract than production supports.
+import cardArtPlan from "../../art/source/card-art-plan.json" with { type: "json" };
 import { ACTOR_RUNTIME_HREF } from "../../src/presentation/actor-asset-path";
 
 /** Mirrors `FOCUS_MARGIN` in src/pixi/battle/BattleView.ts: the gap the camera aims for. */
@@ -201,7 +202,7 @@ async function winRoadAmbush(page: Page): Promise<void> {
 const ATLAS_PATH = "/assets/m3-atlas.webp";
 
 /**
- * Presentation art now comes out of two stores: one atlas for tiles, props and UI, and a
+ * Presentation art uses the shared atlas, standalone DOM cards, and a
  * file per actor standee. Asserting the shape of the split rather than a request count
  * keeps this from breaking every time the roster grows.
  */
@@ -210,10 +211,13 @@ function expectMixedAssetRequests(urls: readonly string[]): void {
   expect(paths).toContain(ATLAS_PATH);
   const standalone = paths.filter((pathname) => pathname !== ATLAS_PATH);
   expect(standalone.length).toBeGreaterThan(0);
-  for (const pathname of standalone) expect(pathname).toMatch(ACTOR_RUNTIME_HREF);
+  const cardPaths = new Set(cardArtPlan.cards.map((card) => `/${card.output.slice("public/".length)}`));
+  for (const pathname of standalone) {
+    if (!cardPaths.has(pathname)) expect(pathname).toMatch(ACTOR_RUNTIME_HREF);
+  }
 }
 
-test("shows the Adventure shell reusing the lobby art, from the atlas and the standalone actors only", async ({ page }) => {
+test("shows the Adventure shell with atlas, standalone actors and full card art", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpRequests: string[] = [];
   page.on("request", (request) => {
@@ -266,7 +270,7 @@ test("equips in one click and fits the minimum loadout viewport", async ({ page 
   await expect(feet).toContainText("Boots of Fly");
   await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
   await page.getByRole("tab", { name: "덱·능력치", exact: true }).click();
-  await expect(page.locator(".deck-contribution")).toHaveCount(6);
+  await expect(page.locator(".deck-contribution")).toHaveCount(4);
   await expect(page.locator(".deck-panel")).toContainText("Halberd · martial expert");
   await expect(page.locator(".deck-panel")).toContainText("1d10+3 slashing");
   for (const tab of ["장비", "준비 카드", "덱·능력치"]) {
@@ -326,7 +330,7 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(braceChoice).toContainText("1 액션");
   await braceChoice.click();
   await expect(page.locator("#app")).toHaveAttribute("data-adventure-phase", "between-encounters");
-  await expect(page.locator("#adventure-collection .collection-chip").filter({ hasText: "Brace Behind Cover" })).toHaveCount(1);
+  await expect(page.locator("#adventure-collection .collection-card").filter({ hasText: "Brace Behind Cover" })).toHaveCount(1);
   // An unworn reward is exactly what Manage Loadout is for, so the screen says so.
   await expect(page.locator(".loadout-nudge")).toContainText("미장착 보상 1개");
   // The next encounter names its threats before the party commits to it.
@@ -554,7 +558,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   // The card face carries a name, a cost and a picture. The words behind it are a press
   // away, which is what a finger has instead of a hover.
   const tripCard = page.locator('#hand-cards .tactical-card[data-action-id="trip"]').first();
-  await expect(tripCard.locator(".card-art")).toBeVisible();
+  await expect(tripCard.locator(".card-face-art")).toBeVisible();
   await expect(page.locator("#card-detail")).toBeHidden();
   const tripBox = await tripCard.boundingBox();
   if (!tripBox) throw new Error("The Trip card has no bounding box.");

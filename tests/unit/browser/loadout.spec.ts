@@ -93,6 +93,35 @@ test("paginates a full grid, remembers pages and resets filters", async ({ page 
   await expect(page.getByRole("tab", { name: "전체", exact: true })).toBeFocused();
 });
 
+test("paginates complete portrait cards without changing equipment pagination", async ({ page }, testInfo) => {
+  await page.evaluate(async () => {
+    const contentPath = "/src/content/production-content.ts";
+    const { PRODUCTION_CONTENT } = await import(contentPath) as typeof import("../../../src/content/production-content");
+    const fixture = window.loadoutFixture;
+    fixture.state = { ...fixture.state, collection: { ...fixture.state.collection,
+      cards: Object.fromEntries(Object.keys(PRODUCTION_CONTENT.pack.combatContent.cards).map((id) => [id, 1])),
+    } };
+    fixture.ui.render(fixture.state, new Set(["hero"]));
+  });
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
+  await expect(page.locator(".loadout-card-items .loadout-card-tile")).toHaveCount(8);
+  await expect(page.locator(".loadout-pagination")).toContainText("1 / 4");
+  for (let index = 0; index < 4; index++) {
+    for (const card of await page.locator(".loadout-card-items .card-face").all()) {
+      const size = await card.boundingBox();
+      expect(size!.width / size!.height).toBeCloseTo(2 / 3, 2);
+    }
+    await expect(page.locator(".loadout-pagination")).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBe(0);
+    if (index < 3) await page.getByRole("button", { name: "다음", exact: true }).click();
+  }
+  await expect(page.locator('[data-option-id="card.vicious-swing"] .card-face')).toHaveAttribute("data-image-state", "ready");
+  await page.screenshot({ path: testInfo.outputPath("loadout-cards.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath("loadout-cards-mobile.png"), fullPage: true });
+});
+
 test("guards pending changes, recovers from rejection and keeps read-only details available", async ({ page }) => {
   const weapon = page.locator('.equipment-slot[data-slot="weapon"]');
   await weapon.click();

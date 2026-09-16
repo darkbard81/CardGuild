@@ -1,3 +1,4 @@
+import { createCardFace, formatActionCost } from "./card-face";
 import { requirementText } from "./card-level-view";
 import {
   SAVE_IDS,
@@ -65,7 +66,7 @@ function element<K extends keyof HTMLElementTagNameMap>(
 }
 
 export function actionCost(action: LegalAction): string {
-  return action.timing.kind === "reaction" ? "↻" : "●".repeat(action.timing.actions);
+  return formatActionCost(action.timing);
 }
 
 function signed(value: number): string {
@@ -92,7 +93,6 @@ const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
 const HERO_PORTRAIT_SIZE = 50;
 
 /** Past this a name needs the smaller type to stay on one line beside its cost. */
-const LONG_CARD_NAME = 12;
 
 /** Long enough not to fire on a tap that means "pick this card". */
 const LONG_PRESS_MS = 380;
@@ -457,21 +457,10 @@ export class BattleUi {
     if (selected?.source.id === action.source.id) button.classList.add("selected");
     button.title = [action.cardRequirement && requirementText(action.cardRequirement), action.reason ?? action.description].filter(Boolean).join(" · ");
 
-    const title = element("span", action.name.length > LONG_CARD_NAME ? "card-title long" : "card-title");
-    title.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
-    const visual = card ? this.catalog.cardVisual(card.definitionId) : null;
-    const art = element("span", visual ? "card-art" : "card-art missing");
-    art.setAttribute("aria-hidden", "true");
-    if (visual) {
-      const image = element("span", "card-art-image");
-      // Percentage-placed, so the picture takes whatever room the frame has.
-      Object.assign(image.style, this.catalog.domFillStyle(visual));
-      art.append(image);
-    } else {
-      art.textContent = action.name.slice(0, 1);
-    }
-    button.append(title, art);
-    if (action.cardRequirement) button.append(element("span", "card-level", `Lv. ${action.cardRequirement.requiredLevel}`));
+    button.append(createCardFace({
+      catalog: this.catalog, cardId: card?.definitionId, name: action.name, timing: action.timing,
+      badges: action.cardRequirement ? [`Lv. ${action.cardRequirement.requiredLevel}`] : [],
+    }));
     button.addEventListener("click", () => {
       // The press that opened the detail is not the press that plays the card.
       if (this.longPressFired) {

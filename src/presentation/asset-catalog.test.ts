@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
+import cardArtPlan from "../../art/source/card-art-plan.json";
 import atlasMapJson from "../../presentation/m3/atlas-map.json";
+import { PRODUCTION_CONTENT } from "../content/production-content";
 import { ACTOR_RUNTIME_HREF, ACTOR_SIDES, runtimeActorHref } from "./actor-asset-path";
 import { createPresentationCatalog } from "./asset-catalog";
 import { facingStandee } from "./presentation-types";
@@ -10,10 +12,11 @@ const catalog = createPresentationCatalog();
 const atlasFrames = (atlasMapJson as unknown as PresentationAtlasMap).frames;
 const entries = Object.entries(catalog.manifest.assets);
 const actorIds = entries.filter(([, asset]) => asset.kind === "actor").map(([id]) => id);
-const otherIds = entries.filter(([, asset]) => asset.kind !== "actor").map(([id]) => id);
+const otherIds = entries.filter(([, asset]) => asset.source.type === "atlas").map(([id]) => id);
+const cardIds = cardArtPlan.cards.map((card) => card.assetId);
 
 describe("presentation asset storage", () => {
-  it("keeps every tile, prop and UI asset in the shared atlas", () => {
+  it("keeps tiles, props and equipment in the shared atlas", () => {
     expect(otherIds.length).toBeGreaterThan(0);
     for (const id of otherIds) {
       const source = catalog.asset(id).source;
@@ -44,11 +47,26 @@ describe("presentation asset storage", () => {
     }
   });
 
-  it("partitions the manifest into exactly the atlas frames plus the standalone actors", () => {
+  it("partitions the manifest into exactly the atlas frames plus the standalone actors and commissioned cards", () => {
     // The invariant the old checker got from `manifest IDs == atlas frame IDs`, restated
     // now that one logical namespace spans two stores.
     expect(Object.keys(atlasFrames).sort()).toEqual([...otherIds].sort());
-    for (const id of actorIds) expect(atlasFrames[id]).toBeUndefined();
+    for (const id of [...actorIds, ...cardIds]) expect(atlasFrames[id]).toBeUndefined();
+  });
+
+  it("delivers every production card as a DOM-only WebP", () => {
+    const productionIds = Object.keys(PRODUCTION_CONTENT.pack.combatContent.cards).sort();
+    expect(cardArtPlan.cards.map((card) => card.cardId).sort()).toEqual(productionIds);
+    expect(Object.keys(catalog.manifest.cardVisuals).sort()).toEqual(productionIds);
+    for (const card of cardArtPlan.cards) {
+      expect(catalog.cardVisual(card.cardId)).toBe(card.assetId);
+      expect(catalog.asset(card.assetId).source).toEqual({
+        type: "image", path: `/${card.output.slice("public/".length)}`, width: 512, height: 768,
+      });
+    }
+    const bundle = catalog.encounterImageAssets();
+    expect(bundle.map((asset) => asset.alias).sort()).toEqual([...actorIds].sort());
+    expect(bundle.some((asset) => cardIds.includes(asset.alias))).toBe(false);
   });
 
   it("still paints tilemaps out of assets the atlas actually holds", () => {
@@ -123,19 +141,19 @@ describe("DOM styles read whichever store an asset lives in", () => {
   });
 
   it("still places an atlas-backed asset out of the shared sheet", () => {
-    const cardId = catalog.cardVisual("card.trip");
-    if (!cardId) throw new Error("card.trip should have a visual.");
-    const frame = atlasFrames[cardId]?.frame;
-    if (!frame) throw new Error(`${cardId} should be an atlas frame.`);
+    const assetId = Object.values(catalog.manifest.equipmentVisuals)[0];
+    if (!assetId) throw new Error("Equipment should retain an atlas-backed visual.");
+    const frame = atlasFrames[assetId]?.frame;
+    if (!frame) throw new Error(`${assetId} should be an atlas frame.`);
     const atlas = catalog.manifest.atlas;
-    expect(catalog.domAssetStyle(cardId, 48)).toEqual({
+    expect(catalog.domAssetStyle(assetId, 48)).toEqual({
       backgroundImage: `url("${atlas.imagePath}")`,
       backgroundPosition: `${-frame.x * (48 / frame.w)}px ${-frame.y * (48 / frame.h)}px`,
       backgroundSize: `${atlas.width * (48 / frame.w)}px ${atlas.height * (48 / frame.h)}px`,
       width: "48px",
       height: "48px",
     });
-    expect(catalog.domFillStyle(cardId).backgroundImage).toBe(`url("${atlas.imagePath}")`);
+    expect(catalog.domFillStyle(assetId).backgroundImage).toBe(`url("${atlas.imagePath}")`);
   });
 
   it("refuses a size that would divide by nothing", () => {

@@ -1,3 +1,4 @@
+import { createCardFace } from "./card-face";
 import type { AdventureState } from "../adventure";
 import { resolveEffectiveCharacterStatProfile } from "../adventure/progression";
 import type { CompiledContentPack } from "../content";
@@ -65,6 +66,7 @@ type PageTab = "equipment" | "cards" | "deck";
 interface ViewState { tab: PageTab; filter: EquipmentSlotId | "all"; pages: Record<PageTab, number> }
 interface Tile {
   id: string; label: string; asset: string | null; badge: string; description: string;
+  cardId?: string; isCard?: boolean;
   candidate?: PartyMemberLoadout; action?: () => void; className?: string; slot?: string;
 }
 
@@ -147,7 +149,7 @@ export class LoadoutUi {
       for (let index = 0; index < actor.loadoutProfile.preparedCardCapacity; index++) {
         const id = member.loadout.preparedCards[index];
         const cards = [...member.loadout.preparedCards]; cards.splice(index, 1);
-        slots.append(this.tile({ id: `prepared-${index}`, label: id ? this.pack.combatContent.cards[id]?.name ?? id : "Empty", asset: id ? this.catalog.cardVisual(id) : null,
+        slots.append(this.tile({ id: `prepared-${index}`, cardId: id, isCard: true, label: id ? this.pack.combatContent.cards[id]?.name ?? id : "Empty", asset: id ? this.catalog.cardVisual(id) : null,
           badge: id ? "−" : "+", description: id ? this.cardDescription(id) : "보유 카드를 클릭하여 준비합니다.",
           candidate: id ? { ...cloneLoadout(member.loadout), preparedCards: cards } : undefined, className: id ? "prepared-card" : "prepared-empty" }));
       }
@@ -183,7 +185,7 @@ export class LoadoutUi {
       panel.append(element("h2", undefined, "보유 카드"));
       for (const [id, owned] of Object.entries(state.collection.cards).sort(([a], [b]) => a.localeCompare(b))) {
         const used = members.reduce((sum, m) => sum + m.loadout.preparedCards.filter((value) => value === id).length, 0);
-        items.push({ id, label: this.pack.combatContent.cards[id]?.name ?? id, asset: this.catalog.cardVisual(id), badge: `×${owned - used}`,
+        items.push({ id, cardId: id, isCard: true, label: this.pack.combatContent.cards[id]?.name ?? id, asset: this.catalog.cardVisual(id), badge: `×${owned - used}`,
           description: `${this.cardDescription(id)}\n보유 ${owned} · 사용 가능 ${owned - used}`, candidate: { ...cloneLoadout(member.loadout), preparedCards: [...member.loadout.preparedCards, id] } });
       }
     } else {
@@ -194,13 +196,13 @@ export class LoadoutUi {
         entry.count += contribution.count; entry.sources.push(`${sourceLabel(contribution.source, this.pack)} ×${contribution.count}`);
         grouped.set(contribution.cardDefinitionId, entry);
       }
-      for (const [id, entry] of grouped) items.push({ id, label: this.pack.combatContent.cards[id]?.name ?? id, asset: this.catalog.cardVisual(id), badge: `×${entry.count}`,
+      for (const [id, entry] of grouped) items.push({ id, cardId: id, isCard: true, label: this.pack.combatContent.cards[id]?.name ?? id, asset: this.catalog.cardVisual(id), badge: `×${entry.count}`,
         description: `${this.cardDescription(id)}\n${entry.sources.join("\n")}`, className: "deck-contribution" });
     }
-    const pageSize = view.tab === "deck" ? 12 : 24;
+    const pageSize = view.tab === "equipment" ? 24 : view.tab === "cards" ? 8 : 4;
     const pages = Math.max(1, Math.ceil(items.length / pageSize));
     view.pages[view.tab] = Math.min(view.pages[view.tab], pages - 1);
-    const grid = element("div", "loadout-items");
+    const grid = element("div", view.tab === "equipment" ? "loadout-items" : "loadout-items loadout-card-items");
     for (const item of items.slice(view.pages[view.tab] * pageSize, (view.pages[view.tab] + 1) * pageSize)) grid.append(this.tile(item));
     if (!items.length) grid.append(element("p", "loadout-empty", "보유 항목이 없습니다."));
     panel.append(grid);
@@ -291,9 +293,23 @@ export class LoadoutUi {
     button.setAttribute("aria-disabled", String(unavailable));
     const verb = tile.candidate ? (tile.className === "equipment-slot" || tile.className === "prepared-card" ? "해제" : "장착") : "상세 보기";
     button.setAttribute("aria-label", `${tile.label} · ${tile.badge} · ${verb}`);
-    const icon = element("span", "loadout-icon"); icon.setAttribute("aria-hidden", "true");
-    if (tile.asset) Object.assign(icon.style, this.catalog.domAssetStyle(tile.asset, 52)); else { icon.classList.add("missing"); icon.textContent = "+"; }
-    button.append(icon, element("span", "loadout-badge", unavailable ? `⊘ ${tile.badge}` : tile.badge), element("span", "sr-only", tile.label));
+    if (tile.isCard) {
+      button.classList.add("loadout-card-tile");
+      const definition = tile.cardId ? this.pack.combatContent.cards[tile.cardId] : undefined;
+      const action = definition ? this.pack.combatContent.actions[definition.actionId] : undefined;
+      if (action) {
+        const costLabel = action.timing.kind === "reaction" ? "Reaction" : `${action.timing.actions} actions`;
+        button.setAttribute("aria-label", `${tile.label} · ${costLabel} · ${tile.badge} · ${verb}`);
+      }
+      button.append(createCardFace({
+        catalog: this.catalog, cardId: tile.cardId, name: tile.label, timing: action?.timing,
+        badges: [unavailable ? `⊘ ${tile.badge}` : tile.badge],
+      }));
+    } else {
+      const icon = element("span", "loadout-icon"); icon.setAttribute("aria-hidden", "true");
+      if (tile.asset) Object.assign(icon.style, this.catalog.domAssetStyle(tile.asset, 52)); else { icon.classList.add("missing"); icon.textContent = "+"; }
+      button.append(icon, element("span", "loadout-badge", unavailable ? `⊘ ${tile.badge}` : tile.badge), element("span", "sr-only", tile.label));
+    }
     let hoverTimer: ReturnType<typeof setTimeout> | undefined;
     const clear = (): void => { clearTimeout(hoverTimer); hoverTimer = undefined; };
     const show = (): void => this.showTooltip(button, tile, preview);
