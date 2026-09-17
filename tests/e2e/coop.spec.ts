@@ -64,6 +64,7 @@ async function expectConvergence(pages: readonly Page[]): Promise<void> {
   await expect.poll(async () => {
     const values = await Promise.all(pages.map(async (page) => ({
       revision: await page.locator("#app").getAttribute("data-session-revision"),
+      controlRevision: await page.locator("#app").getAttribute("data-control-revision"),
       hash: await page.locator("#app").getAttribute("data-session-hash"),
       stateHash: await page.locator("#app").getAttribute("data-state-hash"),
       screen: await page.locator("#app").getAttribute("data-screen"),
@@ -72,7 +73,8 @@ async function expectConvergence(pages: readonly Page[]): Promise<void> {
       new Set(values.map((value) => value.revision + ":" + value.hash)).size === 1;
     const combatConverged = !values.every((value) => value.screen === "combat") ||
       (values.every((value) => value.stateHash) && new Set(values.map((value) => value.stateHash)).size === 1);
-    return sessionConverged && combatConverged;
+    return sessionConverged && combatConverged && values.every(value => value.controlRevision) &&
+      new Set(values.map(value => value.controlRevision)).size === 1;
   }, { timeout: 20_000 }).toBe(true);
 }
 
@@ -269,6 +271,11 @@ test("2P guest disconnect transfers the live character to host and reconnect res
       (await guest.page.locator("#reaction-pass").isVisible() && await guest.page.locator("#reaction-pass").isEnabled()),
     ).toBe(true);
 
+    if (await guest.page.locator("#end-turn").isEnabled()) {
+      await expect(host.page.locator("#combat-status")).toHaveText("Guest B의 턴");
+      await expect(guest.page.locator("#combat-status")).toHaveText("내 턴");
+      await expect(host.page.locator("#hero-heading")).toHaveText(await guest.page.locator("#hero-heading").innerText());
+    }
     const gameplayRevision = await host.page.locator("#app").getAttribute("data-session-revision");
     const gameplayHash = await host.page.locator("#app").getAttribute("data-session-hash");
     const controlRevision = Number(await host.page.locator("#app").getAttribute("data-control-revision"));
@@ -312,8 +319,12 @@ test("3P guests choose distinct remaining characters and only their effective ac
     await applyThreeCharacterParty(host.page);
     await joinGuest(guestB, sessionId);
     await joinGuest(guestC, sessionId);
+    await expectConvergence(pages);
     await guestB.page.locator('.guest-character-choice[data-member-id="party.hero-2"]').click();
+    await expect(guestB.page.locator('.guest-character-choice[data-member-id="party.hero-2"]')).toHaveAttribute("data-claim-state", "mine");
+    await expectConvergence(pages);
     await guestC.page.locator('.guest-character-choice[data-member-id="party.hero-3"]').click();
+    await expect(guestC.page.locator('.guest-character-choice[data-member-id="party.hero-3"]')).toHaveAttribute("data-claim-state", "mine");
     await expect(host.page.locator("#begin-adventure")).toBeEnabled();
     expect(await guestC.page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
@@ -346,6 +357,10 @@ test("3P guests choose distinct remaining characters and only their effective ac
       await expectConvergence(pages);
     }
 
+    // Equal intermediate snapshots can still be followed by automatic enemy commands.
+    // Reconnect only after the next player boundary, so the expected hash is settled.
+    await waitForAnyActionable(pages);
+    await expectConvergence(pages);
     const guestCHash = await guestC.page.locator("#app").getAttribute("data-session-hash");
     await guestC.page.reload();
     await expect(guestC.page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 });

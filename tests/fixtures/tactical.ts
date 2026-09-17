@@ -20,6 +20,7 @@ export interface TacticalFixture {
   addImmediateCard: () => void;
   setCardLevel: (id: string, level: number) => void;
   setActions: (remaining: number) => void;
+  connection: (status: string) => void;
   nudgeHp: (hp: number) => void;
   placeHero: (x: number, y: number) => { width: number; height: number };
   setPenalty: (value: number) => void;
@@ -55,6 +56,7 @@ async function start() {
   const opened = createCombat(combat, 34).state;
   const fixture: TacticalFixture = {
     state: opened, events: [], intents: [], rejectNext: false, rejectAfterSend: false,
+    connection: status => controller?.setConnectionStatus(status),
     setCardLevel(id, level) {
       content.cards[id] = { ...content.cards[id]!, level };
       controller?.update(fixture.state, [], true);

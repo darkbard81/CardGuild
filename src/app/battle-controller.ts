@@ -1,3 +1,4 @@
+import type { LoadoutPartyMember } from "../loadout";
 import { isRingAction } from "../game/capabilities";
 import {
   hashCombatState,
@@ -48,12 +49,20 @@ interface PacedUpdate {
   readonly controlledActorIds: ReadonlySet<string>;
 }
 
+export interface CombatSessionPresentation {
+  readonly connection: string;
+  readonly controllerNames: Readonly<Record<string, string>>;
+  readonly members: readonly LoadoutPartyMember[];
+}
+
 export interface BattleControllerOptions {
+  readonly trackRequests?: boolean;
+  readonly session?: CombatSessionPresentation;
   readonly definition: CombatDefinition;
   readonly state: CombatState;
   readonly history: readonly CombatEvent[];
   readonly controlledActorIds: ReadonlySet<string>;
-  readonly onIntent: (intent: SessionIntent) => boolean;
+  readonly onIntent: (intent: SessionIntent, settled?: (accepted: boolean) => void) => boolean;
 }
 
 function samePosition(left: GridPosition, right: GridPosition): boolean {
@@ -94,8 +103,13 @@ export class BattleController {
   private readonly definition: CombatDefinition;
   private controlledActorIds: ReadonlySet<string>;
   private presentedActorId: string;
-  private readonly onIntent: (intent: SessionIntent) => boolean;
+  private readonly onIntent: (intent: SessionIntent, settled?: (accepted: boolean) => void) => boolean;
   private state: CombatState;
+  private session: CombatSessionPresentation = { connection: "connected", controllerNames: {}, members: [] };
+  private requestPending = false;
+  private destroyed = false;
+  private rejection: string | null = null;
+  private readonly trackRequests: boolean;
   private history: CombatEvent[];
   private interaction: Interaction = IDLE_INTERACTION;
   /** Pure preview state: it changes what the inspector shows, never what a click does. */
@@ -114,6 +128,7 @@ export class BattleController {
   private ringAnchor: ScreenPoint = { x: 0, y: 0 };
   private ringTitle = "";
   private readonly keyHandler = (event: KeyboardEvent): void => {
+    if (event.defaultPrevented || (event.target instanceof Element && event.target.id !== "end-turn" && event.target.closest(".hud-side, .hand-dock"))) return;
     if (this.interaction.kind === "direction") {
       // The keyboard names the direction outright; the board names the place to look at.
       const direction = ({ ArrowUp: "north", ArrowRight: "east", ArrowDown: "south", ArrowLeft: "west" } as const)[event.key as "ArrowUp"];
@@ -129,6 +144,8 @@ export class BattleController {
 
   public constructor(app: Application, catalog: AssetCatalog, options: BattleControllerOptions) {
     this.definition = options.definition;
+    this.trackRequests = options.trackRequests ?? false;
+    this.session = options.session ?? this.session;
     this.controlledActorIds = new Set(options.controlledActorIds);
     this.presentedActorId = [...this.controlledActorIds][0] ?? options.state.turn.activeActorId;
     this.onIntent = options.onIntent;
@@ -153,6 +170,14 @@ export class BattleController {
       onUseReaction: () => this.resolveReaction(true),
       onPassReaction: () => this.resolveReaction(false),
       onRestart: () => this.restart(),
+      onEscape: () => {
+        if (this.interaction.kind === "direction") {
+          if (this.interaction.purpose === "step-turn") { this.cancelDirection(); return true; }
+          return false;
+        }
+        if (this.interaction.kind !== "idle") { this.goIdle(); this.prompt = PROMPT_IDLE; this.render(); return true; }
+        return false;
+      },
     });
     this.ring = new RingMenu(this.requireElement<HTMLElement>("#ring-root"), {
       onSelect: (optionId) => this.handleRingSelect(optionId),
@@ -161,7 +186,7 @@ export class BattleController {
     }, {
       // The inspector describes the option under the finger; its Trait chips stay readable
       // while the ring is up instead of closing it.
-      passthrough: "#selected-detail .trait-chip",
+      passthrough: ".hud-side button, .hud-side summary, .hand-dock .ui-button",
     });
     this.refreshMoveBands();
     window.addEventListener("keydown", this.keyHandler);
@@ -282,7 +307,7 @@ export class BattleController {
 
   private render(events: readonly CombatEvent[] = []): void {
     const stateHash = hashCombatState(this.state);
-    const canControl = Boolean(this.activeHeroId()) && !this.state.pendingReaction && !this.state.outcome;
+    const canControl = !this.inputBlocked() && Boolean(this.activeHeroId()) && !this.state.pendingReaction && !this.state.outcome;
     const app = this.requireElement<HTMLElement>("#app");
     app.dataset.viewerMemberId = this.presentedActorId;
     app.dataset.controlledActorIds = [...this.controlledActorIds].sort().join(",");
@@ -296,6 +321,9 @@ export class BattleController {
       stateHash,
       controlledActorId: this.presentedActorId,
       canControl,
+      inputBlocked: this.inputBlocked(),
+      interactionActive: this.interaction.kind !== "idle",
+      status: this.statusText(), members: this.session.members,
     });
     this.renderDetail();
   }
@@ -368,7 +396,7 @@ export class BattleController {
 
   /** A board target was picked: resolve it against the selected card, or open the ring menu. */
   private handlePick(pick: BoardPick, screen: ScreenPoint): void {
-    if (!this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
+    if (this.inputBlocked() || !this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
     const interaction = this.interaction;
     // A board pick in direction mode is an aim, and the view has already routed it there.
     if (interaction.kind === "direction") return;
@@ -466,7 +494,7 @@ export class BattleController {
 
   /** Card-first path: select a card, then pick one of its highlighted board targets. */
   private handleCard(action: LegalAction): void {
-    if (!action.enabled || !this.activeHeroId() || this.state.pendingReaction) return;
+    if (this.inputBlocked() || !action.enabled || !this.activeHeroId() || this.state.pendingReaction) return;
     // The board is mid-question. Answering it, or cancelling a Step's, comes first.
     if (this.interaction.kind === "direction") return;
     const current = this.interaction;
@@ -586,7 +614,7 @@ export class BattleController {
   }
 
   public reportError(message: string): void {
-    if (!this.pendingFacing) return;
+    this.rejection = message;
     this.restoreDirection();
     this.prompt = message;
     this.render();
@@ -604,7 +632,7 @@ export class BattleController {
   /** Opens the direction mode without drawing it, so a caller can batch the render. */
   private beginEndTurnDirection(prompt: string): boolean {
     const actorId = this.activeHeroId();
-    if (!actorId || this.state.pendingReaction || this.state.outcome || this.interaction.kind === "direction") return false;
+    if (this.inputBlocked() || !actorId || this.state.pendingReaction || this.state.outcome || this.interaction.kind === "direction") return false;
     const actor = this.state.actors[actorId];
     if (!actor) return false;
     this.directionReturn = { interaction: this.interaction, prompt: this.prompt };
@@ -653,7 +681,17 @@ export class BattleController {
 
   /** Reports whether the intent was taken, so a caller can retry on the next snapshot. */
   private sendIntent(intent: SessionIntent): boolean {
-    if (!this.onIntent(intent)) {
+    if (this.inputBlocked()) return false;
+    this.rejection = null;
+    this.requestPending = this.trackRequests;
+    if (!this.onIntent(intent, accepted => {
+      if (this.destroyed) return;
+      this.requestPending = false;
+      if (!accepted) { this.rejection = "요청이 거절되었습니다. 현재 상태를 확인하세요."; this.restoreDirection(); }
+      else this.offerSpentTurnDirection();
+      this.render();
+    })) {
+      this.requestPending = false;
       this.prompt = "서버 응답을 기다리는 중입니다.";
       this.render();
       return false;
@@ -662,6 +700,20 @@ export class BattleController {
     this.prompt = "서버가 행동을 판정하는 중입니다.";
     this.render();
     return true;
+  }
+
+  public setSessionPresentation(session: CombatSessionPresentation): void { this.session = session; this.render(); }
+  public setConnectionStatus(connection: string): void { if (connection === "connected" && this.session.connection !== "connected") this.rejection = null; this.session = { ...this.session, connection }; this.render(); }
+  private inputBlocked(): boolean { return this.requestPending || this.session.connection !== "connected"; }
+  private statusText(): string {
+    if (this.session.connection !== "connected") return "서버 재연결 중 · 입력 대기";
+    if (this.requestPending) return "요청 처리 중";
+    if (this.rejection) return this.rejection;
+    if (this.state.pendingReaction) return "반응 선택 대기 중";
+    const actor = this.state.actors[this.state.turn.activeActorId];
+    if (actor?.team === "enemies") return "적 행동 처리 중";
+    if (this.activeHeroId()) return "내 턴";
+    return `${this.session.controllerNames[this.state.turn.activeActorId] ?? actor?.name ?? "다른 플레이어"}의 턴`;
   }
 
   private restart(): void {
@@ -733,6 +785,7 @@ export class BattleController {
   }
 
   public destroy(): void {
+    this.destroyed = true;
     this.pacedUpdates.length = 0;
     window.removeEventListener("keydown", this.keyHandler);
     this.ring.destroy();

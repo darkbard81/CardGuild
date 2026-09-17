@@ -335,6 +335,7 @@ export class AdventureController {
       onStatus: (status) => {
         this.root.dataset.sessionStatus = status;
         this.loadoutUi.setConnectionStatus(status);
+        this.battle?.setConnectionStatus(status);
         if (status !== "connected") {
           this.ui.reportError(`Session ${status}…`);
           this.battle?.reportError(`Session ${status}…`);
@@ -466,6 +467,11 @@ export class AdventureController {
     const staticScenario = PRODUCTION_CONTENT.pack.scenarios[combat.scenarioId];
     if (!staticScenario) throw new Error(`Scenario "${combat.scenarioId}" is missing.`);
     const events = combatEvents(snapshot.events);
+    const session = { connection: this.root.dataset.sessionStatus ?? "connected",
+      members: Object.values(snapshot.state.adventure?.party.members ?? {}),
+      controllerNames: Object.fromEntries(Object.entries(snapshot.control.effectiveControllerByMemberId).map(([memberId, playerId]) => [memberId,
+        snapshot.state.seats.find(seat => seat.playerId === playerId)?.displayName ?? "호스트"])),
+    };
     if (!this.battle) {
       this.battle = new BattleController(this.app, this.catalog, {
         definition: {
@@ -480,9 +486,11 @@ export class AdventureController {
         state: combat,
         history: events,
         controlledActorIds: this.controlledMemberIds(snapshot, viewer.playerId),
-        onIntent: (intent) => this.sendIntent(intent),
+        trackRequests: true, session,
+        onIntent: (intent, settled) => this.client?.sendIntent(intent, settled) ?? false,
       });
     } else {
+      this.battle.setSessionPresentation(session);
       this.battle.update(
         combat,
         events,

@@ -176,6 +176,7 @@ test.describe("touch tactical feedback", () => {
     await canvas.tap({ position: await boardPoint(page, 1.5, 0.5) });
     expect(await page.evaluate(() => window.tacticalFixture.intents)).toEqual([{ type: "end-turn", facing: "north" }]);
     await page.evaluate(() => { window.tacticalFixture.reset("both"); window.tacticalFixture.addStrikeCard(); });
+    await page.locator("#hand-toggle").tap();
     await page.locator('#hand-cards [data-action-id="strike"]').tap();
     await canvas.tap({ position: await boardPoint(page, 2.5, 1.5) });
     await expect.poll(() => page.evaluate(() => window.tacticalFixture.intents.length)).toBe(1);

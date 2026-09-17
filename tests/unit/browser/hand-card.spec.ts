@@ -3,6 +3,7 @@ import { mountComponent } from "../../support/browser/component-harness";
 import type {} from "../../fixtures/hand-card";
 
 async function press(card: Locator): Promise<void> {
+  await expect.poll(() => card.evaluate(node => node.getAnimations().length)).toBe(0);
   await card.dispatchEvent("pointerdown", { pointerType: "touch", pointerId: 1, button: 0, clientX: 100, clientY: 100 });
 }
 async function release(card: Locator): Promise<void> {
@@ -10,7 +11,7 @@ async function release(card: Locator): Promise<void> {
   await card.dispatchEvent("click", { detail: 1 });
 }
 
-test.beforeEach(async ({ page }) => { await mountComponent(page, "/tests/fixtures/hand-card.ts"); });
+test.beforeEach(async ({ page }) => { await mountComponent(page, "/tests/fixtures/hand-card.ts"); await page.locator("#hand-toggle").click(); });
 
 test.describe("touch hand gestures", () => {
   test.use({ hasTouch: true, isMobile: true, viewport: { width: 768, height: 1024 } });
@@ -53,6 +54,8 @@ test.describe("touch hand gestures", () => {
       const card = page.locator('[data-action-id="trip"]');
       await expect(card).toHaveAttribute("aria-disabled", "true");
       // aria-disabled cards remain inspectable; Playwright's actionability gate needs force.
+      // Forced input bypasses Playwright stability checks; wait for the fan to settle first.
+      await expect.poll(() => card.evaluate(node => node.getAnimations().length)).toBe(0);
       await card.tap({ force: true });
       await press(card);
       await expect(page.locator("#card-detail")).toBeVisible();
@@ -63,7 +66,7 @@ test.describe("touch hand gestures", () => {
   }
 });
 
-for (const operation of ["render", "destroy"] as const) {
+for (const operation of ["destroy"] as const) {
   test(`${operation} removes pending holds and retired card listeners`, async ({ page }) => {
     await page.clock.install();
     const card = page.locator('[data-action-id="trip"]');

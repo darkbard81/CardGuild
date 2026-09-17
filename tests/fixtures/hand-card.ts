@@ -27,6 +27,11 @@ const ui = new BattleUi(content, definition.scenario, createPresentationCatalog(
 const render = () => ui.render(state, [], { selectedAction: null, moveBands: [], prompt: "Choose a card",
   stateHash: "fixture", controlledActorId: "hero", canControl: true });
 const fixture = {
+  setCount: (count: number) => {
+    state = { ...state, cardZones: { ...state.cardZones, hero: { ...state.cardZones.hero!, hand: Array.from({ length: count }, (_, index) => ({ id: `hand-${index}`, definitionId: "card.trip", source: { kind: "prepared" as const, memberId: "hero" } })) } } };
+    render();
+  },
+  setActive: (actorId: string) => { state = { ...state, turn: { ...state.turn, activeActorId: actorId } }; render(); },
   selections, previews, render, hide: () => ui.hideCardDetail(), destroy: () => ui.destroy(),
   lock: () => { content.cards["card.trip"] = { ...content.cards["card.trip"]!, level: 2 }; render(); },
   disable: () => { state = { ...state, turn: { ...state.turn, actionsRemaining: 0 } }; render(); },

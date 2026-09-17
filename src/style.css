@@ -2205,3 +2205,82 @@
   .adventure-party .adventure-action { min-width: 0; padding: 0.6rem 0.8rem; font-size: 0.85rem; }
   .adventure-secondary .collection-chips { max-height: 15rem; overflow-y: auto; }
 }
+
+/* Combat HUD: right sheet and a transient hand over a stable board viewport. */
+@layer screens {
+  .combat-hud {
+    --combat-detail-width: 320px;
+    grid-template-areas: "status side" ". side" "prompt side" "hand side";
+    grid-template-columns: minmax(0, 1fr) var(--combat-detail-width);
+    grid-template-rows: auto minmax(0, 1fr) auto 88px;
+  }
+  .combat-hud .hud-status { flex-wrap: wrap; justify-content: start; }
+  .combat-hud .objective-card { flex: 1; max-width: none; }
+  .combat-hud .initiative-card { max-width: 100%; }
+  .combat-hud .initiative-list { overflow-x: auto; }
+  .ui-button--initiative { padding: 2px; display: grid; place-items: center; min-width: 44px; min-height: 44px; }
+  .combat-hud .hud-side { display: grid; grid-template-rows: auto minmax(0, 1fr) auto auto; align-content: stretch; overflow: hidden; }
+  .combat-hud .inspector { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .ui-combat-inspect-controls { display: flex; gap: var(--ui-space-2); }
+  .ui-combat-inspect-controls select { width: 0; min-width: 0; flex: 1; }
+  .ui-combat-inspect-controls .ui-button { font-size: 0.72rem; padding: 4px 8px; }
+  #character-panel { display: flex; flex: 1; min-height: 0; }
+  .ui-character-detail[data-layout="panel"] { padding: 0; width: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden; font-size: 0.78rem; }
+  .ui-character-detail[data-layout="panel"] > h2 { font-size: 1rem; margin: 4px 0 8px; }
+  .ui-character-detail[data-layout="panel"] .ui-character-detail__tabs { gap: 3px; flex-shrink: 0; }
+  .ui-character-detail[data-layout="panel"] [role="tab"] { flex: 1; font-size: 0.65rem; padding: 4px; }
+  .ui-character-detail [role="tab"][aria-selected="true"] { border-color: var(--ui-color-accent-bright); background: var(--ui-surface-selected); }
+  .ui-character-detail[data-layout="panel"] .ui-character-detail__body { overflow: auto; min-height: 0; flex: 1; overscroll-behavior: contain; touch-action: pan-y; }
+  .ui-character-detail-dialog { width: min(30rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); overflow: auto; padding: var(--ui-space-4); }
+  .ui-character-detail-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+  .ui-character-detail-dialog .ui-character-detail { width: 100%; padding: 0; max-height: none; }
+  .ui-character-detail-dialog > button { float: right; }
+  #combat-status { font-size: 0.75rem; color: var(--ui-color-accent-bright); margin: 6px 0; }
+  .ui-combat-summary .hero-id { margin: 0; }
+  .ui-combat-summary .condition-line { margin: 4px 0 0; }
+  .combat-hud .log-panel { min-height: 0; }
+  .combat-hud .log-panel > summary { cursor: pointer; min-height: 32px; display: flex; align-items: center; }
+  .combat-hud .combat-log { max-height: 160px; overflow: auto; touch-action: pan-y; }
+  .combat-hud .hand-side { padding: 8px; }
+  .combat-hud .hand-dock { display: block; position: relative; height: 88px; overflow: visible; }
+  .combat-hud .hand-cards { position: absolute; inset: 0; display: block; padding: 0; overflow: visible; pointer-events: none; }
+  .combat-hud .ui-hand-controls { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; z-index: 30; white-space: nowrap; pointer-events: none; }
+  .ui-hand-controls .ui-button { pointer-events: auto; min-height: 44px; font-size: 0.72rem; padding: 4px 10px; }
+  #hand-page { font-size: 0.7rem; padding: 3px; background: var(--ui-card-surface); }
+  .combat-hud .ui-hand-card {
+    position: absolute; left: calc(50% - 60px); top: 12px; width: 120px; height: 180px; pointer-events: auto;
+    transform-origin: 50% 100%; z-index: calc(1 + var(--hand-order));
+    transform: translate(var(--hand-x), var(--hand-y)) rotate(var(--hand-angle));
+    transition: transform 180ms ease; touch-action: none;
+  }
+  .combat-hud .hand-dock[data-expanded="true"] .ui-hand-card { transform: translate(var(--hand-x), calc(var(--hand-y) - 146px)) rotate(var(--hand-angle)); }
+  .combat-hud .hand-dock[data-expanded="true"] .ui-hand-card:is(:hover, :focus-visible) { transform: translate(var(--hand-x), -164px) rotate(0deg); z-index: 20; }
+  .combat-hud .ui-hand-card.selected { outline: 2px solid var(--ui-color-accent-bright); }
+  .combat-hud .board-prompt-dock { flex-wrap: wrap; justify-content: center; z-index: 31; }
+  .combat-hud .board-prompt { max-width: 100%; }
+  @media (min-width: 1400px) { .combat-hud { --combat-detail-width: 360px; } }
+  @media (max-width: 760px) {
+    .combat-hud { --combat-detail-width: min(44vw, 320px); gap: 4px; padding: 4px; }
+    .combat-hud .hud-card { padding: 6px; }
+    .combat-hud .objective-card { display: none; }
+    .ui-combat-inspect-controls { flex-wrap: wrap; }
+    .ui-combat-inspect-controls select { flex-basis: 100%; }
+    .ui-character-detail[data-layout="panel"] .ui-character-detail__tabs { flex-wrap: wrap; }
+    .ui-character-detail[data-layout="panel"] .ui-character-detail__core { grid-template-columns: 1fr; }
+  }
+  @media (prefers-reduced-motion: reduce) { .combat-hud .ui-hand-card { transition: none; } }
+}
+@layer screens {
+  .ui-combat-inspect-controls select { color: var(--ui-color-text); background: var(--ui-surface-input); border: 1px solid var(--ui-border-control); border-radius: var(--ui-radius-control); min-height: var(--ui-control-min-height); }
+}
+
+@layer screens {
+  .combat-stage { --combat-detail-width: 320px; }
+  .combat-stage .ring-root { right: calc(var(--combat-detail-width) + 2 * var(--hud-gap)); }
+  @media (min-width: 1400px) { .combat-stage { --combat-detail-width: 360px; } }
+  @media (max-width: 760px) { .combat-stage { --combat-detail-width: min(44vw, 320px); } }
+}
+@layer screens {
+  .ui-combat-summary .hero-name { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-3); width: 100%; }
+  .ui-combat-summary .hero-id { margin-top: 4px; }
+}

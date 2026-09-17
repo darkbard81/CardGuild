@@ -9,6 +9,7 @@ for (const touch of [false, true]) {
     test.beforeEach(async ({ page }) => {
       await mountComponent(page, "/tests/fixtures/tactical.ts");
       await page.evaluate(() => window.tacticalFixture.capabilityCase());
+      await page.locator("#hand-toggle").click();
     });
     test("keeps Trip in Hand and preserves target, preview and commit", async ({ page }) => {
       const canvas = page.locator("#pixi-canvas");
@@ -41,7 +42,7 @@ for (const touch of [false, true]) {
       await expect(trip).toContainText("Lv. 2");
       if (touch) {
         await trip.dispatchEvent("pointerdown", { pointerType: "touch", button: 0 });
-      } else await trip.focus();
+      } else { await page.keyboard.press("Tab"); await trip.focus(); }
       await expect(page.locator("#card-detail")).toContainText("요구 레벨 2 · 현재 레벨 1");
       await trip.dispatchEvent("pointerup", { pointerType: touch ? "touch" : "mouse" });
       await trip.dispatchEvent("click");
@@ -84,6 +85,7 @@ test.describe("touch hand selection and commit", () => {
   test.beforeEach(async ({ page }) => {
     await mountComponent(page, "/tests/fixtures/tactical.ts");
     await page.evaluate(() => window.tacticalFixture.capabilityCase());
+    await page.locator("#hand-toggle").click();
   });
   test("hold keeps the selected card unchanged, then one fresh tap and one target tap execute Trip", async ({ page }) => {
     const trip = page.locator('#hand-cards [data-action-id="trip"]');

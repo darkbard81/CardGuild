@@ -48,6 +48,7 @@ async function selectTrip(page: Page): Promise<void> {
 test.beforeEach(async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await mountComponent(page, "/tests/fixtures/tactical.ts");
+  await page.locator("#hand-toggle").click();
 });
 
 test("renders the registry's name, category and source on every surface and one description in the tooltip", async ({ page }) => {
@@ -58,8 +59,8 @@ test("renders the registry's name, category and source on every surface and one 
   await expect(chip).toHaveAttribute("data-trait-source", ATTACK.source);
   expect(await chip.evaluate((node) => (node as HTMLButtonElement).type)).toBe("button");
 
-  await page.locator("#hero-details-toggle").click();
-  const strikeChips = page.locator("#hero-details .trait-chips .trait-chip");
+  await page.locator('#character-panel [role="tab"]:has-text("CORE")').click();
+  const strikeChips = page.locator("#character-panel .ui-character-detail__body .trait-chips .trait-chip");
   await expect(strikeChips).toHaveText(["Reach", "Trip", "Weapon"]);
   await expect(strikeChips.nth(0)).toHaveAttribute("data-trait-source", "pf2e-remaster");
   await expect(strikeChips.nth(1)).toHaveAttribute("data-trait-category", "weapon");
@@ -117,9 +118,9 @@ test("hovers to peek, clicks to pin, and closes on Escape before the detail bene
 });
 
 test("reads with the keyboard: focus peeks, Enter pins, a second Enter closes, Escape leaves the pick alone", async ({ page }) => {
-  await page.locator("#hero-details-toggle").click();
-  const chip = page.locator('#hero-details .trait-chip[data-trait-id="reach"]');
-  await page.locator("#hero-details-toggle").focus();
+  await page.locator('#character-panel [role="tab"]:has-text("CORE")').click();
+  const chip = page.locator('#character-panel .ui-character-detail__body .trait-chip[data-trait-id="reach"]');
+  await page.locator('#character-panel [role="tab"]:has-text("CORE")').focus();
   await page.keyboard.press("Tab");
   await expect(chip).toBeFocused();
   await expect(tooltip(page)).toBeVisible();
@@ -151,10 +152,10 @@ test("reads with the keyboard: focus peeks, Enter pins, a second Enter closes, E
 });
 
 test("keeps focus and the pinned tooltip through a re-render of the same detail, and drops both when it changes", async ({ page }) => {
-  await page.locator("#hero-details-toggle").click();
-  await page.locator("#hero-details-toggle").focus();
+  await page.locator('#character-panel [role="tab"]:has-text("CORE")').click();
+  await page.locator('#character-panel [role="tab"]:has-text("CORE")').focus();
   await page.keyboard.press("Tab");
-  const chip = page.locator('#hero-details .trait-chip[data-trait-id="reach"]');
+  const chip = page.locator('#character-panel .ui-character-detail__body .trait-chip[data-trait-id="reach"]');
   await expect(chip).toBeFocused();
   await page.keyboard.press("Enter");
   await expect(tooltip(page)).toHaveAttribute("data-pinned", "true");
@@ -293,8 +294,8 @@ test.describe("touch", () => {
   });
 
   test("does not open on a press that moved or was cancelled", async ({ page }) => {
-    await page.locator("#hero-details-toggle").tap();
-    const chip = page.locator('#hero-details .trait-chip[data-trait-id="trip"]');
+    await page.locator('#character-panel [role="tab"]:has-text("CORE")').tap();
+    const chip = page.locator('#character-panel .ui-character-detail__body .trait-chip[data-trait-id="trip"]');
     await chip.dispatchEvent("pointerdown", { pointerType: "touch", button: 0, clientX: 100, clientY: 300 });
     await chip.dispatchEvent("pointermove", { pointerType: "touch", clientX: 100, clientY: 340 });
     await chip.dispatchEvent("pointerup", { pointerType: "touch" });
@@ -311,8 +312,8 @@ test.describe("touch", () => {
 
 test("stays inside a narrow phone viewport", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.locator("#hero-details-toggle").click();
-  const chip = page.locator('#hero-details .trait-chip[data-trait-id="weapon"]');
+  await page.locator('#character-panel [role="tab"]:has-text("CORE")').click();
+  const chip = page.locator('#character-panel .ui-character-detail__body .trait-chip[data-trait-id="weapon"]');
   await chip.scrollIntoViewIfNeeded();
   await chip.click();
   await expect(tooltip(page)).toBeVisible();

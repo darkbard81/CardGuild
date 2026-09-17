@@ -78,9 +78,8 @@ async function openBattle(page: Page): Promise<void> {
 
 /** The character sheet is behind a toggle now, so a test that reads it has to open it. */
 async function openHeroDetails(page: Page): Promise<void> {
-  const toggle = page.locator("#hero-details-toggle");
-  if (await toggle.getAttribute("aria-expanded") !== "true") await toggle.click();
-  await expect(page.locator("#hero-details")).toBeVisible();
+  await page.locator('#character-panel [role="tab"]').filter({ hasText: "CORE" }).click();
+  await expect(page.locator("#character-panel .ui-character-detail__body")).toBeVisible();
 }
 
 async function controlledActorId(page: Page): Promise<string> {
@@ -374,10 +373,10 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator('.tactical-card[data-card-definition-id="card.brace-behind-cover"][data-card-source-kind="prepared"]')).toHaveCount(1);
   // The summary carries AC and the three save modifiers; the DCs behind them are
   // sheet material, so the toggle is the only way to read them.
-  await expect(page.locator("#hero-details")).toBeHidden();
+  await expect(page.locator('#character-panel [role="tab"][aria-selected="true"]')).toHaveText("CORE");
   await openHeroDetails(page);
-  await expect(page.locator("#hero-details")).toContainText("Reflex DC");
-  await expect(page.locator("#hero-details")).toContainText("15");
+  await expect(page.locator("#character-panel .ui-character-detail__body")).toContainText("REFLEX");
+  await expect(page.locator("#character-panel .ui-character-detail__body")).toContainText("15");
 
   // The spear corridor is walled by four separate blocked squares. A wall is terrain,
   // painted into the board texture rather than standing on it, so it raises no upright
@@ -459,6 +458,10 @@ test("carries a reward loadout through the shared resolver into the next encount
 }
 
 test("loads the 2.5D board and keeps hover, movement, and facing on the square grid", async ({ page }) => {
+  // This complete flow includes login, movement, three actions, an enemy turn and camera
+  // gestures. Its ~19s isolated run exceeds 30s with the full suite's browser contention.
+  // Bound the whole scenario separately; individual actions keep their existing limits.
+  test.setTimeout(60_000);
   const runtimeErrors = captureRuntimeErrors(page);
   const webpResponses: string[] = [];
   page.on("response", (response) => {
@@ -520,10 +523,10 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#pixi-canvas")).toHaveAttribute("data-facing-position", "");
 
   // Facing changed, and the card reports it on the sheet rather than in the summary.
-  await expect(page.locator("#hero-stats .save-cell")).toHaveCount(3);
-  await expect(page.locator("#hero-details")).toBeHidden();
+  await expect(page.locator("#character-panel .ui-character-detail__stats")).toContainText("REFLEX");
+  await expect(page.locator('#character-panel [role="tab"][aria-selected="true"]')).toHaveText("CORE");
   await openHeroDetails(page);
-  await expect(page.locator("#hero-details")).toContainText("east");
+  await expect(page.locator("#character-panel .ui-character-detail__body")).toContainText("east");
   await expect(page.locator("#action-pips .available")).toHaveCount(2);
   // One line per action: what was used and everything it did. The cost and the rolls fold
   // underneath it.
@@ -558,6 +561,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
 
   // A beat keeps its rolls folded away until asked. A tap opens it and it stays open with
   // the pointer nowhere near it, which is the only way in on a tablet.
+  await page.locator(".log-panel > summary").click();
   const foldedBeat = page.locator("#combat-log .log-line-expandable").first();
   const foldedDetail = page.locator("#combat-log .log-detail").first();
   await expect(foldedDetail).toBeHidden();
@@ -567,9 +571,12 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
 
   // The card face carries a name, a cost and a picture. The words behind it are a press
   // away, which is what a finger has instead of a hover.
+  await page.locator("#hand-toggle").click();
   const tripCard = page.locator('#hand-cards .tactical-card[data-action-id="trip"]').first();
   await expect(tripCard.locator(".card-face-art")).toBeVisible();
   await expect(page.locator("#card-detail")).toBeHidden();
+  await tripCard.hover();
+  await expect.poll(() => tripCard.evaluate(node => node.getAnimations().length)).toBe(0);
   const tripBox = await tripCard.boundingBox();
   if (!tripBox) throw new Error("The Trip card has no bounding box.");
   await page.mouse.move(tripBox.x + tripBox.width / 2, tripBox.y + tripBox.height / 2);

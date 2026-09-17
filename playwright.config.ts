@@ -36,12 +36,12 @@ export default defineConfig({
     screenshot: "only-on-failure",
   },
   webServer: {
-    command: "npm run dev",
+    command: "npx tsx tools/dev-coop.ts --isolated-test",
     url: BASE_URL,
-    // Locally, reusing the server someone already has running saves a minute per run. On CI
-    // there is nothing to reuse, and accepting a stranger on that port would mean testing
-    // something other than this checkout.
-    reuseExistingServer: !process.env["CI"],
+    // Every run owns its accounts and temporary DB; never inherit a user's live session
+    // or repeatedly validate the accumulated saves in their development database.
+    reuseExistingServer: false,
+    gracefulShutdown: { signal: "SIGTERM", timeout: 5_000 },
     timeout: 120_000,
   },
 });

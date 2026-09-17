@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import { listLegalActions, listLegalTargets } from "../../src/game/queries";
+import { hashCombatState } from "../../src/game";
 import type { CombatCommand, CombatState } from "../../src/game";
 import type { ServerMessage, ServerSnapshot } from "../../src/protocol";
 import { chooseHeroCommand } from "../../tools/playtest/hero-policy";
@@ -17,6 +18,10 @@ function awaitingPlayer(snapshot: ServerSnapshot): boolean {
 
 /** Read published state to choose input; every mutation below is an actual UI gesture. */
 async function play(page: Page, combat: CombatState, command: CombatCommand): Promise<void> {
+  // The server revision can lead the paced board animation and the matching request ACK.
+  // A person acts on the rendered, actionable HUD, not the raw socket snapshot.
+  await expect(page.locator("#app")).toHaveAttribute("data-state-hash", hashCombatState(combat));
+  await expect(page.locator("#end-turn")).toBeEnabled();
   if (command.type === "end-turn") {
     await page.locator("#end-turn").click();
     await chooseFacing(page, command.facing);
@@ -33,8 +38,18 @@ async function play(page: Page, combat: CombatState, command: CombatCommand): Pr
     await page.locator("#pixi-canvas").click({ position: await boardPoint(page, position.x + 0.5, position.y + 0.5) });
   };
   if (command.action.kind === "card") {
-    await page.locator(`#hand-cards [data-source-id="${command.action.id}"]`).click();
-    if (target.kind === "actor" || target.kind === "tile" || target.kind === "object") await clickTarget();
+    const card = page.locator(`#hand-cards [data-source-id="${command.action.id}"]`);
+    if (await page.locator("#hand-toggle").getAttribute("aria-expanded") === "false") await page.locator("#hand-toggle").click();
+    if (!await card.isVisible()) {
+      while (await page.locator("#hand-previous").isEnabled()) await page.locator("#hand-previous").click();
+      while (!await card.isVisible() && await page.locator("#hand-next").isEnabled()) await page.locator("#hand-next").click();
+    }
+    await card.click();
+    if (target.kind === "actor" || target.kind === "tile" || target.kind === "object") {
+      // The expanded fan is an overlay: keep the pick, fold it, then reach the board.
+      if (await page.locator("#hand-toggle").getAttribute("aria-expanded") === "true") await page.locator("#hand-toggle").click();
+      await clickTarget();
+    }
   } else {
     await clickTarget();
     await page.locator(`#ring-root [data-action-id="${command.action.id}"]`).click();
