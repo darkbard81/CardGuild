@@ -42,3 +42,17 @@ Temporary mutations were applied separately, each targeted owner executed, then 
 | Remove pinch-release tap suppression | U-BOARD facing prompt became server-action pending on gesture release | exit 1, 13.49 s |
 
 These are detection checks, not full-suite passes. Focused filter output may label unselected cases skipped; the committed suites contain no skipped cases or retry allowance. Normal source is restored before the final full gate. Execution/discovery evidence and measured cost are recorded in [TESTING](TESTING.md).
+
+## #59 interaction additions
+
+| Risk | Player contract | Assertion owner |
+| --- | --- | --- |
+| G-FACING | Final in-place Step preserves facing, ends once and replays deterministically; earlier Step leaves the turn open | Domain `combat-contracts.test.ts` |
+| U-END-TURN | Cancel does not issue a command; spent turns need no discard confirmation | Interaction `battle.spec.ts` |
+| U-INSPECT | Touch detail modes for hand/Ring cannot issue gameplay commands | Interaction `battle.spec.ts` |
+| U-TARGET | Invalid board target preserves the selected card and accepts a corrected target | Interaction `battle.spec.ts` |
+| U-REWARD | Reading is inert; explicit acquisition stays pending until ACK + snapshot; rejection permits retry | Interaction `feedback.spec.ts` |
+| U-REACTION | Non-owner sees waiting reason and can inspect without decision buttons | Interaction `feedback.spec.ts` |
+| U-STARTUP | Renderer failure exposes a visible retry | Interaction `feedback.spec.ts` |
+
+U-FEEDBACK also owns terminal exit/reload and displayed derived growth effects. J-PROGRESS follows explicit reward acquisition without repeating the inspection assertions.

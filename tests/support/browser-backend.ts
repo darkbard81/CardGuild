@@ -1,10 +1,12 @@
-import { expect, type Page, type WebSocketRoute } from "@playwright/test";
+import { expect, test, type Page, type WebSocketRoute } from "@playwright/test";
 import { PROTOCOL_VERSION, type ClientIntentEnvelope, type ServerMessage, type ServerSnapshot } from "../../src/protocol";
 import { hashSessionGameplayState, type SessionCoreState } from "../../src/session";
 import { adventure, act } from "./session";
 
 /** Only the backend is controlled: the page loads the real bootstrap, controller, UI and SessionClient. */
 export async function controlledSession(page: Page, initial = adventure()) {
+  const testInfo = test.info();
+  testInfo.annotations.push({ type: "session", description: `seed=${initial.adventure?.adventureSeed ?? 60}; revision=${initial.revision}` });
   let state = initial;
   let socket: WebSocketRoute | undefined;
   const requests: ClientIntentEnvelope[] = [];
@@ -26,7 +28,11 @@ export async function controlledSession(page: Page, initial = adventure()) {
     route.onMessage(raw => {
       const message = JSON.parse(String(raw)) as { type: string };
       if (message.type === "hello") send(snapshot());
-      if (message.type === "intent") requests.push(message as ClientIntentEnvelope);
+      if (message.type === "intent") {
+        const request = message as ClientIntentEnvelope;
+        requests.push(request);
+        testInfo.annotations.push({ type: "request", description: `${request.requestId}; expectedRevision=${request.expectedRevision}; intent=${request.intent.type}` });
+      }
     });
   });
   await page.goto("/");

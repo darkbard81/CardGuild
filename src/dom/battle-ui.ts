@@ -1,6 +1,6 @@
 import { formatActionCost } from "./card-face";
 import { requirementText } from "./card-level-view";
-import { listLegalActions } from "../game";
+import { listLegalActions, listLegalTargets, resolveStrike } from "../game";
 import { CharacterDetailPanel, type CharacterDetailTab } from "./character-detail-ui";
 import { CombatHandUi } from "./combat-hand-ui";
 import type { LoadoutPartyMember } from "../loadout";
@@ -24,7 +24,6 @@ export interface BattleUiHandlers {
   readonly onEndTurn: () => void;
   readonly onUseReaction: () => void;
   readonly onPassReaction: () => void;
-  readonly onRestart: () => void;
   readonly onEscape?: () => boolean;
 }
 
@@ -39,6 +38,7 @@ export interface BattleUiPresentation {
   readonly status?: string;
   readonly members?: readonly LoadoutPartyMember[];
   readonly inputBlocked?: boolean;
+  readonly ownsReaction?: boolean;
 }
 
 const DETAIL_HINT = "보드에서 대상을 클릭하면 사용할 수 있는 행동이 링 메뉴로 열립니다.";
@@ -106,6 +106,7 @@ function actorName(state: CombatState, actorId: string): string {
 }
 
 export class BattleUi {
+  private endConfirmation: HTMLDialogElement | null = null;
   private readonly abortController = new AbortController();
   private readonly objective = required<HTMLElement>("#objective-text");
   private readonly round = required<HTMLElement>("#round-value");
@@ -142,7 +143,6 @@ export class BattleUi {
   private readonly resultModal = required<HTMLElement>("#result-modal");
   private readonly resultTitle = required<HTMLElement>("#result-title");
   private readonly resultDescription = required<HTMLElement>("#result-description");
-  private readonly resultAction = required<HTMLButtonElement>("#restart-battle");
 
   /** The character sheet stays where the player left it across snapshots. */
   /** One registry view for every Trait the battle shows, and one chip list per surface. */
@@ -156,7 +156,6 @@ export class BattleUi {
     private readonly catalog: AssetCatalog,
     handlers: BattleUiHandlers,
   ) {
-    this.resultAction.textContent = "Return to Adventure";
     required<HTMLElement>(".log-panel").removeAttribute("open");
     this.traits = new TraitView(content.traits);
     this.actionTraits = this.traits.createList();
@@ -179,7 +178,7 @@ export class BattleUi {
       if (!(target instanceof Node) || (!this.handCards.contains(target) && !this.cardDetail.contains(target))) this.hideCardDetail();
     }, listenerOptions);
     document.addEventListener("keydown", event => {
-      if (event.key !== "Escape" || event.defaultPrevented) return;
+      if (event.key !== "Escape" || event.defaultPrevented || this.endConfirmation?.open) return;
       if (!this.cardDetail.hidden) { this.hideCardDetail(); event.preventDefault(); event.stopPropagation(); return; }
       if (handlers.onEscape?.()) { event.preventDefault(); event.stopPropagation(); return; }
       this.hand.collapse();
@@ -187,10 +186,25 @@ export class BattleUi {
     this.endTurn.addEventListener("click", handlers.onEndTurn, listenerOptions);
     this.reactionUse.addEventListener("click", handlers.onUseReaction, listenerOptions);
     this.reactionPass.addEventListener("click", handlers.onPassReaction, listenerOptions);
-    required<HTMLButtonElement>("#restart-battle").addEventListener("click", handlers.onRestart, listenerOptions);
+  }
+
+  public confirmEndTurn(actions: number, proceed: () => void): void {
+    this.endConfirmation?.remove();
+    const dialog = element("dialog", "ui-panel ui-panel--dialog ui-end-turn-confirm");
+    dialog.setAttribute("aria-label", "남은 행동 포기 확인");
+    dialog.append(element("h2", undefined, `아직 ${actions} Actions가 남아 있습니다.`), element("p", undefined, "지금 턴을 종료할까요?"));
+    const cancel = element("button", "ui-button ui-button--secondary", "계속 행동");
+    const confirm = element("button", "ui-button ui-button--primary", "턴 종료");
+    cancel.type = confirm.type = "button";
+    cancel.addEventListener("click", () => dialog.close());
+    confirm.addEventListener("click", () => { dialog.close(); proceed(); });
+    dialog.addEventListener("close", () => { dialog.remove(); if (this.endConfirmation === dialog) this.endConfirmation = null; });
+    dialog.append(cancel, confirm); document.body.append(dialog); this.endConfirmation = dialog;
+    dialog.showModal(); cancel.focus();
   }
 
   public destroy(): void {
+    this.endConfirmation?.remove();
     this.hand.destroy();
     required<HTMLElement>(".inspector").append(this.selectedDetail);
     this.selectedDetail.hidden = false;
@@ -207,6 +221,7 @@ export class BattleUi {
     history: readonly CombatEvent[],
     presentation: BattleUiPresentation,
   ): void {
+    if (this.endConfirmation && (this.state !== state || !presentation.canControl || state.pendingReaction || state.outcome)) this.endConfirmation.close();
     const hero = state.actors[presentation.controlledActorId];
     if (!hero) return;
     const actions = listLegalActions(state, hero.id, this.content);
@@ -235,6 +250,10 @@ export class BattleUi {
       presentation.selectedAction,
       zones?.hand ?? [],
       presentation.canControl,
+      new Set(actions.filter(action => {
+        const targets = listLegalTargets(state, hero.id, action.source, this.content);
+        return targets.length === 1 && (targets[0]?.kind === "none" || targets[0]?.kind === "effect");
+      }).map(action => action.source.id)),
     );
     this.renderLog(state, history);
 
@@ -245,7 +264,7 @@ export class BattleUi {
     this.endTurn.disabled = !presentation.canControl ||
       activeActor?.id !== hero.id || Boolean(state.pendingReaction) || Boolean(state.outcome);
 
-    this.renderReaction(state, presentation.controlledActorId, presentation.inputBlocked ?? false);
+    this.renderReaction(state, presentation.ownsReaction ?? false, presentation.inputBlocked ?? false, presentation.status);
     this.renderResult(state);
   }
 
@@ -470,18 +489,24 @@ export class BattleUi {
     return item;
   }
 
-  private renderReaction(state: CombatState, controlledActorId: string, blocked: boolean): void {
+  private renderReaction(state: CombatState, ownsReaction: boolean, blocked: boolean, status?: string): void {
     const pending = state.pendingReaction;
-    this.reactionModal.hidden = !pending;
-    if (!pending) return;
+    this.reactionModal.hidden = !pending || !ownsReaction;
+    if (!pending || !ownsReaction) return;
     const mover = state.actors[pending.sourceActorId];
-    const owner = pending.candidates[0]?.actorId;
-    const actionable = owner === controlledActorId && !blocked;
-    this.reactionUse.disabled = !actionable;
-    this.reactionPass.disabled = !actionable;
-    this.reactionDescription.textContent = actionable
-      ? `${mover?.name ?? "Enemy"} is starting a Move action inside your front/side reach. Resolve Reactive Strike before movement continues.`
-      : `Waiting for ${actorName(state, owner ?? "another player")} to resolve the head Reaction candidate.`;
+    const candidate = pending.candidates[0];
+    const owner = candidate ? state.actors[candidate.actorId] : undefined;
+    const card = candidate && state.cardZones[candidate.actorId]?.hand.find(card => card.id === candidate.cardInstanceId);
+    const name = card ? this.content.cards[card.definitionId]?.name ?? "Reaction" : "Reaction";
+    required<HTMLElement>("#reaction-title").textContent = `${name}?`;
+    this.reactionUse.disabled = this.reactionPass.disabled = blocked;
+    const strike = owner ? resolveStrike(owner, { content: this.content }) : null;
+    const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
+    const profile = strike ? `기본 Strike: ${strike.weaponName} · 명중 ${signed(strike.attackModifier)} · ${strike.damage.count}d${strike.damage.sides}${signed(strike.damage.flatModifier)} ${strike.damage.damageType}. ` : "";
+    this.reactionDescription.textContent =
+      `${owner?.name ?? "캐릭터"}의 ${name} · ${mover?.name ?? "Enemy"}가 전방/측면 사거리에서 이동을 시작했습니다. ` +
+      "사용하면 반응 1회와 해당 카드를 소비해 이동 전에 공격합니다. Pass는 반응을 쓰지 않고 이동을 계속합니다. " +
+      profile + (blocked ? status ?? "서버 응답을 기다리고 있습니다." : "");
   }
 
   private renderResult(state: CombatState): void {
@@ -490,7 +515,7 @@ export class BattleUi {
     this.resultTitle.textContent = state.outcome === "victory" ? "Victory" : "Defeat";
     this.resultDescription.textContent =
       state.outcome === "victory"
-        ? "The gatehouse is secure. The same seed and command log reproduce this result."
-        : "Aerin fell in the gatehouse. Replay the same seed and try a different action sequence.";
+        ? "전투에서 승리했습니다. 보상과 다음 준비 화면으로 이동하고 있습니다."
+        : "파티가 패배했습니다. 모험 결과 화면으로 이동하고 있습니다.";
   }
 }

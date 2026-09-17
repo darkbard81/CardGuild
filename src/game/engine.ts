@@ -1041,6 +1041,13 @@ function useAction(
   }
   executeResolvedAction(draft, plan, resolved.definition, content, events);
   checkCombatOutcome(draft, events);
+  // A final in-place Step already contains the player's final facing decision.
+  if (!draft.outcome && !draft.pendingReaction && draft.turn.actionsRemaining === 0
+    && resolved.definition.resolution.kind === "move" && resolved.definition.resolution.step
+    && command.target.kind === "tile" && command.target.facing
+    && positionKey(command.target.position) === positionKey(actor.position)) {
+    advanceTurn(draft, content, events);
+  }
   return { accepted: true, state: asState(draft), events };
 }
 

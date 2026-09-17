@@ -1,3 +1,4 @@
+import { validateActionIntent } from "../game/queries";
 import type { LoadoutPartyMember } from "../loadout";
 import { isRingAction } from "../game/capabilities";
 import {
@@ -127,6 +128,7 @@ export class BattleController {
   private ringAnchor: ScreenPoint = { x: 0, y: 0 };
   private ringTitle = "";
   private readonly keyHandler = (event: KeyboardEvent): void => {
+    if (event.target instanceof Element && event.target.closest("dialog[open]")) return;
     if (event.defaultPrevented || (event.target instanceof Element && event.target.id !== "end-turn" && event.target.closest(".hud-side, .hand-dock"))) return;
     if (this.interaction.kind === "direction") {
       // The keyboard names the direction outright; the board names the place to look at.
@@ -168,7 +170,6 @@ export class BattleController {
       onEndTurn: () => this.endTurn(),
       onUseReaction: () => this.resolveReaction(true),
       onPassReaction: () => this.resolveReaction(false),
-      onRestart: () => this.restart(),
       onEscape: () => {
         if (this.interaction.kind === "direction") {
           if (this.interaction.purpose === "step-turn") { this.cancelDirection(); return true; }
@@ -263,6 +264,11 @@ export class BattleController {
   }
 
   private highlights(): BoardHighlights {
+    const pending = this.state.pendingReaction;
+    if (pending) {
+      const owner = pending.candidates[0]?.actorId;
+      return { tiles: [], actorIds: [pending.sourceActorId, ...(owner ? [owner] : [])], objectIds: [], facingPosition: null, moveBands: [] };
+    }
     const interaction = this.interaction;
     if (interaction.kind === "direction") {
       return { tiles: [], actorIds: [], objectIds: [], facingPosition: interaction.position, moveBands: [],
@@ -318,6 +324,7 @@ export class BattleController {
       inputBlocked: this.inputBlocked(),
       interactionActive: this.interaction.kind !== "idle",
       status: this.statusText(), members: this.session.members,
+      ownsReaction: this.controlledActorIds.has(this.state.pendingReaction?.candidates[0]?.actorId ?? ""),
     });
     this.renderDetail();
   }
@@ -422,6 +429,9 @@ export class BattleController {
       actionId: entry.action.actionId,
       label: `${entry.action.name}${suffix}${copies}`,
       cost: actionCost(entry.action),
+      activation: this.definition.content.actions[entry.action.actionId]?.resolution.kind === "move"
+        && entry.target.kind === "tile" && samePosition(entry.target.position, this.state.actors[this.heroId()]!.position)
+        ? "방향 선택" : "즉시 실행",
       hint: entry.action.description,
     };
   }
@@ -510,7 +520,8 @@ export class BattleController {
       single?.kind === "tile"
         ? "강조된 칸을 선택하세요. 제자리 Step은 방향을 선택합니다."
         : single?.kind === "actor"
-          ? "강조된 적을 선택하세요."
+          ? this.definition.content.actions[action.actionId]?.targeting === "enemy" ? "강조된 적을 선택하세요."
+            : this.definition.content.actions[action.actionId]?.targeting === "ally" ? "강조된 아군을 선택하세요." : "강조된 캐릭터를 선택하세요."
           : single?.kind === "object"
             ? "강조된 오브젝트를 선택하세요."
             : "합법적인 대상을 선택하세요.";
@@ -520,8 +531,11 @@ export class BattleController {
   private resolveCardTarget(action: LegalAction, pick: BoardPick): void {
     const target = this.targetsFor(action).find((candidate) => this.targetMatchesPick(candidate, pick, this.heroId()));
     if (!target) {
-      this.goIdle();
-      this.prompt = PROMPT_IDLE;
+      const attempted = pick.kind === "actor" ? { kind: "actor" as const, actorId: pick.actorId }
+        : pick.kind === "object" ? { kind: "object" as const, objectId: pick.objectId }
+        : { kind: "tile" as const, position: pick.position };
+      const validation = validateActionIntent(this.state, this.heroId(), action.source, attempted, this.definition.content);
+      this.prompt = `${action.name}: ${validation.reason ?? "이 대상에는 사용할 수 없습니다."} · 선택은 유지됩니다.`;
       this.render();
       return;
     }
@@ -636,7 +650,15 @@ export class BattleController {
   }
 
   private endTurn(): void {
-    if (this.beginEndTurnDirection(PROMPT_END_TURN)) this.render();
+    if (this.interaction.kind === "direction") return;
+    if (this.inputBlocked() || !this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
+    const state = this.state;
+    const proceed = () => {
+      if (this.state !== state) return;
+      if (this.beginEndTurnDirection(PROMPT_END_TURN)) this.render();
+    };
+    if (state.turn.actionsRemaining > 0) this.ui.confirmEndTurn(state.turn.actionsRemaining, proceed);
+    else proceed();
   }
 
   /**
@@ -703,17 +725,16 @@ export class BattleController {
     if (this.session.connection !== "connected") return "서버 재연결 중 · 입력 대기";
     if (this.requestPending) return "요청 처리 중";
     if (this.rejection) return this.rejection;
-    if (this.state.pendingReaction) return "반응 선택 대기 중";
+    if (this.state.pendingReaction) {
+      const owner = this.state.pendingReaction.candidates[0]?.actorId ?? "";
+      return this.controlledActorIds.has(owner) ? "내 반응 선택" : `${this.session.controllerNames[owner] ?? this.state.actors[owner]?.name ?? "다른 플레이어"}님이 Reaction을 선택하고 있습니다.`;
+    }
     const actor = this.state.actors[this.state.turn.activeActorId];
     if (actor?.team === "enemies") return "적 행동 처리 중";
     if (this.activeHeroId()) return "내 턴";
     return `${this.session.controllerNames[this.state.turn.activeActorId] ?? actor?.name ?? "다른 플레이어"}의 턴`;
   }
 
-  private restart(): void {
-    this.prompt = "전투 결과는 서버가 Adventure로 반영합니다.";
-    this.render();
-  }
 
   /**
    * The server resolves a creature's whole turn in one tick — move, Strike, damage, end —

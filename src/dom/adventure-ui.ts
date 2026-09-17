@@ -9,7 +9,7 @@ import type { AdventureState } from "../adventure";
 import type { CompiledContentPack } from "../content";
 import { placementAppliesToPartySize } from "../content";
 import type { AdventureDefinition, RewardGrant } from "../content";
-import { createStartingCollection } from "../loadout";
+import { createStartingCollection, previewLoadoutChange } from "../loadout";
 import type { AssetCatalog } from "../presentation";
 import { growthSummaryPanel, progressionMeter, progressionText, type GrowthSummary } from "./progression-view";
 
@@ -34,9 +34,9 @@ export interface AdventureUiHandlers {
   readonly onAdvanceCharacter: (memberId: string, choice: CharacterAdvancementChoice) => boolean;
   readonly onStart: () => void;
   readonly onContinue: () => void;
-  readonly onChooseReward: (rewardId: string, choiceIndex: number) => void;
+  readonly onChooseReward: (rewardId: string, choiceIndex: number, settled: (accepted: boolean) => void) => boolean;
   readonly onOpenLoadout: (destination?: LoadoutDestination) => void;
-  readonly onRetry: () => void;
+  readonly onExit: () => void;
 }
 
 export interface AdventureUiAccess {
@@ -106,6 +106,9 @@ export class AdventureUi {
 
   private readonly detail: CharacterDetailUi | null;
   private readonly advancementUi: CharacterAdvancementUi;
+  private rewardDraft: { rewardId: string; index: number } | null = null;
+  private rewardPending = false;
+  private rewardMessage = "";
   private lastRender: { state: AdventureState; access: AdventureUiAccess } | null = null;
 
   public constructor(
@@ -165,7 +168,14 @@ export class AdventureUi {
 
   public render(state: AdventureState, access: AdventureUiAccess = { isHost: true }): void {
     const openGrowth = new Set([...this.party.querySelectorAll<HTMLElement>("details[open] [data-advancement-member]")].map(node => node.dataset.advancementMember));
+    const previous = this.lastRender?.state;
     this.lastRender = { state, access };
+    if (this.rewardDraft && state.pendingReward?.rewardId !== this.rewardDraft.rewardId) {
+      this.rewardDraft = null;
+      const added = previous && (["cards", "equipment"] as const).some(kind =>
+        Object.entries(state.collection[kind]).some(([id, count]) => count > (previous.collection[kind][id] ?? 0)));
+      this.rewardMessage = added ? "Collection에 추가되었습니다 · 장비·카드 준비에서 Loadout에 반영하세요." : "";
+    }
     const hasPending = Object.values(state.party.members).some(member =>
       pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length > 0);
     this.screen.hidden = state.phase === "combat";
@@ -187,7 +197,7 @@ export class AdventureUi {
           progressionMeter(name, member.progression),
         );
         const advancement = this.advancementUi.render(member, access.editableMemberIds?.has(member.id) ?? false,
-          state.phase === "ready" || state.phase === "between-encounters");
+          state.phase === "ready" || state.phase === "between-encounters", access.controllerNames?.[member.id]);
         const actor = this.pack.actorDefinitions[member.actorDefinitionId];
         if (this.detail && actor) row.append(this.secondaryActionButton("상세", () => this.detail?.openPrepared(actor, member)));
         if (state.phase === "ready" || state.phase === "between-encounters") {
@@ -201,12 +211,15 @@ export class AdventureUi {
         return row;
       }));
     this.content.replaceChildren();
+    this.content.classList.toggle("ui-reward-workspace", state.phase === "reward");
+    if (state.phase !== "reward" && (this.rewardMessage || this.rewardPending)) this.content.append(element("p", "ui-status",
+      this.rewardPending ? "보상 적용 결과 확인 중…" : this.rewardMessage));
     this.progress.closest(".adventure-map-card")?.append(this.party);
 
     if (state.phase === "ready") {
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "모험 시작" : "호스트를 기다리는 중", this.handlers.onStart, access.isHost && !hasPending),
+        this.actionButton(access.isHost ? "모험 시작" : "호스트를 기다리는 중", this.handlers.onStart, access.isHost && !hasPending && !this.rewardPending),
         this.secondaryActionButton("장비·카드 준비", () => this.handlers.onOpenLoadout()),
       );
       const partySize = Object.keys(state.party.members).length;
@@ -222,7 +235,7 @@ export class AdventureUi {
       const scenario = state.currentEncounterId ? this.pack.scenarios[state.currentEncounterId] : undefined;
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "전투 시작" : "호스트를 기다리는 중", this.handlers.onContinue, access.isHost && !hasPending),
+        this.actionButton(access.isHost ? "전투 시작" : "호스트를 기다리는 중", this.handlers.onContinue, access.isHost && !hasPending && !this.rewardPending),
         this.secondaryActionButton("장비·카드 준비", () => this.handlers.onOpenLoadout()),
       );
       const step = state.currentEncounterId
@@ -275,9 +288,11 @@ export class AdventureUi {
       state.pendingReward.choices.forEach((grant, index) => {
         const name = rewardName(grant, this.pack);
         const button = this.actionButton(name, () => {
-          const offer = state.pendingReward;
-          if (offer) this.handlers.onChooseReward(offer.rewardId, index);
-        }, access.isHost);
+          this.rewardDraft = { rewardId: state.pendingReward!.rewardId, index };
+          this.rewardMessage = "";
+          this.render(state, access);
+        }, !this.rewardPending);
+        button.setAttribute("aria-pressed", String(this.rewardDraft?.index === index));
         button.classList.add("reward-choice");
         const assetId = grant.kind === "card"
           ? this.catalog?.cardVisual(grant.definitionId) ?? null
@@ -299,6 +314,43 @@ export class AdventureUi {
         choices.append(button);
       });
       this.content.append(choices);
+      const draft = this.rewardDraft;
+      if (draft) {
+        const selected = state.pendingReward.choices[draft.index]!;
+        this.content.append(element("p", "ui-status", `선택: ${rewardName(selected, this.pack)} · ${rewardDetail(selected, this.pack)}`));
+        const comparison = element("ul", "ui-reward-comparison");
+        const key = selected.kind === "card" ? "cards" : "equipment";
+        const collection = { ...state.collection, [key]: { ...state.collection[key], [selected.definitionId]: (state.collection[key][selected.definitionId] ?? 0) + 1 } };
+        for (const member of Object.values(state.party.members)) {
+          const equipment = selected.kind === "equipment" ? this.pack.combatContent.equipment[selected.definitionId] : undefined;
+          const candidate = equipment ? { ...member.loadout, equipment: { ...member.loadout.equipment, [equipment.slot]: equipment.id } }
+            : { ...member.loadout, preparedCards: [...member.loadout.preparedCards, selected.definitionId] };
+          const preview = previewLoadoutChange(state.party, collection, this.pack, member.id, candidate);
+          const name = this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id;
+          comparison.append(element("li", undefined, preview.after
+            ? `${name} · 준비 가능 · HP ${preview.before.statistics.maxHp} → ${preview.after.statistics.maxHp} · AC ${preview.before.statistics.ac} → ${preview.after.statistics.ac} · Strike ${preview.before.strike.attackModifier} → ${preview.after.strike.attackModifier} · 카드 ${preview.before.deck.totalCards} → ${preview.after.deck.totalCards}`
+            : `${name} · 현재 준비 불가: ${preview.validation.issues.map(issue => issue.message).join(" · ")}`));
+        }
+        this.content.append(comparison);
+      }
+      this.content.append(element("p", "ui-status", this.rewardMessage || (access.isHost
+        ? "보상을 눌러 비교한 뒤 획득을 확정하세요. 하나를 획득하면 다른 선택지는 포기합니다."
+        : "호스트가 보상을 선택하고 있습니다. 보상 상세는 자유롭게 확인할 수 있습니다.")));
+      this.content.append(this.actionButton(this.rewardPending ? "보상 적용 중…" : "이 보상 획득", () => {
+        if (!draft || this.rewardPending) return;
+        this.rewardPending = true;
+        this.render(state, access);
+        const started = this.handlers.onChooseReward(draft.rewardId, draft.index, accepted => {
+          this.rewardPending = false;
+          if (!accepted) this.rewardMessage = "보상을 적용하지 못했습니다. 선택을 확인하고 다시 시도하세요.";
+          if (this.lastRender) this.render(this.lastRender.state, this.lastRender.access);
+        });
+        if (!started) {
+          this.rewardPending = false;
+          this.rewardMessage = "서버 연결을 확인하고 다시 시도하세요.";
+          this.render(state, access);
+        }
+      }, access.isHost && !!draft && !this.rewardPending));
       return;
     }
     if (state.phase === "complete") {
@@ -309,15 +361,15 @@ export class AdventureUi {
       );
       const growth = this.growth(access);
       if (growth) this.content.append(growth);
-      this.content.append(this.actionButton("Session Complete", this.handlers.onRetry, false));
+      this.content.append(this.actionButton("시작 화면으로", this.handlers.onExit));
       return;
     }
     if (state.phase === "failed") {
       this.content.append(
         element("p", "eyebrow", "Adventure Failed"),
         element("h1", undefined, "The party was defeated"),
-        element("p", "adventure-description", "같은 Adventure seed로 처음부터 다시 도전할 수 있습니다. Loadout을 바꾼 뒤 다시 시도해 보세요."),
-        this.actionButton("Session Failed", this.handlers.onRetry, false),
+        element("p", "adventure-description", "이번 모험은 종료되었습니다. 시작 화면으로 돌아가 새 모험을 만들거나 다른 저장을 이어갈 수 있습니다."),
+        this.actionButton("시작 화면으로", this.handlers.onExit),
       );
     }
   }
@@ -470,7 +522,7 @@ export class AdventureUi {
     if (this.lastRender && !this.screen.hidden) this.render(this.lastRender.state, this.lastRender.access);
   }
 
-  public clear(): void { this.detail?.close(); this.advancementUi.clear(); this.lastRender = null; }
+  public clear(): void { this.detail?.close(); this.advancementUi.clear(); this.lastRender = null; this.rewardDraft = null; this.rewardPending = false; this.rewardMessage = ""; }
 
   public setVisible(visible: boolean): void {
     if (!visible) this.detail?.close();

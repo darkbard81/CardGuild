@@ -102,3 +102,24 @@ it("G-REPLAY the same seed and legal command history reproduce gameplay", () => 
   expect(replayed.outcome).toBe(state.outcome);
   expect(() => replayCombat({ ...definition, contentIdentity: { ...definition.contentIdentity, fingerprint: "other" } }, createCombatReplay(state))).toThrow(/content mismatch/);
 });
+
+describe("G-FACING final in-place Step", () => {
+  it.each([1, 2])("with %i actions, preserves the chosen facing and ends only a spent turn", remaining => {
+    const definition = laneCombat();
+    let state = battle(definition);
+    for (let spent = 3; spent > remaining; spent--) state = play(state, { type: "use-action", actorId: "hero", action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 0, y: 0 }, facing: "east" } }, definition);
+    const input = command(state, { type: "use-action", actorId: "hero", action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 0, y: 0 }, facing: "north" } });
+    const result = dispatchCombatCommand(state, input, definition.content);
+    expect(result.accepted).toBe(true);
+    expect(result.state.actors.hero!.facing).toBe("north");
+    expect(result.state.actors.hero!.position).toEqual({ x: 0, y: 0 });
+    expect(result.state.turn.activeActorId).toBe(remaining === 1 ? "enemy" : "hero");
+    const replayed = replayCombat(definition, createCombatReplay(result.state)).state;
+    expect(replayed.turn).toEqual(result.state.turn);
+    expect(replayed.actors.hero!.facing).toBe("north");
+    expect(result.events.filter(event => event.type === "TURN_ENDED")).toHaveLength(remaining === 1 ? 1 : 0);
+    const repeated = dispatchCombatCommand(result.state, input, definition.content);
+    expect(repeated.accepted).toBe(false);
+    expect(resources(repeated.state)).toEqual(resources(result.state));
+  });
+});

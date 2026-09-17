@@ -22,6 +22,7 @@ test("U-BATTLE hover and Step direction cancellation are inert; End Turn commits
   expect(backend.requests).toHaveLength(0);
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "End Turn", exact: true }).click();
+  await page.getByRole("button", { name: "턴 종료", exact: true }).click();
   await expect(page.locator("#board-prompt")).toContainText("턴을 마칠 때 바라볼 위치");
   await page.keyboard.press("Escape");
   await expect(page.locator("#board-prompt")).toContainText("턴을 마칠 때 바라볼 위치");
@@ -69,6 +70,7 @@ test("U-BATTLE a control change discards an open target menu before it can issue
 test("U-BOARD pinch/pan release cannot answer End Turn; the next deliberate tap can", async ({ page }) => {
   const backend = await controlledSession(page, combatCheckpoint());
   await page.getByRole("button", { name: "End Turn", exact: true }).click();
+  await page.getByRole("button", { name: "턴 종료", exact: true }).click();
   const cdp = await page.context().newCDPSession(page);
   try {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 280, y: 350, id: 1 }, { x: 400, y: 350, id: 2 }] });
@@ -81,4 +83,66 @@ test("U-BOARD pinch/pan release cannot answer End Turn; the next deliberate tap 
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect.poll(() => backend.requests.map(r => r.intent.type)).toEqual(["end-turn"]);
   } finally { await cdp.detach(); }
+});
+
+test("U-END-TURN cancel preserves the interaction and zero actions need no confirmation", async ({ page }, testInfo) => {
+  const backend = await controlledSession(page, combatCheckpoint());
+  await page.getByRole("button", { name: "End Turn", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "남은 행동 포기 확인", exact: true })).toBeVisible();
+  await page.screenshot({ path: testInfo.outputPath("end-turn-confirm.png") });
+  await page.getByRole("button", { name: "계속 행동", exact: true }).click();
+  expect(backend.requests).toHaveLength(0);
+  await page.mouse.click(east.x, east.y);
+  await expect(page.getByRole("menuitem", { name: /Step/ })).toBeVisible();
+  backend.publish({ ...backend.state, revision: backend.state.revision + 1, combat: {
+    ...backend.state.combat!, turn: { ...backend.state.combat!.turn, actionsRemaining: 0 },
+  } });
+  await expect(page.getByRole("dialog", { name: "남은 행동 포기 확인", exact: true })).toBeHidden();
+  await expect(page.locator("#board-prompt")).toContainText("바라볼");
+  await page.mouse.click(east.x, east.y);
+  await expect.poll(() => backend.requests.map(request => request.intent.type)).toEqual(["end-turn"]);
+});
+
+test.describe("touch inspection", () => {
+  test.use({ hasTouch: true });
+test("U-INSPECT ring and hand detail modes never send gameplay requests", async ({ page }) => {
+  const backend = await controlledSession(page, combatCheckpoint());
+  await page.getByRole("button", { name: "카드 상세 보기", exact: true }).tap();
+  const card = page.locator(".tactical-card").filter({ visible: true }).first();
+  await card.tap();
+  await expect(page.locator("#card-detail")).toBeVisible();
+  expect(backend.requests).toHaveLength(0);
+  await page.touchscreen.tap(hero.x, hero.y);
+  await page.getByRole("button", { name: "행동 상세 보기", exact: true }).tap();
+  await page.getByRole("menuitem", { name: /Step/ }).tap();
+  await expect(page.getByRole("menuitem", { name: /Step/ })).toBeVisible();
+  expect(backend.requests).toHaveLength(0);
+  await page.getByRole("button", { name: "상세 모드 · 실행으로 전환", exact: true }).tap();
+  await page.getByRole("menuitem", { name: /Step/ }).tap();
+  await expect(page.locator("#board-prompt")).toContainText("제자리 Step");
+});
+
+});
+
+test("U-TARGET invalid target retains the selected card and allows a corrected target", async ({ page }) => {
+  const base = combatCheckpoint();
+  const combat = base.combat!;
+  const zones = combat.cardZones[HERO]!;
+  const state = { ...base, combat: { ...combat,
+    actors: { ...combat.actors, "goblin-lackey": { ...combat.actors["goblin-lackey"]!, position: { x: 1, y: 1 } } },
+    cardZones: { ...combat.cardZones, [HERO]: { ...zones, hand: [{ ...zones.hand[0]!, definitionId: "card.vicious-swing" }] } },
+  } };
+  const backend = await controlledSession(page, state);
+  await page.getByRole("button", { name: "손패 펼치기", exact: true }).click();
+  const card = page.getByRole("button", { name: /Vicious Swing/ });
+  await card.click();
+  await page.getByRole("button", { name: "End Turn", exact: true }).click();
+  await page.keyboard.press("Escape");
+  await expect(card).toHaveAttribute("aria-pressed", "true");
+  await page.mouse.click(hero.x, hero.y);
+  await expect(card).toHaveAttribute("aria-pressed", "true");
+  await expect(page.locator("#board-prompt")).toContainText("선택은 유지됩니다");
+  expect(backend.requests).toHaveLength(0);
+  await page.mouse.click(east.x, east.y);
+  await expect.poll(() => backend.requests.map(request => request.intent.type)).toEqual(["use-action"]);
 });

@@ -56,5 +56,16 @@ async function bootstrap(): Promise<void> {
 void bootstrap().catch((error: unknown) => {
   const pixiStatus = document.querySelector<HTMLElement>("#pixi-status");
   if (pixiStatus) pixiStatus.textContent = "Failed to start";
+  const failure = document.createElement("section");
+  failure.className = "ui-panel ui-panel--dialog ui-startup-failure";
+  failure.setAttribute("role", "alert");
+  const title = document.createElement("h1"); title.textContent = "게임을 시작하지 못했습니다";
+  const detail = document.createElement("p"); detail.textContent = "화면 초기화에 실패했습니다. 다시 시도해 주세요. 문제가 계속되면 브라우저의 그래픽 가속 설정을 확인하세요.";
+  const retry = document.createElement("button"); retry.type = "button";
+  retry.className = "ui-button ui-button--primary"; retry.textContent = "다시 시도";
+  retry.addEventListener("click", () => window.location.reload());
+  failure.append(title, detail, retry);
+  document.querySelector("#app")?.replaceChildren(failure);
+  retry.focus();
   console.error("CardGuild bootstrap failed", error);
 });

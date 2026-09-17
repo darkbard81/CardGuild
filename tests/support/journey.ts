@@ -64,6 +64,7 @@ export async function stepToCenter(page: Page) {
 
 export async function endTurn(page: Page) {
   await page.getByRole("button", { name: "End Turn", exact: true }).click();
+  await page.getByRole("button", { name: "턴 종료", exact: true }).click();
   await expect(page.locator("#board-prompt")).toContainText("턴을 마칠 때");
   await page.mouse.click(550, 350);
 }

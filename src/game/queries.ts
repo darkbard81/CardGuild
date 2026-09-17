@@ -341,8 +341,21 @@ export function validateActionIntent(
       return { legal: false, reason: "Target is outside the front/side facing arc." };
     }
   }
-  if (targets.length === 0) return { legal: false, reason: "No legal target." };
-  if (!targetIsLegal(targets, target)) return { legal: false, reason: "Target is not legal." };
+  if (!targetIsLegal(targets, target)) {
+    const definition = base.resolved.definition;
+    const actor = base.actor;
+    if (target.kind === "actor") {
+      const defender = state.actors[target.actorId];
+      if (!defender || defender.defeated) return { legal: false, reason: "Target is unavailable or defeated." };
+      if (definition.targeting === "enemy" && defender.team === actor.team) return { legal: false, reason: "Choose an enemy, not an ally." };
+      if (definition.targeting === "ally" && (defender.team !== actor.team || defender.id === actor.id)) return { legal: false, reason: "Choose another ally." };
+      if (!["enemy", "ally", "creature"].includes(definition.targeting)) return { legal: false, reason: `Choose a ${definition.targeting} target.` };
+      if (gridDistance(actor.position, defender.position) > actionRangeFeet(definition, actor, { content })) return { legal: false, reason: "Out of range." };
+      if (!hasLineOfSight(state.map, actor.position, defender.position) || !hasLineOfEffect(state.map, actor.position, defender.position)) return { legal: false, reason: "The target is blocked from sight or effect." };
+    }
+    if (target.kind === "tile" && definition.resolution.kind === "move") return { legal: false, reason: "Cannot reach or stop on this tile with this movement." };
+    return { legal: false, reason: `Choose a valid ${definition.targeting} target.` };
+  }
   if (base.resolved.definition.resolution.kind === "move" && target.kind === "tile" &&
       positionKey(target.position) === positionKey(base.actor.position) &&
       !["north", "east", "south", "west"].includes(target.facing ?? "")) {

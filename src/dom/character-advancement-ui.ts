@@ -1,3 +1,5 @@
+import { preparationDetailActor } from "./character-detail-ui";
+import { resolveStatisticModifier, resolveStatisticDC, resolveArmorClass, resolveClassDC, resolveStrike } from "../game";
 import {
   applyCharacterAdvancement, ATTRIBUTE_BOOST_LEVELS, nextSkillRank, pendingCharacterAdvancements,
   resolveCharacterRules, SKILL_INCREASE_LEVELS,
@@ -37,7 +39,7 @@ export class CharacterAdvancementUi {
 
   public clear(): void { this.drafts.clear(); }
 
-  public render(member: PartyMemberState, editable: boolean, phaseAllows: boolean): HTMLElement | null {
+  public render(member: PartyMemberState, editable: boolean, phaseAllows: boolean, controllerName?: string): HTMLElement | null {
     const pending = pendingCharacterAdvancements(member.progression.level, member.progression.advancements);
     const level = pending[0];
     if (level === undefined) { this.drafts.delete(member.id); return null; }
@@ -50,7 +52,7 @@ export class CharacterAdvancementUi {
     }
     if (!editable) {
       this.drafts.delete(member.id);
-      panel.append(element("p", "이 캐릭터를 조종하는 플레이어의 성장 선택을 기다립니다.")); return panel;
+      panel.append(element("p", `${controllerName ?? "담당 플레이어"}님이 캐릭터 성장을 선택하고 있습니다.`)); return panel;
     }
     const actor = this.pack.actorDefinitions[member.actorDefinitionId];
     if (!actor?.character) throw new Error("Character Build is missing.");
@@ -104,7 +106,7 @@ export class CharacterAdvancementUi {
       choice = null;
       submit.disabled = true; submit.textContent = current.pending ? "저장 중…" : "성장 확정";
       if ((needsSkill && !current.skill) || (needsAttributes && current.attributes.size !== 4)) {
-        preview.textContent = current.error || "필요한 성장 항목을 모두 선택하세요."; return;
+        preview.textContent = current.error || `선택 필요: ${needsSkill ? `Skill ${current.skill ? 1 : 0}/1` : ""} ${needsAttributes ? `Attribute ${current.attributes.size}/4` : ""}`; return;
       }
       const candidate: CharacterAdvancementChoice = {
         level, ...(needsSkill ? { skillIncrease: current.skill! } : {}),
@@ -118,6 +120,21 @@ export class CharacterAdvancementUi {
         for (const attribute of candidate.attributeBoosts ?? []) {
           changes.push(`${attribute.toUpperCase()}: ${before.statProfile.stats.attributes[attribute]} → ${after.statProfile.stats.attributes[attribute]}${after.partialAttributeBoosts[attribute] ? " (partial · 다음 boost로 +1)" : ""}`);
         }
+        const oldActor = preparationDetailActor(actor, this.pack, member);
+        const newActor = preparationDetailActor(actor, this.pack, { ...member, progression });
+        const context = { content: this.pack.combatContent };
+        const effect = (label: string, oldValue: number, newValue: number) => {
+          if (oldValue !== newValue) changes.push(`${label}: ${oldValue} → ${newValue}`);
+        };
+        effect("HP", oldActor.maxHp, newActor.maxHp);
+        effect("AC", resolveArmorClass(oldActor, context).value, resolveArmorClass(newActor, context).value);
+        effect("Class DC", resolveClassDC(oldActor, context).value, resolveClassDC(newActor, context).value);
+        effect("Strike", resolveStrike(oldActor, context).attackModifier, resolveStrike(newActor, context).attackModifier);
+        for (const skill of SKILL_IDS) {
+          effect(`${skill} modifier`, resolveStatisticModifier(oldActor, { kind: "skill", id: skill }, context).value, resolveStatisticModifier(newActor, { kind: "skill", id: skill }, context).value);
+          effect(`${skill} DC`, resolveStatisticDC(oldActor, { kind: "skill", id: skill }, context).value, resolveStatisticDC(newActor, { kind: "skill", id: skill }, context).value);
+        }
+        for (const save of ["fortitude", "reflex", "will"] as const) effect(save, resolveStatisticModifier(oldActor, { kind: "save", id: save }, context).value, resolveStatisticModifier(newActor, { kind: "save", id: save }, context).value);
         preview.textContent = current.error || changes.join(" · "); choice = candidate; submit.disabled = current.pending;
       } catch (error) { preview.textContent = error instanceof Error ? error.message : String(error); }
     };

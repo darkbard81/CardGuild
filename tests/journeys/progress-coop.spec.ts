@@ -14,6 +14,7 @@ test("J-PROGRESS victory flows through reward, required growth and preparation i
   await page.getByRole("menu", { name: "Goblin Lackey", exact: true }).getByRole("menuitem", { name: /^Strike / }).click();
   await expect(page.getByRole("heading", { name: "Choose one reward", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Brace Behind Cover/ }).click();
+  await page.getByRole("button", { name: "이 보상 획득", exact: true }).click();
   await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeDisabled();
   await page.getByRole("button", { name: "Aerin 성장 선택", exact: true }).click();
   await page.getByLabel("Skill Increase").selectOption("athletics");

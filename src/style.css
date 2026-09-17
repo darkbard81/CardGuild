@@ -2284,3 +2284,25 @@
   .ui-combat-summary .hero-name { display: flex; align-items: center; justify-content: space-between; gap: var(--ui-space-3); width: 100%; }
   .ui-combat-summary .hero-id { margin-top: 4px; }
 }
+
+@layer screens {
+
+.ui-startup-failure { position: fixed; inset: 15% 10% auto; padding: 32px; z-index: 100; }
+.reward-choice[aria-pressed="true"] { outline: 3px solid var(--ui-color-accent-bright); outline-offset: 2px; }
+.ui-ring-inspect { position: absolute; bottom: 104px; left: 16px; min-height: 44px; z-index: 2; }
+.ui-end-turn-confirm { color: var(--ui-color-text); background: var(--ui-card-surface); max-width: 440px; padding: 24px; }
+.ui-end-turn-confirm::backdrop { background: #0009; }
+
+}
+
+@layer screens {
+  .ui-reward-workspace { gap: 12px; }
+  .ui-reward-workspace .reward-choices { grid-template-columns: repeat(var(--reward-choice-count, 2), minmax(0, 1fr)); }
+  .ui-reward-workspace .reward-choice { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; min-height: 0; }
+  .ui-reward-workspace .reward-card-choice > .card-face { width: min(100%, 120px); }
+  .ui-reward-workspace .reward-detail { display: none; }
+  .ui-reward-workspace .ui-status, .ui-reward-comparison { margin-block: 4px; }
+  @media (max-width: 760px) {
+    .ui-reward-workspace .reward-choices { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+}

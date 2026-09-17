@@ -83,9 +83,14 @@ export class AdventureController {
       onAdvanceCharacter: (memberId, choice) => this.advanceCharacter(memberId, choice),
       onStart: () => this.sendIntent({ type: "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
-      onChooseReward: (rewardId, choiceIndex) => this.sendIntent({ type: "choose-reward", rewardId, choiceIndex }),
+      onChooseReward: (rewardId, choiceIndex, settled) => this.client?.sendIntent({ type: "choose-reward", rewardId, choiceIndex }, settled) ?? false,
       onOpenLoadout: destination => this.openLoadout(destination),
-      onRetry: () => undefined,
+      onExit: () => {
+        if (this.client) SessionClient.clearCredential(this.client.credential);
+        this.client?.destroy();
+        this.ui.clear();
+        this.returnToLanding("");
+      },
     }, this.catalog);
     this.loadoutUi = new LoadoutUi(PRODUCTION_CONTENT.pack, this.catalog, {
       onSetLoadout: (memberId, loadout, settled) => this.setMemberLoadout(memberId, loadout, settled),

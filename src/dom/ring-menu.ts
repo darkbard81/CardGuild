@@ -5,6 +5,7 @@ export interface RingMenuOption {
   readonly actionId: string;
   readonly label: string;
   readonly cost: string;
+  readonly activation: string;
   readonly hint?: string;
 }
 
@@ -58,6 +59,8 @@ export class RingMenu {
   private readonly connectors = document.createElementNS("http://www.w3.org/2000/svg", "svg");
   private readonly abortController = new AbortController();
   private open = false;
+  private inspectMode = false;
+  private readonly inspectToggle = document.createElement("button");
   /** Presentation only: inspection is never a prerequisite for activation. */
   private inspectedOptionId: string | null = null;
   private inspectionPinned = false;
@@ -76,7 +79,14 @@ export class RingMenu {
     this.menu.setAttribute("role", "menu");
     this.hub.className = "ring-hub";
     this.connectors.setAttribute("class", "ring-connector");
-    this.root.append(this.connectors, this.menu, this.hub);
+    this.inspectToggle.type = "button"; this.inspectToggle.className = "ui-button ui-button--secondary ui-ring-inspect";
+    this.inspectToggle.textContent = "행동 상세 보기"; this.inspectToggle.setAttribute("aria-pressed", "false");
+    this.inspectToggle.addEventListener("click", () => {
+      this.inspectMode = !this.inspectMode;
+      this.inspectToggle.setAttribute("aria-pressed", String(this.inspectMode));
+      this.inspectToggle.textContent = this.inspectMode ? "상세 모드 · 실행으로 전환" : "행동 상세 보기";
+    }, listenerOptions);
+    this.root.append(this.connectors, this.menu, this.hub, this.inspectToggle);
     this.root.addEventListener(
       "pointerdown",
       (event) => {
@@ -115,6 +125,7 @@ export class RingMenu {
     window.addEventListener(
       "keydown",
       (event) => {
+        if (event.target instanceof Element && event.target.closest("dialog[open]")) return;
         if (this.open && event.key === "Escape") this.handlers.onDismiss();
       },
       listenerOptions,
@@ -175,7 +186,7 @@ export class RingMenu {
     this.abortController.abort();
     this.connectors.remove();
     this.menu.remove();
-    this.hub.remove();
+    this.hub.remove(); this.inspectToggle.remove();
   }
 
   /** The passthrough control under a backdrop press, if the press landed on one. */
@@ -222,14 +233,14 @@ export class RingMenu {
     label.textContent = option.label;
     const cost = document.createElement("span");
     cost.className = "ring-cost";
-    cost.textContent = option.cost;
+    cost.textContent = `${option.cost} · ${option.activation}`;
     button.append(label, cost);
     const abortController = new AbortController();
     const listenerOptions = { signal: abortController.signal };
     const unbindPress = bindPressGesture(button, {
       holdMs: INSPECT_HOLD_MS,
       onHold: () => this.inspect(option.id, true),
-      onTap: () => this.handlers.onSelect(option.id),
+      onTap: () => this.inspectMode ? this.inspect(option.id, true) : this.handlers.onSelect(option.id),
     });
     this.optionCleanups.push(() => { unbindPress(); abortController.abort(); });
     button.addEventListener("pointerenter", (event) => {

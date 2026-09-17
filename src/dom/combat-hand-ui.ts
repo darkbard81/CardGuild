@@ -31,6 +31,9 @@ export class CombatHandUi {
   private manuallyCollapsed = false;
   private swallowTouch = false;
   private canPlay = true;
+  private inspectMode = false;
+  private readonly inspectToggle: HTMLButtonElement;
+  private immediate = new Set<string>();
   public constructor(private readonly root: HTMLElement, private readonly catalog: AssetCatalog, private readonly handlers: HandHandlers) {
     this.dock = root.closest<HTMLElement>(".hand-dock")!;
     this.toggle = this.dock.querySelector<HTMLButtonElement>("#hand-toggle")!;
@@ -38,6 +41,15 @@ export class CombatHandUi {
     this.next = this.dock.querySelector<HTMLButtonElement>("#hand-next")!;
     this.range = this.dock.querySelector<HTMLElement>("#hand-page")!;
     const options = { signal: this.abort.signal };
+    const inspect = this.inspectToggle = document.createElement("button"); inspect.type = "button";
+    inspect.className = "ui-button ui-button--secondary"; inspect.textContent = "카드 상세 보기";
+    inspect.setAttribute("aria-pressed", "false"); this.toggle.after(inspect);
+    inspect.addEventListener("click", () => {
+      this.inspectMode = !this.inspectMode; inspect.setAttribute("aria-pressed", String(this.inspectMode));
+      inspect.textContent = this.inspectMode ? "상세 모드 · 카드 사용으로 전환" : "카드 상세 보기";
+      for (const entry of this.entries.values()) entry.button.setAttribute("aria-disabled", String(!this.inspectMode && (!this.canPlay || !entry.action.enabled)));
+      this.setExpanded(true);
+    }, options);
     this.toggle.addEventListener("click", () => { this.manuallyCollapsed = this.expanded; this.setExpanded(!this.expanded); }, options);
     this.previous.addEventListener("click", () => { this.page--; this.layout(); }, options);
     this.next.addEventListener("click", () => { this.page++; this.layout(); }, options);
@@ -76,7 +88,8 @@ export class CombatHandUi {
     if (!value) this.handlers.onHideDetail();
   }
   private capacity(): number { return handLayout(this.order.length, this.root.clientWidth).capacity; }
-  public update(actions: readonly LegalAction[], selected: LegalAction | null, cards: readonly Card[], canPlay: boolean): void {
+  public update(actions: readonly LegalAction[], selected: LegalAction | null, cards: readonly Card[], canPlay: boolean, immediate = new Set<string>()): void {
+    this.immediate = immediate;
     this.canPlay = canPlay;
     const selectedId = selected?.source.kind === "card" ? selected.source.id : null;
     if (this.selected !== selectedId) { this.manuallyCollapsed = false; if (selectedId) this.setExpanded(true); }
@@ -90,13 +103,13 @@ export class CombatHandUi {
       const card = cards.find(card => card.id === action.source.id);
       let entry = this.entries.get(action.source.id);
       if (!entry) { entry = this.create(action, card); this.entries.set(action.source.id, entry); }
-      const faceKey = JSON.stringify([card?.definitionId, action.name, action.timing, action.cardRequirement]);
+      const faceKey = JSON.stringify([card?.definitionId, action.name, action.timing, action.cardRequirement, this.immediate.has(action.source.id)]);
       if (entry.button.dataset.faceKey !== faceKey) {
-        entry.button.replaceChildren(createCardFace({ catalog: this.catalog, cardId: card?.definitionId, name: action.name, timing: action.timing, badges: action.cardRequirement ? [`Lv. ${action.cardRequirement.requiredLevel}`] : [] }));
+        entry.button.replaceChildren(createCardFace({ catalog: this.catalog, cardId: card?.definitionId, name: action.name, timing: action.timing, badges: [...(action.cardRequirement ? [`Lv. ${action.cardRequirement.requiredLevel}`] : []), this.immediate.has(action.source.id) ? "즉시 사용" : "대상 선택"] }));
         entry.button.dataset.faceKey = faceKey;
       }
       entry.action = action; entry.card = card;
-      entry.button.setAttribute("aria-disabled", String(!canPlay || !action.enabled));
+      entry.button.setAttribute("aria-disabled", String(!this.inspectMode && (!canPlay || !action.enabled)));
       entry.button.setAttribute("aria-pressed", String(this.selected === action.source.id));
       entry.button.classList.toggle("selected", this.selected === action.source.id);
       entry.button.title = [action.cardRequirement && requirementText(action.cardRequirement), action.reason ?? action.description].filter(Boolean).join(" · ");
@@ -114,11 +127,11 @@ export class CombatHandUi {
   private create(action: LegalAction, card?: Card): Entry {
     const button = document.createElement("button"); button.type = "button"; button.className = "tactical-card ui-hand-card";
     Object.assign(button.dataset, { actionId: action.actionId, sourceId: action.source.id, sourceKind: action.source.kind, cardDefinitionId: card?.definitionId ?? "", cardSourceKind: card?.source.kind ?? "" });
-    button.append(createCardFace({ catalog: this.catalog, cardId: card?.definitionId, name: action.name, timing: action.timing, badges: action.cardRequirement ? [`Lv. ${action.cardRequirement.requiredLevel}`] : [] }));
+    button.append(createCardFace({ catalog: this.catalog, cardId: card?.definitionId, name: action.name, timing: action.timing, badges: [...(action.cardRequirement ? [`Lv. ${action.cardRequirement.requiredLevel}`] : []), this.immediate.has(action.source.id) ? "즉시 사용" : "대상 선택"] }));
     const abort = new AbortController();
     const entry: Entry = { action, card, button, abort, press: bindPressGesture(button, {
       holdMs: 380, onHold: () => this.handlers.onDetail(button, entry.action, entry.card),
-      onTap: () => { if (this.canPlay && entry.action.enabled) this.handlers.onCard(entry.action); },
+      onTap: () => { if (this.inspectMode) { this.handlers.onDetail(button, entry.action, entry.card); return; } if (this.canPlay && entry.action.enabled) this.handlers.onCard(entry.action); },
     }) };
     const options = { signal: abort.signal };
     button.addEventListener("pointerenter", event => { if (event.pointerType === "mouse") this.handlers.onHover(entry.action); }, options);
@@ -145,5 +158,5 @@ export class CombatHandUi {
     this.range.textContent = this.order.length ? `${start + 1}–${Math.min(start + capacity, this.order.length)} / ${this.order.length}` : "0";
   }
   public cancelPresses(): void { for (const entry of this.entries.values()) entry.press.cancel(); }
-  public destroy(): void { this.resize.disconnect(); this.abort.abort(); for (const entry of this.entries.values()) { entry.press(); entry.abort.abort(); entry.button.remove(); } this.entries.clear(); }
+  public destroy(): void { this.inspectToggle.remove(); this.resize.disconnect(); this.abort.abort(); for (const entry of this.entries.values()) { entry.press(); entry.abort.abort(); entry.button.remove(); } this.entries.clear(); }
 }
