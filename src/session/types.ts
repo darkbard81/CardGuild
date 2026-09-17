@@ -104,6 +104,7 @@ export interface ResumeSessionOptions extends SessionPlayerIdentity {
 export type SessionIntent =
   | { readonly type: "advance-character"; readonly memberId: string; readonly choice: CharacterAdvancementChoice }
   | { readonly type: "set-party-composition"; readonly actorDefinitionIds: readonly string[] }
+  | { readonly type: "release-character" }
   | { readonly type: "select-character"; readonly memberId: string }
   | { readonly type: "remove-offline-guest"; readonly playerId: string }
   | { readonly type: "begin-adventure" }
@@ -134,6 +135,7 @@ export type SessionEvent =
   | { readonly type: "SEAT_JOINED"; readonly seat: SessionSeatNumber }
   | { readonly type: "SEAT_REMOVED"; readonly seat: SessionSeatNumber; readonly playerId: string }
   | { readonly type: "PARTY_COMPOSITION_SET"; readonly memberIds: readonly string[] }
+  | { readonly type: "CHARACTER_RELEASED"; readonly playerId: string; readonly memberId: string }
   | { readonly type: "CHARACTER_SELECTED"; readonly playerId: string; readonly memberId: string };
 
 export interface SessionTransitionResult {

@@ -312,6 +312,13 @@ export function dispatchSessionIntent(
     }
     case "set-party-composition":
       return setPartyComposition(state, intent.actorDefinitionIds, context);
+    case "release-character": {
+      const entry = Object.entries(state.guestClaims.byMemberId).find(([, claimant]) => claimant === playerId);
+      if (!entry) return reject(state, "DOMAIN_REJECTED", "No character is selected.");
+      return commit(state, { ...state, guestClaims: { byMemberId: Object.fromEntries(
+        Object.entries(state.guestClaims.byMemberId).filter(([, claimant]) => claimant !== playerId),
+      ) } }, [{ type: "CHARACTER_RELEASED", playerId, memberId: entry[0] }]);
+    }
     case "select-character":
       return selectCharacter(state, playerId, intent.memberId);
     case "remove-offline-guest": {

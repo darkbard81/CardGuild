@@ -63,7 +63,7 @@ const credential: SessionCredential = {
 
 function snapshot(revision: number, controlRevision = 0, cause: "resync" | "control" = "resync"): ServerSnapshot {
   return {
-    v: 9,
+    v: 10,
     type: "snapshot",
     revision,
     controlRevision,
@@ -102,6 +102,26 @@ describe("SessionClient reconnect handshake", () => {
     vi.clearAllTimers();
     vi.useRealTimers();
     vi.unstubAllGlobals();
+  });
+
+  it("settles a tracked intent only after its own ACK and committed snapshot, in either order", () => {
+    const client = new SessionClient(credential, { onSnapshot: () => undefined, onError: () => undefined, onStatus: () => undefined });
+    client.connect(); const socket = FakeWebSocket.instances[0]!; socket.open(); socket.message(snapshot(1));
+    const settled = vi.fn();
+    expect(client.sendIntent({ type: "release-character" }, settled)).toBe(true);
+    const first = JSON.parse(socket.sent.at(-1)!) as { requestId: string };
+    socket.message(snapshot(2));
+    socket.message({ v: 10, type: "ack", requestId: "someone-else", accepted: true, committedRevision: 2 });
+    expect(settled).not.toHaveBeenCalled();
+    socket.message({ v: 10, type: "ack", requestId: first.requestId, accepted: true, committedRevision: 2 });
+    expect(settled).toHaveBeenCalledExactlyOnceWith(true);
+    settled.mockClear();
+    expect(client.sendIntent({ type: "release-character" }, settled)).toBe(true);
+    const second = JSON.parse(socket.sent.at(-1)!) as { requestId: string };
+    socket.message({ v: 10, type: "ack", requestId: second.requestId, accepted: true, committedRevision: 3 });
+    expect(settled).not.toHaveBeenCalled(); socket.message(snapshot(3));
+    expect(settled).toHaveBeenCalledExactlyOnceWith(true);
+    client.destroy();
   });
 
   it("classifies every terminal handshake protocol error", () => {
@@ -163,7 +183,7 @@ describe("SessionClient reconnect handshake", () => {
     const socket = FakeWebSocket.instances[0] as FakeWebSocket;
     socket.open();
     socket.message({
-      v: 9,
+      v: 10,
       type: "error",
       code: "SESSION_NOT_FOUND",
       message: "Session was not found.",

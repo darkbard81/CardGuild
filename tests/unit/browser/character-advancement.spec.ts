@@ -47,9 +47,10 @@ async function mount(page: import("@playwright/test").Page): Promise<void> {
 
 test("requires explicit earliest choices, waits for COMMIT and permits retry without discarding the draft", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 }); await mount(page);
+  await page.getByRole("button", { name: "Aerin 성장 선택", exact: true }).click();
   const panel = page.locator(".character-advancement");
   const submit = panel.getByRole("button", { name: "성장 확정" });
-  await expect(page.getByRole("button", { name: "Enter Encounter", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeDisabled();
   await expect(submit).toBeDisabled();
   await panel.getByRole("combobox").selectOption("athletics");
   await expect(panel.getByRole("status")).toContainText("trained → expert");
@@ -71,7 +72,7 @@ test("requires explicit earliest choices, waits for COMMIT and permits retry wit
   await expect(panel.locator('input[value="cha"]')).toBeDisabled();
   await submit.click(); await page.evaluate(() => window.growthFixture.commit());
   await expect(panel).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Enter Encounter", exact: true })).toBeEnabled();
+  await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeEnabled();
 });
 
 test("shows pending ownership, phase restrictions and partial boosts on a narrow screen", async ({ page }) => {
@@ -89,6 +90,7 @@ test("shows pending ownership, phase restrictions and partial boosts on a narrow
       ],
     } } } } }; f.render();
   });
+  await page.getByRole("button", { name: "Aerin 성장 선택", exact: true }).click();
   const panel = page.locator(".character-advancement");
   await expect(panel).toHaveAttribute("data-advancement-level", "10");
   await expect(panel.getByRole("combobox")).toHaveCount(0);

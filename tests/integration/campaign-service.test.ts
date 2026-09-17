@@ -92,7 +92,7 @@ async function driver(
   if (!attached.ok) throw new Error(`Attach failed: ${attached.code}`);
   return async (requestId, intent) => {
     await host.handleIntent(playerId, connection.id, {
-      v: 9,
+      v: 10,
       type: "intent",
       requestId,
       expectedRevision: host.state.revision,
@@ -293,7 +293,7 @@ describe("campaign continue", () => {
     // A last gameplay intent is enqueued before Continue reaches the store, so Continue's
     // barrier must let it commit and must then read that newer save, not the older one.
     const lastPlay = host.handleIntent(played.playerId, connectionId, {
-      v: 9,
+      v: 10,
       type: "intent",
       requestId: "last-play",
       expectedRevision: host.state.revision,

@@ -42,14 +42,14 @@ async function applyThreeCharacterParty(page: Page): Promise<void> {
   // window onto the shared tile atlas.
   await expect(page.locator('.party-character-card[data-actor-definition-id="hero.aerin"] .party-character-art'))
     .toHaveCSS("background-image", /\/assets\/actors\/hero\/aerin\/front\.webp/);
-  await expect(page.locator("#party-slot-1")).toHaveValue("hero.aerin");
-  await expect(page.locator("#party-slot-2")).toHaveValue("hero.lyra");
-  await expect(page.locator("#party-slot-3")).toHaveValue("hero.brom");
+  await expect(page.locator('.party-slot-row[data-party-slot="1"]')).toContainText("Aerin");
+  await expect(page.locator('.party-slot-row[data-party-slot="2"]')).toContainText("Lyra");
+  await expect(page.locator('.party-slot-row[data-party-slot="3"]')).toContainText("Brom");
   await page.locator("#apply-party").click();
   await expect(page.locator("#session-screen")).toHaveAttribute("data-session-id", /.+/);
   await expect(page.locator(".party-builder")).toHaveAttribute("data-party-prepared", "true");
   await expect(page.locator("#apply-party")).toBeDisabled();
-  await expect(page.locator("#apply-party")).toHaveText("Party Applied");
+  await expect(page.locator("#apply-party")).toHaveText("파티 적용됨");
 }
 
 async function joinGuest(player: BrowserPlayer, sessionId: string): Promise<void> {
@@ -142,17 +142,18 @@ test("shows a non-contiguous party draft as invalid instead of already applied",
   const host = await createPlayer(browser, "Draft Host");
   try {
     await createHost(host);
-    await host.page.locator("#party-slot-3").selectOption("");
+    await host.page.getByRole("button", { name: "동료 2 비우기", exact: true }).click();
     await host.page.locator("#apply-party").click();
-    await expect(host.page.locator("#apply-party")).toHaveText("Party Applied");
+    await expect(host.page.locator("#apply-party")).toHaveText("파티 적용됨");
 
-    await host.page.locator("#party-slot-2").selectOption("");
-    await host.page.locator("#party-slot-3").selectOption("hero.lyra");
+    await host.page.getByRole("button", { name: "동료 1 비우기", exact: true }).click();
+    await host.page.locator('.party-slot-row[data-party-slot="3"]').getByRole("button").click();
+    await host.page.locator('.party-character-select[data-actor-definition-id="hero.lyra"]').click();
 
-    await expect(host.page.locator("#apply-party")).toHaveText("Apply Party");
+    await expect(host.page.locator("#apply-party")).toHaveText("파티 적용");
     await expect(host.page.locator("#apply-party")).toBeDisabled();
     await expect(host.page.locator(".party-builder .party-gate.invalid")).toHaveText(
-      "Choose unique characters in consecutive slots.",
+      "앞 슬롯부터 서로 다른 캐릭터를 선택하세요.",
     );
     expect(host.errors).toEqual([]);
   } finally {
@@ -166,9 +167,9 @@ test("single host prepares three women heroes and controls every changing combat
   try {
     await createHost(host);
     await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.aerin"]')).toContainText("Aerin");
-    await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.lyra"]')).toContainText("Mobile skirmisher");
-    await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.brom"]')).toContainText("Durable guardian");
-    await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.nera"]')).toContainText("Field support");
+    await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.lyra"]')).toContainText("빠른 이동으로 빈틈을 노리는 전투");
+    await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.brom"]')).toContainText("튼튼한 방어로 아군을 지키는 전투");
+    await expect(host.page.locator('.party-character-card[data-actor-definition-id="hero.nera"]')).toContainText("회복과 지원으로 파티를 돕는 전투");
     await host.page.setViewportSize({ width: 390, height: 844 });
     expect(await host.page.evaluate(() =>
       document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
@@ -191,17 +192,17 @@ test("single host prepares three women heroes and controls every changing combat
     const orphanRevision = await host.page.locator("#app").getAttribute("data-session-revision");
     await orphanSeat.locator(".session-seat-remove").click();
     await expect(orphanSeat).toHaveClass(/open/);
-    await expect(orphanSeat).toContainText("Open seat");
+    await expect(orphanSeat).toContainText("빈자리");
     await expect(host.page.locator("#app")).not.toHaveAttribute("data-session-revision", orphanRevision ?? "");
     await host.page.setViewportSize({ width: 1024, height: 768 });
     await expect(host.page.locator("#begin-adventure")).toBeEnabled();
     await host.page.locator("#begin-adventure").click();
     await expect(host.page.locator("#app")).toHaveAttribute("data-screen", "adventure");
-    await host.page.getByRole("button", { name: "Manage Loadout" }).click();
+    await host.page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
     await expect(host.page.locator(".loadout-member-tab")).toHaveCount(3);
     await expect(host.page.locator('.loadout-member-tab[data-owned="true"]')).toHaveCount(3);
-    await host.page.getByRole("button", { name: "Done" }).click();
-    await host.page.getByRole("button", { name: "Enter Encounter" }).click();
+    await host.page.getByRole("button", { name: "닫기" }).click();
+    await host.page.getByRole("button", { name: "전투 시작" }).click();
     await expect(host.page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 });
     await expect(host.page.locator("#app")).toHaveAttribute(
       "data-controlled-actor-ids",
@@ -242,11 +243,11 @@ test("2P guest disconnect transfers the live character to host and reconnect res
       "data-member-id",
       "party.hero-2",
     );
-    await expect(guest.page.locator('.guest-character-choice[data-claim-state="mine"]')).toBeDisabled();
+    await expect(guest.page.locator('.guest-character-choice[data-claim-state="mine"]')).toBeEnabled();
     await expect(host.page.locator("#begin-adventure")).toBeEnabled();
     await host.page.locator("#begin-adventure").click();
     await expectConvergence([host.page, guest.page]);
-    await host.page.getByRole("button", { name: "Enter Encounter" }).click();
+    await host.page.getByRole("button", { name: "전투 시작" }).click();
     await Promise.all([host.page, guest.page].map((page) =>
       expect(page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 })));
     await expect(host.page.locator("#app")).toHaveAttribute(
@@ -321,12 +322,12 @@ test("3P guests choose distinct remaining characters and only their effective ac
 
     await host.page.locator("#begin-adventure").click();
     await Promise.all(pages.map((page) => expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure")));
-    await guestB.page.getByRole("button", { name: "Manage Loadout" }).click();
+    await guestB.page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
     await expect(guestB.page.locator('.loadout-member-tab[data-owned="true"]')).toHaveCount(1);
     await expect(guestB.page.locator('.loadout-member-tab[data-member-id="party.hero-2"]')).toHaveAttribute("data-owned", "true");
-    await guestB.page.getByRole("button", { name: "Done" }).click();
+    await guestB.page.getByRole("button", { name: "닫기" }).click();
 
-    await host.page.getByRole("button", { name: "Enter Encounter" }).click();
+    await host.page.getByRole("button", { name: "전투 시작" }).click();
     await Promise.all(pages.map((page) =>
       expect(page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 })));
     await expect(host.page.locator("#app")).toHaveAttribute("data-controlled-actor-ids", "party.hero-1");
@@ -372,7 +373,7 @@ test("a host who leaves keeps the campaign, the claim and the revision exactly w
     await expect(host.page.locator("#begin-adventure")).toBeEnabled();
     await host.page.locator("#begin-adventure").click();
     await expect(host.page.locator("#app")).toHaveAttribute("data-screen", "adventure");
-    await host.page.getByRole("button", { name: "Enter Encounter" }).click();
+    await host.page.getByRole("button", { name: "전투 시작" }).click();
     await Promise.all([host.page, guest.page].map((page) =>
       expect(page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 })));
     const hash = await guest.page.locator("#app").getAttribute("data-session-hash");
@@ -399,4 +400,25 @@ test("a host who leaves keeps the campaign, the claim and the revision exactly w
   } finally {
     await Promise.all([host.context.close(), guest.context.close()]);
   }
+});
+
+test("guest releases a character so the host can revise the party, then claims again", async ({ browser }) => {
+  test.setTimeout(90_000);
+  const host = await createPlayer(browser, "Host"); const guest = await createPlayer(browser, "Guest B");
+  try {
+    const code = await createHost(host); await applyThreeCharacterParty(host.page); await joinGuest(guest, code);
+    await guest.page.locator('.guest-character-choice[data-member-id="party.hero-2"]').click();
+    await expect(host.page.locator(".party-gate").first()).toContainText("Guest B: Lyra");
+    await expect(host.page.locator(".party-character-select").first()).toBeDisabled();
+    await guest.page.getByRole("button", { name: "내 캐릭터 · 선택 해제", exact: true }).click();
+    await expect(host.page.locator(".party-character-select").first()).toBeEnabled();
+    await expect(host.page.locator("#begin-adventure")).toBeDisabled();
+    await host.page.locator('.party-slot-row[data-party-slot="3"]').getByRole("button").first().click();
+    await host.page.locator('.party-character-select[data-actor-definition-id="hero.nera"]').click();
+    await host.page.locator("#apply-party").click();
+    await expect(guest.page.locator('.party-character-card[data-actor-definition-id="hero.nera"]')).toBeVisible();
+    await guest.page.locator('.guest-character-choice[data-member-id="party.hero-2"]').click();
+    await expect(host.page.locator("#begin-adventure")).toBeEnabled();
+    expect(host.errors).toEqual([]); expect(guest.errors).toEqual([]);
+  } finally { await host.context.close(); await guest.context.close(); }
 });

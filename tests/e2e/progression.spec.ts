@@ -12,7 +12,10 @@ test("shows authoritative starting progression through the real Host flow", asyn
     await expect(row).toContainText("Lv. 1 · EXP 0 / 1000");
     await expect(row).toBeInViewport();
   }
-  await expect(page.getByRole("button", { name: "Enter Encounter", exact: true })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeInViewport();
+  await expect(page.locator("#adventure-collection")).toBeHidden();
+  await page.getByText("전체 모험 진행", { exact: true }).click();
+  await page.getByText("보유 보상·Collection", { exact: true }).click();
   await expect(page.locator("#adventure-collection")).toBeInViewport();
   await expect(page.locator("#adventure-progress li").last()).toBeInViewport();
   const mapBounds = await page.locator(".adventure-map-card").boundingBox();
@@ -26,11 +29,11 @@ test("shows authoritative starting progression through the real Host flow", asyn
   expect(cardBounds.width / cardBounds.height).toBeCloseTo(2 / 3, 2);
   expect(cardBounds.y).toBeGreaterThanOrEqual(collection.y);
   expect(cardBounds.y + cardBounds.height).toBeLessThanOrEqual(collection.y + collection.height + 1);
-  await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
+  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 1 · EXP 0 / 1000");
   await expect(page.locator(".loadout-pagination")).toBeInViewport();
-  await expect(page.getByRole("button", { name: "Done", exact: true })).toBeInViewport();
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await expect(page.getByRole("button", { name: "닫기", exact: true })).toBeInViewport();
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
   await page.reload();
   await expect(page.locator("#adventure-party li")).toHaveCount(3);
   await expect(page.locator("#adventure-party li").first()).toContainText("Lv. 1 · EXP 0 / 1000");

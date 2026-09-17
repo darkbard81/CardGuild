@@ -55,7 +55,7 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
   });
   await expect(page.locator('#adventure-party [data-member-id="party.hero-1"]')).toContainText("Lv. 2 · EXP 375 / 1000");
   await expect(page.locator('#adventure-party [data-member-id="party.hero-2"]')).toContainText("Lv. 3 · EXP 376 / 1000");
-  await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
+  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 2 · EXP 375 / 1000");
   await page.locator('.equipment-slot[data-slot="armor"]').hover();
   await expect(page.locator("#loadout-detail")).toContainText("18 → 15");
@@ -65,8 +65,8 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
   await expect(page.locator(".deck-panel .loadout-stat").filter({ has: page.getByText("HP", { exact: true }) })).toContainText("30");
   await page.getByRole("tab", { name: "Lyra", exact: true }).click();
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 3 · EXP 376 / 1000");
-  await expect(page.locator(".loadout-panel-label")).toContainText("Read-only");
-  await expect(page.locator('.equipment-slot[data-slot="weapon"]')).toBeDisabled();
+  await expect(page.locator(".loadout-panel-label")).toContainText("읽기 전용");
+  await expect(page.locator('.equipment-slot[data-slot="weapon"]')).toBeEnabled();
   await page.locator('.equipment-slot[data-slot="weapon"]').hover();
   await expect(page.locator("#loadout-detail")).toContainText("Only this character's owner");
   await page.locator('.equipment-slot[data-slot="weapon"]').dispatchEvent("click");
@@ -81,7 +81,7 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
     fixture.adventureUi.render(fixture.state);
   });
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 3 · EXP 999 / 1000");
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
   await expect(page.locator('#adventure-party [data-member-id="party.hero-2"]')).toContainText("Lv. 3 · EXP 999 / 1000");
   for (const phase of ["between-encounters", "reward", "complete", "failed"] as const) {
     await page.evaluate(phase => {
@@ -181,8 +181,8 @@ test("shows the victory growth summary on every screen after the battle and keep
   // same thing rather than swallowing the only notice the player gets.
   await render("between-encounters", growth);
   await expect(page.locator(".growth-summary li")).toHaveCount(3);
-  await expect(page.getByRole("button", { name: "Enter Encounter", exact: true })).toBeInViewport();
-  await expect(page.getByRole("button", { name: "Manage Loadout", exact: true })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeInViewport();
+  await expect(page.getByRole("button", { name: "장비·카드 준비", exact: true })).toBeInViewport();
 
   // The final battle has no next encounter, so the completion screen carries it.
   await render("complete", growth);
@@ -206,10 +206,10 @@ test("shows the victory growth summary on every screen after the battle and keep
   await expect(meter).toHaveAttribute("aria-valuenow", "100");
   await expect(meter).toHaveAttribute("aria-valuetext", /Lv\. 2 · EXP 100 \/ 1000/);
 
-  await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
+  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
   await expect(page.locator('#loadout-screen [role="progressbar"]')).toHaveAttribute("aria-valuenow", "100");
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 2 · EXP 100 / 1000");
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
 
   // The plan's accessibility bar for the small viewports: the reward choices and the next
   // battle stay reachable, and nothing scrolls sideways.
@@ -227,7 +227,7 @@ test("shows the victory growth summary on every screen after the battle and keep
 
     await render("between-encounters", growth);
     await expect(page.locator(".growth-summary")).toBeVisible();
-    for (const name of ["Enter Encounter", "Manage Loadout"]) {
+    for (const name of ["전투 시작", "장비·카드 준비"]) {
       const button = page.getByRole("button", { name, exact: true });
       await button.scrollIntoViewIfNeeded();
       await expect(button).toBeInViewport();

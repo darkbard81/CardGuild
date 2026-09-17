@@ -36,7 +36,7 @@ async function post<T>(
 }
 
 function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
-  return { v: 9, type: "intent", requestId, expectedRevision, intent: value };
+  return { v: 10, type: "intent", requestId, expectedRevision, intent: value };
 }
 
 async function accepted(
@@ -110,7 +110,7 @@ describe("a real WebSocket cooperative session", () => {
     vi.restoreAllMocks();
   });
 
-  it("retains Flourish and Card eligibility in protocol v9 snapshots after reconnect", async () => {
+  it("retains Flourish and Card eligibility in protocol v10 snapshots after reconnect", async () => {
     const server = await start();
     const credential = await create(server);
     const original = server.store.get(credential.sessionId)!;
@@ -129,7 +129,7 @@ describe("a real WebSocket cooperative session", () => {
       const client = await SocketClient.connect(server.origin, credential);
       sockets.push(client);
       const snapshot = await client.snapshot();
-      expect(snapshot.v).toBe(9);
+      expect(snapshot.v).toBe(10);
       expect(snapshot.gameplayHash).toBe(hashSessionGameplayState(seeded.state));
       const combat = snapshot.state.combat!;
       expect(combat.turn.usedTraitsByActor).toEqual({ "party.hero-1": ["flourish"] });
@@ -167,7 +167,7 @@ describe("a real WebSocket cooperative session", () => {
     const client = await SocketClient.connect(server.origin, credential);
     sockets.push(client);
     const first = await client.snapshot();
-    expect(first.v).toBe(9);
+    expect(first.v).toBe(10);
     expect(first.state.adventure?.version).toBe(4);
     expect(Object.values(first.state.adventure!.party.members).map(member => member.progression)).toEqual([
       { level: 2, experience: 375, advancements: [] }, { level: 3, experience: 376, advancements: [] }, { level: 4, experience: 377, advancements: [] },
@@ -600,13 +600,13 @@ describe("a real WebSocket cooperative session", () => {
 
     // v3 spoke a facing-less end-turn and a facing-bearing tile target, so it is turned
     // away at the handshake rather than left to fail one rejected intent at a time.
-    for (const version of [1, 3, 4, 5, 6, 7] as const) {
+    for (const version of [1, 3, 4, 5, 6, 7, 8, 9] as const) {
       const legacy = await SocketClient.connect(server.origin, hostCredential, { protocolVersion: version });
       sockets.push(legacy);
       const mismatch = await legacy.waitFor(
         (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
       );
-      expect(mismatch.message).toContain("version 9");
+      expect(mismatch.message).toContain("version 10");
     }
   }, 30_000);
 

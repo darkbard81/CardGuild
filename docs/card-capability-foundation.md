@@ -131,7 +131,7 @@ Trait arrays checked by the shared semantic validator.
   with injected state, not campaign E2E.
 - `src/server/campaign-save.test.ts`: used Flourish survives serialization and restore;
   malformed bookkeeping is refused.
-- `tests/integration/coop.test.ts`: protocol v9 snapshots and WebSocket reconnect retain
+- `tests/integration/coop.test.ts`: protocol v10 snapshots and WebSocket reconnect retain
   Flourish, Card eligibility, and the server-side refusal of another Flourish.
 - Existing action requirement, Creature AI, card library, campaign, E2E, and Recovery suites
   remain part of the full `npm run check` → `npm run build` → `npm test` gate.

@@ -46,6 +46,7 @@ function controlledBy(
  */
 const RESUME_LOBBY_INTENTS = new Set<SessionIntent["type"]>([
   "select-character",
+  "release-character",
   "remove-offline-guest",
   "resume-adventure",
 ]);
@@ -75,6 +76,7 @@ export function authorizeSessionIntent(
         return "Party composition is locked after a guest claims a character.";
       }
       return undefined;
+    case "release-character":
     case "select-character":
       if (isHost || !isLobbyLifecycle(state)) return "Only a guest can select a lobby character.";
       if (!state.partyPrepared) return "The host must prepare the party before guests select characters.";

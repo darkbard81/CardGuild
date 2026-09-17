@@ -55,11 +55,11 @@ export async function startFakeSocketServer(): Promise<FakeSocketServer> {
 }
 
 export function ackFrame(requestId: string, accepted: boolean, committedRevision: number): ServerAck {
-  return { v: 9, type: "ack", requestId, accepted, committedRevision };
+  return { v: 10, type: "ack", requestId, accepted, committedRevision };
 }
 
 export function errorFrame(code: ServerError["code"], message: string, requestId?: string): ServerError {
-  return { v: 9, type: "error", code, message, ...(requestId === undefined ? {} : { requestId }) };
+  return { v: 10, type: "error", code, message, ...(requestId === undefined ? {} : { requestId }) };
 }
 
 /**
@@ -69,7 +69,7 @@ export function errorFrame(code: ServerError["code"], message: string, requestId
  */
 export function resumeLobbySnapshot(revision: number, contentIdentity: ServerSnapshot["state"]["contentIdentity"]): ServerSnapshot {
   return {
-    v: 9,
+    v: 10,
     type: "snapshot",
     revision,
     controlRevision: 1,

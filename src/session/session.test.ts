@@ -504,3 +504,37 @@ describe("resume lobby", () => {
     )).toThrow("atomically");
   });
 });
+
+describe("guest release in preparation lobbies", () => {
+  it("releases a resumed guest without changing the saved party or gameplay", () => {
+    const saved = beginAndStart(readyThreePlayers());
+    const state = claim(join(resumed(saved), player("guest")), "guest", "party.hero-2");
+    const result = dispatch(state, "guest", { type: "release-character" });
+    expect(result.accepted).toBe(true);
+    expect(result.state.guestClaims.byMemberId).toEqual({});
+    expect(result.state.partySlots).toEqual(saved.partySlots);
+    expect(hashSessionGameplayState(result.state)).toBe(hashSessionGameplayState(saved));
+    expect(dispatch(result.state, result.state.hostPlayerId, {
+      type: "set-party-composition", actorDefinitionIds: [...DEFAULT_PARTY].reverse(),
+    }).accepted).toBe(false);
+  });
+  it("releases only the caller and unlocks composition after the last guest releases", () => {
+    const state = readyThreePlayers();
+    expect(dispatch(state, state.hostPlayerId, { type: "release-character" }).accepted).toBe(false);
+    const first = dispatch(state, "player-b", { type: "release-character" });
+    expect(first.accepted).toBe(true);
+    expect(first.state.guestClaims.byMemberId).toEqual({ "party.hero-3": "player-c" });
+    expect(dispatch(first.state, "player-a", { type: "set-party-composition", actorDefinitionIds: DEFAULT_PARTY }).accepted).toBe(false);
+    const second = dispatch(first.state, "player-c", { type: "release-character" });
+    expect(second.state.guestClaims.byMemberId).toEqual({});
+    expect(dispatch(second.state, "player-a", { type: "set-party-composition", actorDefinitionIds: [...DEFAULT_PARTY].reverse() }).accepted).toBe(true);
+    expect(hashSessionGameplayState(second.state)).toBe(hashSessionGameplayState(state));
+    expect(dispatch(second.state, "player-b", { type: "release-character" }).accepted).toBe(false);
+  });
+  it("does not permit release in active gameplay", () => {
+    const state = readyThreePlayers();
+    const begun = dispatch(state, "player-a", { type: "begin-adventure" }).state;
+    const result = dispatch(begun, "player-b", { type: "release-character" });
+    expect(result.accepted).toBe(false); expect(result.state).toBe(begun);
+  });
+});

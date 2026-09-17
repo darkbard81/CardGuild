@@ -2128,3 +2128,80 @@
     .resume-character > button { grid-column: 1 / -1; }
   }
 }
+
+@layer screens {
+  .ui-character-detail { width: min(28rem, calc(100vw - 2rem)); max-height: calc(100dvh - 2rem); padding: var(--ui-space-4); overflow: auto; }
+  .ui-character-detail::backdrop { background: rgb(0 0 0 / 65%); }
+  .ui-character-detail > button { float: right; }
+  .ui-character-detail__tabs { display: flex; gap: var(--ui-space-2); clear: both; }
+  .ui-character-detail__body { padding-top: var(--ui-space-3); }
+  .ui-character-detail__core { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: var(--ui-space-3); }
+  .ui-character-detail__portrait { justify-self: center; }
+  .ui-character-detail dl { display: grid; grid-template-columns: 1fr 1fr; margin: 0; gap: var(--ui-space-2); }
+  .ui-character-detail dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+  .ui-character-detail progress { width: 100%; accent-color: var(--ui-color-success); }
+  .party-character-card .ui-button { width: 100%; }
+  .party-character-card { grid-template-rows: auto auto auto; }
+  .party-character-card .guest-character-choice { display: block; grid-template-rows: none; min-height: var(--ui-control-min-height); }
+  .party-slot-row .ui-button[aria-pressed="true"], .party-character-select[aria-pressed="true"], .guest-character-choice[aria-pressed="true"] { border-color: var(--ui-color-accent-bright); background: var(--ui-surface-selected); }
+  .loadout-grid { grid-template-columns: minmax(270px, 0.95fr) minmax(280px, 1.05fr) minmax(270px, 1fr); gap: var(--ui-space-3); }
+  .loadout-panel { padding: var(--ui-space-3); }
+  .collection-panel, .loadout-comparison { overflow-y: auto; }
+  .loadout-comparison { display: flex; flex-direction: column; gap: var(--ui-space-3); }
+  .loadout-description { white-space: pre-line; font-size: 0.9rem; }
+  .loadout-comparison .loadout-stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .loadout-comparison .loadout-apply { position: sticky; bottom: 0; }
+  .equipment-slots { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: 114px 140px 114px; gap: var(--ui-space-2); margin-top: var(--ui-space-3); }
+  .equipment-slots [data-slot="armor"] { grid-column: 2; grid-row: 1; }
+  .equipment-slots [data-slot="weapon"] { grid-column: 1; grid-row: 2; }
+  .equipment-slots [data-slot="shield"] { grid-column: 3; grid-row: 2; }
+  .equipment-slots [data-slot="feet"] { grid-column: 2; grid-row: 3; }
+  .loadout-standee { grid-column: 2; grid-row: 2; align-self: center; justify-self: center; pointer-events: none; }
+  .loadout-item { position: relative; min-width: 0; }
+  .loadout-item > .loadout-tile { width: 100%; height: 100%; }
+  .loadout-items { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(125px, auto); gap: var(--ui-space-2); }
+  .loadout-tile { min-width: 0; padding-bottom: 30px; }
+  .loadout-item-name { display: block; font-size: 0.8rem; overflow-wrap: anywhere; }
+  .loadout-drag-handle { position: absolute; top: 0; right: 0; padding: 0; min-width: 44px; min-height: 44px; touch-action: none; cursor: grab; opacity: 0.9; }
+  .loadout-return { border: 1px dashed var(--ui-color-border); padding: var(--ui-space-2); font-size: 0.85rem; }
+  [data-drop-active] { outline: var(--ui-focus-ring); }
+  .loadout-drag-ghost { position: fixed; pointer-events: none; z-index: 200; padding: var(--ui-space-2); max-width: 15rem; }
+  .loadout-tile[aria-pressed="true"] { outline: var(--ui-focus-ring); }
+  .loadout-core-stats { margin-top: var(--ui-space-2); padding-top: var(--ui-space-2); }
+  .loadout-card-items { grid-auto-rows: auto; }
+  .adventure-screen { grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr); align-items: start; gap: var(--ui-space-6); }
+  .adventure-content { order: 0; }
+  .adventure-map-card { order: 1; }
+  .adventure-secondary > summary, .adventure-growth-editor > summary { cursor: pointer; padding: var(--ui-space-3); min-height: 44px; }
+  .adventure-preparation { padding: var(--ui-space-3) 0; display: grid; gap: var(--ui-space-2); }
+  .adventure-content .adventure-party { margin-top: var(--ui-space-4); }
+  .adventure-party > li { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); align-items: center; }
+  .adventure-growth-editor { width: 100%; }
+  @media (max-width: 900px) {
+    .loadout-grid, .adventure-screen { grid-template-columns: minmax(0, 1fr); }
+    .loadout-screen { height: auto; }
+    .loadout-header { flex-wrap: wrap; }
+    .equipment-slots { max-width: 24rem; margin-inline: auto; }
+    .loadout-comparison { max-height: none; }
+  }
+}
+@layer screens {
+  .loadout-comparison { overflow: hidden; }
+  .loadout-comparison-content { min-height: 0; overflow-y: auto; flex: 1; }
+  .loadout-comparison-actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-2); }
+  .loadout-comparison-actions .loadout-apply { position: static; }
+  @media (max-width: 900px) { .loadout-comparison { overflow: visible; } .loadout-comparison-content { overflow: visible; } }
+}
+@layer screens {
+  .adventure-screen { padding: var(--ui-space-4); place-content: start center; }
+  .adventure-content { padding: var(--ui-space-6); min-width: 0; }
+  .adventure-content h1 { font-size: clamp(1.8rem, 3vw, 2.7rem); }
+  .adventure-preparation h2 { font-size: 1.2rem; margin: 0; }
+  .adventure-preparation p { margin: 0; }
+  .adventure-party { padding: 0; list-style: none; }
+  .adventure-party .character-progression { padding: var(--ui-space-2); }
+  .adventure-map-card { overflow-y: auto; }
+  .adventure-secondary { flex-shrink: 0; }
+  .adventure-party .adventure-action { min-width: 0; padding: 0.6rem 0.8rem; font-size: 0.85rem; }
+  .adventure-secondary .collection-chips { max-height: 15rem; overflow-y: auto; }
+}

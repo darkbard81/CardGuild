@@ -48,6 +48,7 @@ export interface SessionLobbyHandlers {
   readonly onContinueCampaign: (campaignId: string) => void;
   readonly onJoin: (sessionId: string, displayName: string) => void;
   readonly onSetParty: (actorDefinitionIds: readonly string[]) => void;
+  readonly onReleaseCharacter: () => void;
   readonly onSelectCharacter: (memberId: string) => void;
   readonly onRemoveOfflineGuest: (playerId: string) => void;
   readonly onBegin: () => void;
@@ -74,6 +75,7 @@ export class SessionLobbyUi {
     this.partyBuilder = new PartyBuilderUi(pack, catalog, {
       onSetParty: handlers.onSetParty,
       onSelectCharacter: handlers.onSelectCharacter,
+      onReleaseCharacter: handlers.onReleaseCharacter,
     });
   }
 
@@ -369,28 +371,39 @@ export class SessionLobbyUi {
     this.screen.replaceChildren();
     const card = element("section", "ui-panel session-card lobby-card");
     card.append(
-      element("p", "eyebrow", host ? "You are the host" : "Host invitation accepted"),
-      element("h1", undefined, "Party Lobby"),
+      element("p", "eyebrow", host ? "파티를 준비하세요" : "초대로 참가했습니다"),
+      element("h1", undefined, "모험 시작 준비"),
       element("p", "session-description", host
-          ? "Players와 출전 Party를 따로 준비합니다. Session ID만 게스트에게 공유하세요."
+          ? "파티를 적용하고 초대 코드를 공유하세요. 참가자가 캐릭터를 선택하면 시작할 수 있습니다."
           : "호스트가 준비한 잔여 캐릭터 중 하나를 선택하세요."),
     );
 
     const invite = element("div", "invite-code");
     const code = element("code", undefined, state.sessionId);
     code.id = "invite-session-id";
-    const copy = element("button", "ui-button ui-button--secondary session-secondary", "Copy Session ID");
+    const copy = element("button", "ui-button ui-button--secondary session-secondary", "초대 코드 복사");
     copy.id = "copy-session-id";
     copy.type = "button";
     copy.hidden = !host;
     copy.addEventListener("click", () => {
-      void navigator.clipboard?.writeText(state.sessionId);
-      this.setStatus("Session ID copied. Credential은 공유되지 않았습니다.");
+      void (async () => {
+        try {
+          if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+          await navigator.clipboard.writeText(state.sessionId);
+          if (code.isConnected) this.setStatus("초대 코드를 복사했습니다.");
+        } catch {
+          if (!code.isConnected) return;
+          code.tabIndex = 0; code.focus();
+          const range = document.createRange(); range.selectNodeContents(code);
+          const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range);
+          this.setStatus("자동 복사에 실패했습니다. 선택된 초대 코드를 직접 복사하세요.", "error");
+        }
+      })();
     });
     invite.append(code, copy);
 
     const playersPanel = element("section", "ui-panel ui-panel--workspace lobby-players");
-    playersPanel.append(element("p", "party-builder-label", "PLAYERS"));
+    playersPanel.append(element("p", "party-builder-label", "참가자"));
     const seats = element("ol", "session-seats");
     for (const seat of [1, 2, 3] as const) {
       const owner = state.seats.find((candidate) => candidate.seat === seat);
@@ -405,10 +418,10 @@ export class SessionLobbyUi {
         "small",
         undefined,
         owner?.playerId === state.hostPlayerId
-          ? connected.has(owner.playerId) ? "Host · Online" : "Host · Offline"
+          ? `호스트 · ${connected.has(owner.playerId) ? "접속 중" : "오프라인"} · ${this.pack.actorDefinitions[state.partySlots[0]?.actorDefinitionId ?? ""]?.name ?? "파티 준비 중"} · ${state.partyPrepared ? "준비됨" : "파티 적용 필요"}`
           : owner
-            ? (claim ?? "Choosing character") + (connected.has(owner.playerId) ? " · Online" : " · Offline")
-            : "Invite pending",
+            ? (claim ? (this.pack.actorDefinitions[state.partySlots.find(slot => slot.memberId === claim)?.actorDefinitionId ?? ""]?.name ?? claim) + " · 준비됨" : "캐릭터 선택 중") + (connected.has(owner.playerId) ? " · 접속 중" : " · 오프라인")
+            : "참가 가능",
       ));
       const removable = Boolean(
         host &&
@@ -427,7 +440,7 @@ export class SessionLobbyUi {
       }
       item.append(
         element("span", "seat-number", String(seat)),
-        element("strong", undefined, owner?.displayName ?? "Open seat"),
+        element("strong", undefined, owner?.displayName ?? "빈자리"),
         seatStatus,
       );
       seats.append(item);
@@ -442,7 +455,7 @@ export class SessionLobbyUi {
     const begin = element(
       "button",
       "ui-button ui-button--primary session-primary",
-      host ? "Begin Adventure" : "Waiting for Host",
+      host ? "모험 시작" : "호스트가 시작하기를 기다리는 중",
     );
     begin.id = "begin-adventure";
     begin.type = "button";
@@ -452,14 +465,14 @@ export class SessionLobbyUi {
       "p",
       canBegin ? "party-gate" : "party-gate invalid",
       !state.partyPrepared
-          ? "Apply a party before beginning."
+          ? "시작할 파티를 먼저 적용하세요."
           : state.partySlots.length < state.seats.length
-            ? "Party size must cover every player."
+            ? "참가자 수 이상의 캐릭터가 필요합니다."
             : !everyGuestClaimed
-              ? "Every guest must choose exactly one character."
+              ? "캐릭터 선택 중인 참가자를 기다리고 있습니다."
               : host
-                ? "Party and guest claims are ready."
-                : "Waiting for the host to begin.",
+                ? "파티와 참가자 선택이 준비되었습니다."
+                : "호스트가 시작하기를 기다리고 있습니다.",
     );
     card.append(
       invite,
@@ -587,6 +600,9 @@ export class SessionLobbyUi {
         element("small", undefined, slot.slot === 1 ? "호스트 캐릭터" : mine ? "내 캐릭터" : claimant ? `${claimantName ?? "다른 참가자"} 선택함` : "선택 가능"),
         element("small", undefined, `현재 조작: ${controller?.displayName ?? "호스트"}${controllerId === state.hostPlayerId ? " (호스트)" : ""}`));
       entry.append(details);
+      if (mine) {
+        entry.append(this.button("선택 해제", "release-" + slot.memberId, this.handlers.onReleaseCharacter));
+      }
       if (viewerPlayerId !== state.hostPlayerId && available) {
         const select = this.button("선택", "claim-" + slot.memberId, () => this.handlers.onSelectCharacter(slot.memberId));
         select.setAttribute("aria-label", (actor?.name ?? slot.actorDefinitionId) + " 선택");
@@ -628,6 +644,7 @@ export class SessionLobbyUi {
   }
 
   public setVisible(visible: boolean): void {
+    if (!visible) this.partyBuilder.closeDetails();
     this.screen.hidden = !visible;
   }
 }

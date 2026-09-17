@@ -1,3 +1,4 @@
+import type { LoadoutDestination } from "../dom/loadout-ui";
 import type { CharacterAdvancementChoice } from "../character";
 import type { AdventureEvent, AdventureState } from "../adventure";
 import { ApiError, isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
@@ -83,11 +84,11 @@ export class AdventureController {
       onStart: () => this.sendIntent({ type: "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
       onChooseReward: (rewardId, choiceIndex) => this.sendIntent({ type: "choose-reward", rewardId, choiceIndex }),
-      onOpenLoadout: () => this.openLoadout(),
+      onOpenLoadout: destination => this.openLoadout(destination),
       onRetry: () => undefined,
     }, this.catalog);
     this.loadoutUi = new LoadoutUi(PRODUCTION_CONTENT.pack, this.catalog, {
-      onSetLoadout: (memberId, loadout) => this.setMemberLoadout(memberId, loadout),
+      onSetLoadout: (memberId, loadout, settled) => this.setMemberLoadout(memberId, loadout, settled),
       onDone: () => this.closeLoadout(),
     });
     this.lobbyUi = new SessionLobbyUi(PRODUCTION_CONTENT.pack, this.catalog, {
@@ -105,6 +106,7 @@ export class AdventureController {
       onContinueCampaign: (campaignId) => void this.continueCampaign(campaignId),
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
       onSetParty: (actorDefinitionIds) => this.sendIntent({ type: "set-party-composition", actorDefinitionIds }),
+      onReleaseCharacter: () => this.sendIntent({ type: "release-character" }),
       onSelectCharacter: (memberId) => this.sendIntent({ type: "select-character", memberId }),
       onRemoveOfflineGuest: (playerId) => this.sendIntent({ type: "remove-offline-guest", playerId }),
       onBegin: () => this.sendIntent({ type: "begin-adventure" }),
@@ -332,8 +334,8 @@ export class AdventureController {
       },
       onStatus: (status) => {
         this.root.dataset.sessionStatus = status;
+        this.loadoutUi.setConnectionStatus(status);
         if (status !== "connected") {
-          this.loadoutUi.reportError(`Session ${status}…`);
           this.ui.reportError(`Session ${status}…`);
           this.battle?.reportError(`Session ${status}…`);
         }
@@ -514,16 +516,20 @@ export class AdventureController {
       this.root.dataset.screen = "adventure";
       this.loadoutUi.setVisible(false);
       this.ui.render(state, { isHost, growth: this.growth?.summary ?? null,
-        editableMemberIds: this.snapshot ? this.controlledMemberIds(this.snapshot, viewer.playerId) : new Set() });
+        editableMemberIds: this.snapshot ? this.controlledMemberIds(this.snapshot, viewer.playerId) : new Set(),
+        controllerNames: Object.fromEntries(Object.entries(this.snapshot?.control.effectiveControllerByMemberId ?? {}).map(([memberId, playerId]) => [memberId,
+          this.snapshot?.state.seats.find(seat => seat.playerId === playerId)?.displayName ?? "호스트"])),
+      });
       this.ui.setVisible(true);
     }
   }
 
-  private openLoadout(): void {
+  private openLoadout(destination?: LoadoutDestination): void {
     const snapshot = this.snapshot;
     const adventure = snapshot?.state.adventure;
     const viewer = snapshot ? this.viewerSeat(snapshot) : undefined;
     if (!adventure || !viewer || (adventure.phase !== "ready" && adventure.phase !== "between-encounters")) return;
+    this.loadoutUi.navigate(destination);
     this.view = "loadout";
     this.renderAdventure(adventure, viewer);
   }
@@ -544,11 +550,11 @@ export class AdventureController {
     return this.sendIntent({ type: "advance-character", memberId, choice });
   }
 
-  private setMemberLoadout(memberId: string, loadout: PartyMemberLoadout): boolean {
+  private setMemberLoadout(memberId: string, loadout: PartyMemberLoadout, settled: (accepted: boolean) => void): boolean {
     const snapshot = this.snapshot;
     const viewer = snapshot ? this.viewerSeat(snapshot) : undefined;
     if (!snapshot || !viewer || !this.controlledMemberIds(snapshot, viewer.playerId).has(memberId)) return false;
-    return this.sendIntent({ type: "set-loadout", memberId, loadout });
+    return this.client?.sendIntent({ type: "set-loadout", memberId, loadout }, settled) ?? false;
   }
 
   private sendIntent(intent: SessionIntent): boolean {

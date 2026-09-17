@@ -32,6 +32,7 @@ for (const viewport of [{ width: 1024, height: 768 }, { width: 1440, height: 900
         },
       });
     });
+    await page.getByText("보유 보상·Collection", { exact: true }).click();
     await expect(page.locator(".collection-card")).toHaveCount(3);
     await expect(page.locator(".reward-card-choice .card-face")).toHaveCount(3);
     for (const card of await page.locator(".collection-card, .reward-card-choice .card-face").all()) {

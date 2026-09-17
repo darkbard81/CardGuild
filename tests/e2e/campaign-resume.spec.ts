@@ -51,7 +51,7 @@ async function playIntoCombat(page: Page): Promise<string> {
   await expect(page.locator("#begin-adventure")).toBeEnabled();
   await page.locator("#begin-adventure").click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
-  await page.getByRole("button", { name: "Enter Encounter" }).click();
+  await page.getByRole("button", { name: "전투 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 });
   const hash = await page.locator("#app").getAttribute("data-session-hash");
   expect(hash).toBeTruthy();

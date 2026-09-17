@@ -60,8 +60,8 @@ function captureRuntimeErrors(page: Page): string[] {
 async function openAdventure(page: Page): Promise<void> {
   await createCampaignAsHost(page, "Solo Host");
   await expect(page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "host");
-  await page.locator("#party-slot-2").selectOption("");
-  await page.locator("#party-slot-3").selectOption("");
+  await page.getByRole("button", { name: "동료 2 비우기", exact: true }).click();
+  await page.getByRole("button", { name: "동료 1 비우기", exact: true }).click();
   await page.locator("#apply-party").click();
   await expect(page.locator("#begin-adventure")).toBeEnabled();
   await page.locator("#begin-adventure").click();
@@ -70,7 +70,7 @@ async function openAdventure(page: Page): Promise<void> {
 
 async function openBattle(page: Page): Promise<void> {
   await openAdventure(page);
-  await page.getByRole("button", { name: "Enter Encounter" }).click();
+  await page.getByRole("button", { name: "전투 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 20_000 });
   await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.road-ambush");
   await expect(page.locator("#initiative-list .active")).toHaveText("Aerin");
@@ -227,6 +227,8 @@ test("shows the Adventure shell with atlas, standalone actors and full card art"
 
   await expect(page.locator("#adventure-content h1")).toHaveText("Road Ambush");
   // Every step of the run is on the rail, the last one marked as the finale.
+  await page.getByText("전체 모험 진행", { exact: true }).click();
+  await page.getByText("보유 보상·Collection", { exact: true }).click();
   const steps = page.locator("#adventure-progress li");
   await expect(steps).toHaveCount(8);
   await expect(steps.first()).toHaveAttribute("aria-current", "step");
@@ -250,11 +252,11 @@ test("shows the Adventure shell with atlas, standalone actors and full card art"
   expect(runtimeErrors).toEqual([]);
 });
 
-test("equips in one click and fits the minimum loadout viewport", async ({ page }) => {
+test("compares before equipping and fits the minimum loadout viewport", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
   await page.setViewportSize({ width: 1024, height: 768 });
   await openAdventure(page);
-  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
   await expect(page.locator(".loadout-option")).toHaveCount(4);
   await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
   const feet = page.locator('.equipment-slot[data-slot="feet"]');
@@ -262,11 +264,13 @@ test("equips in one click and fits the minimum loadout viewport", async ({ page 
   await expect(page.locator("#loadout-detail")).toContainText("17 → 16");
   await expect(page.locator("#loadout-detail")).toContainText("Fly ×2");
   await feet.click();
-  await expect(feet).toContainText("Empty feet");
+  await page.locator(".loadout-apply").click();
+  await expect(feet).toContainText("빈 악세서리");
   await expect(page.locator(".loadout-deck-count")).toHaveText("6 Tactical Cards");
   const boots = page.locator('.loadout-option[data-option-id="boots-of-fly"]');
   await expect(boots).toContainText("×1");
   await boots.click();
+  await page.locator(".loadout-apply").click();
   await expect(feet).toContainText("Boots of Fly");
   await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
   await page.getByRole("tab", { name: "덱·능력치", exact: true }).click();
@@ -280,14 +284,14 @@ test("equips in one click and fits the minimum loadout viewport", async ({ page 
   }
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
-  await page.getByRole("button", { name: "Done", exact: true }).click();
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
   expect(runtimeErrors).toEqual([]);
 });
 
 test("hover, hold and keyboard inspection do not change prepared cards", async ({ page }) => {
   await page.setViewportSize({ width: 1024, height: 768 });
   await openAdventure(page);
-  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
   await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
   const viciousSwing = page.locator(".prepared-card").filter({ hasText: "Vicious Swing" });
   const revision = await page.locator("#app").getAttribute("data-session-revision");
@@ -301,19 +305,22 @@ test("hover, hold and keyboard inspection do not change prepared cards", async (
   await page.keyboard.press("Escape");
   await expect(page.locator("#loadout-detail")).toBeHidden();
   await viciousSwing.click();
+  await page.locator(".loadout-apply").click();
   await expect(page.locator(".prepared-card")).toHaveCount(1);
   await expect(page.locator(".loadout-deck-count")).toHaveText("7 Tactical Cards");
   const unavailable = page.locator('.loadout-option[data-option-id="card.demoralize"]');
   await unavailable.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator(".prepared-card")).toHaveCount(1);
-  await expect(page.locator(".loadout-status")).toContainText("only 1");
+  await expect(page.locator(".loadout-comparison")).toContainText("only 1");
+  await expect(page.locator(".loadout-apply")).toBeDisabled();
   await page.locator('.loadout-option[data-option-id="card.vicious-swing"]').focus();
   await page.keyboard.press("Enter");
+  await page.locator(".loadout-apply").click();
   await expect(page.locator(".prepared-card")).toHaveCount(2);
   await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
-  await page.getByRole("button", { name: "Done", exact: true }).click();
-  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
   await expect(page.getByRole("tab", { name: "준비 카드", exact: true })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator(".prepared-card")).toHaveCount(2);
 });
@@ -332,29 +339,32 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(page.locator("#app")).toHaveAttribute("data-adventure-phase", "between-encounters");
   await expect(page.locator("#adventure-collection .collection-card").filter({ hasText: "Brace Behind Cover" })).toHaveCount(1);
   // An unworn reward is exactly what Manage Loadout is for, so the screen says so.
-  await expect(page.locator(".loadout-nudge")).toContainText("미장착 보상 1개");
+  await expect(page.locator(".loadout-nudge")).toContainText("미사용 보상 1개");
   // The next encounter names its threats before the party commits to it.
   await expect(page.locator(".encounter-threats")).toContainText("Goblin Spearman");
-  await page.getByRole("button", { name: "Manage Loadout" }).click();
+  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
 
   await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
   await page.locator('.loadout-option[data-option-id="card.brace-behind-cover"]').click();
+  await page.locator(".loadout-apply").click();
   await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
   await page.getByRole("tab", { name: "장비", exact: true }).click();
   await page.locator('.equipment-slot[data-slot="feet"]').click();
-  await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
+  await page.locator(".loadout-apply").click();
+  await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("빈");
   await page.locator('.equipment-slot[data-slot="shield"]').click();
-  await expect(page.locator('.equipment-slot[data-slot="shield"]')).toContainText("Empty");
+  await page.locator(".loadout-apply").click();
+  await expect(page.locator('.equipment-slot[data-slot="shield"]')).toContainText("빈");
   await expect(page.locator(".loadout-deck-count")).toHaveText("7 Tactical Cards");
   await expect(page.locator(".collection-panel")).toContainText("Steel Shield");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
 
-  await page.getByRole("button", { name: "Done" }).click();
+  await page.getByRole("button", { name: "닫기" }).click();
   // The reward card is prepared now, and the only things left sitting in the collection are the
   // starter shield and boots this loadout just took off. Swapped-out starter gear is not an
-  // unclaimed reward, so the notice is gone rather than stuck at "미장착 보상 2개".
+  // unclaimed reward, so the notice is gone rather than stuck at "미사용 보상 2개".
   await expect(page.locator(".loadout-nudge")).toHaveCount(0);
-  await page.getByRole("button", { name: "Enter Encounter" }).click();
+  await page.getByRole("button", { name: "전투 시작" }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-encounter-id", "encounter.spear-line");
   // Aerin acts first in the spear corridor, so she opens on the dealt six rather than
   // having drawn the following turn's card during an enemy turn.
@@ -806,4 +816,53 @@ test("pans an off-screen actor back into view when its turn starts", async ({ pa
   expect(goblin.x).toBeGreaterThan(safe.left);
   expect(goblin.x).toBeLessThan(canvasBox.width - safe.right);
   expect(runtimeErrors).toEqual([]);
+});
+
+test("keeps loadout pending through reconnect until the original committed request is acknowledged", async ({ page }) => {
+  let requestId: string | undefined;
+  let disconnected = false;
+  let allowReply = false;
+  const sentIds: string[] = [];
+  const replies: (() => void)[] = [];
+  await page.routeWebSocket("**/ws", ws => {
+    const server = ws.connectToServer();
+    ws.onMessage(raw => {
+      const message = JSON.parse(String(raw)) as { type: string; requestId?: string; intent?: { type: string } };
+      if (message.intent?.type === "set-loadout") {
+        requestId ??= message.requestId;
+        sentIds.push(message.requestId!);
+      }
+      server.send(raw);
+    });
+    server.onMessage(async raw => {
+      const message = JSON.parse(String(raw)) as { type: string; requestId?: string };
+      if (requestId && !disconnected) {
+        if (message.type === "ack" && message.requestId === requestId) {
+          disconnected = true;
+          await ws.close({ code: 1012, reason: "test: committed reply lost" });
+          await server.close();
+        }
+        return;
+      }
+      if (disconnected && !allowReply) replies.push(() => ws.send(raw));
+      else ws.send(raw);
+    });
+  });
+  await page.setViewportSize({ width: 1024, height: 768 });
+  await openAdventure(page);
+  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
+  const revision = Number(await page.locator("#app").getAttribute("data-session-revision"));
+  await page.locator('.equipment-slot[data-slot="weapon"]').click();
+  await page.locator(".loadout-apply").click();
+  await expect.poll(() => sentIds.length).toBe(2);
+  await expect(page.locator("#loadout-screen")).toHaveAttribute("aria-busy", "true");
+  await expect(page.locator(".loadout-done")).toBeDisabled();
+  await expect(page.locator(".loadout-status")).toContainText("결과를 확인");
+  await expect.poll(() => replies.length).toBeGreaterThan(0);
+  allowReply = true;
+  replies.splice(0).forEach(send => send());
+  await expect(page.locator(".loadout-status")).toContainText("저장됨");
+  await expect(page.locator(".loadout-done")).toBeEnabled();
+  await expect(page.locator("#app")).toHaveAttribute("data-session-revision", String(revision + 1));
+  expect(new Set(sentIds).size).toBe(1);
 });

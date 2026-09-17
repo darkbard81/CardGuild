@@ -76,11 +76,11 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- wire protocol은 v9, `SessionCoreState`는 v3, `AdventureState`는 v4입니다. 모든 PartyMember는
+- wire protocol은 v10, `SessionCoreState`는 v3, `AdventureState`는 v4입니다. 모든 PartyMember는
   Level/EXP와 advancement history를 포함합니다. `advance-character` intent와 `CHARACTER_ADVANCED`
   이벤트가 성장 선택을 전달하며, 이전 wire version은 `PROTOCOL_MISMATCH`로 거절합니다.
   M8 Facing 및 M9 resume/성장 이벤트 계약은 유지합니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v9 control-only
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v10 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
   판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. host migration은 지원하지
   않지만, 서버가 재시작되면 Host가 Campaign을 Continue해 마지막 저장부터 이어갑니다.

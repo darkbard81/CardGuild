@@ -13,7 +13,7 @@ const ui = new SessionLobbyUi(PRODUCTION_CONTENT.pack, createPresentationCatalog
   onShowLanding: noop, onShowLogin: noop, onShowRegister: noop, onLogout: noop,
   onLogin: noop, onRegister: noop, onJoin: noop, onCreateCampaign: noop,
   onContinueCampaign: id => { calls.push(id); ui.setBusy(true); }, onSetParty: noop,
-  onSelectCharacter: id => calls.push(id), onRemoveOfflineGuest: noop, onBegin: noop, onResume: noop,
+  onReleaseCharacter: () => undefined, onSelectCharacter: id => calls.push(id), onRemoveOfflineGuest: noop, onBegin: noop, onResume: noop,
 });
 const campaign: CampaignSummary = {
   campaignId: "campaign-test", name: "친구들과 함께한 모험", hasSave: true, createdAt: 0, updatedAt: 1700000000000,

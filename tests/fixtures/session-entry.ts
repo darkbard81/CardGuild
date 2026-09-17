@@ -12,7 +12,7 @@ const ui = new SessionLobbyUi(compileContentPack(createCoreContentSource()), cre
   onShowCampaigns: noop, onRetryAuth: noop, onShowLanding: () => ui.renderLanding(),
   onShowLogin: () => ui.renderLogin(), onShowRegister: () => ui.renderRegister(), onLogout: noop,
   onLogin: submit, onRegister: submit, onJoin: submit, onCreateCampaign: submit,
-  onContinueCampaign: noop, onSetParty: noop, onSelectCharacter: noop,
+  onContinueCampaign: noop, onSetParty: noop, onReleaseCharacter: () => undefined, onSelectCharacter: noop,
   onRemoveOfflineGuest: noop, onBegin: noop, onResume: noop,
 });
 const fixture = { calls, ui };

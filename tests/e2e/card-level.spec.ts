@@ -42,6 +42,17 @@ async function play(page: Page, combat: CombatState, command: CombatCommand): Pr
   if (target.kind === "tile" && target.facing) await chooseFacing(page, target.facing);
 }
 
+async function ownedCard(page: Page, cardId: string) {
+  const pager = page.locator(".loadout-pagination");
+  const previous = pager.getByRole("button", { name: "이전", exact: true });
+  const next = pager.getByRole("button", { name: "다음", exact: true });
+  while (await previous.isEnabled()) await previous.click();
+  const card = page.locator(`.collection-panel [data-option-id="${cardId}"]`);
+  while (await card.count() === 0 && await next.isEnabled()) await next.click();
+  await expect(card).toBeVisible();
+  return card;
+}
+
 test("Spear Line reward stays locked until level 2, then prepares and executes in the next encounter", async ({ page }) => {
   // Five encounters use real animations and AI turns, including on shared CI workers.
   test.setTimeout(600_000);
@@ -60,8 +71,10 @@ test("Spear Line reward stays locked until level 2, then prepares and executes i
     return module.PRODUCTION_CONTENT.pack;
   });
   const content = pack.combatContent;
-  await page.locator("#party-slot-2").selectOption("hero.brom");
-  await page.locator("#party-slot-3").selectOption("hero.nera");
+  await page.locator('.party-slot-row[data-party-slot="2"]').getByRole("button").first().click();
+  await page.locator('.party-character-select[data-actor-definition-id="hero.brom"]').click();
+  await page.locator('.party-slot-row[data-party-slot="3"]').getByRole("button").first().click();
+  await page.locator('.party-character-select[data-actor-definition-id="hero.nera"]').click();
   await page.locator("#apply-party").click();
   await page.locator("#begin-adventure").click();
   await expect.poll(() => latest?.state.adventure?.adventureSeed).toBe(1);
@@ -93,23 +106,24 @@ test("Spear Line reward stays locked until level 2, then prepares and executes i
       await button.click();
     } else if (adventure.phase === "ready" || adventure.phase === "between-encounters") {
       if (adventure.collection.cards["card.combat-grab"] && (!checkedLocked || (!prepared && member.progression.level >= 2))) {
-        await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
+        await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
         await page.getByRole("tab", { name: "Aerin", exact: true }).click();
         await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
-        const card = page.locator('[data-option-id="card.combat-grab"]');
+        const card = await ownedCard(page, "card.combat-grab");
         if (member.progression.level === 1) {
-          await expect(card).toHaveAttribute("aria-disabled", "true");
+          await card.click();
+          await expect(page.locator(".loadout-apply")).toBeDisabled();
           await card.hover();
-          await expect(page.locator("#loadout-detail")).toContainText("요구 레벨 2 · 현재 레벨 1");
+          await expect(page.locator(".loadout-comparison")).toContainText("요구 레벨 2 · 현재 레벨 1");
           checkedLocked = true;
         } else {
-          await expect(card).toHaveAttribute("aria-disabled", "false");
           await card.click();
+          await page.locator(".loadout-apply").click();
           await expect.poll(() => latest?.state.adventure?.party.members[member.id]?.loadout.preparedCards.includes("card.combat-grab")).toBe(true);
           prepared = true;
         }
-        await page.getByRole("button", { name: "Done", exact: true }).click();
-        if (!prepared) await page.getByRole("button", { name: "Enter Encounter", exact: true }).click();
+        await page.getByRole("button", { name: "닫기", exact: true }).click();
+        if (!prepared) await page.getByRole("button", { name: "전투 시작", exact: true }).click();
         else continue;
       } else {
         const heal = await page.evaluate(async adventure => {
@@ -120,15 +134,16 @@ test("Spear Line reward stays locked until level 2, then prepares and executes i
         if (heal?.type === "set-loadout") {
           const owner = adventure.party.members[heal.memberId]!;
           const cardId = heal.loadout.preparedCards.find(id => !owner.loadout.preparedCards.includes(id))!;
-          await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
+          await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
           await page.getByRole("tab", { name: pack.actorDefinitions[owner.actorDefinitionId]!.name, exact: true }).click();
           await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
-          await page.locator(`[data-option-id="${cardId}"]`).click();
+          await (await ownedCard(page, cardId)).click();
+          await page.locator(".loadout-apply").click();
           await expect.poll(() => latest?.revision).toBeGreaterThan(snapshot.revision);
-          await page.getByRole("button", { name: "Done", exact: true }).click();
+          await page.getByRole("button", { name: "닫기", exact: true }).click();
           continue;
         }
-        await page.getByRole("button", { name: "Enter Encounter", exact: true }).click();
+        await page.getByRole("button", { name: "전투 시작", exact: true }).click();
       }
     } else if (adventure.phase === "combat") {
       const combat = snapshot.state.combat!;

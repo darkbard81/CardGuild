@@ -83,8 +83,8 @@ async function joinAs(player: Player, sessionId: string): Promise<void> {
 }
 
 async function claim(page: Page, memberId: string): Promise<void> {
-  await page.locator(`.guest-character-choice[data-member-id="${memberId}"]`).click();
-  await expect(page.locator('.guest-character-choice[data-claim-state="mine"]'))
+  await page.locator(`.guest-character-choice[data-member-id="${memberId}"], .resume-character[data-member-id="${memberId}"] button`).first().click();
+  await expect(page.locator('.guest-character-choice[data-claim-state="mine"], .resume-character[data-claim-state="mine"]'))
     .toHaveAttribute("data-member-id", memberId);
 }
 
@@ -92,7 +92,7 @@ async function claim(page: Page, memberId: string): Promise<void> {
 async function reachCombat(page: Page): Promise<string> {
   await page.locator("#begin-adventure").click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "adventure");
-  await page.getByRole("button", { name: "Enter Encounter", exact: true }).click();
+  await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 60_000 });
   const hash = await page.locator("#app").getAttribute("data-session-hash");
   if (!hash) throw new Error("The combat screen published no gameplay hash.");
@@ -200,7 +200,7 @@ test.describe("deployment recovery", () => {
     await expect(host.page.locator("#app")).toHaveAttribute("data-auth", "authenticated", { timeout: 60_000 });
     await continueCampaign(host.page, campaign);
     await expectResumeLobby(host.page);
-    const secondSessionId = await host.page.locator("#invite-session-id").innerText();
+    const secondSessionId = await host.page.locator("#invite-session-id").inputValue();
     // One campaign, one live session: Continue opened a new one rather than reviving the old.
     expect(secondSessionId).not.toBe(firstSessionId);
 
