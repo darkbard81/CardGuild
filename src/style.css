@@ -2094,3 +2094,37 @@
   .session-entry .session-input { min-height: 3.25rem; font-size: 1rem; }
 }
 }
+
+@layer screens {
+  .campaign-screen, .resume-card { width: min(100%, 76rem); }
+  .campaign-list, .campaign-party { list-style: none; margin: 0; padding: 0; }
+  .campaign-list { display: grid; gap: var(--ui-space-4); }
+  .campaign-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-4); padding: var(--ui-space-4); }
+  .campaign-details { min-width: 0; display: grid; gap: var(--ui-space-2); overflow-wrap: anywhere; }
+  .campaign-details h2, .campaign-details p { margin: 0; }
+  .campaign-party { display: flex; flex-wrap: wrap; gap: var(--ui-space-4); }
+  .campaign-member { display: flex; align-items: center; gap: var(--ui-space-2); }
+  .campaign-portrait { display: block; flex-shrink: 0; }
+  .campaign-saved { color: var(--ui-color-muted); font-size: 0.9rem; }
+  .campaign-actions { display: flex; flex-wrap: wrap; gap: var(--ui-space-3); }
+  .resume-card { gap: var(--ui-space-3); padding: var(--ui-space-6); }
+  .resume-card h1 { font-size: 2rem; }
+  .resume-card .session-status:empty { display: none; }
+  .resume-card h2, .resume-card p { margin: 0; }
+  .resume-invite { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--ui-space-3); }
+  .resume-body { display: grid; grid-template-columns: minmax(14rem, 0.8fr) minmax(0, 1.6fr); gap: var(--ui-space-4); }
+  .resume-players, .resume-party { min-width: 0; padding: var(--ui-space-3); }
+  .resume-players .session-seats li { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--ui-space-2); overflow-wrap: anywhere; }
+  .resume-characters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; gap: var(--ui-space-2); }
+  .resume-character { display: grid; grid-template-columns: minmax(0, 1fr); align-items: center; gap: var(--ui-space-2); padding: var(--ui-space-2); }
+  .resume-character-details { display: grid; gap: 0.15rem; overflow-wrap: anywhere; }
+  .resume-character[data-claim-state="mine"] { border-color: var(--ui-color-accent-bright); }
+  .resume-character .guest-character-art { grid-row: auto; }
+  @media (max-width: 759px) {
+    .campaign-card, .resume-body, .resume-invite { grid-template-columns: minmax(0, 1fr); }
+    .campaign-actions { display: grid; }
+    .resume-characters { grid-template-columns: minmax(0, 1fr); }
+    .resume-character { grid-template-columns: 4.5rem minmax(0, 1fr); }
+    .resume-character > button { grid-column: 1 / -1; }
+  }
+}

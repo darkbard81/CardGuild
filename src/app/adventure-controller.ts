@@ -183,6 +183,12 @@ export class AdventureController {
       INVALID_USERNAME: "계정 이름은 영문·숫자로 시작하는 3~32자이며 영문, 숫자, 점, 하이픈, 밑줄만 사용할 수 있습니다.",
       INVALID_PASSWORD: "비밀번호는 8자 이상 입력하세요.",
       SESSION_NOT_FOUND: "초대 코드를 찾을 수 없습니다. 친구에게 현재 초대 코드를 확인하세요.",
+      CAMPAIGN_NOT_FOUND: "모험을 찾을 수 없습니다. 목록을 새로고침하세요.",
+      SAVE_NOT_FOUND: "아직 시작하지 않은 모험입니다. 모험을 시작하면 진행 상황이 저장됩니다.",
+      SAVE_CORRUPT: "저장 데이터를 읽을 수 없습니다. 원본은 보존되어 있습니다.",
+      SAVE_SCHEMA_UNSUPPORTED: "현재 버전에서 지원하지 않는 저장 형식입니다.",
+      SAVE_CONTENT_MISMATCH: "저장된 모험과 현재 콘텐츠가 일치하지 않습니다.",
+      PERSISTENCE_FAILED: "저장된 모험을 여는 데 실패했습니다. 다시 시도하세요.",
       SESSION_FULL: "참가 인원이 가득 찼습니다. 친구에게 빈자리가 있는지 확인하세요.",
       ROSTER_LOCKED: "지금은 참가할 수 없습니다. 친구에게 참가 가능한 상태인지 확인하세요.",
     };

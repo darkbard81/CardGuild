@@ -242,7 +242,7 @@ export function createHttpApi(
     if (method === "GET" && url.pathname === "/api/campaigns") {
       const account = signedIn(request);
       if (!account) fail(response, "UNAUTHENTICATED", "Listing campaigns requires signing in.");
-      else json(response, 200, { campaigns: campaigns.list(account.accountId).map(publicCampaign) });
+      else json(response, 200, { campaigns: campaigns.listSummaries(account.accountId) });
       return true;
     }
 

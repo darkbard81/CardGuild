@@ -39,13 +39,8 @@ export interface AccountIdentity {
   readonly username: string;
 }
 
-export interface CampaignSummary {
-  readonly campaignId: string;
-  readonly name: string;
-  readonly hasSave: boolean;
-  readonly createdAt: number;
-  readonly updatedAt: number;
-}
+export type { CampaignSummary } from "../campaign/types";
+import type { CampaignSummary } from "../campaign/types";
 
 export interface SessionClientHandlers {
   readonly onSnapshot: (snapshot: ServerSnapshot) => void;

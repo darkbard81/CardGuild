@@ -100,3 +100,10 @@ CardGuild의 DOM UI는 **공통 테마 변수 → 공통 컴포넌트 → 화면
 - `tests/unit/browser/ui-theme.spec.ts`는 실제 컴포넌트에 root 토큰을 바꿔 공통 적용, 변형, 상태, layer 우선순위를 검증한다.
 - DOM 클래스 변경 시 기존 Browser Unit과 해당 E2E의 동작·선택자를 확인한다. 상태를 주입한 검사는 E2E로 분류하지 않는다.
 - `npm run check`, `npm run build` 및 영향받는 브라우저 검사를 수행한다.
+
+## 캠페인 목록과 재참가
+
+- `campaign-*`는 넓은 요약 카드 목록의 배치, `resume-*`는 저장된 파티와 현재 참가자 관계의 배치를 담당한다. 기본은 1024×768 가로 모드이며 넓은 화면에서는 최대 76rem까지 확장한다.
+- 요약 카드와 캐릭터 패널은 `ui-panel ui-panel--workspace campaign-card` 또는 `ui-panel ui-panel--workspace resume-character`처럼 기본·변형·화면 클래스를 함께 사용한다. 게임 카드의 `.card-face`와 구분한다.
+- 동작은 `ui-button`과 기존 modifier를 사용한다. 카드 자체를 클릭 대상으로 만들지 않고 별도 버튼으로 실행한다. 특색 있는 외형이 필요하면 `ui-button ui-button--이름`으로 확장한다.
+- 선택한 캐릭터는 `data-claim-state="mine"`으로 표시한다. 참가자의 선택과 실제 조작 담당자는 별도로 표시하며, 외형만으로 조작 권한을 판정하지 않는다.

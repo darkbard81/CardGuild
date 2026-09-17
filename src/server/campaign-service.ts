@@ -1,3 +1,4 @@
+import type { CampaignSummary } from "../campaign/types";
 import { createCampaignDurability, type SessionDurability } from "./campaign-durability";
 import { CampaignSaveError, restoreCampaignSave, type CampaignRestoreResult } from "./campaign-save";
 import { createOpaqueId } from "./credentials";
@@ -48,6 +49,7 @@ export type CampaignContinueResult =
 export interface CampaignService {
   create(accountId: string, name: string, displayName?: string): NewCampaign;
   list(accountId: string): readonly CampaignRecord[];
+  listSummaries(accountId: string): readonly CampaignSummary[];
   /** Ownership is part of the lookup, so "not yours" and "not there" are the same answer. */
   findOwned(accountId: string, campaignId: string): CampaignRecord | undefined;
   ownershipOf(sessionId: string): CampaignOwnership | undefined;
@@ -170,6 +172,41 @@ export function createCampaignService(
 
     list(accountId) {
       return persistence.campaigns.listByOwner(accountId);
+    },
+
+    listSummaries(accountId) {
+      const { pack } = store.authorityContext;
+      return persistence.campaigns.listByOwner(accountId).map((campaign): CampaignSummary => {
+        const base = {
+          campaignId: campaign.campaignId, name: campaign.name, hasSave: campaign.hasSave,
+          createdAt: campaign.createdAt, updatedAt: campaign.updatedAt,
+        };
+        const stored = persistence.campaigns.loadOwnedSave(campaign.campaignId, accountId);
+        if (stored.status === "empty" || stored.status === "not-found") {
+          return { ...base, saveStatus: "empty", savedAt: null, progress: null };
+        }
+        if (stored.status === "partial") {
+          return { ...base, saveStatus: "SAVE_CORRUPT", savedAt: null, progress: null };
+        }
+        try {
+          // Validation/migration is pure here: only Continue may commit or replace a session.
+          const { projection } = restoreCampaignSave(stored.record, store.authorityContext);
+          const adventure = projection.adventure!;
+          const definition = pack.adventures[adventure.adventureId]!;
+          return { ...base, saveStatus: "ready", savedAt: stored.record.updatedAt, progress: {
+            phase: adventure.phase, completedEncounters: adventure.completedEncounterIds.length,
+            totalEncounters: definition.encounterIds.length, encounterId: adventure.currentEncounterId,
+            encounterName: adventure.currentEncounterId ? pack.scenarioSources[adventure.currentEncounterId]!.name : null,
+            party: projection.partySlots.map(slot => ({ memberId: slot.memberId,
+              actorDefinitionId: slot.actorDefinitionId, name: pack.actorDefinitions[slot.actorDefinitionId]!.name,
+              level: adventure.party.members[slot.memberId]!.progression.level })),
+          } };
+        } catch (error) {
+          if (!(error instanceof CampaignSaveError)) throw error;
+          return { ...base, saveStatus: error.code === "SAVE_NOT_FOUND" ? "empty" : error.code,
+            savedAt: null, progress: null };
+        }
+      });
     },
 
     findOwned(accountId, campaignId) {

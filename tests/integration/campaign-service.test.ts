@@ -1,3 +1,4 @@
+import { createCampaignSave } from "../../src/server/campaign-save";
 import { DatabaseSync } from "node:sqlite";
 import { describe, expect, it, vi } from "vitest";
 
@@ -5,7 +6,7 @@ import { PRODUCTION_CONTENT } from "../../src/content";
 import { hashSessionGameplayState, type SessionCoreState, type SessionIntent } from "../../src/session";
 import type { ServerMessage } from "../../src/protocol";
 import { createCampaignDurability } from "../../src/server/campaign-durability";
-import { LEGACY_CONTENT_IDENTITY, legacyStoredSave } from "../fixtures/campaign-save";
+import { fixtureBegun, fixtureMidCombat, LEGACY_CONTENT_IDENTITY, legacyStoredSave } from "../fixtures/campaign-save";
 import { INVALID_CAMPAIGN_NAME, createCampaignService, type CampaignService } from "../../src/server/campaign-service";
 import { digestReconnectToken } from "../../src/server/credentials";
 import { createPersistence, migrate, type Persistence } from "../../src/server/persistence";
@@ -481,5 +482,69 @@ describe("campaign continue refuses incompatible Character saves", () => {
     expect(result.ok).toBe(false);
     expect(harnessed.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner")).toEqual(before);
     harnessed.persistence.close();
+  });
+});
+
+describe("read-only campaign summaries", () => {
+  it.each(["ready", "combat", "reward", "between-encounters", "complete", "failed"] as const)("summarizes %s without changing durable or live state", phase => {
+    const h = harness();
+    try {
+      const created = h.campaigns.create("acc_owner", "Summary");
+      const base = phase === "combat" ? fixtureMidCombat() : fixtureBegun();
+      const definition = PRODUCTION_CONTENT.pack.adventures[PRODUCTION_CONTENT.adventureId]!;
+      const reward = definition.rewards[0]!;
+      const state: SessionCoreState = { ...base, adventure: { ...base.adventure!, phase,
+        currentEncounterId: phase === "ready" || phase === "complete" ? null : definition.encounterIds[0]!,
+        completedEncounterIds: phase === "complete" ? definition.encounterIds : phase === "reward" ? [definition.encounterIds[0]!] : [],
+        pendingReward: phase === "reward" ? { rewardId: reward.id, encounterId: definition.encounterIds[0]!, choices: reward.choices } : null,
+      } };
+      const save = createCampaignSave(state);
+      h.persistence.campaigns.commitSave({ campaignId: created.campaign.campaignId, ownerAccountId: "acc_owner",
+        expectedCampaignRevision: 0, saveSchemaVersion: save.saveSchemaVersion, contentIdentity: save.contentIdentity,
+        snapshotJson: JSON.stringify(save), snapshotHash: hashSessionGameplayState(state), updatedAt: 9000 });
+      const before = h.database.prepare("SELECT * FROM campaigns").all();
+      const summary = h.campaigns.listSummaries("acc_owner")[0]!;
+      expect(summary).toMatchObject({ saveStatus: "ready", savedAt: 9000, progress: {
+        phase, totalEncounters: definition.encounterIds.length, completedEncounters: state.adventure!.completedEncounterIds.length,
+        party: [ { name: "Aerin", level: 1 }, { name: "Lyra", level: 1 }, { name: "Brom", level: 1 } ],
+      } });
+      expect(summary).not.toHaveProperty("ownerAccountId");
+      expect(summary).not.toHaveProperty("snapshotJson");
+      expect(h.campaigns.listSummaries("acc_stranger")).toEqual([]);
+      expect(h.database.prepare("SELECT * FROM campaigns").all()).toEqual(before);
+      expect(h.campaigns.liveSessionOf(created.campaign.campaignId)).toBe(created.credential.sessionId);
+      expect(h.store.get(created.credential.sessionId)!.retired).toBe(false);
+    } finally { h.persistence.close(); }
+  });
+
+  it("isolates corrupt and incompatible rows while preserving valid and empty campaigns", async () => {
+    const h = harness();
+    try {
+      const played = await playedToCombat(h);
+      const empty = h.campaigns.create("acc_owner", "Not started");
+      const healthy = await playedToCombat(h, 3);
+      const original = h.persistence.campaigns.loadOwnedSave(played.campaignId, "acc_owner");
+      if (original.status !== "loaded") throw new Error("Expected save");
+      for (const [sql, status] of [
+        ["snapshot_json = 'broken'", "SAVE_CORRUPT"],
+        ["snapshot_hash = NULL", "SAVE_CORRUPT"],
+        ["save_schema_version = 1, snapshot_json = json_set(snapshot_json, '$.saveSchemaVersion', 1)", "SAVE_SCHEMA_UNSUPPORTED"],
+        ["content_fingerprint = 'other', snapshot_json = json_set(snapshot_json, '$.contentIdentity.fingerprint', 'other', '$.combat.contentIdentity.fingerprint', 'other')", "SAVE_CONTENT_MISMATCH"],
+      ] as const) {
+        h.database.prepare("UPDATE campaigns SET " + sql + " WHERE campaign_id = ?").run(played.campaignId);
+        const before = h.database.prepare("SELECT * FROM campaigns").all();
+        const summaries = h.campaigns.listSummaries("acc_owner");
+        expect(summaries.find(row => row.campaignId === played.campaignId)).toMatchObject({ saveStatus: status, progress: null });
+        expect(summaries.find(row => row.campaignId === empty.campaign.campaignId)).toMatchObject({ saveStatus: "empty", savedAt: null });
+        expect(summaries.find(row => row.campaignId === healthy.campaignId)).toMatchObject({ saveStatus: "ready", progress: { phase: "combat" } });
+        expect(h.database.prepare("SELECT * FROM campaigns").all()).toEqual(before);
+        h.database.prepare("UPDATE campaigns SET snapshot_json = ?, snapshot_hash = ?, save_schema_version = ?, content_fingerprint = ? WHERE campaign_id = ?")
+          .run(original.record.snapshotJson, original.record.snapshotHash, original.record.saveSchemaVersion, original.record.contentIdentity.fingerprint, played.campaignId);
+      }
+      expect(h.campaigns.listSummaries("acc_owner").find(row => row.campaignId === played.campaignId)?.saveStatus).toBe("ready");
+      const fail = vi.spyOn(h.persistence.campaigns, "loadOwnedSave").mockImplementation(() => { throw new Error("DB unavailable"); });
+      expect(() => h.campaigns.listSummaries("acc_owner")).toThrow("DB unavailable");
+      fail.mockRestore();
+    } finally { h.persistence.close(); }
   });
 });

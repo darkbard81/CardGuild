@@ -1,3 +1,4 @@
+import type { AdventurePhase } from "../adventure/types";
 import type { AccountIdentity, CampaignSummary } from "../client";
 import type { CompiledContentPack } from "../content";
 import type { AssetCatalog } from "../presentation";
@@ -15,6 +16,22 @@ function element<K extends keyof HTMLElementTagNameMap>(
   if (text !== undefined) node.textContent = text;
   return node;
 }
+
+const phaseLabels: Record<AdventurePhase, string> = {
+  ready: "모험 준비", combat: "전투 중", reward: "보상 선택",
+  "between-encounters": "다음 전투 준비", complete: "모험 완료", failed: "모험 실패",
+};
+function destination(phase: AdventurePhase): string {
+  return phase === "combat" ? "진행 중인 전투" : phase === "reward" ? "보상 선택 화면"
+    : phase === "complete" || phase === "failed" ? "저장된 결과 화면" : "모험 준비 화면";
+}
+const saveMessages: Record<CampaignSummary["saveStatus"], string> = {
+  empty: "아직 시작하지 않은 모험 · 모험을 시작하면 진행 상황이 저장됩니다.",
+  ready: "",
+  SAVE_CORRUPT: "저장 데이터를 읽을 수 없습니다. 원본은 보존되어 있습니다.",
+  SAVE_SCHEMA_UNSUPPORTED: "현재 버전에서 지원하지 않는 저장 형식입니다.",
+  SAVE_CONTENT_MISMATCH: "저장된 모험과 현재 콘텐츠가 일치하지 않습니다.",
+};
 
 export interface SessionLobbyHandlers {
   readonly onNewAdventure: () => void;
@@ -60,7 +77,7 @@ export class SessionLobbyUi {
     });
   }
 
-  private card(title: string, description: string): HTMLElement {
+  private card(title: string, description: string, focusHeading = true): HTMLElement {
     for (const input of this.screen.querySelectorAll<HTMLInputElement>("input:not([type=password])")) {
       this.drafts.set(input.id, input.value);
     }
@@ -76,7 +93,7 @@ export class SessionLobbyUi {
     this.setVisible(true);
     const heading = card.querySelector("h1")!;
     heading.tabIndex = -1;
-    heading.focus();
+    if (focusHeading) heading.focus();
     return card;
   }
 
@@ -244,23 +261,57 @@ export class SessionLobbyUi {
 
   public renderCampaigns(account: AccountIdentity, campaigns: readonly CampaignSummary[]): void {
     const card = this.card("이어하기", `${account.username}님의 모험을 선택하세요.`);
-    const list = element("ul", "session-seats");
+    card.classList.add("campaign-screen");
+    const list = element("ul", "campaign-list");
     list.id = "campaign-list";
     this.continueButtons = [];
     this.continueInFlight = false;
     for (const campaign of campaigns) {
-      const row = element("li", "occupied");
+      const row = element("li", "ui-panel ui-panel--workspace campaign-card");
       row.dataset.campaignId = campaign.campaignId;
-      const resume = this.button("이어하기", `continue-${campaign.campaignId}`, () => this.beginContinue(campaign.campaignId));
-      resume.disabled = !campaign.hasSave;
-      if (campaign.hasSave) this.continueButtons.push(resume);
-      row.append(element("span", undefined, campaign.name), resume);
-      if (!campaign.hasSave) row.append(element("span", "session-description", "아직 저장된 진행이 없습니다."));
+      row.dataset.saveStatus = campaign.saveStatus;
+      const details = element("div", "campaign-details");
+      details.append(element("h2", undefined, campaign.name));
+      const progress = campaign.progress;
+      const terminal = progress?.phase === "complete" || progress?.phase === "failed";
+      const resume = this.button(terminal ? "저장된 결과 보기" : "이어하기", `continue-${campaign.campaignId}`, () => this.beginContinue(campaign.campaignId));
+      resume.disabled = campaign.saveStatus !== "ready";
+      if (!resume.disabled) this.continueButtons.push(resume);
+      if (progress) {
+        details.append(element("p", "campaign-progress", `${phaseLabels[progress.phase]} · 전투 ${String(progress.completedEncounters)} / ${String(progress.totalEncounters)} 완료`));
+        if (progress.encounterName) details.append(element("p", undefined, progress.encounterName));
+        details.append(element("p", "session-description", `재참가 준비 후 ${destination(progress.phase)}으로 돌아갑니다.`));
+        const party = element("ul", "campaign-party");
+        for (const member of progress.party) {
+          const item = element("li", "campaign-member");
+          const visual = this.catalog.actorVisual(member.actorDefinitionId);
+          if (visual) {
+            const portrait = element("span", "campaign-portrait");
+            portrait.setAttribute("aria-hidden", "true");
+            Object.assign(portrait.style, this.catalog.domStandeeStyle(visual.front, 64));
+            item.append(portrait);
+          }
+          item.append(element("span", undefined, `${member.name} · Lv ${String(member.level)}`));
+          party.append(item);
+        }
+        details.append(party);
+      } else {
+        details.append(element("p", "session-description", saveMessages[campaign.saveStatus]));
+      }
+      if (campaign.savedAt !== null) {
+        const time = element("time", "campaign-saved", `마지막 저장: ${new Intl.DateTimeFormat("ko-KR", { dateStyle: "medium", timeStyle: "short" }).format(campaign.savedAt)}`);
+        time.dateTime = new Date(campaign.savedAt).toISOString();
+        details.append(time);
+      }
+      row.append(details, resume);
       list.append(row);
     }
-    if (!campaigns.length) list.append(element("li", "open", "저장된 모험이 없습니다."));
-    card.append(list, this.button("새 모험 시작", "entry-new-adventure", this.handlers.onNewAdventure));
-    card.append(this.button("시작 화면으로", "campaigns-back", this.handlers.onShowLanding), this.statusLine());
+    if (!campaigns.length) list.append(element("li", "campaign-empty", "아직 모험이 없습니다. 새 모험을 시작하세요."));
+    const actions = element("div", "campaign-actions");
+    actions.append(this.button("목록 새로고침", "campaigns-refresh", this.handlers.onShowCampaigns),
+      this.button("새 모험 시작", "entry-new-adventure", this.handlers.onNewAdventure),
+      this.button("시작 화면으로", "campaigns-back", this.handlers.onShowLanding));
+    card.append(list, actions, this.statusLine());
   }
 
   public renderCampaignLoading(): void {
@@ -279,6 +330,11 @@ export class SessionLobbyUi {
     if (this.continueInFlight) return;
     this.continueInFlight = true;
     for (const button of this.continueButtons) button.disabled = true;
+    const selected = this.screen.querySelector<HTMLElement>(`#continue-${CSS.escape(campaignId)}`);
+    if (selected) {
+      selected.dataset.label = selected.textContent ?? "이어하기";
+      selected.textContent = "모험을 불러오는 중…";
+    }
     this.handlers.onContinueCampaign(campaignId);
   }
 
@@ -290,7 +346,10 @@ export class SessionLobbyUi {
    */
   public settleContinue(): void {
     this.continueInFlight = false;
-    for (const button of this.continueButtons) button.disabled = false;
+    for (const button of this.continueButtons) {
+      button.disabled = false;
+      if (button.dataset.label) { button.textContent = button.dataset.label; delete button.dataset.label; }
+    }
   }
 
   public renderLobby(
@@ -298,24 +357,21 @@ export class SessionLobbyUi {
     viewerPlayerId: string,
     control: ServerControlView,
   ): void {
+    if (state.lifecycle === "resume-lobby") {
+      this.renderResumeLobby(state, viewerPlayerId, control);
+      return;
+    }
     const host = state.hostPlayerId === viewerPlayerId;
-    const resuming = state.lifecycle === "resume-lobby";
     const connected = new Set(control.connectedPlayerIds);
     this.screen.dataset.sessionId = state.sessionId;
     this.screen.dataset.viewerRole = host ? "host" : "guest";
-    this.screen.dataset.lobbyKind = resuming ? "resume" : "new";
+    this.screen.dataset.lobbyKind = "new";
     this.screen.replaceChildren();
     const card = element("section", "ui-panel session-card lobby-card");
     card.append(
-      element("p", "eyebrow", resuming
-        ? host ? "Saved campaign restored" : "Host invitation accepted"
-        : host ? "You are the host" : "Host invitation accepted"),
-      element("h1", undefined, resuming ? "Resume Lobby" : "Party Lobby"),
-      element("p", "session-description", resuming
-        ? host
-          ? "저장된 Party로 이어서 진행합니다. 새 Session ID를 게스트에게 다시 공유하세요."
-          : "호스트가 저장했던 캐릭터 중 하나를 선택하고 Resume을 기다리세요."
-        : host
+      element("p", "eyebrow", host ? "You are the host" : "Host invitation accepted"),
+      element("h1", undefined, "Party Lobby"),
+      element("p", "session-description", host
           ? "Players와 출전 Party를 따로 준비합니다. Session ID만 게스트에게 공유하세요."
           : "호스트가 준비한 잔여 캐릭터 중 하나를 선택하세요."),
     );
@@ -381,30 +437,21 @@ export class SessionLobbyUi {
     const everyGuestClaimed = state.seats
       .filter((seat) => seat.playerId !== state.hostPlayerId)
       .every((seat) => Boolean(claimedMemberForPlayer(state, seat.playerId)));
-    // A restored campaign resumes with whoever is present: unclaimed saved characters fall
-    // back to the host under the existing control rules.
-    const canBegin = host && state.partyPrepared && (resuming
-      ? true
-      : state.lifecycle === "lobby" && state.partySlots.length >= state.seats.length && everyGuestClaimed);
+    const canBegin = host && state.partyPrepared && state.lifecycle === "lobby"
+      && state.partySlots.length >= state.seats.length && everyGuestClaimed;
     const begin = element(
       "button",
       "ui-button ui-button--primary session-primary",
-      resuming
-        ? host ? "Resume" : "Waiting for Host"
-        : host ? "Begin Adventure" : "Waiting for Host",
+      host ? "Begin Adventure" : "Waiting for Host",
     );
-    begin.id = resuming ? "resume-adventure" : "begin-adventure";
+    begin.id = "begin-adventure";
     begin.type = "button";
     begin.disabled = !canBegin;
-    begin.addEventListener("click", resuming ? this.handlers.onResume : this.handlers.onBegin);
+    begin.addEventListener("click", this.handlers.onBegin);
     const beginGate = element(
       "p",
       canBegin ? "party-gate" : "party-gate invalid",
-      resuming
-        ? host
-          ? "Saved progress is ready to resume."
-          : "Waiting for the host to resume."
-        : !state.partyPrepared
+      !state.partyPrepared
           ? "Apply a party before beginning."
           : state.partySlots.length < state.seats.length
             ? "Party size must cover every player."
@@ -417,8 +464,7 @@ export class SessionLobbyUi {
     card.append(
       invite,
       playersPanel,
-      // The saved party is fixed, so the host sees it read-only instead of an editor.
-      resuming && host ? this.savedPartyPanel(state, control) : this.partyBuilder.render(state, viewerPlayerId),
+      this.partyBuilder.render(state, viewerPlayerId),
       begin,
       beginGate,
       this.statusLine(),
@@ -427,42 +473,125 @@ export class SessionLobbyUi {
     this.setVisible(true);
   }
 
-  /** Read-only view of a restored party: no composition editing exists in a resume lobby. */
-  private savedPartyPanel(state: SessionCoreState, control: ServerControlView): HTMLElement {
-    const root = element("section", "ui-panel ui-panel--workspace party-builder");
+  private renderResumeLobby(state: SessionCoreState, viewerPlayerId: string, control: ServerControlView): void {
+    const previousFocus = this.screen.dataset.lobbyKind === "resume" && document.activeElement instanceof HTMLElement
+      ? document.activeElement.id : "";
+    const host = state.hostPlayerId === viewerPlayerId;
+    const adventure = state.adventure!;
+    const terminal = adventure.phase === "complete" || adventure.phase === "failed";
+    const card = this.card(terminal ? "저장된 결과 확인 준비" : "모험 이어가기 준비", "저장된 파티로 이어갑니다. 친구는 새 초대 코드로 다시 참가해 캐릭터를 선택하세요.", !previousFocus);
+    card.classList.add("resume-card");
+    this.screen.dataset.sessionId = state.sessionId;
+    this.screen.dataset.viewerRole = host ? "host" : "guest";
+    this.screen.dataset.lobbyKind = "resume";
+    const definition = this.pack.adventures[adventure.adventureId]!;
+    const encounter = adventure.currentEncounterId ? this.pack.scenarioSources[adventure.currentEncounterId]?.name : null;
+    card.append(element("p", "resume-progress", `${phaseLabels[adventure.phase]} · 전투 ${String(adventure.completedEncounterIds.length)} / ${String(definition.encounterIds.length)} 완료${encounter ? " · " + encounter : ""}`),
+      element("p", "session-description", `준비를 마치면 ${destination(adventure.phase)}으로 돌아갑니다.`));
+    if (host) {
+      const invite = element("div", "resume-invite");
+      const label = element("label", undefined, "새 초대 코드");
+      label.htmlFor = "invite-session-id";
+      const code = element("input", "ui-input");
+      code.id = "invite-session-id";
+      code.value = state.sessionId;
+      code.readOnly = true;
+      code.addEventListener("focus", () => code.select());
+      const copy = this.button("새 초대 코드 복사", "copy-session-id", () => {
+        void (async () => {
+          try {
+            if (!navigator.clipboard) throw new Error("Clipboard unavailable");
+            await navigator.clipboard.writeText(state.sessionId);
+            if (code.isConnected) this.setStatus("새 초대 코드를 복사했습니다. 친구에게 공유하세요.");
+          } catch {
+            if (code.isConnected) { code.focus(); code.select(); this.setStatus("자동 복사에 실패했습니다. 선택된 초대 코드를 직접 복사하세요.", "error"); }
+          }
+        })();
+      });
+      invite.append(label, code, copy);
+      card.append(invite);
+    }
+    const body = element("div", "resume-body");
+    const players = element("section", "ui-panel ui-panel--workspace resume-players");
+    players.append(element("h2", undefined, "참가자"));
+    const connected = new Set(control.connectedPlayerIds);
+    const seats = element("ol", "session-seats");
+    for (const seatNumber of [1, 2, 3] as const) {
+      const seat = state.seats.find(candidate => candidate.seat === seatNumber);
+      const row = element("li", seat ? "occupied" : "open");
+      row.dataset.seat = String(seatNumber);
+      row.dataset.connected = String(Boolean(seat && connected.has(seat.playerId)));
+      if (!seat) row.append(element("span", undefined, "참가 가능"));
+      else {
+        const isHost = seat.playerId === state.hostPlayerId;
+        const memberId = isHost ? state.partySlots[0]?.memberId : claimedMemberForPlayer(state, seat.playerId);
+        const slot = state.partySlots.find(candidate => candidate.memberId === memberId);
+        const name = slot ? this.pack.actorDefinitions[slot.actorDefinitionId]?.name : undefined;
+        row.append(element("strong", undefined, seat.displayName + (seat.playerId === viewerPlayerId ? " (나)" : "")),
+          element("small", undefined, `${isHost ? "호스트" : "게스트"} · ${connected.has(seat.playerId) ? "접속 중" : "오프라인"} · ${name ?? "캐릭터 선택 중"}`));
+        if (host && !isHost && !connected.has(seat.playerId) && !memberId) {
+          const remove = this.button("참가자 제거", "remove-" + seat.playerId, () => this.handlers.onRemoveOfflineGuest(seat.playerId));
+          remove.classList.add("ui-button--danger", "session-seat-remove");
+          remove.dataset.playerId = seat.playerId;
+          remove.setAttribute("aria-label", seat.displayName + " 참가자 제거");
+          row.append(remove);
+        }
+      }
+      seats.append(row);
+    }
+    players.append(seats);
+    body.append(players, this.savedPartyPanel(state, control, viewerPlayerId));
+    card.append(body, element("p", "session-description", "선택되지 않은 캐릭터와 오프라인 참가자의 캐릭터는 호스트가 조작합니다. 호스트는 혼자서도 시작할 수 있습니다."));
+    const resume = this.button(host ? terminal ? "저장된 결과 보기" : "모험 이어가기" : "호스트가 시작하기를 기다리는 중", "resume-adventure", this.handlers.onResume, true);
+    resume.disabled = !host || !state.partyPrepared;
+    card.append(resume, this.statusLine());
+    if (previousFocus) {
+      const focusTarget = this.screen.querySelector<HTMLElement>(`#${CSS.escape(previousFocus)}`)
+        ?? (previousFocus.startsWith("claim-") ? this.screen.querySelector<HTMLElement>(`#${CSS.escape("resume-member-" + previousFocus.slice(6))}`) : null);
+      focusTarget?.focus({ preventScroll: true });
+    }
+  }
+
+  /** The saved composition is fixed; guests may only claim an available character. */
+  private savedPartyPanel(state: SessionCoreState, control: ServerControlView, viewerPlayerId = state.hostPlayerId): HTMLElement {
+    const root = element("section", "ui-panel ui-panel--workspace party-builder resume-party");
     root.dataset.partyPrepared = "true";
     root.dataset.partyFixed = "true";
-    root.append(
-      element("p", "party-builder-label", "SAVED PARTY"),
-      element("h2", undefined, "Restored Company"),
-    );
-    const list = element("div", "guest-character-choices");
+    root.append(element("h2", undefined, "저장된 파티"));
+    const list = element("div", "resume-characters");
     for (const slot of state.partySlots) {
       const member = state.adventure?.party.members[slot.memberId];
       const actor = this.pack.actorDefinitions[slot.actorDefinitionId];
       const claimant = state.guestClaims.byMemberId[slot.memberId];
-      const entry = element("article", "guest-character-choice");
+      const mine = claimant === viewerPlayerId;
+      const available = slot.slot !== 1 && !claimant;
+      const entry = element("article", "ui-panel ui-panel--workspace resume-character");
+      entry.id = "resume-member-" + slot.memberId;
+      entry.tabIndex = -1;
       entry.dataset.memberId = slot.memberId;
       entry.dataset.partySlot = String(slot.slot);
-      entry.dataset.claimState = slot.slot === 1 ? "host" : claimant ? "taken" : "available";
+      entry.dataset.claimState = slot.slot === 1 ? "host" : mine ? "mine" : claimant ? "taken" : "available";
       const visual = actor ? this.catalog.actorVisual(actor.id) : null;
       if (visual) {
         const portrait = element("span", "guest-character-art");
-        Object.assign(portrait.style, this.catalog.domStandeeStyle(visual.front, 92));
+        portrait.setAttribute("aria-hidden", "true");
+        Object.assign(portrait.style, this.catalog.domStandeeStyle(visual.front, 72));
         entry.append(portrait);
       }
-      const controller = control.effectiveControllerByMemberId[slot.memberId];
-      entry.append(
-        element("strong", undefined, "Slot " + String(slot.slot) + " · " + (actor?.name ?? slot.actorDefinitionId)),
-        element("small", undefined, member
-          ? "Lv " + String(member.progression.level) +
-            (slot.slot === 1
-              ? " · Host Character"
-              : claimant
-                ? controller === claimant ? " · Guest control" : " · Claimed, offline"
-                : " · Host control")
-          : "Saved character"),
-      );
+      const controllerId = control.effectiveControllerByMemberId[slot.memberId];
+      const controller = state.seats.find(seat => seat.playerId === controllerId);
+      const claimantName = state.seats.find(seat => seat.playerId === claimant)?.displayName;
+      const details = element("div", "resume-character-details");
+      details.append(element("strong", undefined, actor?.name ?? slot.actorDefinitionId),
+        element("small", undefined, "Lv " + String(member?.progression.level ?? 1)),
+        element("small", undefined, slot.slot === 1 ? "호스트 캐릭터" : mine ? "내 캐릭터" : claimant ? `${claimantName ?? "다른 참가자"} 선택함` : "선택 가능"),
+        element("small", undefined, `현재 조작: ${controller?.displayName ?? "호스트"}${controllerId === state.hostPlayerId ? " (호스트)" : ""}`));
+      entry.append(details);
+      if (viewerPlayerId !== state.hostPlayerId && available) {
+        const select = this.button("선택", "claim-" + slot.memberId, () => this.handlers.onSelectCharacter(slot.memberId));
+        select.setAttribute("aria-label", (actor?.name ?? slot.actorDefinitionId) + " 선택");
+        entry.append(select);
+      }
       list.append(entry);
     }
     root.append(list);

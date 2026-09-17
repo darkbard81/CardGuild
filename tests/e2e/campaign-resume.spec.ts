@@ -74,6 +74,9 @@ async function backToCampaigns(page: Page): Promise<void> {
 async function continueCampaign(page: Page, name: string): Promise<void> {
   const row = page.locator("#campaign-list li").filter({ hasText: name });
   await expect(row).toHaveCount(1);
+  await expect(row.locator(".campaign-progress")).toContainText(/전투 \d+ \/ 8 완료/);
+  await expect(row.locator(".campaign-member")).toHaveCount(3);
+  await expect(row.locator("time")).toContainText("마지막 저장:");
   const resume = continueButton(page, name);
   await expect(resume).toBeEnabled();
   await resume.click();
@@ -106,7 +109,7 @@ test("continues a saved campaign into a resume lobby and plays exactly on from i
     await expect(returning.page.locator("#begin-adventure")).toHaveCount(0);
     // The battle HUD stays behind the session screen: no combat input exists before Resume.
     await expect(returning.page.locator("#end-turn")).toBeHidden();
-    await expect(returning.page.locator(".guest-character-choice")).toHaveCount(3);
+    await expect(returning.page.locator(".resume-character")).toHaveCount(3);
     await expect(returning.page.locator('[data-party-slot="1"]')).toContainText("Aerin");
     await expect(returning.page.locator("#app")).toHaveAttribute("data-session-hash", savedHash);
     // The resumed session is a new room with a new invite id.
@@ -181,7 +184,7 @@ test("lets a guest rejoin a resumed campaign, reclaim a character, and resume wi
 
     await signInAsHost(returning.page, DEV_HOST_A);
     await continueCampaign(returning.page, name);
-    const inviteId = await returning.page.locator("#invite-session-id").innerText();
+    const inviteId = await returning.page.locator("#invite-session-id").inputValue();
 
     await openApp(guest.page);
     await guest.page.locator("#entry-join").click();
@@ -191,9 +194,9 @@ test("lets a guest rejoin a resumed campaign, reclaim a character, and resume wi
     await expect(guest.page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "guest");
     await expect(guest.page.locator("#app")).toHaveAttribute("data-lifecycle", "resume-lobby");
     // The saved party is what a returning guest chooses from; slot 1 stays the host's.
-    await expect(guest.page.locator('.guest-character-choice[data-claim-state="host"]')).toHaveCount(1);
-    await guest.page.locator('.guest-character-choice[data-member-id="party.hero-2"]').click();
-    await expect(guest.page.locator('.guest-character-choice[data-claim-state="mine"]')).toHaveAttribute(
+    await expect(guest.page.locator('.resume-character[data-claim-state="host"]')).toHaveCount(1);
+    await guest.page.locator('.resume-character[data-member-id="party.hero-2"]').getByRole("button", { name: "Lyra 선택" }).click();
+    await expect(guest.page.locator('.resume-character[data-claim-state="mine"]')).toHaveAttribute(
       "data-member-id",
       "party.hero-2",
     );
