@@ -41,7 +41,7 @@ export class CharacterAdvancementUi {
     const pending = pendingCharacterAdvancements(member.progression.level, member.progression.advancements);
     const level = pending[0];
     if (level === undefined) { this.drafts.delete(member.id); return null; }
-    const panel = element("section"); panel.className = "character-advancement";
+    const panel = element("section"); panel.className = "ui-panel ui-panel--workspace character-advancement";
     panel.dataset.advancementMember = member.id; panel.dataset.advancementLevel = String(level);
     panel.setAttribute("aria-label", `${this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id} Level-Up`);
     panel.append(element("h3", `Lv. ${level} · Level-Up`));
@@ -69,7 +69,7 @@ export class CharacterAdvancementUi {
     const needsAttributes = (ATTRIBUTE_BOOST_LEVELS as readonly number[]).includes(level);
     if (needsSkill) {
       const label = element("label", "Skill Increase ");
-      const select = element("select"); select.name = "skillIncrease";
+      const select = element("select"); select.name = "skillIncrease"; select.className = "ui-input";
       select.append(new Option("Skill을 선택하세요", ""));
       for (const skill of SKILL_IDS) {
         const rank = before.statProfile.stats.skills[skill];
@@ -95,7 +95,7 @@ export class CharacterAdvancementUi {
       controls.append(attributes);
     }
     const preview = element("p"); preview.className = "advancement-preview"; preview.setAttribute("role", "status");
-    const submit = element("button", "성장 확정"); submit.type = "submit"; submit.className = "advancement-commit";
+    const submit = element("button", "성장 확정"); submit.type = "submit"; submit.className = "ui-button ui-button--primary advancement-commit";
     form.append(controls, preview, submit); panel.append(form);
     let choice: CharacterAdvancementChoice | null = null;
     const update = (): void => {

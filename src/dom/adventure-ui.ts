@@ -413,7 +413,7 @@ export class AdventureUi {
   }
 
   private actionButton(label: string, onClick: () => void, enabled = true): HTMLButtonElement {
-    const button = element("button", "adventure-action", label);
+    const button = element("button", "ui-button ui-button--primary adventure-action", label);
     button.type = "button";
     button.disabled = !enabled;
     button.addEventListener("click", onClick);
@@ -422,6 +422,7 @@ export class AdventureUi {
 
   private secondaryActionButton(label: string, onClick: () => void): HTMLButtonElement {
     const button = this.actionButton(label, onClick);
+    button.classList.replace("ui-button--primary", "ui-button--secondary");
     button.classList.add("adventure-action-secondary");
     return button;
   }

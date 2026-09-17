@@ -110,7 +110,7 @@ export class PartyBuilderUi {
   ) {}
 
   public render(state: SessionCoreState, viewerPlayerId: string): HTMLElement {
-    const root = element("section", "party-builder");
+    const root = element("section", "ui-panel ui-panel--workspace party-builder");
     root.dataset.partyPrepared = String(state.partyPrepared);
     const isHost = state.hostPlayerId === viewerPlayerId;
     const actors = playableActors(this.pack);
@@ -146,7 +146,7 @@ export class PartyBuilderUi {
       const row = element("label", "party-slot-row");
       row.dataset.partySlot = String(slotIndex + 1);
       row.append(element("span", "party-slot-number", "Slot " + String(slotIndex + 1)));
-      const select = element("select", "party-slot-select");
+      const select = element("select", "ui-input ui-input--compact party-slot-select");
       select.id = "party-slot-" + String(slotIndex + 1);
       select.disabled = claimsLocked;
       if (slotIndex > 0) {
@@ -182,7 +182,7 @@ export class PartyBuilderUi {
         actorDefinitionId === state.partySlots[index]?.actorDefinitionId);
     const apply = element(
       "button",
-      "session-primary party-apply",
+      "ui-button ui-button--primary session-primary party-apply",
       claimsLocked ? "Party Locked" : unchanged ? "Party Applied" : "Apply Party",
     );
     apply.id = "apply-party";
@@ -206,7 +206,7 @@ export class PartyBuilderUi {
   }
 
   private renderHostReplacement(root: HTMLElement, state: SessionCoreState, actors: readonly ActorDefinition[]): void {
-    const replacement = element("section", "party-builder");
+    const replacement = element("section", "ui-panel ui-panel--workspace party-builder");
     replacement.dataset.partyPrepared = String(state.partyPrepared);
     replacement.append(
       element("p", "party-builder-label", "HOST PARTY BUILDER"),

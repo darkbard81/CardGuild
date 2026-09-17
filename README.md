@@ -1,5 +1,7 @@
 # CardGuild
 
+DOM UI의 공통 스타일·클래스·테마 변경 규칙은 [DESIGN.md](DESIGN.md)를 참고하세요.
+
 Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Adventure입니다.
 결정론적 전투 코어와 JSON Content Pipeline 위에 M5 server-authoritative 1–3인 협동,
 호스트 Party Builder와 캐릭터별 Control, Collection/Loadout Builder, top-down 2.5D board presentation을 연결했습니다. 전투 화면은 canvas 전체를 전장으로

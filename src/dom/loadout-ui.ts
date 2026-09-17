@@ -133,13 +133,13 @@ export class LoadoutUi {
     }, "loadout-member-tab"));
     const memberTabs = header.querySelectorAll<HTMLElement>(".loadout-member-tab");
     memberTabs.forEach((tab) => { tab.dataset.memberId = tab.dataset.tabId; tab.dataset.owned = String(editableMemberIds.has(tab.dataset.tabId ?? "")); });
-    header.append(this.button("Done", "loadout-done", this.handlers.onDone));
+    header.append(this.button("Done", "loadout-done", this.handlers.onDone, "primary"));
     const nav = this.tabs("Loadout pages", [{ id: "equipment", label: "장비" }, { id: "cards", label: "준비 카드" }, { id: "deck", label: "덱·능력치" }], view.tab,
       (id) => { view.tab = id as PageTab; this.refresh(); });
     const workspace = element("div", "loadout-grid");
     workspace.setAttribute("role", "tabpanel");
     workspace.setAttribute("aria-label", view.tab === "equipment" ? "장비" : view.tab === "cards" ? "준비 카드" : "덱·능력치");
-    const sidebar = element("section", "loadout-panel equipped-panel");
+    const sidebar = element("section", "ui-panel ui-panel--workspace loadout-panel equipped-panel");
     sidebar.dataset.editable = String(editableMemberIds.has(member.id));
     sidebar.append(element("h2", undefined, actor.name), element("p", "loadout-panel-label", editableMemberIds.has(member.id) ? "Your build" : "Read-only · 다른 플레이어"));
     sidebar.append(element("p", "character-progression", progressionText(member.progression)), progressionMeter(actor.name, member.progression));
@@ -167,7 +167,7 @@ export class LoadoutUi {
       resolveEffectiveCharacterStatProfile(actor, member.progression, this.pack.characterRules));
     sidebar.append(slots, element("p", "loadout-core-stats", `AC ${snapshot.statistics.ac} · HP ${snapshot.statistics.maxHp} · ATK ${signed(snapshot.strike.attackModifier)}`),
       element("p", "loadout-deck-count", `${snapshot.deck.totalCards} Tactical Cards`));
-    const panel = element("section", `loadout-panel collection-panel${view.tab === "deck" ? " deck-panel" : ""}`);
+    const panel = element("section", `ui-panel ui-panel--workspace loadout-panel collection-panel${view.tab === "deck" ? " deck-panel" : ""}`);
     const items: Tile[] = [];
     if (view.tab === "equipment") {
       panel.append(this.tabs("Equipment categories", [{ id: "all", label: "전체" }, ...EQUIPMENT_SLOT_ORDER.map((slot) => ({ id: slot, label: ({ weapon: "무기", armor: "방어구", shield: "방패", feet: "신발" })[slot] }))], view.filter,
@@ -212,8 +212,8 @@ export class LoadoutUi {
     const next = this.button("다음", "", () => { view.pages[view.tab]++; this.refresh(); }); next.disabled = view.pages[view.tab] === pages - 1;
     pager.append(previous, element("span", undefined, `${view.pages[view.tab] + 1} / ${pages}`), next);
     panel.append(pager); workspace.append(sidebar, panel);
-    const status = element("footer", "loadout-status", this.waiting ? "변경을 반영하는 중…" : this.message); status.setAttribute("role", "status");
-    this.tooltip = element("aside", "loadout-tooltip"); this.tooltip.id = "loadout-detail"; this.tooltip.setAttribute("role", "tooltip"); this.tooltip.hidden = true;
+    const status = element("footer", "ui-status loadout-status", this.waiting ? "변경을 반영하는 중…" : this.message); status.setAttribute("role", "status");
+    this.tooltip = element("aside", "ui-panel ui-panel--popover loadout-tooltip"); this.tooltip.id = "loadout-detail"; this.tooltip.setAttribute("role", "tooltip"); this.tooltip.hidden = true;
     this.tooltip.addEventListener("pointerenter", () => clearTimeout(this.hideTimer));
     this.tooltip.addEventListener("pointerleave", () => { if (!this.pinned) this.hideTooltip(); });
     this.screen.append(header, nav, workspace, status, this.tooltip);
@@ -228,8 +228,9 @@ export class LoadoutUi {
     return view;
   }
   private refresh(): void { if (this.state) this.render(this.state, this.editableMemberIds); }
-  private button(label: string, className: string, action: () => void): HTMLButtonElement {
-    const button = element("button", className, label); button.type = "button"; button.dataset.focusKey = `${className}:${label}`;
+  private button(label: string, className: string, action: () => void, variant: "primary" | "secondary" = "secondary"): HTMLButtonElement {
+    const appearance = `ui-button--${variant}`;
+    const button = element("button", `ui-button ${appearance} ${className}`, label); button.type = "button"; button.dataset.focusKey = `${className}:${label}`;
     button.addEventListener("click", action); return button;
   }
   private tabs(label: string, entries: Array<{ id: string; label: string }>, selected: string, select: (id: string) => void, className = "loadout-tab"): HTMLElement {

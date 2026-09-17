@@ -21,14 +21,14 @@
       <section id="session-screen" class="session-screen" aria-labelledby="session-title"></section>
 
       <section id="adventure-screen" class="adventure-screen" aria-labelledby="adventure-title">
-        <div class="adventure-map-card">
+        <div class="ui-panel adventure-map-card">
           <p class="eyebrow">PF2e Tactical Adventure</p>
           <h2 id="adventure-title">Adventure Progress</h2>
           <ol id="adventure-progress" class="adventure-progress"></ol>
           <ul id="adventure-party" class="adventure-party" aria-label="Party Level and EXP"></ul>
           <div id="adventure-collection" class="adventure-collection"></div>
         </div>
-        <article id="adventure-content" class="adventure-content"></article>
+        <article id="adventure-content" class="ui-panel adventure-content"></article>
       </section>
 
       <section id="loadout-screen" class="loadout-screen" aria-label="Character Loadout Builder" hidden></section>
@@ -41,11 +41,11 @@
           aria-label="CardGuild top-down tactical battlefield"
         ></div>
         <div id="ring-root" class="ring-root" hidden></div>
-        <div id="card-detail" class="card-detail" role="note" hidden></div>
+        <div id="card-detail" class="ui-panel ui-panel--popover card-detail" role="note" hidden></div>
         <span id="pixi-status" class="sr-only" role="status" aria-live="polite">Starting…</span>
 
         <div class="combat-hud">
-          <section class="hud-card hero-card" data-hud-gutter="left" aria-labelledby="hero-heading">
+          <section class="ui-panel ui-panel--hud hud-card hero-card" data-hud-gutter="left" aria-labelledby="hero-heading">
             <div class="hero-id">
               <span id="hero-portrait" class="hero-portrait" aria-hidden="true"></span>
               <div class="hero-name">
@@ -67,11 +67,11 @@
           </section>
 
           <div class="hud-status" data-hud-gutter="top">
-            <p class="hud-card objective-card">
+            <p class="ui-panel ui-panel--hud hud-card objective-card">
               <span class="hud-label">Objective</span>
               <strong id="objective-text">Loading encounter…</strong>
             </p>
-            <div class="hud-card initiative-card">
+            <div class="ui-panel ui-panel--hud hud-card initiative-card">
               <p class="round-chip">
                 <span class="hud-label">Round</span>
                 <strong id="round-value">1</strong>
@@ -81,11 +81,11 @@
           </div>
 
           <aside class="hud-side" data-hud-gutter="right" aria-label="Combat details">
-            <section class="hud-card inspector">
+            <section class="ui-panel ui-panel--hud hud-card inspector">
               <h2 class="hud-label">Detail</h2>
               <div id="selected-detail" class="selected-detail"></div>
             </section>
-            <section class="hud-card log-panel">
+            <section class="ui-panel ui-panel--hud hud-card log-panel">
               <h2 class="hud-label">Combat Log</h2>
               <ol id="combat-log" class="combat-log" aria-live="polite"></ol>
             </section>
@@ -104,30 +104,30 @@
                 <span>Deck <strong id="deck-count">0</strong></span>
                 <span>Discard <strong id="discard-count">0</strong></span>
               </p>
-              <button id="end-turn" class="end-turn-button" type="button">End Turn</button>
+              <button id="end-turn" class="ui-button ui-button--primary ui-button--compact end-turn-button" type="button">End Turn</button>
             </div>
           </footer>
         </div>
       </section>
 
       <div id="reaction-modal" class="modal-backdrop" hidden>
-        <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="reaction-title">
+        <section class="ui-panel ui-panel--dialog modal-card" role="dialog" aria-modal="true" aria-labelledby="reaction-title">
           <p class="eyebrow">Reaction window</p>
           <h2 id="reaction-title">Reactive Strike?</h2>
           <p id="reaction-description"></p>
           <div class="modal-actions">
-            <button id="reaction-pass" class="secondary-button" type="button">Pass</button>
-            <button id="reaction-use" class="primary-button" type="button">Use Reaction</button>
+            <button id="reaction-pass" class="ui-button ui-button--secondary secondary-button" type="button">Pass</button>
+            <button id="reaction-use" class="ui-button ui-button--primary primary-button" type="button">Use Reaction</button>
           </div>
         </section>
       </div>
 
       <div id="result-modal" class="modal-backdrop" hidden>
-        <section class="modal-card result-card" role="dialog" aria-modal="true" aria-labelledby="result-title">
+        <section class="ui-panel ui-panel--dialog modal-card result-card" role="dialog" aria-modal="true" aria-labelledby="result-title">
           <p class="eyebrow">Encounter complete</p>
           <h2 id="result-title">Victory</h2>
           <p id="result-description"></p>
-          <button id="restart-battle" class="primary-button" type="button">Replay Same Seed</button>
+          <button id="restart-battle" class="ui-button ui-button--primary primary-button" type="button">Replay Same Seed</button>
         </section>
       </div>
     </main>

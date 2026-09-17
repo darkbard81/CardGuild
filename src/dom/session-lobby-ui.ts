@@ -70,7 +70,7 @@ export class SessionLobbyUi {
     delete this.screen.dataset.sessionId;
     delete this.screen.dataset.viewerRole;
     delete this.screen.dataset.lobbyKind;
-    const card = element("section", "session-card session-entry");
+    const card = element("section", "ui-panel session-card session-entry");
     card.append(element("h1", undefined, title), element("p", "session-description", description));
     this.screen.append(card);
     this.setVisible(true);
@@ -81,7 +81,7 @@ export class SessionLobbyUi {
   }
 
   private button(label: string, id: string, action: () => void, primary = false): HTMLButtonElement {
-    const button = element("button", primary ? "session-primary" : "session-secondary", label);
+    const button = element("button", primary ? "ui-button ui-button--primary session-primary" : "ui-button ui-button--secondary session-secondary", label);
     button.id = id;
     button.type = "button";
     button.addEventListener("click", action);
@@ -94,7 +94,7 @@ export class SessionLobbyUi {
     const wrapper = element("div", "session-field");
     const caption = element("label", undefined, label);
     caption.htmlFor = id;
-    const input = element("input", "session-input");
+    const input = element("input", "ui-input session-input");
     input.id = id;
     input.name = id;
     input.type = options.password ? "password" : "text";
@@ -124,7 +124,7 @@ export class SessionLobbyUi {
       if (this.screen.getAttribute("aria-busy") === "true") return;
       submit();
     });
-    const button = element("button", "session-primary", label);
+    const button = element("button", "ui-button ui-button--primary session-primary", label);
     button.id = id;
     button.type = "submit";
     // Fields are inserted before this action when the form is completed.
@@ -305,7 +305,7 @@ export class SessionLobbyUi {
     this.screen.dataset.viewerRole = host ? "host" : "guest";
     this.screen.dataset.lobbyKind = resuming ? "resume" : "new";
     this.screen.replaceChildren();
-    const card = element("section", "session-card lobby-card");
+    const card = element("section", "ui-panel session-card lobby-card");
     card.append(
       element("p", "eyebrow", resuming
         ? host ? "Saved campaign restored" : "Host invitation accepted"
@@ -323,7 +323,7 @@ export class SessionLobbyUi {
     const invite = element("div", "invite-code");
     const code = element("code", undefined, state.sessionId);
     code.id = "invite-session-id";
-    const copy = element("button", "session-secondary", "Copy Session ID");
+    const copy = element("button", "ui-button ui-button--secondary session-secondary", "Copy Session ID");
     copy.id = "copy-session-id";
     copy.type = "button";
     copy.hidden = !host;
@@ -333,7 +333,7 @@ export class SessionLobbyUi {
     });
     invite.append(code, copy);
 
-    const playersPanel = element("section", "lobby-players");
+    const playersPanel = element("section", "ui-panel ui-panel--workspace lobby-players");
     playersPanel.append(element("p", "party-builder-label", "PLAYERS"));
     const seats = element("ol", "session-seats");
     for (const seat of [1, 2, 3] as const) {
@@ -362,7 +362,7 @@ export class SessionLobbyUi {
         !claim,
       );
       if (removable && owner) {
-        const remove = element("button", "session-seat-remove", "Remove");
+        const remove = element("button", "ui-button ui-button--danger ui-button--compact session-seat-remove", "Remove");
         remove.type = "button";
         remove.dataset.playerId = owner.playerId;
         remove.setAttribute("aria-label", "Remove offline guest " + owner.displayName);
@@ -388,7 +388,7 @@ export class SessionLobbyUi {
       : state.lifecycle === "lobby" && state.partySlots.length >= state.seats.length && everyGuestClaimed);
     const begin = element(
       "button",
-      "session-primary",
+      "ui-button ui-button--primary session-primary",
       resuming
         ? host ? "Resume" : "Waiting for Host"
         : host ? "Begin Adventure" : "Waiting for Host",
@@ -429,7 +429,7 @@ export class SessionLobbyUi {
 
   /** Read-only view of a restored party: no composition editing exists in a resume lobby. */
   private savedPartyPanel(state: SessionCoreState, control: ServerControlView): HTMLElement {
-    const root = element("section", "party-builder");
+    const root = element("section", "ui-panel ui-panel--workspace party-builder");
     root.dataset.partyPrepared = "true";
     root.dataset.partyFixed = "true";
     root.append(
@@ -491,7 +491,7 @@ export class SessionLobbyUi {
   }
 
   private statusLine(): HTMLElement {
-    const line = element("p", "session-status", this.status);
+    const line = element("p", "ui-status session-status", this.status);
     line.id = "session-status";
     line.setAttribute("role", "status");
     line.setAttribute("aria-live", "polite");
