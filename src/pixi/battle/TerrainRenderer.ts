@@ -59,7 +59,6 @@ export function isGateTile(tileTraits: ReadonlySet<string>): boolean {
 
 export class TerrainRenderer {
   private boardTexture: Texture | null = null;
-  private solidSummary = "";
 
   public constructor(
     private readonly app: Application,
@@ -148,7 +147,6 @@ export class TerrainRenderer {
     grid.stroke({ width: 3, color: 0x171713, alpha: 0.78 });
     composition.addChild(grid);
     const segments = collectSolidBoundarySegments(solid);
-    this.solidSummary = `${solid.length}/${segments.length}`;
     composition.addChild(this.solidBoundary(segments, cell));
     this.app.renderer.render({ container: composition, target: this.boardTexture, clear: true });
     composition.destroy({ children: true });
@@ -207,27 +205,6 @@ export class TerrainRenderer {
     sprite.eventMode = "none";
     display.addChild(sprite);
     return { display, position, layerPriority, stableId };
-  }
-
-  /**
-   * Solid cells against exposed edges, as `cells/segments`. Adjacency is the whole point
-   * of the boundary, and it is invisible from outside once it has been rasterised into
-   * the board texture, so the counts are published for a test to read. A gate opening
-   * drops out of the region and both numbers move.
-   */
-  public get solidRegionFit(): string {
-    return this.solidSummary;
-  }
-
-  /**
-   * The board texture's own size against the size of the page it lives on, as `WxH/WxH`.
-   * The board sprite draws the whole page as the board plane, so the two must stay
-   * equal; a padded page is the shape this renderer regressed into and is worth pinning.
-   */
-  public get boardTextureFit(): string {
-    const texture = this.boardTexture;
-    if (!texture) return "";
-    return `${texture.width}x${texture.height}/${texture.source.width}x${texture.source.height}`;
   }
 
   public destroy(): void {

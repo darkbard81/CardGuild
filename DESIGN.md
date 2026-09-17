@@ -97,7 +97,7 @@ CardGuild의 DOM UI는 **공통 테마 변수 → 공통 컴포넌트 → 화면
 
 - 1024×768 가로 모드에서 핵심 화면의 크기와 조작 영역을 확인한다. Entry는 입력이 제출보다 앞서고 폼이 화면 높이에 들어와야 한다.
 - 1280px 이상, 768px 세로, 390px 폭은 확장·축소 회귀 조건이다. 390px를 기본 디자인 폭으로 삼지 않는다.
-- `tests/unit/browser/ui-theme.spec.ts`는 실제 컴포넌트에 root 토큰을 바꿔 공통 적용, 변형, 상태, layer 우선순위를 검증한다.
+- 실제 입력·포커스·보드 검증은 `tests/interaction`이 소유합니다. 현재 assertion 범위는 `docs/test-risk-map.md`를 기준으로 하며 토큰별 전수 검증은 주장하지 않습니다.
 - DOM 클래스 변경 시 기존 Browser Unit과 해당 E2E의 동작·선택자를 확인한다. 상태를 주입한 검사는 E2E로 분류하지 않는다.
 - `npm run check`, `npm run build` 및 영향받는 브라우저 검사를 수행한다.
 

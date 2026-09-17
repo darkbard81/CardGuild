@@ -37,7 +37,6 @@ async function bootstrap(): Promise<void> {
   const catalog = createPresentationCatalog();
   const controller = new AdventureController(app, catalog, required<HTMLElement>("#app"));
 
-  pixiRoot.dataset.ready = "true";
   pixiStatus.textContent = "2.5D board ready";
 
   window.addEventListener(
@@ -56,8 +55,6 @@ async function bootstrap(): Promise<void> {
 
 void bootstrap().catch((error: unknown) => {
   const pixiStatus = document.querySelector<HTMLElement>("#pixi-status");
-  const app = document.querySelector<HTMLElement>("#app");
   if (pixiStatus) pixiStatus.textContent = "Failed to start";
-  if (app) app.dataset.ready = "error";
   console.error("CardGuild bootstrap failed", error);
 });

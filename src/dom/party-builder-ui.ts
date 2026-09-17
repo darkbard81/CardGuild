@@ -117,7 +117,6 @@ export class PartyBuilderUi {
 
   public render(state: SessionCoreState, viewerPlayerId: string): HTMLElement {
     const root = element("section", "ui-panel ui-panel--workspace party-builder");
-    root.dataset.partyPrepared = String(state.partyPrepared);
     const isHost = state.hostPlayerId === viewerPlayerId;
     const actors = playableActors(this.pack);
     root.append(
@@ -220,7 +219,6 @@ export class PartyBuilderUi {
 
   private renderHostReplacement(root: HTMLElement, state: SessionCoreState, actors: readonly ActorDefinition[]): void {
     const replacement = element("section", "ui-panel ui-panel--workspace party-builder");
-    replacement.dataset.partyPrepared = String(state.partyPrepared);
     replacement.append(
       element("p", "party-builder-label", "HOST PARTY BUILDER"),
       element("h2", undefined, "Prepare the Company"),

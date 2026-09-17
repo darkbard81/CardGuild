@@ -33,7 +33,6 @@ export interface BattleUiPresentation {
   /** Which move bands the board is showing, so the legend can name their colours. */
   readonly moveBands: readonly MoveBand[];
   readonly prompt: string;
-  readonly stateHash: string;
   readonly controlledActorId: string;
   readonly canControl: boolean;
   readonly interactionActive?: boolean;
@@ -108,7 +107,6 @@ function actorName(state: CombatState, actorId: string): string {
 
 export class BattleUi {
   private readonly abortController = new AbortController();
-  private readonly app = required<HTMLElement>("#app");
   private readonly objective = required<HTMLElement>("#objective-text");
   private readonly round = required<HTMLElement>("#round-value");
   private readonly initiative = required<HTMLOListElement>("#initiative-list");
@@ -215,17 +213,12 @@ export class BattleUi {
     const zones = state.cardZones[hero.id];
     const activeActor = state.actors[state.turn.activeActorId];
 
-    this.app.dataset.ready = "true";
-    this.app.dataset.outcome = state.outcome ?? "ongoing";
-    this.app.dataset.stateHash = presentation.stateHash;
-    this.app.dataset.controlledActorId = presentation.controlledActorId;
     this.objective.textContent = this.scenario.objective.description;
     this.round.textContent = String(state.round);
     this.state = state;
     this.members = presentation.members ?? [];
     this.heroHeading.textContent = activeActor?.name ?? hero.name;
     this.status.textContent = presentation.status ?? (presentation.canControl ? "내 턴" : "다른 행동자 대기 중");
-    this.app.dataset.activeActorId = state.turn.activeActorId;
     this.renderInspector();
     const interaction = presentation.interactionActive ?? Boolean(presentation.selectedAction);
     if (interaction && !this.actionInteraction) { this.restoreTab = this.sheet.tab; this.sheet.show("ACTION"); }
@@ -302,8 +295,6 @@ export class BattleUi {
     }
     this.inspectSelect.value = actor.id;
     this.inspectActive.disabled = this.inspectedActorId === null;
-    this.app.dataset.inspectedActorId = actor.id;
-    this.app.dataset.inspectorPinned = String(this.inspectedActorId !== null);
     this.sheet.update(actor, this.members.find(member => member.id === actor.id), actor.id === this.state.turn.activeActorId);
   }
 

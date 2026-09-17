@@ -109,10 +109,9 @@ content/m7/*.json → load-m7-content.ts → PRODUCTION_CONTENT
                                           └─ production gate / playtest
 ```
 
-**규칙 회귀 fixture는 `content/` 안에 없습니다.** `tests/fixtures/content`의 TypeScript
-factory(`cardguild.test.core`, `cardguild.test.character-rules`)가 그 역할을 하며, 신규
-production 콘텐츠를 그쪽에 넣지 않습니다. `content:check`는 이제 배포되는 pack만 봅니다 —
-fixture의 schema·semantic 검증은 content unit test가 합니다.
+**테스트 입력은 `content/` 안에 없습니다.** `tests/support`의 작은 typed builder와 공개
+명령으로 준비합니다. Journey는 production content와 검증된 저장 형식을 사용합니다.
+`check-content`는 출전 콘텐츠를 검증하며 테스트 입력을 제품으로 배포하지 않습니다.
 
 production 코드는 barrel(`src/content/index.ts`)이 아니라 `production-content.ts`를 직접
 import합니다. fixture를 production 코드에서 import하는 것은 ESLint가 막습니다.
@@ -260,8 +259,7 @@ primitive 조합으로만 표현하고, 조합이 불가능하면 §13으로 갑
   출처가 아니므로, `trip`·`parry`처럼 Player Core weapon Trait에 provider를 붙인 경우도
   `pf2e-remaster`입니다. 이름만 같은 경우(`open`은 원전에서 공격 순서 Trait, 여기서는 바닥 칸),
   terrain/system marker, 원전에 없는 단어(`spell`, `reaction`, `weapon`, `field-medicine` …),
-  판단이 불분명한 경우는 `cardguild`입니다. 현재 audit 결과는
-  `src/content/production-content.test.ts`의 `production trait vocabulary`가 고정합니다.
+  판단이 불분명한 경우는 `cardguild`입니다. metadata의 형식은 `npm run check`가 검사하고 원전과 의미의 일치는 콘텐츠 리뷰에서 확인합니다.
 - `name`은 공용 chip의 canonical label입니다. provider 역할이 아니라 그 Trait 자체를 부릅니다
   (`grabbed` → "Grabbed", "Grabbed Recovery" ✗).
 - `description`은 **지금 CardGuild가 구현한 의미**를 한두 문장으로 씁니다(한국어). 미구현
@@ -314,7 +312,7 @@ type      circumstance | item | status | untyped
 > `art/source/generation-plan.json` + `art/source/ui/*.png`,
 > 노출하지 않는다면 `tools/content/m7-production-policy.ts`
 > **Do not edit** `presentation/m3/**`, `public/assets/**`, `art/processed/**`
-> **Required test** `src/game/card-library.test.ts`(새 mechanic이면), `npx vitest run`
+> **Required test** 새 mechanic의 플레이어 계약을 [위험 지도](test-risk-map.md)에 배정하고 `npm run test:domain`으로 확인합니다.
 > **Required asset** UI icon 1개 (예외 없음 — §11)
 > **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 
@@ -340,7 +338,7 @@ type      circumstance | item | status | untyped
 7. `art/source/generation-plan.json`의 `presentation.cardVisuals`에 매핑을 추가하고 icon
    source를 넣습니다(§11).
 8. `npx tsx tools/assets/build-assets.ts && npm run check`.
-9. 새 mechanic이면 `src/game/card-library.test.ts`에 회귀를 추가합니다.
+9. 새 mechanic이면 G-RULE/G-COMBAT 등 해당 Domain 계약에 독립된 기대값을 추가합니다.
 10. gameplay data가 바뀌었으므로 `manifest.json`의 `version`을 올립니다(§2).
 
 ### 4.2 Golden example — `card.force-barrage`
@@ -390,7 +388,7 @@ Character의 최종 공격 수치, 최종 DC, flat weapon damage modifier는 aut
 > 획득 경로에 따라 `actors.json`(starter) 또는 `adventures.json`(reward),
 > `art/source/generation-plan.json` + icon source
 > **Do not edit** generated asset (§1.1)
-> **Required test** `src/content/production-equipment.test.ts`, `src/loadout/loadout.test.ts`
+> **Required validation** `npm run check`; 새로운 행동 위험은 [위험 지도](test-risk-map.md)의 가장 낮은 책임 계층에 추가합니다.
 > **Required asset** UI icon 1개
 > **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 
@@ -441,8 +439,7 @@ Wolf Run     : medics-kit / warding-charm / hexers-focus / scout-leather  → 1�
 Archer Perch : tower-shield / buckler / striders-boots / spiked-shield    → 1개
 ```
 
-`src/content/production-vertical-slice.test.ts`가 이것을 **offer마다 최대 하나를 배정하는 매칭**으로
-검증합니다. 단순히 "어딘가 등장한다"로 세면 조립 불가능한 build를 가능하다고 착각합니다.
+리뷰에서는 **offer마다 최대 하나를 배정하는 매칭**으로 조립 가능성을 확인합니다. 이 조합 전수 검사는 현재 자동 gate의 assertion이 아닙니다. 단순히 "어딘가 등장한다"로 세면 조립 불가능한 build를 가능하다고 착각합니다.
 
 ### 5.4 ownership / collection
 
@@ -479,7 +476,7 @@ Archer Perch : tower-shield / buckler / striders-boots / spiked-shield    → 1�
 
 > **Files to edit** `content/m7/actors.json`, 필요 시 `equipment.json` / `cards.json`
 > **Do not edit** 파생 수치(아래 금지 목록), generated asset
-> **Required test** `src/content/production-starters.test.ts`
+> **Required validation** `npm run check`; 새로운 행동 위험은 [위험 지도](test-risk-map.md)의 가장 낮은 책임 계층에 추가합니다.
 > **Required asset** front/back 두 면 standee (§11)
 > **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 > **주의** 현재 정확히 4명 정책 — 5번째는 routine 작업이 아닙니다(§1.4)
@@ -584,7 +581,7 @@ ACK와 성장 event를 publish하지 않습니다.
 
 > **Files to edit** `content/m7/actors.json`, 필요 시 `actions.json`(innate), `scenarios.json`(배치)
 > **Do not edit** `src/game/ai.ts`의 행동 목록, generated asset
-> **Required test** `src/game/creature-ai.test.ts`(roster 계약이 여기 있습니다)
+> **Required validation** `npm run check`; 새로운 행동 위험은 [위험 지도](test-risk-map.md)의 가장 낮은 책임 계층에 추가합니다.
 > **Required asset** front/back 두 면 standee
 > **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 > **Envelope** 18/20 — 현재 2마리 여유
@@ -630,7 +627,7 @@ Character의 16 Skill / defense / offense profile을 요구하지 않습니다.
 
 - **선언 순서가 그 creature의 AI 우선순위 전부입니다.** 별도 priority schema가 없습니다.
 - 같은 innate를 한 턴에 반복하지 않습니다. 그래야 authored Strike가 등장하고 순서가 의미를
-  갖습니다(`creature-ai.test.ts`가 고정).
+  갖습니다. AI 정적 참조는 production validator가 검사합니다.
 - **새 innate action ID를 `ai.ts`에 하드코딩하지 않습니다.** `ai.ts`의 id 목록은 누구나 쓸 수
   있는 basic/recovery action뿐입니다. 새 능력은 authoring으로만 작동해야 합니다.
 - AI가 겨냥할 수 있는 targeting: `self / none / enemy / ally / creature`. `ally`/`creature`는
@@ -667,7 +664,7 @@ Character의 16 Skill / defense / offense profile을 요구하지 않습니다.
 
 > **Files to edit** `content/m7/scenarios.json`, 배치할 creature가 새것이면 `actors.json`
 > **Do not edit** `presentation/m3/tilemaps.json` (map에서 자동 생성됩니다)
-> **Required test** `src/content/production-encounters.test.ts`
+> **Required validation** `npm run check`; 새로운 행동 위험은 [위험 지도](test-risk-map.md)의 가장 낮은 책임 계층에 추가합니다.
 > **Required asset** 새 terrain/object 종류를 쓸 때만 (§11)
 > **최소 검증** `npx tsx tools/assets/build-assets.ts && npm run check` (전체 DoD는 §12)
 > **Envelope** 10/12 — 2개 여유. Adventure에 넣으려면 §9
@@ -742,9 +739,8 @@ build를 다시 돌려야** tilemap이 생깁니다. tilemaps.json을 손으로 
 
 > **Files to edit** `content/m7/adventures.json`
 > **Do not edit** 두 번째 production Adventure를 만드는 일 (§1.4)
-> **Required test** `src/content/production-vertical-slice.test.ts`, `src/content/production-tutorial.test.ts`,
-> `tests/integration/adventure-progression.test.ts`
-> **최소 검증** `npm run check && npx vitest run --config vitest.integration.config.ts && npx playwright test` (전체 DoD는 §12)
+> **Required validation** `npm run check`; 보상·성장은 Domain, 실제 다음 전투 연결은 J-PROGRESS가 소유합니다.
+> **전체 검증** `npm run check && npm run test:all` (DoD는 §12)
 
 ### 9.1 구조
 
@@ -787,11 +783,9 @@ EXP를 주기 때문에, 보상에 얹지 않고 따로 authoring합니다.
 
 | 층 | 파일 | 무엇을 확인하는가 |
 |---|---|---|
-| 소유권 규칙 | `src/loadout/loadout.test.ts` | 사본 수, slot, prepared capacity, 장착/해제 시 소유권 이동 |
-| Adventure runtime | `src/adventure/adventure.test.ts` | 보상 획득 → 소유권 → loadout 변경 → **다음 CombatState의 deck/stat/provenance 일치** |
-| onboarding 계약 | `src/content/production-tutorial.test.ts` | prefix 보상이 다음 Encounter에서 실제로 준비 가능한지 |
-| 실제 서버 경로 | `tests/integration/adventure-progression.test.ts` | 보상을 실제 세션에서 받고 착용한 뒤 완주 |
-| 실제 브라우저 | `tests/e2e/runtime.spec.ts` | Reward 화면 → Manage Loadout → 다음 Encounter의 손패/능력치 |
+| 소유권/보상/성장 | `tests/domain/adventure-contracts.test.ts` | 지급 1회, 파티 할당, 출전 gate, 현재 loadout/progression의 다음 전투 전달 |
+| 승인 피드백 | `tests/interaction/preparation.spec.ts` | 비교와 확정 구분, ACK + snapshot, 거절·재접속·읽기 전용 |
+| 실제 다음 전투 연결 | `tests/journeys/progress-coop.spec.ts` | 승리 → 보상 → 성장 선택 → 준비 → 다음 전투 |
 
 선택지가 실제로 다른 플레이를 만드는지(dead/dominant choice)는 `npm run playtest`가 봅니다.
 
@@ -801,7 +795,7 @@ EXP를 주기 때문에, 보상에 얹지 않고 따로 authoring합니다.
 순서까지 같아야 합니다(`TUTORIAL_PREFIX_MISMATCH`). 현재 4개입니다. 순서를 바꾸거나 앞에
 encounter를 끼워 넣으면 policy도 같은 PR에서 고쳐야 합니다.
 
-`production-tutorial.test.ts`가 onboarding 구간의 보상을 **card 전용**으로 고정합니다 — baseline 장비
+onboarding 구간의 보상은 **card 전용**으로 authoring합니다 — baseline 장비
 9종은 전부 누군가의 시작 장비라 보상으로 주면 dead choice이기 때문입니다.
 
 ### 9.3 보상 설계 규칙
@@ -1013,7 +1007,7 @@ public/assets/actors/hero/aerin/front.webp        runtime
 **세 곳 모두에서 namespace가 유지되어야 합니다.** runtime export는 정규화 PNG를 다시 읽으므로,
 processed 단계에서 `hero.aerin`과 `enemy.aerin`이 같은 파일로 뭉개지면 runtime 경로가 아무리
 정확해도 한 캐릭터가 다른 캐릭터의 그림을 입고 나갑니다. `validatePlan()`과 `assets:check`가
-경로 충돌을 각각 막고, unit test가 manifest 경로를 production generator와 대조합니다.
+경로 충돌을 각각 막습니다. 생성물의 무결성과 매핑은 `check-assets`로 검증합니다.
 
 `actorVisuals`는 계속 **논리 ID**를 담습니다. URL을 담지 않습니다 — 그래야 저장 방식이
 `ActorRenderer`, facing 로직, gameplay state, content 정의로 새지 않습니다.
@@ -1175,29 +1169,28 @@ board 그림이며 interaction legality는 계속 gameplay state가 소유합니
 지나야 하는 **production DoD**입니다.
 
 ```bash
-npx tsx tools/assets/build-assets.ts  # asset을 건드렸다면 (생성물을 같은 커밋에)
-npm run check                         # 정적 검증만 — 파일을 만들지 않고 테스트를 돌리지 않는다
-npm run build                         # client + server 번들
-npm test                              # 다섯 계층 전부, Recovery가 위 build를 쓴다
+npm run assets:build  # asset 입력을 바꿨다면 생성물을 함께 검토
+npm run check         # 콘텐츠·에셋·타입·lint + client/server build
+npm run test:all      # 네 leaf suite를 각각 한 번
 ```
 
-세 명령은 겹치지 않습니다. 그래서 전체 gate에서 TypeScript도 client build도 한 번씩만 돕니다.
-CI는 이 셋을 나눠 씁니다: feature branch push는 `CI Quick`(`check` → `build` → Unit/Node),
-main을 향한 PR은 `CI Full`(`check` → `build` → `npm test`)입니다. merge 가능성을 증명하는
-것은 `CI Full`뿐입니다.
+main 대상 PR의 `CI Contracts / Contracts`가 같은 순서로 실행합니다.
+main 이외 브랜치 push는 `CI Quick / Quick`에서 `check → test:domain`만 실행합니다.
+main push에는 테스트 workflow가 실행되지 않습니다.
+`npm test`는 Domain + Integration만 실행하는 비브라우저 기본 루프입니다.
 
 | 소유자 | 무엇을 소유하는가 |
 |---|---|
-| `check-content` | **모든** pack의 구조/참조/컴파일/fingerprint (m3·m6 fixture 포함) |
-| `check-production-content` | 현재 M7 release policy: volume, reachability/reserve, tutorial prefix, starter loadout, 1P/2P/3P 구조적 조립, AI 정적 참조, visual coverage |
-| `check-assets` | 생성 asset 무결성 + Card/Equipment visual 정확 일치 |
-| Unit / Node | mechanics + content 회귀 (`src/**/*.test.ts`) |
-| Unit / Browser | 컴포넌트 하나의 DOM·PixiJS 계약 (서버 없이; Trait chip/tooltip 포함) |
-| Integration | server/session/progression 실제 경로 |
-| E2E | 브라우저/presentation/loadout 실제 경로 |
-| Recovery | 배포 산출물의 재시작·강제 종료 |
+| `check-content` | production pack 구조/참조/컴파일/fingerprint |
+| `check-production-content` | release policy, reachability/reserve, tutorial prefix, starter loadout, 1P/2P/3P 조립, AI 참조, visual coverage |
+| `check-assets` | 생성 asset 무결성 + Card/Equipment visual 매핑 |
+| Domain | 순수 규칙·자원·성장·권한·저장 계약 |
+| Integration | HTTP/WS/서비스·commit·파일 DB·프로세스 복구 |
+| Interaction | 실제 UI/controller/client 입력과 확정 피드백 |
+| Journey | built app/server에서 네 핵심 여정 연결 |
 
-계층별 책임과 비용은 [`TESTING.md`](TESTING.md)에 있습니다.
+세부 assertion 소유권은 [위험 지도](test-risk-map.md), 실행·비용은 [TESTING](TESTING.md)에 있습니다.
+기존 파일별 회귀·snapshot은 #60에서 제거했으며, 현재 검증하지 않는 조합을 통과했다고 간주하지 않습니다.
 
 `npm run playtest -- --seeds N`은 gate가 아니라 조사 도구입니다. **encounter 배치·creature 수치·
 보상 구성·starter 능력치처럼 balance에 닿는 변경을 했다면** 같은 seed로 전후를 비교하세요.
@@ -1283,7 +1276,7 @@ asset generation / check workflow
 | Creature를 추가해 1P/2P/3P로 배치하는가 | §7 + §8.2 |
 | 기존 primitive만으로 Card + Action을 추가하는가 | §4 (§3.2 primitive 목록) |
 | Character에서 authored와 derived의 경계는 | §6.1 / §6.2 |
-| 보상이 다음 전투에 반영되는지 어디서 확인하는가 | §9.1, §12 (`test:network`, `test:smoke`, `playtest`) |
+| 보상이 다음 전투에 반영되는지 어디서 확인하는가 | §9.1, §12 (`test:domain`, `test:journey`, `playtest`) |
 | 33번째 Card / 5번째 Character / 두 번째 Adventure가 왜 routine이 아닌가 | §1.3 / §1.4 |
 | visual source는 어디에 넣고 어떤 파일은 건드리면 안 되는가 | §11 / §1.1 |
 | 현재 primitive로 표현 안 될 때 왜 hack 대신 Rule Extension인가 | §13 |

@@ -112,15 +112,10 @@ export class AdventureController {
       onBegin: () => this.sendIntent({ type: "begin-adventure" }),
       onResume: () => this.sendIntent({ type: "resume-adventure" }),
     });
-    this.root.dataset.ready = "true";
     this.root.dataset.screen = "session";
-    // data-auth starts as "unknown" synchronously, so nothing has to race the /api/auth/me
-    // round trip to know whether the landing it is looking at is the final one.
-    this.root.dataset.auth = "unknown";
     this.lobbyUi.renderLanding(null, "checking");
     const stored = SessionClient.loadCredential();
     if (stored) {
-      this.root.dataset.auth = "resumed";
       this.beginEntry("모험에 다시 연결하는 중입니다…");
       this.attach(stored);
     } else {
@@ -154,10 +149,8 @@ export class AdventureController {
     try {
       this.account = await SessionClient.currentAccount();
       this.authState = "ready";
-      this.root.dataset.auth = this.account ? "authenticated" : "anonymous";
     } catch {
       this.authState = "failed";
-      this.root.dataset.auth = "error";
     }
     if (this.entryView === "landing" && !this.client && !this.entryBusy) {
       this.lobbyUi.renderLanding(this.account, this.authState);
@@ -209,7 +202,6 @@ export class AdventureController {
   private expired(error: unknown, destination: "new-adventure" | "campaigns"): boolean {
     if (!(error instanceof ApiError) || error.code !== "UNAUTHENTICATED") return false;
     this.account = null;
-    this.root.dataset.auth = "anonymous";
     this.authDestination = destination;
     this.navigateEntry("login");
     this.lobbyUi.setStatus("로그인이 만료되었습니다. 다시 로그인하면 계속할 수 있습니다.");
@@ -248,7 +240,6 @@ export class AdventureController {
     try {
       this.account = await request();
       this.authState = "ready";
-      this.root.dataset.auth = "authenticated";
       this.finishEntry();
       if (this.authDestination === "campaigns") await this.showCampaigns();
       else this.navigateEntry(this.authDestination);
@@ -267,7 +258,6 @@ export class AdventureController {
       this.authDestination = "landing";
       this.authState = "ready";
       this.lobbyUi.clearDrafts();
-      this.root.dataset.auth = "anonymous";
       this.navigateEntry("landing");
     } catch (error) {
       this.finishEntry();
@@ -319,7 +309,6 @@ export class AdventureController {
         void this.renderSnapshot(snapshot);
       },
       onError: (error) => {
-        this.root.dataset.sessionError = error.code;
         this.loadoutUi.reportError(error.message);
         this.ui.reportError(error.message);
         this.battle?.reportError(error.message);
@@ -353,14 +342,6 @@ export class AdventureController {
     this.battle?.destroy();
     this.battle = null;
     this.root.dataset.screen = "session";
-    delete this.root.dataset.sessionId;
-    delete this.root.dataset.sessionRevision;
-    delete this.root.dataset.controlRevision;
-    delete this.root.dataset.sessionHash;
-    delete this.root.dataset.lifecycle;
-    delete this.root.dataset.viewerMemberId;
-    delete this.root.dataset.controlledActorIds;
-    delete this.root.dataset.viewerRole;
     this.ui.setVisible(false);
     this.loadoutUi.setVisible(false);
     this.finishEntry();
@@ -402,16 +383,7 @@ export class AdventureController {
     const state = snapshot.state;
     const viewer = this.viewerSeat(snapshot);
     if (!viewer) throw new Error("Authenticated player does not own a session seat.");
-    this.root.dataset.sessionId = state.sessionId;
-    this.root.dataset.sessionRevision = String(snapshot.revision);
-    this.root.dataset.controlRevision = String(snapshot.controlRevision);
-    this.root.dataset.sessionHash = snapshot.gameplayHash;
-    const controlledMemberIds = this.controlledMemberIds(snapshot, viewer.playerId);
-    this.root.dataset.viewerMemberId = [...controlledMemberIds][0] ?? "";
-    this.root.dataset.controlledActorIds = [...controlledMemberIds].sort().join(",");
-    this.root.dataset.viewerRole = state.hostPlayerId === viewer.playerId ? "host" : "guest";
 
-    this.root.dataset.lifecycle = state.lifecycle;
     if (state.lifecycle === "lobby") {
       this.renderSessionLobby(state, viewer.playerId, snapshot.control);
       return;
@@ -421,8 +393,6 @@ export class AdventureController {
     // before Resume would drop the host straight into a battle they have not resumed, and
     // would arm combat input the server is going to refuse.
     if (state.lifecycle === "resume-lobby") {
-      delete this.root.dataset.adventurePhase;
-      delete this.root.dataset.encounterId;
       this.renderSessionLobby(state, viewer.playerId, snapshot.control);
       return;
     }
@@ -430,7 +400,6 @@ export class AdventureController {
     const adventure = state.adventure;
     if (!adventure) throw new Error("Active session is missing AdventureState.");
     this.lobbyUi.setVisible(false);
-    this.updateAdventureDatasets(adventure);
     if (state.combat) {
       this.encounterBundle ??= this.catalog.loadEncounterBundle();
       await this.encounterBundle;
@@ -498,13 +467,6 @@ export class AdventureController {
         this.controlledMemberIds(snapshot, viewer.playerId),
       );
     }
-  }
-
-  private updateAdventureDatasets(state: AdventureState): void {
-    this.root.dataset.adventurePhase = state.phase;
-    this.root.dataset.encounterId = state.currentEncounterId ?? "";
-    this.root.dataset.completedEncounters = String(state.completedEncounterIds.length);
-    this.root.dataset.outcome = state.phase === "failed" ? "defeat" : state.phase === "complete" ? "victory" : "ongoing";
   }
 
   private renderAdventure(state: AdventureState, viewer: SessionSeat): void {

@@ -1,0 +1,38 @@
+name: CI Contracts
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: contracts-pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  contracts:
+    name: Contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run check
+      # Four leaves, once each. check already produced the deployment artifacts.
+      - run: npm run test:all
+        timeout-minutes: 5
+      - name: Sanitize browser diagnostics
+        if: failure()
+        id: diagnostics
+        run: python3 tools/testing/redact-artifacts.py test-results sanitized-test-results
+      - uses: actions/upload-artifact@v4
+        if: failure() && steps.diagnostics.outcome == 'success'
+        with:
+          name: contract-failure-diagnostics
+          path: sanitized-test-results/
+          if-no-files-found: ignore
+          retention-days: 7

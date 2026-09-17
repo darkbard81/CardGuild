@@ -14,7 +14,7 @@ Card Hunter식 장비 카드와 PF2e식 3-Action 전투를 결합한 Tactical Ad
 - npm 11 이상
 - 최소 지원 해상도 1024x768. 보드 투영은 HUD gutter를 제외한 영역 안에서 계산되며,
   gutter 크기는 `data-hud-gutter` 패널을 실제로 measure해서 얻습니다. style.css가
-  바뀌면 투영이 따라오고, E2E 테스트는 어떤 패널도 보드 quad와 겹치지 않는지 검증합니다.
+  바뀌면 투영이 따라옵니다. Interaction에서 실제 보드 입력을 검사하고 대표 화면의 가림을 검토합니다.
 
 ```bash
 npm install
@@ -273,12 +273,9 @@ Production 콘텐츠의 source of truth는 [`content/m7`](content/m7) JSON이며
 `content/m7/manifest.json`과 `npx tsx tools/content/check-content.ts` 출력이 소유하므로 이 README에 복제하지
 않습니다. Client UI, battle rendering, WebSocket hello와 authoritative server는 모두
 `src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점을 통해 이 pack을 봅니다.
-규칙 회귀 fixture는 `content/`가 아니라 [`tests/fixtures/content`](tests/fixtures/content)의
-TypeScript factory입니다 — `cardguild.test.core`(기본 규칙)와
-`cardguild.test.character-rules`(그 위의 세 playable Character·무기·방어구·주문). 둘 다
-Encounter별 EXP를 명시적 0으로 두어 성장 없는 회귀 의미를 유지합니다. production 코드가
-fixture를 import하는 것은 ESLint가 막습니다. 디렉터리 안내는
-[`content/README.md`](content/README.md)에 있습니다.
+규칙 테스트는 `tests/support`의 작은 typed builder와 공개 도메인 명령으로 입력을 준비합니다.
+실제 여정은 `PRODUCTION_CONTENT`를 사용합니다. production 코드가 테스트 입력을 import하는
+것은 ESLint가 막습니다. 디렉터리 안내는 [`content/README.md`](content/README.md)에 있습니다.
 
 **신규 Card / Equipment / Character / Creature / Encounter / Adventure를 추가하는 방법은
 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md) 하나에 있습니다** — schema 계약,
@@ -371,73 +368,33 @@ Pan은 두 규칙 중 **느슨한 쪽**을 씁니다. 보드가 안전영역보�
 전체가 보이므로 아무 일도 하지 않습니다).
 
 보드·카메라·투영 계약은 위에 적힌 것이 전부이고, 그 값을 소유하는 코드는
-`src/pixi/battle/BoardProjection.ts`와 `BattleCamera.ts`, 그리고 두 파일 옆의 test입니다. 초기 설계 초안과 M5 구현 범위·protocol 정정 사항은 Git
+`src/pixi/battle/BoardProjection.ts`와 `BattleCamera.ts`, 입니다. 입력 회귀의 소유권은 [위험 지도](docs/test-risk-map.md)의 U-BOARD에 있습니다. 초기 설계 초안과 M5 구현 범위·protocol 정정 사항은 Git
 history와 GitHub 이슈 `#6`·`#7`에 남아 있습니다.
 
 ## 검증
 
-gate는 세 명령이고 서로 겹치지 않습니다. `check`는 파일을 만들지 않고, `build`는 검사하지
-않으며, `test`는 빌드하지 않습니다. Recovery가 배포 산출물을 쓰므로 순서는 지켜야 합니다.
-
 ```bash
-npm run check # 정적 검증: content·production policy·자산 검사, TypeScript 5종, ESLint
-npm run build # 배포 산출물: dist(client) + dist-server(server bundle)
-npm test      # 동적 검증: Unit/Node -> Unit/Browser -> Integration -> E2E -> Recovery
+npm run check     # 콘텐츠·에셋·타입·lint + 클라이언트/서버 build
+npm test          # Domain + Integration (비브라우저 기본 루프)
+npm run test:all  # Domain → Integration → Interaction → Journey, 각각 한 번
 ```
 
-CI는 이 셋을 두 시점에 나눠 씁니다. main이 아닌 branch로 push하면 `CI Quick`이
-`check → build → npx vitest run`만 돌려 빠르게 답하고(Chromium도 설치하지 않습니다), main을
-향한 PR에서 `CI Full`이 `check → build → npm test`로 다섯 계층 전부를 돌립니다. **merge
-가능성을 증명하는 것은 `CI Full` 하나뿐입니다.**
+main 대상 PR의 `CI Contracts / Contracts`는 `check → test:all`을 실행합니다.
+main 이외 브랜치 push의 `CI Quick / Quick`은 `check → test:domain`을 실행합니다.
+main push에는 테스트 workflow가 실행되지 않습니다. 이전 5계층 runner는 #60에서 제거했습니다. 저장·권한·진행 위험을 포함하는
+네 계층의 기본 Chromium profile이 PR gate입니다. GitHub branch protection의 required check도
+`Contracts`로 설정해야 합니다(저장소 설정 변경은 workflow 파일만으로 적용되지 않습니다).
 
-`npm run playtest`는 seeded 자동 플레이로 밸런스를 살피는 조사 도구이고 gate가 아닙니다.
+테스트는 플레이어 실패를 가장 작은 실제 경계에서 검출합니다. 규칙과 순수 저장은 Domain,
+인증·전송·파일 SQLite·프로세스 복구는 Integration, 실제 UI 입력·승인 피드백은 Interaction,
+정상 제품 구성의 네 핵심 여정은 Journey가 소유합니다. 현재 보호 범위는
+[위험 지도](docs/test-risk-map.md), 실행·격리·비용·단독 재현은 [TESTING](docs/TESTING.md),
+추가/삭제 기준은 [테스트 정책](docs/testing-policy.md)에 있습니다.
 
-일부만 돌릴 때는 조립용 alias 없이 underlying CLI를 직접 부릅니다.
-
-```bash
-npx tsx tools/content/check-content.ts            # 모든 pack의 Schema, references, compile, fingerprint
-npx tsx tools/content/check-production-content.ts # M7 release policy/reachability/1P-3P 구조 coverage
-npx tsx tools/assets/check-assets.ts              # alpha, anchors, 양면 standee, 저장 파티션, layered tilemap
-npx tsx tools/assets/build-assets.ts              # 자산 pipeline 산출물 재생성(gate가 아니라 사람이 돌린다)
-npx tsc --project tsconfig.server.json            # DOM 없는 server/session/protocol type boundary
-npx tsc --project tsconfig.tests.json             # tests 전체
-npx vitest run                                    # Unit / Node
-npx playwright test --config playwright.browser-unit.config.ts # Unit / Browser — 서버·DB 없이
-npx vitest run --config vitest.integration.config.ts           # Integration — 실제 SQLite·HTTP·WebSocket
-npx playwright test                               # E2E — 실제 앱을 실제 사용자처럼
-npx playwright test --config playwright.recovery.config.ts     # Recovery — build 선행
-```
-
-자산은 **추적된 산출물을 검증만** 합니다. 자산 입력이나 생성 대상 콘텐츠를 바꿨다면
-`build-assets`를 직접 돌리고 생성물을 함께 커밋하세요 — gate는 자산을 다시 만들지도, 최신인지
-판정하지도 않습니다. 계층별 책임과 비용은 [`docs/TESTING.md`](docs/TESTING.md)에 있습니다.
-
-Vitest는 Content schema v9 Schema/reference/fingerprint, PF2e proficiency/statistic resolver와
-typed modifier stacking, Armor Class/Max HP 파생과 armor loadout, playable 4인 profile과 1–3P spawn,
-Player/Party/Character/Control 분리, Collection/Loadout ownership와 파생
-deck/stat/context, Adventure 8전/Reward/실패/seed/Combat bridge,
-affine BoardProjection/camera fit/depth/layered tilemap, RNG, 4단계 성공도, 3-Action/MAP,
-직교 pathfinding, terrain/LOS, Facing, 장비 카드 provenance, Context Action,
-Reaction lifecycle, replay setup identity/hash, victory/defeat를 검증합니다. Playwright는
-Adventure shell, responsive Loadout Builder, atlas + standalone actor WebP 로딩, 실제 affine diamond board
-hover/링 메뉴 이동·공격/Facing, Reward → 준비 카드/장비 변경 → 다음 Encounter 실제
-손패·능력치·Context Action 연결, 1024x768 적합성과 ultrawide reflow를 검증합니다.
-Network integration은 실제 `ws` client 3개로 queue/gameplay·control revision/idempotency,
-claim race와 authorization, turn/reaction disconnect fallback·reconnect, server AI,
-newest-wins reconnect와 legacy protocol(v1·v3·v4·v5) fail-fast를 검증합니다. 여기에 실제 파일
-SQLite를 쓰는 durable Campaign 시나리오가 더해집니다 — 서버 재시작 후 Continue, mid-combat
-정확 복구, 자식 서버를 COMMIT 직전/직후에 강제 종료한 뒤의 복구, 이전 credential 무효화입니다.
-M9-5는 여기에 장애 매트릭스를 얹습니다: 첫 승리·4전 Level-Up·보상 선택·AI step·콘텐츠 이관
-각각의 COMMIT 직전/직후 `SIGKILL`과 복구, ACK만 유실된 동일 요청 재시도, 그리고 종료의
-멱등성과 종료 중 queue·DB 순서입니다.
-
-**계층별 책임·직접 실행 명령·비용·자원 격리는 [`docs/TESTING.md`](docs/TESTING.md)에
-있습니다.** 테스트는 무엇을 붙잡고 있는지로 나뉩니다 — 컴포넌트 하나(Unit/Browser)는 서버 없이
-돌고, 실제 저장·전송(Integration)은 파일을 직렬로 실행하며, 배포 산출물의 재시작(Recovery)은
-자기 포트와 임시 DB를 갖습니다.
-Playwright는 별도 BrowserContext 3개로 host Party Builder, guest character picker, 1P 다중 제어,
-2P fallback, 3P 분산 제어와 hash 수렴, 그리고 Continue → Resume Lobby → 정확 재개를 검증하며
-기존 링 메뉴/Facing/HUD camera도 함께 회귀 검증합니다.
+Integration의 프로세스 복구와 Journey에는 현재 코드의 build가 필요합니다. 제품 소스를
+바꾼 뒤 `npm run build` 또는 `npm run check`를 먼저 실행하세요. 검증은 추적된 에셋을
+재생성하지 않습니다. 에셋 입력 변경 시 `npm run assets:build`의 산출물을 함께 검토합니다.
+`npm run playtest -- --seeds N`은 같은 seed로 밸런스를 비교하는 조사 도구입니다.
 
 ## M5 범위 밖
 
@@ -455,7 +412,7 @@ runtime progression 때문에 다시 계산하지 않습니다.
 
 실제 EXP 지급과 Level-Up은 M9-4, 계정/저장/복구는 M9-2 이후 범위입니다.
 계약을 소유하는 코드는 `src/adventure/progression.ts`와 `src/loadout/loadout.ts`이고,
-회귀는 `src/adventure/progression.test.ts`가 붙잡습니다.
+회귀는 `tests/domain/adventure-contracts.test.ts`가 붙잡습니다.
 
 ## M9-2 Host Identity & Campaign Ownership
 
@@ -480,8 +437,7 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
   결정론은 그대로입니다. M9-2 자체는 wire protocol을 v5에서 바꾸지 않았습니다.
 
 계약을 소유하는 코드는 `src/server/auth-service.ts`·`campaign-service.ts`·`password.ts`·
-`cookies.ts`이고, `tests/integration/auth-service.test.ts`·`account.test.ts`·
-`campaign-service.test.ts`가 실제 SQLite로 검증합니다.
+`cookies.ts`이고, `tests/integration/contracts/http-coop.test.ts`가 실제 SQLite로 검증합니다.
 
 ## M9-3 Durable Campaign Save & Resume Lobby
 
@@ -509,7 +465,7 @@ gameplay 진행이 SQLite에 저장되고, Host는 시작 화면의 이어하기
 
 저장 payload와 4단계 검증은 `src/server/campaign-save.ts`, COMMIT·CAS·공개 순서는
 `src/server/campaign-durability.ts`가 소유하고,
-`tests/integration/campaign-persistence.test.ts`와 `restart-matrix.test.ts`가 검증합니다.
+`tests/integration/contracts/storage.test.ts`와 `restart.test.ts`가 검증합니다.
 
 ## M9-4 Encounter EXP & Automatic Level-Up
 
@@ -569,8 +525,8 @@ npm start
   이어갑니다.
 
 멱등한 종료는 `src/server/main.ts`가 소유하고, 장애 매트릭스는
-`tests/integration/restart-matrix.test.ts`, 배포 산출물의 실제 재시작은
-`tests/recovery/campaign.recovery.ts`가 검증합니다. 계층별 책임은
+`tests/integration/contracts/restart.test.ts`, 배포 산출물의 실제 재시작은
+`tests/journeys/start-continue.spec.ts`가 검증합니다. 계층별 책임은
 [`docs/TESTING.md`](docs/TESTING.md)에 있습니다.
 
 

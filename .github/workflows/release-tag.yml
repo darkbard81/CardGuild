@@ -3,7 +3,7 @@
 # Fires once per PR merged into `main`. It reads the version out of package.json at the merge
 # commit and, if no `vX.Y.Z` tag exists for it yet, pushes an annotated one there. So bumping
 # the version in a PR is what makes it a release; a PR that leaves the version alone finds the
-# tag already present and skips. Nothing is built or tested here — CI Full already decided
+# tag already present and skips. Nothing is built or tested here — CI Contracts already decided
 # the merge; this only records it.
 name: Release Tag
 

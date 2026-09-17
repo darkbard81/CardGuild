@@ -1,7 +1,6 @@
 import type { LoadoutPartyMember } from "../loadout";
 import { isRingAction } from "../game/capabilities";
 import {
-  hashCombatState,
   facingToward,
   listLegalActions,
   listLegalTargets,
@@ -306,11 +305,7 @@ export class BattleController {
   }
 
   private render(events: readonly CombatEvent[] = []): void {
-    const stateHash = hashCombatState(this.state);
     const canControl = !this.inputBlocked() && Boolean(this.activeHeroId()) && !this.state.pendingReaction && !this.state.outcome;
-    const app = this.requireElement<HTMLElement>("#app");
-    app.dataset.viewerMemberId = this.presentedActorId;
-    app.dataset.controlledActorIds = [...this.controlledActorIds].sort().join(",");
     const highlights = this.highlights();
     this.view.render(this.state, highlights, events);
     this.ui.render(this.state, this.history, {
@@ -318,7 +313,6 @@ export class BattleController {
       // Legend order follows the bands themselves: cheapest movement first.
       moveBands: MOVE_BAND_ORDER.filter((band) => highlights.moveBands.some((tile) => tile.band === band)),
       prompt: this.prompt,
-      stateHash,
       controlledActorId: this.presentedActorId,
       canControl,
       inputBlocked: this.inputBlocked(),

@@ -86,8 +86,6 @@ export class SessionLobbyUi {
     this.status = "";
     this.screen.replaceChildren();
     this.screen.removeAttribute("aria-busy");
-    delete this.screen.dataset.sessionId;
-    delete this.screen.dataset.viewerRole;
     delete this.screen.dataset.lobbyKind;
     const card = element("section", "ui-panel session-card session-entry");
     card.append(element("h1", undefined, title), element("p", "session-description", description));
@@ -365,8 +363,6 @@ export class SessionLobbyUi {
     }
     const host = state.hostPlayerId === viewerPlayerId;
     const connected = new Set(control.connectedPlayerIds);
-    this.screen.dataset.sessionId = state.sessionId;
-    this.screen.dataset.viewerRole = host ? "host" : "guest";
     this.screen.dataset.lobbyKind = "new";
     this.screen.replaceChildren();
     const card = element("section", "ui-panel session-card lobby-card");
@@ -494,8 +490,6 @@ export class SessionLobbyUi {
     const terminal = adventure.phase === "complete" || adventure.phase === "failed";
     const card = this.card(terminal ? "저장된 결과 확인 준비" : "모험 이어가기 준비", "저장된 파티로 이어갑니다. 친구는 새 초대 코드로 다시 참가해 캐릭터를 선택하세요.", !previousFocus);
     card.classList.add("resume-card");
-    this.screen.dataset.sessionId = state.sessionId;
-    this.screen.dataset.viewerRole = host ? "host" : "guest";
     this.screen.dataset.lobbyKind = "resume";
     const definition = this.pack.adventures[adventure.adventureId]!;
     const encounter = adventure.currentEncounterId ? this.pack.scenarioSources[adventure.currentEncounterId]?.name : null;
@@ -568,7 +562,6 @@ export class SessionLobbyUi {
   /** The saved composition is fixed; guests may only claim an available character. */
   private savedPartyPanel(state: SessionCoreState, control: ServerControlView, viewerPlayerId = state.hostPlayerId): HTMLElement {
     const root = element("section", "ui-panel ui-panel--workspace party-builder resume-party");
-    root.dataset.partyPrepared = "true";
     root.dataset.partyFixed = "true";
     root.append(element("h2", undefined, "저장된 파티"));
     const list = element("div", "resume-characters");

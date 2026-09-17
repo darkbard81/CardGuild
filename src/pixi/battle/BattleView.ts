@@ -213,7 +213,7 @@ export class BattleView {
     private readonly app: Application,
     catalog: AssetCatalog,
     private readonly handlers: BattleViewHandlers,
-    private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
+    config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
   ) {
     this.projection = new BoardProjection(config);
     this.camera = new BattleCamera(config);
@@ -267,8 +267,6 @@ export class BattleView {
     // and leaves the board, the standees and their animations where they are.
     if (this.state === state && events.length === 0 && this.boardKey === nextBoardKey) {
       this.currentHighlights = highlights;
-      this.app.canvas.dataset.facingPosition = highlights.facingPosition
-        ? `${highlights.facingPosition.x},${highlights.facingPosition.y}` : "";
       this.safeArea = this.handlers.safeArea();
       if (highlights.facingPosition) this.ensureDirectionVisible(highlights.facingPosition);
       this.renderOverlay();
@@ -280,8 +278,6 @@ export class BattleView {
     this.cancelAnimations();
     this.state = state;
     this.currentHighlights = highlights;
-    this.app.canvas.dataset.facingPosition = highlights.facingPosition
-      ? `${highlights.facingPosition.x},${highlights.facingPosition.y}` : "";
     this.safeArea = this.handlers.safeArea();
     if (this.boardKey !== nextBoardKey) {
       this.boardKey = nextBoardKey;
@@ -321,7 +317,6 @@ export class BattleView {
     if (highlights.facingPosition) this.ensureDirectionVisible(highlights.facingPosition);
     this.renderFeedback(events);
     this.animateMovement(events, previousPositions);
-    this.app.canvas.dataset.boardSize = `${state.map.width}x${state.map.height}`;
   }
 
   /**
@@ -410,7 +405,6 @@ export class BattleView {
     for (const visual of this.visuals) this.placeVisual(visual);
     this.depthRenderLayer.sortRenderLayerChildren();
     this.renderOverlay();
-    this.publishLayout();
     this.app.stage.hitArea = new Rectangle(0, 0, this.app.screen.width, this.app.screen.height);
   }
 
@@ -422,13 +416,6 @@ export class BattleView {
   private renderOverlay(): void {
     clearLayer(this.boardOverlayLayer);
     clearLayer(this.facingAimLayer);
-    // The bands are Graphics, so a test can only see them through what the canvas reports.
-    this.app.canvas.dataset.moveBands = JSON.stringify(
-      this.currentHighlights.moveBands.reduce<Record<string, number>>((counts, tile) => {
-        counts[tile.band] = (counts[tile.band] ?? 0) + 1;
-        return counts;
-      }, {}),
-    );
     if (!this.state) return;
     this.tacticalRenderer.render(
       this.state,
@@ -490,7 +477,6 @@ export class BattleView {
         visual.currentPosition.y = lerp(from.y, to.y, progress);
         this.placeVisual(visual);
         this.depthRenderLayer.sortRenderLayerChildren();
-        this.publishLayout();
         if (elapsed >= (path.length - 1) * segmentDuration) {
           visual.currentPosition = { ...path[path.length - 1] as GridPosition };
           this.placeVisual(visual);
@@ -516,7 +502,6 @@ export class BattleView {
   private setHover(position: GridPosition | null): void {
     if (samePosition(this.hoverPosition, position)) return;
     this.hoverPosition = position;
-    this.app.canvas.dataset.hoverCell = position ? `${position.x},${position.y}` : "";
     this.renderOverlay();
     this.handlers.onHoverCell(position);
   }
@@ -653,62 +638,6 @@ export class BattleView {
     // A cancelled walk still ends the sentence: whoever was waiting on it must be released,
     // or a paced queue would sit behind an animation that is never going to finish.
     if (wasMoving) this.handlers.onMovementSettled?.();
-  }
-
-  private publishLayout(): void {
-    this.app.canvas.dataset.boardProjection = `affine-${String(Math.round((this.config.boardRotationRadians * 180) / Math.PI))}-${String(this.config.boardSquashY)}`;
-    // The gutters the HUD measured for itself: the board is fitted inside this rectangle
-    // and an actor outside it is the thing `ensureActorVisible` exists to pan back.
-    this.app.canvas.dataset.safeArea = JSON.stringify(this.safeArea);
-    // The camera's own framing, apart from the fit. On-screen size is the two multiplied,
-    // so a HUD that reflows changes how big the board is drawn without the camera moving:
-    // only this tells a gesture that zoomed apart from one that merely panned.
-    this.app.canvas.dataset.boardZoom = this.camera.scale.toFixed(4);
-    this.app.canvas.dataset.boardTextureFit = this.terrainRenderer.boardTextureFit;
-    this.app.canvas.dataset.solidRegionFit = this.terrainRenderer.solidRegionFit;
-    this.app.canvas.dataset.boardCorners = JSON.stringify(
-      this.projection.corners.map((point) => ({ x: Number(point.x.toFixed(2)), y: Number(point.y.toFixed(2)) })),
-    );
-    this.app.canvas.dataset.actorFeet = JSON.stringify(
-      [...this.actorVisuals.entries()].map(([id, visual]) => {
-        // The contact point is where the actor stands; the bounds are what the player has
-        // to be able to see, and the two are far apart on a standee.
-        const bounds = visual.display.getBounds();
-        return {
-          id,
-          x: Number(visual.display.x.toFixed(2)),
-          y: Number(visual.display.y.toFixed(2)),
-          scale: Number(visual.display.scale.x.toFixed(4)),
-          zIndex: visual.display.zIndex,
-          top: Number(bounds.top.toFixed(2)),
-          bottom: Number(bounds.bottom.toFixed(2)),
-          left: Number(bounds.left.toFixed(2)),
-          right: Number(bounds.right.toFixed(2)),
-        };
-      }),
-    );
-    // The standee plane's contract, which is invisible from outside once it is drawn: a
-    // body is upright and unsquashed whatever the board does under it, only its own
-    // mirror flips it, and the base is the one part that lies down on the plane.
-    this.app.canvas.dataset.standeePlane = JSON.stringify(
-      [...this.actorVisuals.entries()].map(([id, visual]) => {
-        const body = visual.display.getChildByLabel("standee-body");
-        const base = visual.display.getChildByLabel("standee-base");
-        const badge = visual.screenSpace;
-        return {
-          id,
-          bodyFlip: body ? Math.sign(body.scale.x) : 0,
-          bodyAspect: body ? Number((body.scale.y / Math.abs(body.scale.x)).toFixed(4)) : 0,
-          bodyRotation: body ? Number(body.rotation.toFixed(4)) : 0,
-          baseSquash: base ? Number(base.scale.y.toFixed(4)) : 0,
-          badgeFlip: badge ? Math.sign(badge.scale.x) : 0,
-        };
-      }),
-    );
-    this.app.canvas.dataset.depthOrder = [...this.visuals]
-      .sort((left, right) => left.display.zIndex - right.display.zIndex || left.stableId.localeCompare(right.stableId))
-      .map((visual) => visual.stableId)
-      .join(",");
   }
 
   public destroy(): void {

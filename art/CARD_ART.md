@@ -49,23 +49,19 @@ Normal check/build/asset packaging requires only the delivery WebPs, not the PNG
 
 ## Verification
 
-The catalog tests compare the artwork plan and manifest against the complete
-production card set, including atlas exclusion and the DOM-only loading boundary.
-The Browser Unit gallery renders every production card at 1024x768, 1440x900 and
-390x844, plus DPR 2. Collection/reward checks include the longer Telekinetic
-Projectile and Brace Behind Cover names. These are component tests with injected
-state, not user-flow E2E tests.
+`npm run check` validates production asset mappings and delivery assets. The current
+preparation Interaction suite checks readable card detail and explicit user confirmation
+at 1024×768. It does not claim exhaustive card/viewport visual coverage.
+See [the test risk map](../docs/test-risk-map.md) and [execution guide](../docs/TESTING.md).
 
 ```sh
 npm run check
-npm run build
-npx vitest run src/presentation/asset-catalog.test.ts
-npx playwright test --config playwright.browser-unit.config.ts card-face.spec.ts card-adventure.spec.ts loadout.spec.ts
+npm run test:interaction -- tests/interaction/preparation.spec.ts
 ```
 
 Local visual review artifacts are stored in ignored `art/processed/qc/cards/`.
 
-Verified on 2026-09-16 after the full migration: check and build passed;
+Historical evidence before the #60 suite replacement, verified on 2026-09-16 after the full migration: check and build passed;
 13 catalog tests and 15 Browser Unit tests passed. All 32 originals and WebPs
 passed dimensions, opacity, SHA-256 and mapping checks; there are zero card
 frames in the delivered atlas. The 32 WebPs total 3,752,490 bytes.

@@ -31,23 +31,10 @@ export interface CampaignDurabilityOptions {
   readonly now: () => number;
 }
 
-export interface CampaignDurability extends SessionDurability {
-  /** The last successfully committed revision. Tests read it; nothing else needs it. */
-  readonly campaignRevision: number;
-  readonly commitCount: number;
-}
-
-export function createCampaignDurability(options: CampaignDurabilityOptions): CampaignDurability {
+export function createCampaignDurability(options: CampaignDurabilityOptions): SessionDurability {
   let revision = options.campaignRevision;
-  let commits = 0;
 
   return {
-    get campaignRevision() {
-      return revision;
-    },
-    get commitCount() {
-      return commits;
-    },
     // Declared async so a driver that throws synchronously still reaches the caller as a
     // rejected promise, which is the only failure shape SessionHost knows how to handle.
     async commitGameplayTransition(previous, candidate) {
@@ -80,7 +67,6 @@ export function createCampaignDurability(options: CampaignDurabilityOptions): Ca
       // Only a committed write moves the held revision, so a failure leaves the next
       // attempt comparing against the same generation the database still holds.
       revision = result.campaignRevision;
-      commits += 1;
     },
   };
 }

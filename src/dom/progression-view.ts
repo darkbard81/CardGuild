@@ -150,7 +150,6 @@ export function growthSummaryPanel(
 ): HTMLElement {
   const panel = document.createElement("section");
   panel.className = "growth-summary";
-  panel.dataset.encounterId = summary.encounterId;
   const heading = document.createElement("strong");
   heading.textContent = "전투 보상 · 성장";
   panel.append(heading);

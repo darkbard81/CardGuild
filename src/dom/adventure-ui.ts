@@ -339,7 +339,6 @@ export class AdventureUi {
       const completed = state.completedEncounterIds.includes(encounterId);
       const current = encounterId === state.currentEncounterId;
       const item = element("li", completed ? "complete" : current ? "current" : "upcoming");
-      item.dataset.encounterId = encounterId;
       if (current) item.setAttribute("aria-current", "step");
       if (index === total - 1) item.classList.add("finale");
       item.append(

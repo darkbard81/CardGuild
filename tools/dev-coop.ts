@@ -1,7 +1,5 @@
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import path from "node:path";
-import { mkdtempSync, rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import process from "node:process";
 
 /**
@@ -15,14 +13,6 @@ import process from "node:process";
  */
 function bin(name: string): string {
   return path.join(process.cwd(), "node_modules", ".bin", name);
-}
-
-// Browser E2E owns a fresh database. The interactive development database is never reset.
-const testDirectory = process.argv.includes("--isolated-test") ? mkdtempSync(path.join(tmpdir(), "cardguild-e2e-")) : null;
-if (testDirectory) {
-  process.env["CARDGUILD_DB_PATH"] = path.join(testDirectory, "campaigns.sqlite");
-  process.env["CARDGUILD_ADVENTURE_SEED"] = "1";
-  process.once("exit", () => rmSync(testDirectory, { recursive: true, force: true }));
 }
 
 const children: ChildProcess[] = [];
@@ -52,20 +42,10 @@ function start(label: string, command: string, args: readonly string[]): ChildPr
 // Hosting needs an account, so the local database gets the fixed development accounts before
 // anything can try to sign in. Seeding is idempotent and refuses to touch a production
 // database, and it must finish before the server starts.
-if (testDirectory) {
-  // Explicit account creation keeps the production guard on --seed-dev intact.
-  for (const suffix of ["a", "b"]) {
-    const seeded = spawnSync(bin("tsx"), ["tools/accounts/create-account.ts", "--username", `dev-host-${suffix}`], {
-      input: `dev-password-${suffix}`, stdio: ["pipe", "inherit", "inherit"], env: process.env,
-    });
-    if (seeded.status !== 0) throw new Error("Could not seed isolated browser accounts.");
-  }
-} else {
-  const seeded = spawnSync(bin("tsx"), ["tools/accounts/create-account.ts", "--seed-dev"], {
-    stdio: "inherit", env: process.env,
-  });
-  if (seeded.status !== 0) throw new Error("Could not seed the development accounts.");
-}
+const seeded = spawnSync(bin("tsx"), ["tools/accounts/create-account.ts", "--seed-dev"], {
+  stdio: "inherit", env: process.env,
+});
+if (seeded.status !== 0) throw new Error("Could not seed the development accounts.");
 
 start("the API server", bin("tsx"), ["watch", "src/server/main.ts"]);
 start("Vite", bin("vite"), ["--host", "127.0.0.1", "--port", "4173"]);
