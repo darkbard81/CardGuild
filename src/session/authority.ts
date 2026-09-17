@@ -49,6 +49,7 @@ function adventureContext(context: SessionAuthorityContext): AdventureRuntimeCon
     definition,
     actorDefinitions: context.pack.actorDefinitions,
     combatContent: context.pack.combatContent,
+    characterRules: context.pack.characterRules,
   };
 }
 
@@ -304,6 +305,11 @@ export function dispatchSessionIntent(
   const runtime = adventureContext(context);
 
   switch (intent.type) {
+    case "advance-character": {
+      const result = dispatchAdventureCommand(state.adventure as AdventureState, intent, runtime);
+      if (!result.accepted) return reject(state, "DOMAIN_REJECTED", result.error ?? "Character advancement rejected.");
+      return commit(state, { ...state, adventure: result.state }, result.events);
+    }
     case "set-party-composition":
       return setPartyComposition(state, intent.actorDefinitionIds, context);
     case "select-character":
@@ -443,6 +449,12 @@ export function assertSessionInvariants(state: SessionCoreState): void {
     }
   }
   if (state.combat) {
+    if (state.combat.version !== 5) throw new Error("CombatState must use version 5.");
+    for (const [actorId, traits] of Object.entries(state.combat.turn.usedTraitsByActor)) {
+      if (!state.combat.actors[actorId] || new Set(traits).size !== traits.length || traits.some(id => !id)) {
+        throw new Error("Turn Trait use requires known actors and unique nonempty Trait IDs.");
+      }
+    }
     if (state.combat.scenarioId !== state.adventure?.currentEncounterId) {
       throw new Error("Combat scenario must match the active Adventure encounter.");
     }

@@ -1,4 +1,6 @@
 import type { ActorDefinition, AdventureDefinition, RewardGrant } from "../content/content-types";
+import type { CharacterAdvancementChoice, CharacterProgressionState, CharacterRulesContext } from "../character";
+export type { CharacterAdvancementChoice, CharacterProgressionState } from "../character";
 import type { ActorDefinitionId, CombatContent, ScenarioId } from "../game/types";
 import type { LoadoutCollection, LoadoutParty, LoadoutPartyMember, PartyMemberLoadout } from "../loadout";
 
@@ -18,12 +20,6 @@ export interface PartyMemberState extends LoadoutPartyMember {
   readonly progression: CharacterProgressionState;
 }
 
-export interface CharacterProgressionState {
-  readonly level: number;
-  /** EXP toward the next level, not lifetime EXP. */
-  readonly experience: number;
-}
-
 export type PartyMemberSetup = Omit<PartyMemberState, "progression">;
 
 export interface PartySetup extends LoadoutParty {
@@ -40,6 +36,7 @@ export interface CollectionState extends LoadoutCollection {
 }
 
 export interface AdventureRuntimeContext {
+  readonly characterRules: CharacterRulesContext;
   readonly definition: AdventureDefinition;
   readonly actorDefinitions: Readonly<Record<ActorDefinitionId, ActorDefinition>>;
   readonly combatContent: CombatContent;
@@ -52,7 +49,7 @@ export interface RewardOffer {
 }
 
 export interface AdventureState {
-  readonly version: 3;
+  readonly version: 4;
   readonly adventureId: string;
   readonly phase: AdventurePhase;
   readonly currentEncounterId: ScenarioId | null;
@@ -71,6 +68,7 @@ export interface EncounterResult {
 }
 
 export type AdventureCommand =
+  | { readonly type: "advance-character"; readonly memberId: string; readonly choice: CharacterAdvancementChoice }
   | { readonly type: "start-adventure" }
   | { readonly type: "start-encounter" }
   | { readonly type: "continue-adventure" }
@@ -83,6 +81,7 @@ export type AdventureCommand =
     };
 
 export type AdventureEvent =
+  | { readonly type: "CHARACTER_ADVANCED"; readonly memberId: string; readonly choice: CharacterAdvancementChoice }
   | { readonly type: "ADVENTURE_STARTED"; readonly adventureId: string }
   | { readonly type: "ENCOUNTER_STARTED"; readonly encounterId: ScenarioId; readonly combatSeed: number }
   | { readonly type: "ENCOUNTER_COMPLETED"; readonly encounterId: ScenarioId }

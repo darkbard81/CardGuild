@@ -1,11 +1,10 @@
 import { buildAdventureEncounter } from "../adventure";
 import { getContentIdentity } from "../content/compile-content";
 import type { CompiledContentPack } from "../content/content-types";
-import { normalizeContentPack } from "../content/fingerprint";
-import { computeCombatSetupFingerprint, fingerprintValue } from "../game";
+import { computeCombatSetupFingerprint } from "../game";
 import type { CombatState, ContentIdentity } from "../game";
 import type { SessionAuthorityContext } from "../session";
-import type { CampaignSaveV1 } from "./campaign-save";
+import type { CampaignSaveV3 } from "./campaign-save";
 
 /**
  * One explicitly registered previous content identity and the identity it becomes.
@@ -21,44 +20,8 @@ export interface ContentMigration {
   readonly verify: (pack: CompiledContentPack) => boolean;
 }
 
-/**
- * M9-4's only migration: the M7 pack gained per-Encounter `experienceAwards` and nothing
- * else. Dropping that one authored field from the current pack and re-applying the previous
- * manifest has to reproduce `from.fingerprint` exactly; if it does not, the pack changed in
- * some other way and this save is not the save this migration was written for.
- */
-export const EXPERIENCE_AUTHORING_MIGRATION: ContentMigration = {
-  from: { packId: "cardguild.m7", packVersion: "0.3.0", fingerprint: "fnv1a64:887ee163d92faa57" },
-  to: { packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: "fnv1a64:8795c80164042fbf" },
-  verify: (pack) => {
-    const normalized = normalizeContentPack({
-      manifest: pack.manifest,
-      traits: Object.values(pack.combatContent.traits),
-      conditions: Object.values(pack.combatContent.conditions),
-      actions: Object.values(pack.combatContent.actions),
-      cards: Object.values(pack.combatContent.cards),
-      equipment: Object.values(pack.combatContent.equipment),
-      actors: Object.values(pack.actorDefinitions),
-      scenarios: Object.values(pack.scenarioSources),
-      adventures: Object.values(pack.adventures),
-    });
-    const previous = {
-      ...normalized,
-      manifest: {
-        schemaVersion: 8,
-        id: EXPERIENCE_AUTHORING_MIGRATION.from.packId,
-        version: EXPERIENCE_AUTHORING_MIGRATION.from.packVersion,
-        rulesetId: normalized.manifest.rulesetId,
-      },
-      // The one field v9 added. Everything else must survive untouched for this to pass.
-      adventures: normalized.adventures.map((adventure) =>
-        Object.fromEntries(Object.entries(adventure).filter(([key]) => key !== "experienceAwards"))),
-    };
-    return fingerprintValue(previous) === EXPERIENCE_AUTHORING_MIGRATION.from.fingerprint;
-  },
-};
-
-export const REGISTERED_CONTENT_MIGRATIONS: readonly ContentMigration[] = [EXPERIENCE_AUTHORING_MIGRATION];
+/** Build, capability, and Card-level changes retain old saves without silently reinterpreting them. */
+export const REGISTERED_CONTENT_MIGRATIONS: readonly ContentMigration[] = [];
 
 function sameIdentity(left: ContentIdentity, right: ContentIdentity): boolean {
   return left.packId === right.packId
@@ -89,7 +52,7 @@ export function findContentMigration(
  * same definition re-fingerprinted under the target identity.
  */
 export function migrateCombatSetupFingerprint(
-  save: CampaignSaveV1,
+  save: CampaignSaveV3,
   combat: CombatState,
   migration: ContentMigration,
   context: SessionAuthorityContext,
@@ -126,10 +89,10 @@ export function migrateCombatSetupFingerprint(
  * that embeds it. No EXP is granted retroactively for battles already won.
  */
 export function migrateCampaignSave(
-  save: CampaignSaveV1,
+  save: CampaignSaveV3,
   migration: ContentMigration,
   setupFingerprint: string | null,
-): CampaignSaveV1 {
+): CampaignSaveV3 {
   return {
     ...save,
     contentIdentity: { ...migration.to },

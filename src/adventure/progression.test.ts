@@ -14,7 +14,7 @@ import {
 } from ".";
 
 const { pack, adventure: definition } = PRODUCTION_CONTENT;
-const context = { definition, actorDefinitions: pack.actorDefinitions, combatContent: pack.combatContent };
+const context = { definition, actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules, combatContent: pack.combatContent };
 const aerin = pack.actorDefinitions["hero.aerin"]!;
 function setup(ids = [aerin.id]): PartySetup {
   return { members: Object.fromEntries(ids.map((id, index) => {
@@ -68,10 +68,10 @@ function playCommand(state: CombatState): CombatCommand {
   return { ...base, type: "end-turn", facing: actor.facing };
 }
 
-// Exact values are authored-profile regression oracles, not values calculated by the function under test.
+// Exact values are legal Build regression oracles, not values calculated by the function under test.
 const expected = [
-  ["hero.aerin", 34, 19, 9, 17], ["hero.brom", 42, 21, 7, 17],
-  ["hero.lyra", 26, 19, 8, 18], ["hero.nera", 28, 17, 6, 20],
+  ["hero.aerin", 30, 18, 9, 17], ["hero.brom", 34, 19, 6, 16],
+  ["hero.lyra", 24, 18, 7, 17], ["hero.nera", 26, 16, 1, 17],
 ] as const;
 
 describe("runtime progression", () => {
@@ -79,16 +79,16 @@ describe("runtime progression", () => {
     const input = setup([aerin.id, "hero.lyra"]);
     const before = structuredClone(input);
     const state = createAdventureSession(context, input, 1);
-    expect(state.version).toBe(3);
+    expect(state.version).toBe(4);
     expect(input).toEqual(before);
     const members = Object.values(state.party.members);
-    expect(members.map(m => m.progression)).toEqual([{ level: 1, experience: 0 }, { level: 1, experience: 0 }]);
+    expect(members.map(m => m.progression)).toEqual([{ level: 1, experience: 0, advancements: [] }, { level: 1, experience: 0, advancements: [] }]);
     expect(members[0]!.progression).not.toBe(members[1]!.progression);
-    const actor = { ...aerin, statProfile: resolveEffectiveCharacterStatProfile(aerin, { level: 3, experience: 0 }) };
+    const actor = { ...aerin, character: { ...aerin.character!, level: 3, advancements: [{ level: 3, skillIncrease: "athletics" as const }] }, statProfile: resolveEffectiveCharacterStatProfile(aerin, { level: 3, experience: 0, advancements: [] }, pack.characterRules) };
     const custom = { ...context, actorDefinitions: { ...pack.actorDefinitions, [actor.id]: actor } };
     // New Adventure ignores any extra caller-supplied runtime fields, just as it ignores caller loadouts.
-    const injected = { members: { ...input.members, "party.hero-1": { ...input.members["party.hero-1"]!, progression: { level: 9, experience: 999 } } } };
-    expect(createAdventureSession(custom, injected, 1).party.members["party.hero-1"]!.progression).toEqual({ level: 3, experience: 0 });
+    const injected = { members: { ...input.members, "party.hero-1": { ...input.members["party.hero-1"]!, progression: { level: 9, experience: 999, advancements: [] } } } };
+    expect(createAdventureSession(custom, injected, 1).party.members["party.hero-1"]!.progression).toEqual({ level: 3, experience: 0, advancements: [{ level: 3, skillIncrease: "athletics" }] });
     expect(aerin.statProfile).toMatchObject({ stats: { level: 1 } });
   });
 
@@ -104,22 +104,22 @@ describe("runtime progression", () => {
       expect(() => dispatchAdventureCommand(broken, { type: "start-adventure" }, context)).toThrow();
       expect(() => buildAdventureEncounter(pack, { ...broken, phase: "combat", currentEncounterId: definition.encounterIds[0]! })).toThrow();
     }
-    for (const value of [{ level: 1, experience: 0 }, { level: 2, experience: 999 }, { level: 21, experience: 375 }]) {
+    for (const value of [{ level: 1, experience: 0, advancements: [] }, { level: 2, experience: 999, advancements: [] }, { level: 21, experience: 375, advancements: [] }]) {
       expect(() => assertCharacterProgression(value)).not.toThrow();
     }
-    expect(() => assertAdventureInvariants({ ...ready(), version: 2 } as unknown as AdventureState)).toThrow("version 3");
+    expect(() => assertAdventureInvariants({ ...ready(), version: 2 } as unknown as AdventureState)).toThrow("version 4");
     const creature = Object.values(pack.actorDefinitions).find(a => a.statProfile.kind === "creature")!;
     expect(() => createCharacterProgression(creature)).toThrow("Character profile");
-    expect(() => resolveEffectiveCharacterStatProfile(creature, { level: 2, experience: 0 })).toThrow("Character profile");
+    expect(() => resolveEffectiveCharacterStatProfile(creature, { level: 2, experience: 0, advancements: [] }, pack.characterRules)).toThrow("Character profile");
     expect(() => createAdventureSession(context, setup([creature.id]), 1)).toThrow("Character profile");
   });
 
   it.each(expected)("uses runtime Level 2 throughout the %s combat and preview paths", (id, maxHp, ac, strike, classDc) => {
     const source = structuredClone(pack.actorDefinitions[id]!);
-    const state = start(progression(ready([id]), { level: 2, experience: 375 }));
+    const state = start(progression(ready([id]), { level: 2, experience: 375, advancements: [] }));
     const member = state.party.members["party.hero-1"]!;
     const actor = pack.actorDefinitions[id]!;
-    const effective = resolveEffectiveCharacterStatProfile(actor, member.progression);
+    const effective = resolveEffectiveCharacterStatProfile(actor, member.progression, pack.characterRules);
     const { state: battle } = combat(state);
     const hero = battle.actors[member.id]!;
     expect(hero.statProfile).toEqual(effective);
@@ -131,7 +131,7 @@ describe("runtime progression", () => {
     const view = deriveLoadoutSnapshot(actor, member.loadout, pack.combatContent, member.id, effective);
     expect(view.statistics).toMatchObject({ maxHp, ac, classDc });
     expect(view.strike.attackModifier).toBe(strike);
-    const preview = previewLoadoutChange(state.party, state.collection, pack, member.id, { ...member.loadout, equipment: {} }, effective);
+    const preview = previewLoadoutChange(state.party, state.collection, pack, member.id, { ...member.loadout, equipment: {} });
     expect(preview.before).toEqual(view);
     expect(preview.after!.statistics.maxHp).toBe(maxHp);
     const candidateSetup = deriveActorSetup(actor, { instanceId: member.id, actorDefinitionId: id, team: "heroes", position: { x: 0, y: 0 }, facing: "north" },
@@ -167,9 +167,9 @@ describe("runtime progression", () => {
     const old = combat(initial);
     const activeCopy = structuredClone(old.state);
     const activeHash = hashCombatState(old.state);
-    const raised = progression(initial, { level: 2, experience: 375 });
+    const raised = progression(initial, { level: 2, experience: 375, advancements: [] });
     const next = combat(raised);
-    expect(next.state.actors["party.hero-1"]!.maxHp).toBe(34);
+    expect(next.state.actors["party.hero-1"]!.maxHp).toBe(30);
     expect(old.state).toEqual(activeCopy);
     expect(hashCombatState(old.state)).toBe(activeHash);
     expect(next.state.setupFingerprint).not.toBe(old.state.setupFingerprint);
@@ -191,19 +191,19 @@ describe("runtime progression", () => {
       encounterId: finished.scenarioId, combatSeed: finished.seed, finalCombatHash: completedHash, outcome: "victory",
     } });
     // The victory pays this Encounter's authored EXP; it is far short of the next Level.
-    expect(adventure.party.members["party.hero-1"]!.progression).toEqual({ level: 1, experience: 200 });
+    expect(adventure.party.members["party.hero-1"]!.progression).toEqual({ level: 1, experience: 200, advancements: [] });
     expect(adventure.party.members["party.hero-1"]!.loadout).toEqual(initial.party.members["party.hero-1"]!.loadout);
-    adventure = progression(adventure, { level: 2, experience: 375 });
+    adventure = progression(adventure, { level: 2, experience: 375, advancements: [] });
     if (adventure.pendingReward) adventure = dispatch(adventure, { type: "choose-reward", rewardId: adventure.pendingReward.rewardId, choiceIndex: 0 });
     const nextEncounter = combat(dispatch(adventure, { type: "continue-adventure" }));
-    expect(nextEncounter.state.actors["party.hero-1"]!.hp).toBe(34);
+    expect(nextEncounter.state.actors["party.hero-1"]!.hp).toBe(30);
     expect(finished).toEqual(completedCopy);
     expect(hashCombatState(replayCombat(old.encounter.definition, createCombatReplay(finished)).state)).toBe(completedHash);
     expect(hashCombatState(old.state)).toBe(activeHash);
   });
 
   it("preserves Level/EXP through loadout and defeat, and grows only on victory", () => {
-    const state = progression(ready(), { level: 2, experience: 999 });
+    const state = progression(ready(), { level: 2, experience: 999, advancements: [] });
     const member = state.party.members["party.hero-1"]!;
     const changed = dispatch(state, { type: "set-member-loadout", memberId: member.id, loadout: member.loadout });
     expect(changed.party.members[member.id]!.progression).toEqual(member.progression);
@@ -225,13 +225,13 @@ describe("runtime progression", () => {
     } }, context);
     expect(won.accepted, won.error).toBe(true);
     // 999 + 200 crosses the threshold once and carries the remainder.
-    expect(won.state.party.members[member.id]!.progression).toEqual({ level: 3, experience: 199 });
+    expect(won.state.party.members[member.id]!.progression).toEqual({ level: 3, experience: 199, advancements: [] });
     expect(won.events.map(event => event.type)).toEqual([
       "ENCOUNTER_COMPLETED", "EXPERIENCE_GAINED", "LEVEL_UP", "REWARD_OFFERED",
     ]);
     // Choosing the reward is a Collection change; it must not pay EXP a second time.
     const rewarded = dispatch(won.state, { type: "choose-reward", rewardId: won.state.pendingReward!.rewardId, choiceIndex: 0 });
-    expect(rewarded.party.members[member.id]!.progression).toEqual({ level: 3, experience: 199 });
+    expect(rewarded.party.members[member.id]!.progression).toEqual({ level: 3, experience: 199, advancements: [] });
     // The same accepted result cannot be replayed into a second award.
     expect(dispatchAdventureCommand(won.state, { type: "accept-combat-result", result: {
       encounterId: active.currentEncounterId!, combatSeed: encounter.seed, outcome: "victory", finalCombatHash: "fixture",

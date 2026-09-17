@@ -1,3 +1,4 @@
+import { BUILD_TRAITS } from "./character-build";
 /**
  * The character rules, written as what they add to the core rules.
  *
@@ -12,7 +13,7 @@ import type {
   EquipmentDefinition,
   TraitDefinition,
 } from "../../../src/game";
-import type { ActorDefinition, AdventureDefinition, ContentPackSource } from "../../../src/content";
+import type { ActorSource, AdventureDefinition, ContentPackSource } from "../../../src/content";
 import { CORE_ACTIONS } from "./core/actions";
 import { CORE_ACTORS } from "./core/actors";
 import { CORE_ADVENTURES } from "./core/adventure";
@@ -28,24 +29,36 @@ const CHARACTER_RULES_TRAITS: readonly TraitDefinition[] = [
   {
     id: "playable",
     name: "Playable Character",
+    source: "cardguild",
+    category: "system",
+    description: "플레이어가 고를 수 있는 캐릭터를 표시하는 CardGuild 시스템 표식입니다.",
     cardGrants: [],
     actionGrants: [],
   },
   {
     id: "propulsive",
     name: "Propulsive",
+    source: "pf2e-remaster",
+    category: "weapon",
+    description: "추진력 무기입니다. 원거리 피해에 STR 수정치의 절반(음수면 전부)을 더합니다.",
     cardGrants: [],
     actionGrants: [],
   },
   {
     id: "spell",
     name: "Spell",
+    source: "cardguild",
+    category: "action",
+    description: "주문입니다. 주문 카드와 행동을 표시하는 CardGuild 분류입니다.",
     cardGrants: [],
     actionGrants: [],
   },
   {
     id: "thrown",
     name: "Thrown",
+    source: "pf2e-remaster",
+    category: "weapon",
+    description: "던지는 무기입니다. 원거리 공격이지만 피해에 STR 수정치를 더합니다.",
     cardGrants: [],
     actionGrants: [],
   },
@@ -152,6 +165,7 @@ const CHARACTER_RULES_CARDS: readonly CardDefinition[] = [
     id: "card.spirit-lance",
     name: "Spirit Lance",
     actionId: "spirit-lance",
+    level: 1,
     traits: [
       {
         id: "spell",
@@ -289,233 +303,125 @@ const CHARACTER_RULES_EQUIPMENT: readonly EquipmentDefinition[] = [
  * The other two playable Characters. Together with the core hero they cover the three
  * builds the loadout and progression rules are written for.
  */
-const CHARACTER_RULES_ACTORS: readonly ActorDefinition[] = [
+const CHARACTER_RULES_ACTORS: readonly ActorSource[] = [
   {
-    id: "hero.lyra",
-    name: "Lyra",
-    statProfile: {
-      kind: "character",
-      stats: {
-        level: 1,
-        attributes: {
-          str: 2,
-          dex: 4,
-          con: 1,
-          int: 2,
-          wis: 3,
-          cha: 2,
-        },
-        perception: "expert",
-        saves: {
-          fortitude: "trained",
-          reflex: "trained",
-          will: "trained",
-        },
-        skills: {
-          acrobatics: "expert",
-          arcana: "trained",
-          athletics: "trained",
-          crafting: "trained",
-          deception: "trained",
-          diplomacy: "trained",
-          intimidation: "untrained",
-          medicine: "trained",
-          nature: "trained",
-          occultism: "trained",
-          performance: "trained",
-          religion: "untrained",
-          society: "trained",
-          stealth: "expert",
-          survival: "trained",
-          thievery: "trained",
-        },
-        defense: {
-          ancestryHp: 6,
-          classHpPerLevel: 8,
-          armorProficiencies: {
-            unarmored: "trained",
-            light: "trained",
-            medium: "untrained",
-            heavy: "untrained",
-          },
-        },
-        offense: {
-          keyAttribute: "dex",
-          weaponProficiencies: {
-            unarmed: "trained",
-            simple: "trained",
-            martial: "trained",
-            advanced: "untrained",
-          },
-          classDcProficiency: "trained",
-          unarmedStrike: {
-            name: "Fist",
-            category: "unarmed",
-            attackMode: "melee",
-            rangeFeet: 5,
-            damage: {
-              count: 1,
-              sides: 4,
-              damageType: "bludgeoning",
-            },
-            traits: [
-              {
-                id: "agile",
-              },
-              {
-                id: "finesse",
-              },
-            ],
-          },
-        },
+    "id": "hero.lyra",
+    "name": "Lyra",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "dex",
+          "con",
+          "int",
+          "wis"
+        ],
+        "trainedSkills": [
+          "acrobatics",
+          "athletics",
+          "stealth",
+          "thievery"
+        ]
       },
+      "level": 1,
+      "advancements": []
     },
-    speedFeet: 30,
-    initialConditions: [],
-    traits: [
+    "initialConditions": [],
+    "traits": [
       {
-        id: "actor",
+        "id": "actor"
       },
       {
-        id: "hero",
+        "id": "hero"
       },
       {
-        id: "playable",
+        "id": "playable"
       },
+      {
+        "id": "elf"
+      },
+      {
+        "id": "rogue"
+      }
     ],
-    loadoutProfile: {
-      preparedCardCapacity: 2,
+    "loadoutProfile": {
+      "preparedCardCapacity": 2
     },
-    starterLoadout: {
-      equipment: {
-        weapon: "light-blade",
-        armor: "leather-armor",
-        feet: "boots-of-fly",
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "light-blade",
+        "armor": "leather-armor",
+        "feet": "boots-of-fly"
       },
-      preparedCards: [],
+      "preparedCards": []
     },
-    innateActionIds: [],
-    baseCardGrants: [
+    "innateActionIds": [],
+    "baseCardGrants": [
       {
-        cardDefinitionId: "card.spirit-beacon",
-        count: 1,
-        sourceId: "focus.wind-beacon",
-      },
-    ],
+        "cardDefinitionId": "card.spirit-beacon",
+        "count": 1,
+        "sourceId": "focus.wind-beacon"
+      }
+    ]
   },
   {
-    id: "hero.brom",
-    name: "Brom",
-    statProfile: {
-      kind: "character",
-      stats: {
-        level: 1,
-        attributes: {
-          str: 3,
-          dex: 0,
-          con: 4,
-          int: 0,
-          wis: -1,
-          cha: 1,
-        },
-        perception: "trained",
-        saves: {
-          fortitude: "expert",
-          reflex: "trained",
-          will: "trained",
-        },
-        skills: {
-          acrobatics: "untrained",
-          arcana: "untrained",
-          athletics: "master",
-          crafting: "trained",
-          deception: "untrained",
-          diplomacy: "untrained",
-          intimidation: "trained",
-          medicine: "trained",
-          nature: "untrained",
-          occultism: "untrained",
-          performance: "untrained",
-          religion: "trained",
-          society: "untrained",
-          stealth: "untrained",
-          survival: "trained",
-          thievery: "untrained",
-        },
-        defense: {
-          ancestryHp: 10,
-          classHpPerLevel: 12,
-          armorProficiencies: {
-            unarmored: "trained",
-            light: "trained",
-            medium: "trained",
-            heavy: "expert",
-          },
-        },
-        offense: {
-          keyAttribute: "str",
-          weaponProficiencies: {
-            unarmed: "trained",
-            simple: "trained",
-            martial: "trained",
-            advanced: "untrained",
-          },
-          classDcProficiency: "trained",
-          unarmedStrike: {
-            name: "Fist",
-            category: "unarmed",
-            attackMode: "melee",
-            rangeFeet: 5,
-            damage: {
-              count: 1,
-              sides: 4,
-              damageType: "bludgeoning",
-            },
-            traits: [
-              {
-                id: "agile",
-              },
-              {
-                id: "finesse",
-              },
-            ],
-          },
-        },
+    "id": "hero.brom",
+    "name": "Brom",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "str",
+          "con",
+          "wis",
+          "cha"
+        ],
+        "trainedSkills": [
+          "athletics",
+          "intimidation"
+        ]
       },
+      "level": 1,
+      "advancements": []
     },
-    speedFeet: 20,
-    initialConditions: [],
-    traits: [
+    "initialConditions": [],
+    "traits": [
       {
-        id: "actor",
+        "id": "actor"
       },
       {
-        id: "hero",
+        "id": "hero"
       },
       {
-        id: "playable",
+        "id": "playable"
       },
+      {
+        "id": "dwarf"
+      },
+      {
+        "id": "champion"
+      }
     ],
-    loadoutProfile: {
-      preparedCardCapacity: 2,
+    "loadoutProfile": {
+      "preparedCardCapacity": 2
     },
-    starterLoadout: {
-      equipment: {
-        weapon: "guardian-mace",
-        armor: "half-plate",
-        shield: "shield",
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "guardian-mace",
+        "armor": "half-plate",
+        "shield": "shield"
       },
-      preparedCards: [],
+      "preparedCards": []
     },
-    innateActionIds: [],
-    baseCardGrants: [
+    "innateActionIds": [],
+    "baseCardGrants": [
       {
-        cardDefinitionId: "card.reactive-strike",
-        count: 2,
-        sourceId: "feat.guardian-sentinel",
-      },
-    ],
-  },
+        "cardDefinitionId": "card.reactive-strike",
+        "count": 2,
+        "sourceId": "feat.guardian-sentinel"
+      }
+    ]
+  }
 ];
 
 /**
@@ -541,7 +447,7 @@ function override<T extends { readonly id: string }>(
  * Armor Class come from an item rather than from Dexterity alone — the two facts the
  * character rules exist to test.
  */
-const CHARACTER_RULES_HERO_ACTORS: readonly ActorDefinition[] = override(
+const CHARACTER_RULES_HERO_ACTORS: readonly ActorSource[] = override(
   [...CORE_ACTORS, ...CHARACTER_RULES_ACTORS],
   "hero.aerin",
   (actor) => ({
@@ -581,9 +487,10 @@ const CHARACTER_RULES_ADVENTURES: readonly AdventureDefinition[] = CORE_ADVENTUR
 
 /** Everything the character rules add or change, as the pieces a source pack is built from. */
 export const CHARACTER_RULES_DEFINITIONS = {
-  traits: [...CORE_TRAITS, ...CHARACTER_RULES_TRAITS],
+  traits: [...CORE_TRAITS, ...BUILD_TRAITS, ...CHARACTER_RULES_TRAITS],
   actions: CHARACTER_RULES_ALL_ACTIONS,
-  cards: [...CORE_CARDS, ...CHARACTER_RULES_CARDS],
+  cards: override([...CORE_CARDS, ...CHARACTER_RULES_CARDS], "card.spirit-beacon",
+    card => ({ ...card, traits: [...card.traits, { id: "spell" }] })),
   equipment: [...CORE_EQUIPMENT, ...CHARACTER_RULES_EQUIPMENT],
   actors: CHARACTER_RULES_HERO_ACTORS,
   adventures: CHARACTER_RULES_ADVENTURES,

@@ -4,6 +4,7 @@ import { chooseFacing } from "../support/browser/facing-input";
 
 // The same pattern the asset build generates actor paths from, so a request-shape
 // assertion here cannot describe a narrower contract than production supports.
+import cardArtPlan from "../../art/source/card-art-plan.json" with { type: "json" };
 import { ACTOR_RUNTIME_HREF } from "../../src/presentation/actor-asset-path";
 
 /** Mirrors `FOCUS_MARGIN` in src/pixi/battle/BattleView.ts: the gap the camera aims for. */
@@ -201,7 +202,7 @@ async function winRoadAmbush(page: Page): Promise<void> {
 const ATLAS_PATH = "/assets/m3-atlas.webp";
 
 /**
- * Presentation art now comes out of two stores: one atlas for tiles, props and UI, and a
+ * Presentation art uses the shared atlas, standalone DOM cards, and a
  * file per actor standee. Asserting the shape of the split rather than a request count
  * keeps this from breaking every time the roster grows.
  */
@@ -210,10 +211,13 @@ function expectMixedAssetRequests(urls: readonly string[]): void {
   expect(paths).toContain(ATLAS_PATH);
   const standalone = paths.filter((pathname) => pathname !== ATLAS_PATH);
   expect(standalone.length).toBeGreaterThan(0);
-  for (const pathname of standalone) expect(pathname).toMatch(ACTOR_RUNTIME_HREF);
+  const cardPaths = new Set(cardArtPlan.cards.map((card) => `/${card.output.slice("public/".length)}`));
+  for (const pathname of standalone) {
+    if (!cardPaths.has(pathname)) expect(pathname).toMatch(ACTOR_RUNTIME_HREF);
+  }
 }
 
-test("shows the Adventure shell reusing the lobby art, from the atlas and the standalone actors only", async ({ page }) => {
+test("shows the Adventure shell with atlas, standalone actors and full card art", async ({ page }) => {
   const runtimeErrors = captureRuntimeErrors(page);
   const webpRequests: string[] = [];
   page.on("request", (request) => {
@@ -252,21 +256,21 @@ test("equips in one click and fits the minimum loadout viewport", async ({ page 
   await openAdventure(page);
   await page.getByRole("button", { name: "Manage Loadout" }).click();
   await expect(page.locator(".loadout-option")).toHaveCount(4);
-  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
   const feet = page.locator('.equipment-slot[data-slot="feet"]');
   await feet.hover();
-  await expect(page.locator("#loadout-detail")).toContainText("16 → 15");
+  await expect(page.locator("#loadout-detail")).toContainText("17 → 16");
   await expect(page.locator("#loadout-detail")).toContainText("Fly ×2");
   await feet.click();
   await expect(feet).toContainText("Empty feet");
-  await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("6 Tactical Cards");
   const boots = page.locator('.loadout-option[data-option-id="boots-of-fly"]');
   await expect(boots).toContainText("×1");
   await boots.click();
   await expect(feet).toContainText("Boots of Fly");
-  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
   await page.getByRole("tab", { name: "덱·능력치", exact: true }).click();
-  await expect(page.locator(".deck-contribution")).toHaveCount(6);
+  await expect(page.locator(".deck-contribution")).toHaveCount(4);
   await expect(page.locator(".deck-panel")).toContainText("Halberd · martial expert");
   await expect(page.locator(".deck-panel")).toContainText("1d10+3 slashing");
   for (const tab of ["장비", "준비 카드", "덱·능력치"]) {
@@ -285,29 +289,29 @@ test("hover, hold and keyboard inspection do not change prepared cards", async (
   await openAdventure(page);
   await page.getByRole("button", { name: "Manage Loadout" }).click();
   await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
-  const knockdown = page.locator(".prepared-card").filter({ hasText: "Knockdown" });
+  const viciousSwing = page.locator(".prepared-card").filter({ hasText: "Vicious Swing" });
   const revision = await page.locator("#app").getAttribute("data-session-revision");
-  await knockdown.hover();
+  await viciousSwing.hover();
   await page.mouse.down();
   // The hold opens it on its own timer; waiting for the panel is waiting exactly that long.
   await expect(page.locator("#loadout-detail")).toBeVisible();
   await page.mouse.up();
-  await expect(knockdown).toHaveCount(1);
+  await expect(viciousSwing).toHaveCount(1);
   await expect(page.locator("#app")).toHaveAttribute("data-session-revision", revision!);
   await page.keyboard.press("Escape");
   await expect(page.locator("#loadout-detail")).toBeHidden();
-  await knockdown.click();
+  await viciousSwing.click();
   await expect(page.locator(".prepared-card")).toHaveCount(1);
-  await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
-  const unavailable = page.locator('.loadout-option[data-option-id="card.intimidating-strike"]');
+  await expect(page.locator(".loadout-deck-count")).toHaveText("7 Tactical Cards");
+  const unavailable = page.locator('.loadout-option[data-option-id="card.demoralize"]');
   await unavailable.focus();
   await page.keyboard.press("Enter");
   await expect(page.locator(".prepared-card")).toHaveCount(1);
   await expect(page.locator(".loadout-status")).toContainText("only 1");
-  await page.locator('.loadout-option[data-option-id="card.knockdown"]').focus();
+  await page.locator('.loadout-option[data-option-id="card.vicious-swing"]').focus();
   await page.keyboard.press("Enter");
   await expect(page.locator(".prepared-card")).toHaveCount(2);
-  await expect(page.locator(".loadout-deck-count")).toHaveText("10 Tactical Cards");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("8 Tactical Cards");
   await page.getByRole("button", { name: "Done", exact: true }).click();
   await page.getByRole("button", { name: "Manage Loadout" }).click();
   await expect(page.getByRole("tab", { name: "준비 카드", exact: true })).toHaveAttribute("aria-selected", "true");
@@ -326,7 +330,7 @@ test("carries a reward loadout through the shared resolver into the next encount
   await expect(braceChoice).toContainText("1 액션");
   await braceChoice.click();
   await expect(page.locator("#app")).toHaveAttribute("data-adventure-phase", "between-encounters");
-  await expect(page.locator("#adventure-collection .collection-chip").filter({ hasText: "Brace Behind Cover" })).toHaveCount(1);
+  await expect(page.locator("#adventure-collection .collection-card").filter({ hasText: "Brace Behind Cover" })).toHaveCount(1);
   // An unworn reward is exactly what Manage Loadout is for, so the screen says so.
   await expect(page.locator(".loadout-nudge")).toContainText("미장착 보상 1개");
   // The next encounter names its threats before the party commits to it.
@@ -335,13 +339,13 @@ test("carries a reward loadout through the shared resolver into the next encount
 
   await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
   await page.locator('.loadout-option[data-option-id="card.brace-behind-cover"]').click();
-  await expect(page.locator(".loadout-deck-count")).toHaveText("11 Tactical Cards");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
   await page.getByRole("tab", { name: "장비", exact: true }).click();
   await page.locator('.equipment-slot[data-slot="feet"]').click();
   await expect(page.locator('.equipment-slot[data-slot="feet"]')).toContainText("Empty");
   await page.locator('.equipment-slot[data-slot="shield"]').click();
   await expect(page.locator('.equipment-slot[data-slot="shield"]')).toContainText("Empty");
-  await expect(page.locator(".loadout-deck-count")).toHaveText("9 Tactical Cards");
+  await expect(page.locator(".loadout-deck-count")).toHaveText("7 Tactical Cards");
   await expect(page.locator(".collection-panel")).toContainText("Steel Shield");
   await expect(page.locator(".collection-panel")).toContainText("Boots of Fly");
 
@@ -355,8 +359,8 @@ test("carries a reward loadout through the shared resolver into the next encount
   // Aerin acts first in the spear corridor, so she opens on the dealt six rather than
   // having drawn the following turn's card during an enemy turn.
   await expect(page.locator("#hand-count")).toHaveText("6");
-  // Nine cards remain after the loadout edits, so three are still undrawn.
-  await expect(page.locator("#deck-count")).toHaveText("3");
+  // Seven cards remain after the loadout edits, so one is still undrawn.
+  await expect(page.locator("#deck-count")).toHaveText("1");
   await expect(page.locator('.tactical-card[data-card-definition-id="card.brace-behind-cover"][data-card-source-kind="prepared"]')).toHaveCount(1);
   // The summary carries AC and the three save modifiers; the DCs behind them are
   // sheet material, so the toggle is the only way to read them.
@@ -387,7 +391,13 @@ test("carries a reward loadout through the shared resolver into the next encount
   await page.locator("#pixi-canvas").click({ position: hero });
   // The shield came off in the loadout, so its context action is gone with it.
   await expect(page.locator('#ring-root .ring-option[data-action-id="raise-shield"]')).toHaveCount(0);
-  await expect(page.locator('#ring-root .ring-option[data-action-id="brace-behind-cover"]')).toBeVisible();
+  // The prepared capability belongs to Hand even when it targets the acting Character.
+  await expect(page.locator('#ring-root .ring-option[data-action-id="brace-behind-cover"]')).toHaveCount(0);
+  await page.keyboard.press("Escape");
+  const brace = page.locator('#hand-cards .tactical-card[data-action-id="brace-behind-cover"]');
+  await expect(brace).toBeVisible();
+  await brace.click();
+  await expect(brace).toHaveCount(0);
   expect(runtimeErrors).toEqual([]);
 });
 
@@ -548,7 +558,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   // The card face carries a name, a cost and a picture. The words behind it are a press
   // away, which is what a finger has instead of a hover.
   const tripCard = page.locator('#hand-cards .tactical-card[data-action-id="trip"]').first();
-  await expect(tripCard.locator(".card-art")).toBeVisible();
+  await expect(tripCard.locator(".card-face-art")).toBeVisible();
   await expect(page.locator("#card-detail")).toBeHidden();
   const tripBox = await tripCard.boundingBox();
   if (!tripBox) throw new Error("The Trip card has no bounding box.");
@@ -563,7 +573,7 @@ test("loads the 2.5D board and keeps hover, movement, and facing on the square g
   await expect(page.locator("#card-detail")).toBeHidden();
 
   // Card-first path: choose the card, then one of the targets it highlights.
-  await page.locator('#hand-cards .tactical-card[data-action-id="trip"]:not([disabled])').first().click();
+  await page.locator('#hand-cards .tactical-card[data-action-id="trip"][aria-disabled="false"]').first().click();
   await expect(page.locator("#board-prompt")).toContainText("강조된 적");
   await clickBoardPoint(page, 2.5, 1.5);
   await expect(page.locator("#combat-log")).toContainText("used Trip");

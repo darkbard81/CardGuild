@@ -1,3 +1,6 @@
+import { createCardFace, formatActionCost } from "./card-face";
+import { requirementText } from "./card-level-view";
+import { bindPressGesture, type PressGestureBinding } from "./detail-popover";
 import {
   SAVE_IDS,
   equippedArmor,
@@ -21,6 +24,7 @@ import type {
   ScenarioDefinition,
 } from "../game";
 import { buildCombatLog, type CombatLogEntry } from "./combat-log";
+import { TraitView, type TraitChipList } from "./trait-view";
 import type { AssetCatalog } from "../presentation";
 import type { MoveBand } from "../pixi/BattleView";
 
@@ -63,7 +67,7 @@ function element<K extends keyof HTMLElementTagNameMap>(
 }
 
 export function actionCost(action: LegalAction): string {
-  return action.timing.kind === "reaction" ? "↻" : "●".repeat(action.timing.actions);
+  return formatActionCost(action.timing);
 }
 
 function signed(value: number): string {
@@ -90,7 +94,6 @@ const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
 const HERO_PORTRAIT_SIZE = 50;
 
 /** Past this a name needs the smaller type to stay on one line beside its cost. */
-const LONG_CARD_NAME = 12;
 
 /** Long enough not to fire on a tap that means "pick this card". */
 const LONG_PRESS_MS = 380;
@@ -171,8 +174,7 @@ export class BattleUi {
   private readonly cardDetail = required<HTMLElement>("#card-detail");
   /** The last history array rendered, so an unrelated re-render leaves the log alone. */
   private lastHistory: readonly CombatEvent[] | null = null;
-  private longPressTimer: number | null = null;
-  private longPressFired = false;
+  private readonly cardBindings: Array<{ press: PressGestureBinding; abort: AbortController }> = [];
   private readonly reactionModal = required<HTMLElement>("#reaction-modal");
   private readonly reactionDescription = required<HTMLElement>("#reaction-description");
   private readonly reactionUse = required<HTMLButtonElement>("#reaction-use");
@@ -185,6 +187,11 @@ export class BattleUi {
   /** The character sheet stays where the player left it across snapshots. */
   private heroDetailsOpen = false;
   private portraitDefinitionId: string | null = null;
+  /** One registry view for every Trait the battle shows, and one chip list per surface. */
+  private readonly traits: TraitView;
+  private readonly actionTraits: TraitChipList;
+  private readonly cardTraits: TraitChipList;
+  private readonly strikeTraits: TraitChipList;
 
   public constructor(
     private readonly content: CombatContent,
@@ -193,10 +200,16 @@ export class BattleUi {
     private readonly handlers: BattleUiHandlers,
   ) {
     this.resultAction.textContent = "Return to Adventure";
+    this.traits = new TraitView(content.traits);
+    this.actionTraits = this.traits.createList();
+    this.cardTraits = this.traits.createList();
+    this.strikeTraits = this.traits.createList();
     const listenerOptions = { signal: this.abortController.signal };
-    // Anything that is not the card being pressed puts its detail away again.
+    // Anything that is not the card being pressed, or the detail it opened, puts the
+    // detail away again; a Trait chip inside the detail is part of it.
     document.addEventListener("pointerdown", (event) => {
-      if (!(event.target instanceof Node) || !this.handCards.contains(event.target)) this.hideCardDetail();
+      const target = event.target;
+      if (!(target instanceof Node) || (!this.handCards.contains(target) && !this.cardDetail.contains(target))) this.hideCardDetail();
     }, listenerOptions);
     document.addEventListener("keydown", (event) => {
       if (event.key === "Escape") this.hideCardDetail();
@@ -212,7 +225,9 @@ export class BattleUi {
   }
 
   public destroy(): void {
+    this.clearCardBindings();
     this.hideCardDetail();
+    this.traits.destroy();
     this.abortController.abort();
     this.reactionModal.hidden = true;
     this.resultModal.hidden = true;
@@ -338,8 +353,9 @@ export class BattleUi {
     const context = { content: this.content };
     const strike = resolveStrike(hero, context);
     const armor = equippedArmor(hero, context);
-    const sheet = element("dl", "stats-grid");
-    const rows: readonly (readonly [string, string])[] = [
+    // `null` marks where the Strike's Trait chips go; the list is placed while the sheet is
+    // assembled so the chip being read is never detached before its focus is noted.
+    const rows: readonly (readonly [string, string | null])[] = [
       ["Perception", signed(resolveStatisticModifier(hero, { kind: "perception" }, context).value)],
       ["Initiative", signed(resolveInitiative(hero, context).value)],
       ["Class DC", String(resolveClassDC(hero, context).value)],
@@ -351,13 +367,18 @@ export class BattleUi {
       ["Strike", strikeLabel(strike)],
       ["Damage", `${strike.damage.damageType}`],
       ["Reach", `${strike.rangeFeet}ft`],
-      ["Traits", strike.traits.length ? strike.traits.join(" · ") : "—"],
+      ["Traits", strike.traits.length ? null : "—"],
       ["Armor", armor?.name ?? "Unarmored"],
     ];
-    for (const [label, value] of rows) {
-      sheet.append(element("dt", undefined, label), element("dd", undefined, value));
-    }
-    this.heroDetails.replaceChildren(sheet);
+    this.strikeTraits.render(strike.traits, (chips) => {
+      const sheet = element("dl", "stats-grid");
+      for (const [label, value] of rows) {
+        const cell = element("dd");
+        if (value === null) cell.append(chips); else cell.textContent = value;
+        sheet.append(element("dt", undefined, label), cell);
+      }
+      this.heroDetails.replaceChildren(sheet);
+    });
   }
 
   private applyHeroDetailsState(): void {
@@ -404,6 +425,7 @@ export class BattleUi {
     state: CombatState,
     actorId: string,
   ): void {
+    this.clearCardBindings();
     this.hideCardDetail();
     this.handCards.replaceChildren();
     if (actions.length === 0) {
@@ -425,7 +447,7 @@ export class BattleUi {
   ): HTMLButtonElement {
     const button = element("button", "tactical-card");
     button.type = "button";
-    button.disabled = !action.enabled;
+    button.setAttribute("aria-disabled", String(!action.enabled));
     button.dataset.actionId = action.actionId;
     button.dataset.sourceId = action.source.id;
     button.dataset.sourceKind = action.source.kind;
@@ -435,60 +457,42 @@ export class BattleUi {
     }
     button.setAttribute("aria-pressed", String(selected?.source.id === action.source.id));
     if (selected?.source.id === action.source.id) button.classList.add("selected");
-    button.title = action.reason ?? action.description;
+    button.title = [action.cardRequirement && requirementText(action.cardRequirement), action.reason ?? action.description].filter(Boolean).join(" · ");
 
-    const title = element("span", action.name.length > LONG_CARD_NAME ? "card-title long" : "card-title");
-    title.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
-    const visual = card ? this.catalog.cardVisual(card.definitionId) : null;
-    const art = element("span", visual ? "card-art" : "card-art missing");
-    art.setAttribute("aria-hidden", "true");
-    if (visual) {
-      const image = element("span", "card-art-image");
-      // Percentage-placed, so the picture takes whatever room the frame has.
-      Object.assign(image.style, this.catalog.domFillStyle(visual));
-      art.append(image);
-    } else {
-      art.textContent = action.name.slice(0, 1);
-    }
-    button.append(title, art);
-    button.addEventListener("click", () => {
-      // The press that opened the detail is not the press that plays the card.
-      if (this.longPressFired) {
-        this.longPressFired = false;
-        return;
-      }
-      this.handlers.onCard(action);
+    button.append(createCardFace({
+      catalog: this.catalog, cardId: card?.definitionId, name: action.name, timing: action.timing,
+      badges: action.cardRequirement ? [`Lv. ${action.cardRequirement.requiredLevel}`] : [],
+    }));
+    const abort = new AbortController();
+    const listenerOptions = { signal: abort.signal };
+    const press = bindPressGesture(button, {
+      holdMs: LONG_PRESS_MS,
+      onHold: () => this.showCardDetail(button, action, card),
+      onTap: () => { if (action.enabled) this.handlers.onCard(action); },
     });
-    button.addEventListener("pointerdown", () => this.startLongPress(button, action, card));
-    for (const type of ["pointerup", "pointerleave", "pointercancel"] as const) {
-      button.addEventListener(type, () => this.cancelLongPress());
-    }
-    button.addEventListener("mouseenter", () => this.handlers.onCardHover(action));
-    button.addEventListener("mouseleave", () => this.handlers.onCardHover(null));
+    this.cardBindings.push({ press, abort });
+    button.addEventListener("pointerenter", event => {
+      if (event.pointerType === "mouse") this.handlers.onCardHover(action);
+    }, listenerOptions);
+    button.addEventListener("focus", () => {
+      if (button.matches(":focus-visible")) this.showCardDetail(button, action, card);
+    }, listenerOptions);
+    button.addEventListener("blur", () => {
+      // Focusing another card must not cancel that new card's pointerdown.
+      press.cancel();
+      this.hideCardDetail(false);
+    }, listenerOptions);
+    button.addEventListener("pointerleave", event => {
+      if (event.pointerType === "mouse") this.handlers.onCardHover(null);
+    }, listenerOptions);
     return button;
   }
 
-  /**
-   * The card face carries a name, a cost and a picture — enough to pick from. The words
-   * behind it are a press away, which is what a finger has instead of a hover.
-   */
-  private startLongPress(
-    button: HTMLElement,
-    action: LegalAction,
-    card: CombatState["cardZones"][string]["hand"][number] | undefined,
-  ): void {
-    this.cancelLongPress();
-    this.longPressTimer = window.setTimeout(() => {
-      this.longPressTimer = null;
-      this.longPressFired = true;
-      this.showCardDetail(button, action, card);
-    }, LONG_PRESS_MS);
-  }
-
-  private cancelLongPress(): void {
-    if (this.longPressTimer === null) return;
-    window.clearTimeout(this.longPressTimer);
-    this.longPressTimer = null;
+  private clearCardBindings(): void {
+    for (const { press, abort } of this.cardBindings.splice(0)) {
+      press();
+      abort.abort();
+    }
   }
 
   private showCardDetail(
@@ -498,12 +502,13 @@ export class BattleUi {
   ): void {
     const heading = element("div", "detail-heading");
     heading.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
-    this.cardDetail.replaceChildren(
+    this.cardTraits.render(action.traits, (chips) => this.cardDetail.replaceChildren(
       heading,
       element("p", undefined, action.description),
-      element("p", "detail-traits", action.traits.join(" · ")),
+      ...(action.cardRequirement ? [element("p", "card-level-detail", requirementText(action.cardRequirement))] : []),
+      chips,
       element("p", "detail-source", `Source: ${action.sourceLabel ?? card?.source.kind ?? "Character"}`),
-    );
+    ));
     if (action.reason) this.cardDetail.append(element("p", "detail-warning", action.reason));
     this.cardDetail.hidden = false;
     const stage = button.closest(".combat-stage")?.getBoundingClientRect();
@@ -516,29 +521,31 @@ export class BattleUi {
     this.cardDetail.style.bottom = `${stage.bottom - anchor.top + 10}px`;
   }
 
-  public hideCardDetail(): void {
-    this.cancelLongPress();
+  public hideCardDetail(cancelPresses = true): void {
+    if (cancelPresses) for (const { press } of this.cardBindings) press.cancel();
+    this.cardTraits.clear();
     this.cardDetail.hidden = true;
   }
 
   /** Replaces the inspector with one line, for a phase that has nothing to inspect. */
   public renderHint(text: string): void {
+    this.actionTraits.clear();
     this.selectedDetail.replaceChildren(element("p", "detail-hint", text));
   }
 
   public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null, state?: CombatState): void {
-    this.selectedDetail.replaceChildren();
     if (!action) {
-      this.selectedDetail.append(element("p", "detail-hint", DETAIL_HINT));
+      this.actionTraits.clear();
+      this.selectedDetail.replaceChildren(element("p", "detail-hint", DETAIL_HINT));
       return;
     }
     const heading = element("div", "detail-heading");
     heading.append(element("strong", undefined, action.name), element("span", "cost-badge", actionCost(action)));
-    this.selectedDetail.append(
+    this.actionTraits.render(action.traits, (chips) => this.selectedDetail.replaceChildren(
       heading,
       element("p", undefined, action.description),
-      element("p", "detail-traits", action.traits.join(" · ")),
-    );
+      chips,
+    ));
     if (action.sourceLabel) this.selectedDetail.append(element("p", "detail-source", `Source: ${action.sourceLabel}`));
     if (action.reason) this.selectedDetail.append(element("p", "detail-warning", action.reason));
     if (!preview) return;
@@ -589,6 +596,7 @@ export class BattleUi {
 
   /** Inspector view for an actor the pointer is hovering on the board. */
   public renderActorDetail(actor: ActorState): void {
+    this.actionTraits.clear();
     this.selectedDetail.replaceChildren();
     const heading = element("div", "detail-heading");
     heading.append(

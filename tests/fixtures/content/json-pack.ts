@@ -1,3 +1,5 @@
+import ancestries from "./json-pack/ancestries.json";
+import classes from "./json-pack/classes.json";
 import actions from "./json-pack/actions.json";
 import actors from "./json-pack/actors.json";
 import adventures from "./json-pack/adventures.json";
@@ -26,6 +28,8 @@ export function createJsonPackFiles(): ContentPackFiles {
   return structuredClone({
     manifest,
     traits,
+    ancestries,
+    classes,
     conditions,
     actions,
     cards,

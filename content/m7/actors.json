@@ -4,82 +4,21 @@
     "name": "Aerin",
     "statProfile": {
       "kind": "character",
-      "stats": {
-        "level": 1,
-        "attributes": {
-          "str": 3,
-          "dex": 2,
-          "con": 3,
-          "int": 1,
-          "wis": 3,
-          "cha": 0
-        },
-        "perception": "trained",
-        "saves": {
-          "fortitude": "trained",
-          "reflex": "trained",
-          "will": "trained"
-        },
-        "skills": {
-          "acrobatics": "trained",
-          "arcana": "trained",
-          "athletics": "expert",
-          "crafting": "trained",
-          "deception": "untrained",
-          "diplomacy": "trained",
-          "intimidation": "trained",
-          "medicine": "trained",
-          "nature": "trained",
-          "occultism": "untrained",
-          "performance": "untrained",
-          "religion": "trained",
-          "society": "trained",
-          "stealth": "trained",
-          "survival": "trained",
-          "thievery": "untrained"
-        },
-        "defense": {
-          "ancestryHp": 8,
-          "classHpPerLevel": 10,
-          "armorProficiencies": {
-            "unarmored": "trained",
-            "light": "trained",
-            "medium": "trained",
-            "heavy": "untrained"
-          }
-        },
-        "offense": {
-          "keyAttribute": "str",
-          "weaponProficiencies": {
-            "unarmed": "trained",
-            "simple": "trained",
-            "martial": "expert",
-            "advanced": "untrained"
-          },
-          "classDcProficiency": "trained",
-          "unarmedStrike": {
-            "name": "Fist",
-            "category": "unarmed",
-            "attackMode": "melee",
-            "rangeFeet": 5,
-            "damage": {
-              "count": 1,
-              "sides": 4,
-              "damageType": "bludgeoning"
-            },
-            "traits": [
-              {
-                "id": "agile"
-              },
-              {
-                "id": "finesse"
-              }
-            ]
-          }
-        }
-      }
+      "build": {
+        "freeBoosts": [
+          "str",
+          "dex",
+          "con",
+          "wis"
+        ],
+        "trainedSkills": [
+          "athletics",
+          "intimidation"
+        ]
+      },
+      "level": 1,
+      "advancements": []
     },
-    "speedFeet": 25,
     "initialConditions": [],
     "traits": [
       {
@@ -90,6 +29,12 @@
       },
       {
         "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "fighter"
       }
     ],
     "loadoutProfile": {
@@ -103,8 +48,8 @@
         "feet": "boots-of-fly"
       },
       "preparedCards": [
-        "card.knockdown",
-        "card.intimidating-strike"
+        "card.vicious-swing",
+        "card.demoralize"
       ]
     },
     "innateActionIds": [],
@@ -126,82 +71,23 @@
     "name": "Lyra",
     "statProfile": {
       "kind": "character",
-      "stats": {
-        "level": 1,
-        "attributes": {
-          "str": 2,
-          "dex": 4,
-          "con": 1,
-          "int": 2,
-          "wis": 3,
-          "cha": 2
-        },
-        "perception": "expert",
-        "saves": {
-          "fortitude": "trained",
-          "reflex": "trained",
-          "will": "trained"
-        },
-        "skills": {
-          "acrobatics": "expert",
-          "arcana": "trained",
-          "athletics": "trained",
-          "crafting": "trained",
-          "deception": "trained",
-          "diplomacy": "trained",
-          "intimidation": "untrained",
-          "medicine": "trained",
-          "nature": "trained",
-          "occultism": "trained",
-          "performance": "trained",
-          "religion": "untrained",
-          "society": "trained",
-          "stealth": "expert",
-          "survival": "trained",
-          "thievery": "trained"
-        },
-        "defense": {
-          "ancestryHp": 8,
-          "classHpPerLevel": 8,
-          "armorProficiencies": {
-            "unarmored": "trained",
-            "light": "trained",
-            "medium": "untrained",
-            "heavy": "untrained"
-          }
-        },
-        "offense": {
-          "keyAttribute": "dex",
-          "weaponProficiencies": {
-            "unarmed": "trained",
-            "simple": "trained",
-            "martial": "trained",
-            "advanced": "untrained"
-          },
-          "classDcProficiency": "trained",
-          "unarmedStrike": {
-            "name": "Fist",
-            "category": "unarmed",
-            "attackMode": "melee",
-            "rangeFeet": 5,
-            "damage": {
-              "count": 1,
-              "sides": 4,
-              "damageType": "bludgeoning"
-            },
-            "traits": [
-              {
-                "id": "agile"
-              },
-              {
-                "id": "finesse"
-              }
-            ]
-          }
-        }
-      }
+      "build": {
+        "freeBoosts": [
+          "dex",
+          "con",
+          "int",
+          "wis"
+        ],
+        "trainedSkills": [
+          "acrobatics",
+          "athletics",
+          "stealth",
+          "thievery"
+        ]
+      },
+      "level": 1,
+      "advancements": []
     },
-    "speedFeet": 30,
     "initialConditions": [],
     "traits": [
       {
@@ -212,6 +98,12 @@
       },
       {
         "id": "playable"
+      },
+      {
+        "id": "elf"
+      },
+      {
+        "id": "rogue"
       }
     ],
     "loadoutProfile": {
@@ -225,7 +117,7 @@
       },
       "preparedCards": [
         "card.slip-free",
-        "card.combat-grab"
+        "card.grapple"
       ]
     },
     "innateActionIds": [],
@@ -252,82 +144,21 @@
     "name": "Brom",
     "statProfile": {
       "kind": "character",
-      "stats": {
-        "level": 1,
-        "attributes": {
-          "str": 3,
-          "dex": 0,
-          "con": 4,
-          "int": 0,
-          "wis": -1,
-          "cha": 1
-        },
-        "perception": "trained",
-        "saves": {
-          "fortitude": "expert",
-          "reflex": "trained",
-          "will": "trained"
-        },
-        "skills": {
-          "acrobatics": "untrained",
-          "arcana": "untrained",
-          "athletics": "master",
-          "crafting": "trained",
-          "deception": "untrained",
-          "diplomacy": "untrained",
-          "intimidation": "trained",
-          "medicine": "trained",
-          "nature": "untrained",
-          "occultism": "untrained",
-          "performance": "untrained",
-          "religion": "trained",
-          "society": "untrained",
-          "stealth": "untrained",
-          "survival": "trained",
-          "thievery": "untrained"
-        },
-        "defense": {
-          "ancestryHp": 10,
-          "classHpPerLevel": 12,
-          "armorProficiencies": {
-            "unarmored": "trained",
-            "light": "trained",
-            "medium": "trained",
-            "heavy": "expert"
-          }
-        },
-        "offense": {
-          "keyAttribute": "str",
-          "weaponProficiencies": {
-            "unarmed": "trained",
-            "simple": "trained",
-            "martial": "trained",
-            "advanced": "untrained"
-          },
-          "classDcProficiency": "trained",
-          "unarmedStrike": {
-            "name": "Fist",
-            "category": "unarmed",
-            "attackMode": "melee",
-            "rangeFeet": 5,
-            "damage": {
-              "count": 1,
-              "sides": 4,
-              "damageType": "bludgeoning"
-            },
-            "traits": [
-              {
-                "id": "agile"
-              },
-              {
-                "id": "finesse"
-              }
-            ]
-          }
-        }
-      }
+      "build": {
+        "freeBoosts": [
+          "str",
+          "con",
+          "wis",
+          "cha"
+        ],
+        "trainedSkills": [
+          "athletics",
+          "intimidation"
+        ]
+      },
+      "level": 1,
+      "advancements": []
     },
-    "speedFeet": 20,
     "initialConditions": [],
     "traits": [
       {
@@ -338,6 +169,12 @@
       },
       {
         "id": "playable"
+      },
+      {
+        "id": "dwarf"
+      },
+      {
+        "id": "champion"
       }
     ],
     "loadoutProfile": {
@@ -356,7 +193,7 @@
     "innateActionIds": [],
     "baseCardGrants": [
       {
-        "cardDefinitionId": "card.reactive-strike",
+        "cardDefinitionId": "card.shield-press",
         "count": 2,
         "sourceId": "feat.guardian-sentinel"
       },
@@ -526,7 +363,10 @@
       "equipment": {},
       "preparedCards": []
     },
-    "innateActionIds": ["knockdown", "demoralize"],
+    "innateActionIds": [
+      "knockdown",
+      "demoralize"
+    ],
     "baseCardGrants": []
   },
   {
@@ -541,19 +381,43 @@
           "name": "Rusty Dagger",
           "attackModifier": 5,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 4, "modifier": 1, "damageType": "piercing" },
+          "damage": {
+            "count": 1,
+            "sides": 4,
+            "modifier": 1,
+            "damageType": "piercing"
+          },
           "traits": []
         },
         "perception": 3,
-        "saves": { "fortitude": 2, "reflex": 5, "will": 1 },
-        "skills": { "athletics": 2, "stealth": 5 }
+        "saves": {
+          "fortitude": 2,
+          "reflex": 5,
+          "will": 1
+        },
+        "skills": {
+          "athletics": 2,
+          "stealth": 5
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "goblin"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
     "innateActionIds": [],
     "baseCardGrants": []
   },
@@ -569,19 +433,42 @@
           "name": "Chipped Sword",
           "attackModifier": 5,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 6, "modifier": 1, "damageType": "slashing" },
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 1,
+            "damageType": "slashing"
+          },
           "traits": []
         },
         "perception": 2,
-        "saves": { "fortitude": 4, "reflex": 4, "will": 0 },
-        "skills": { "athletics": 4 }
+        "saves": {
+          "fortitude": 4,
+          "reflex": 4,
+          "will": 0
+        },
+        "skills": {
+          "athletics": 4
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "undead" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "undead"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
     "innateActionIds": [],
     "baseCardGrants": []
   },
@@ -597,19 +484,42 @@
           "name": "Bite",
           "attackModifier": 5,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 6, "modifier": 1, "damageType": "piercing" },
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 1,
+            "damageType": "piercing"
+          },
           "traits": []
         },
         "perception": 5,
-        "saves": { "fortitude": 4, "reflex": 5, "will": 2 },
-        "skills": { "athletics": 4 }
+        "saves": {
+          "fortitude": 4,
+          "reflex": 5,
+          "will": 2
+        },
+        "skills": {
+          "athletics": 4
+        }
       }
     },
     "speedFeet": 35,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "beast" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "beast"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
     "innateActionIds": [],
     "baseCardGrants": []
   },
@@ -625,20 +535,46 @@
           "name": "Ritual Knife",
           "attackModifier": 4,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 4, "modifier": 1, "damageType": "piercing" },
+          "damage": {
+            "count": 1,
+            "sides": 4,
+            "modifier": 1,
+            "damageType": "piercing"
+          },
           "traits": []
         },
         "perception": 3,
-        "saves": { "fortitude": 3, "reflex": 3, "will": 5 },
-        "skills": { "intimidation": 3, "occultism": 5 }
+        "saves": {
+          "fortitude": 3,
+          "reflex": 3,
+          "will": 5
+        },
+        "skills": {
+          "intimidation": 3,
+          "occultism": 5
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "cultist" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["hex-bolt"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "cultist"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "hex-bolt"
+    ],
     "baseCardGrants": []
   },
   {
@@ -653,20 +589,47 @@
           "name": "Savage Bite",
           "attackModifier": 8,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 8, "modifier": 3, "damageType": "piercing" },
+          "damage": {
+            "count": 1,
+            "sides": 8,
+            "modifier": 3,
+            "damageType": "piercing"
+          },
           "traits": []
         },
         "perception": 7,
-        "saves": { "fortitude": 7, "reflex": 7, "will": 4 },
-        "skills": { "athletics": 7, "intimidation": 5 }
+        "saves": {
+          "fortitude": 7,
+          "reflex": 7,
+          "will": 4
+        },
+        "skills": {
+          "athletics": 7,
+          "intimidation": 5
+        }
       }
     },
     "speedFeet": 40,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "beast" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["terrifying-howl", "trip"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "beast"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "terrifying-howl",
+      "trip"
+    ],
     "baseCardGrants": []
   },
   {
@@ -681,20 +644,46 @@
           "name": "Fang",
           "attackModifier": 6,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 4, "modifier": 2, "damageType": "piercing" },
+          "damage": {
+            "count": 1,
+            "sides": 4,
+            "modifier": 2,
+            "damageType": "piercing"
+          },
           "traits": []
         },
         "perception": 5,
-        "saves": { "fortitude": 3, "reflex": 7, "will": 2 },
-        "skills": { "athletics": 5, "stealth": 8 }
+        "saves": {
+          "fortitude": 3,
+          "reflex": 7,
+          "will": 2
+        },
+        "skills": {
+          "athletics": 5,
+          "stealth": 8
+        }
       }
     },
     "speedFeet": 30,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "beast" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["web-spit"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "beast"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "web-spit"
+    ],
     "baseCardGrants": []
   },
   {
@@ -709,20 +698,45 @@
           "name": "Bone Maul",
           "attackModifier": 8,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 10, "modifier": 4, "damageType": "bludgeoning" },
+          "damage": {
+            "count": 1,
+            "sides": 10,
+            "modifier": 4,
+            "damageType": "bludgeoning"
+          },
           "traits": []
         },
         "perception": 3,
-        "saves": { "fortitude": 8, "reflex": 2, "will": 3 },
-        "skills": { "athletics": 9 }
+        "saves": {
+          "fortitude": 8,
+          "reflex": 2,
+          "will": 3
+        },
+        "skills": {
+          "athletics": 9
+        }
       }
     },
     "speedFeet": 20,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "undead" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["knockdown"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "undead"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "knockdown"
+    ],
     "baseCardGrants": []
   },
   {
@@ -737,20 +751,47 @@
           "name": "Venom Fang",
           "attackModifier": 7,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 8, "modifier": 3, "damageType": "piercing" },
+          "damage": {
+            "count": 1,
+            "sides": 8,
+            "modifier": 3,
+            "damageType": "piercing"
+          },
           "traits": []
         },
         "perception": 6,
-        "saves": { "fortitude": 6, "reflex": 7, "will": 3 },
-        "skills": { "athletics": 8, "stealth": 7 }
+        "saves": {
+          "fortitude": 6,
+          "reflex": 7,
+          "will": 3
+        },
+        "skills": {
+          "athletics": 8,
+          "stealth": 7
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "beast" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["grapple", "web-spit"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "beast"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "grapple",
+      "web-spit"
+    ],
     "baseCardGrants": []
   },
   {
@@ -765,20 +806,45 @@
           "name": "Long Spear",
           "attackModifier": 6,
           "rangeFeet": 10,
-          "damage": { "count": 1, "sides": 8, "modifier": 2, "damageType": "piercing" },
+          "damage": {
+            "count": 1,
+            "sides": 8,
+            "modifier": 2,
+            "damageType": "piercing"
+          },
           "traits": []
         },
         "perception": 4,
-        "saves": { "fortitude": 5, "reflex": 5, "will": 3 },
-        "skills": { "athletics": 6 }
+        "saves": {
+          "fortitude": 5,
+          "reflex": 5,
+          "will": 3
+        },
+        "skills": {
+          "athletics": 6
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["trip"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "goblin"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "trip"
+    ],
     "baseCardGrants": []
   },
   {
@@ -793,20 +859,46 @@
           "name": "Guard Halberd",
           "attackModifier": 7,
           "rangeFeet": 10,
-          "damage": { "count": 1, "sides": 10, "modifier": 3, "damageType": "slashing" },
+          "damage": {
+            "count": 1,
+            "sides": 10,
+            "modifier": 3,
+            "damageType": "slashing"
+          },
           "traits": []
         },
         "perception": 3,
-        "saves": { "fortitude": 6, "reflex": 3, "will": 3 },
-        "skills": { "athletics": 7 }
+        "saves": {
+          "fortitude": 6,
+          "reflex": 3,
+          "will": 3
+        },
+        "skills": {
+          "athletics": 7
+        }
       }
     },
     "speedFeet": 20,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "undead" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["trip", "knockdown"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "undead"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "trip",
+      "knockdown"
+    ],
     "baseCardGrants": []
   },
   {
@@ -821,19 +913,43 @@
           "name": "Sling Stone",
           "attackModifier": 6,
           "rangeFeet": 30,
-          "damage": { "count": 1, "sides": 6, "modifier": 2, "damageType": "bludgeoning" },
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 2,
+            "damageType": "bludgeoning"
+          },
           "traits": []
         },
         "perception": 5,
-        "saves": { "fortitude": 3, "reflex": 6, "will": 2 },
-        "skills": { "athletics": 3, "stealth": 6 }
+        "saves": {
+          "fortitude": 3,
+          "reflex": 6,
+          "will": 2
+        },
+        "skills": {
+          "athletics": 3,
+          "stealth": 6
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "goblin" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "goblin"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
     "innateActionIds": [],
     "baseCardGrants": []
   },
@@ -849,19 +965,42 @@
           "name": "Bone Bow",
           "attackModifier": 7,
           "rangeFeet": 60,
-          "damage": { "count": 1, "sides": 6, "modifier": 2, "damageType": "piercing" },
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 2,
+            "damageType": "piercing"
+          },
           "traits": []
         },
         "perception": 5,
-        "saves": { "fortitude": 4, "reflex": 6, "will": 2 },
-        "skills": { "athletics": 4 }
+        "saves": {
+          "fortitude": 4,
+          "reflex": 6,
+          "will": 2
+        },
+        "skills": {
+          "athletics": 4
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "undead" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "undead"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
     "innateActionIds": [],
     "baseCardGrants": []
   },
@@ -877,20 +1016,47 @@
           "name": "Ember Brand",
           "attackModifier": 5,
           "rangeFeet": 20,
-          "damage": { "count": 1, "sides": 6, "modifier": 2, "damageType": "fire" },
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 2,
+            "damageType": "fire"
+          },
           "traits": []
         },
         "perception": 4,
-        "saves": { "fortitude": 4, "reflex": 4, "will": 7 },
-        "skills": { "intimidation": 6, "occultism": 8 }
+        "saves": {
+          "fortitude": 4,
+          "reflex": 4,
+          "will": 7
+        },
+        "skills": {
+          "intimidation": 6,
+          "occultism": 8
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "cultist" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["hex-bolt", "terrifying-howl"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "cultist"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "hex-bolt",
+      "terrifying-howl"
+    ],
     "baseCardGrants": []
   },
   {
@@ -905,20 +1071,48 @@
           "name": "Void Touch",
           "attackModifier": 6,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 6, "modifier": 2, "damageType": "void" },
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 2,
+            "damageType": "void"
+          },
           "traits": []
         },
         "perception": 5,
-        "saves": { "fortitude": 5, "reflex": 4, "will": 8 },
-        "skills": { "intimidation": 6, "occultism": 8, "religion": 8 }
+        "saves": {
+          "fortitude": 5,
+          "reflex": 4,
+          "will": 8
+        },
+        "skills": {
+          "intimidation": 6,
+          "occultism": 8,
+          "religion": 8
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "undead" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["mend-bone", "hex-bolt"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "undead"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "mend-bone",
+      "hex-bolt"
+    ],
     "baseCardGrants": []
   },
   {
@@ -933,20 +1127,48 @@
           "name": "Ritual Staff",
           "attackModifier": 7,
           "rangeFeet": 5,
-          "damage": { "count": 1, "sides": 8, "modifier": 3, "damageType": "bludgeoning" },
+          "damage": {
+            "count": 1,
+            "sides": 8,
+            "modifier": 3,
+            "damageType": "bludgeoning"
+          },
           "traits": []
         },
         "perception": 6,
-        "saves": { "fortitude": 6, "reflex": 5, "will": 9 },
-        "skills": { "intimidation": 8, "occultism": 10 }
+        "saves": {
+          "fortitude": 6,
+          "reflex": 5,
+          "will": 9
+        },
+        "skills": {
+          "intimidation": 8,
+          "occultism": 10
+        }
       }
     },
     "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "cultist" }],
-    "loadoutProfile": { "preparedCardCapacity": 0 },
-    "starterLoadout": { "equipment": {}, "preparedCards": [] },
-    "innateActionIds": ["soothing-litany", "terrifying-howl", "hex-bolt"],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "cultist"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "soothing-litany",
+      "terrifying-howl",
+      "hex-bolt"
+    ],
     "baseCardGrants": []
   },
   {
@@ -954,71 +1176,66 @@
     "name": "Nera",
     "statProfile": {
       "kind": "character",
-      "stats": {
-        "level": 1,
-        "attributes": { "str": 0, "dex": 2, "con": 2, "int": 1, "wis": 4, "cha": 3 },
-        "perception": "expert",
-        "saves": { "fortitude": "trained", "reflex": "trained", "will": "expert" },
-        "skills": {
-          "acrobatics": "untrained",
-          "arcana": "trained",
-          "athletics": "untrained",
-          "crafting": "trained",
-          "deception": "trained",
-          "diplomacy": "expert",
-          "intimidation": "trained",
-          "medicine": "expert",
-          "nature": "trained",
-          "occultism": "trained",
-          "performance": "trained",
-          "religion": "trained",
-          "society": "trained",
-          "stealth": "untrained",
-          "survival": "trained",
-          "thievery": "untrained"
-        },
-        "defense": {
-          "ancestryHp": 8,
-          "classHpPerLevel": 8,
-          "armorProficiencies": {
-            "unarmored": "trained",
-            "light": "trained",
-            "medium": "untrained",
-            "heavy": "untrained"
-          }
-        },
-        "offense": {
-          "keyAttribute": "wis",
-          "weaponProficiencies": {
-            "unarmed": "trained",
-            "simple": "trained",
-            "martial": "trained",
-            "advanced": "untrained"
-          },
-          "classDcProficiency": "expert",
-          "unarmedStrike": {
-            "name": "Fist",
-            "category": "unarmed",
-            "attackMode": "melee",
-            "rangeFeet": 5,
-            "damage": { "count": 1, "sides": 4, "damageType": "bludgeoning" },
-            "traits": [{ "id": "agile" }, { "id": "finesse" }]
-          }
-        }
-      }
+      "build": {
+        "freeBoosts": [
+          "dex",
+          "con",
+          "int",
+          "wis"
+        ],
+        "trainedSkills": [
+          "medicine",
+          "religion",
+          "diplomacy"
+        ]
+      },
+      "level": 1,
+      "advancements": []
     },
-    "speedFeet": 25,
     "initialConditions": [],
-    "traits": [{ "id": "actor" }, { "id": "hero" }, { "id": "playable" }],
-    "loadoutProfile": { "preparedCardCapacity": 4 },
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "cleric"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
     "starterLoadout": {
-      "equipment": { "weapon": "composite-shortbow", "armor": "leather-armor" },
-      "preparedCards": ["card.battle-medicine", "card.lay-on-hands", "card.iron-presence"]
+      "equipment": {
+        "weapon": "composite-shortbow",
+        "armor": "leather-armor"
+      },
+      "preparedCards": [
+        "card.battle-medicine",
+        "card.heal",
+        "card.iron-presence"
+      ]
     },
     "innateActionIds": [],
     "baseCardGrants": [
-      { "cardDefinitionId": "card.heal", "count": 2, "sourceId": "feat.field-triage" },
-      { "cardDefinitionId": "card.soothe", "count": 2, "sourceId": "feat.steady-voice" }
+      {
+        "cardDefinitionId": "card.heal",
+        "count": 2,
+        "sourceId": "feat.field-triage"
+      },
+      {
+        "cardDefinitionId": "card.soothe",
+        "count": 2,
+        "sourceId": "feat.steady-voice"
+      }
     ]
   }
 ]

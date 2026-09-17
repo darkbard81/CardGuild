@@ -27,7 +27,7 @@ Every call returns its own object graph, so a test may edit what it is handed.
 `character-rules.ts` is the core rules plus three deliberate edits, not a second copy:
 
 1. the shared hero becomes `playable` and wears `scale-mail`,
-2. the focus Action `spirit-beacon` gains the `spell` Trait,
+2. the focus Action `spirit-beacon` and its Card gain the `spell` Trait,
 3. the second reward offers `card.spirit-lance` instead of `card.spirit-beacon`.
 
 A test that fails under both is failing on a rule; a test that fails under only one is

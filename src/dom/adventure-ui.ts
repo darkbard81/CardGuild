@@ -1,3 +1,8 @@
+import { createCardFace } from "./card-face";
+import { cardLevelSummary } from "./card-level-view";
+import { equipmentTraits } from "../game/rules";
+import { CharacterAdvancementUi } from "./character-advancement-ui";
+import { pendingCharacterAdvancements, type CharacterAdvancementChoice } from "../character";
 import type { AdventureState } from "../adventure";
 import type { CompiledContentPack } from "../content";
 import { placementAppliesToPartySize } from "../content";
@@ -24,6 +29,7 @@ function element<K extends keyof HTMLElementTagNameMap>(
 }
 
 export interface AdventureUiHandlers {
+  readonly onAdvanceCharacter: (memberId: string, choice: CharacterAdvancementChoice) => boolean;
   readonly onStart: () => void;
   readonly onContinue: () => void;
   readonly onChooseReward: (rewardId: string, choiceIndex: number) => void;
@@ -33,6 +39,7 @@ export interface AdventureUiHandlers {
 
 export interface AdventureUiAccess {
   readonly isHost: boolean;
+  readonly editableMemberIds?: ReadonlySet<string>;
   /**
    * The last committed victory's growth, or nothing. The UI never derives this from state:
    * Level and EXP are in the snapshot, but "what just changed" only exists in the events
@@ -64,7 +71,7 @@ function rewardDetail(grant: RewardGrant, pack: CompiledContentPack): string {
     const cost = action.timing.kind === "reaction"
       ? "반응"
       : `${String(action.timing.actions)} 액션`;
-    return `${cost} · ${action.description}`;
+    return `${cardLevelSummary(card!, content)} · ${cost} · ${action.description}`;
   }
   const equipment = content.equipment[grant.definitionId];
   if (!equipment) return "새 장비입니다.";
@@ -77,10 +84,11 @@ function rewardDetail(grant: RewardGrant, pack: CompiledContentPack): string {
   if (armor) parts.push(`${armor.category} 방어구 · AC ${signed(armor.acItemBonus)} · DEX 상한 ${String(armor.dexCap)}`);
   if (equipment.shieldBonus) parts.push(`Raise Shield로 AC ${signed(equipment.shieldBonus)}`);
   for (const modifier of equipment.statModifiers) parts.push(`${modifier.label} ${signed(modifier.value)}`);
-  for (const trait of equipment.traits) {
+  for (const trait of equipmentTraits(equipment)) {
     for (const cardGrant of content.traits[trait.id]?.cardGrants ?? []) {
       const name = content.cards[cardGrant.cardDefinitionId]?.name ?? cardGrant.cardDefinitionId;
-      parts.push(`${name} 카드 ×${String(cardGrant.count)}`);
+      const card = content.cards[cardGrant.cardDefinitionId];
+      parts.push(`${name} 카드 ×${String(cardGrant.count)}${card ? ` · ${cardLevelSummary(card, content)}` : ""}`);
     }
   }
   return parts.length > 0 ? parts.join(" · ") : `${equipment.slot} 슬롯 장비입니다.`;
@@ -93,12 +101,15 @@ export class AdventureUi {
   private readonly collection = required<HTMLElement>("#adventure-collection");
   private readonly party = required<HTMLElement>("#adventure-party");
 
+  private readonly advancementUi: CharacterAdvancementUi;
+  private lastRender: { state: AdventureState; access: AdventureUiAccess } | null = null;
+
   public constructor(
     private readonly definition: AdventureDefinition,
     private readonly pack: CompiledContentPack,
     private readonly handlers: AdventureUiHandlers,
     private readonly catalog?: AssetCatalog,
-  ) {}
+  ) { this.advancementUi = new CharacterAdvancementUi(pack, handlers.onAdvanceCharacter); }
 
   /** The enemies this party will actually face, which party size decides (#16). */
   private threatPreview(state: AdventureState, encounterId: string): readonly string[] {
@@ -140,6 +151,9 @@ export class AdventureUi {
   }
 
   public render(state: AdventureState, access: AdventureUiAccess = { isHost: true }): void {
+    this.lastRender = { state, access };
+    const hasPending = Object.values(state.party.members).some(member =>
+      pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length > 0);
     this.screen.hidden = state.phase === "combat";
     if (state.phase !== "combat") {
       required<HTMLElement>("#reaction-modal").hidden = true;
@@ -158,14 +172,20 @@ export class AdventureUi {
           element("span", undefined, progressionText(member.progression)),
           progressionMeter(name, member.progression),
         );
+        const advancement = this.advancementUi.render(member, access.editableMemberIds?.has(member.id) ?? false,
+          state.phase === "ready" || state.phase === "between-encounters");
+        if (advancement) row.append(advancement);
         return row;
       }));
     this.content.replaceChildren();
+    if (hasPending && (state.phase === "ready" || state.phase === "between-encounters")) {
+      this.content.append(element("p", "advancement-notice", "모든 캐릭터의 성장 선택을 완료하면 다음 전투를 시작할 수 있습니다."));
+    }
 
     if (state.phase === "ready") {
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "Begin Adventure" : "Waiting for Host", this.handlers.onStart, access.isHost),
+        this.actionButton(access.isHost ? "Begin Adventure" : "Waiting for Host", this.handlers.onStart, access.isHost && !hasPending),
         this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
       );
       const partySize = Object.keys(state.party.members).length;
@@ -181,7 +201,7 @@ export class AdventureUi {
       const scenario = state.currentEncounterId ? this.pack.scenarios[state.currentEncounterId] : undefined;
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "Enter Encounter" : "Waiting for Host", this.handlers.onContinue, access.isHost),
+        this.actionButton(access.isHost ? "Enter Encounter" : "Waiting for Host", this.handlers.onContinue, access.isHost && !hasPending),
         this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
       );
       const step = state.currentEncounterId
@@ -237,7 +257,16 @@ export class AdventureUi {
         const assetId = grant.kind === "card"
           ? this.catalog?.cardVisual(grant.definitionId) ?? null
           : this.catalog?.equipmentVisual(grant.definitionId) ?? null;
-        button.prepend(this.icon(assetId, name));
+        if (grant.kind === "card") {
+          const card = this.pack.combatContent.cards[grant.definitionId];
+          button.classList.add("reward-card-choice");
+          button.replaceChildren(createCardFace({
+            catalog: this.catalog, cardId: grant.definitionId, name,
+            timing: card ? this.pack.combatContent.actions[card.actionId]?.timing : undefined,
+          }));
+        } else {
+          button.prepend(this.icon(assetId, name));
+        }
         button.append(
           element("span", "reward-kind", grant.kind),
           element("span", "reward-detail", rewardDetail(grant, this.pack)),
@@ -359,8 +388,17 @@ export class AdventureUi {
     const chips = [
       ...Object.entries(state.collection.equipment).map(([id, count]) =>
         this.chip(this.catalog?.equipmentVisual(id) ?? null, content.equipment[id]?.name ?? id, count, "equipment")),
-      ...Object.entries(state.collection.cards).map(([id, count]) =>
-        this.chip(this.catalog?.cardVisual(id) ?? null, content.cards[id]?.name ?? id, count, "card")),
+      ...Object.entries(state.collection.cards).map(([id, count]) => {
+        const card = content.cards[id];
+        const face = createCardFace({
+          catalog: this.catalog, cardId: id, name: card?.name ?? id,
+          timing: card ? content.actions[card.actionId]?.timing : undefined,
+          badges: count > 1 ? [`×${count}`] : [],
+        });
+        face.classList.add("collection-card");
+        face.dataset.rewardKind = "card";
+        return face;
+      }),
     ];
     const heading = element("strong", undefined, "Collection");
     this.collection.append(heading);
@@ -387,6 +425,13 @@ export class AdventureUi {
     button.classList.add("adventure-action-secondary");
     return button;
   }
+
+  public reportError(message: string): void {
+    this.advancementUi.reportError(message);
+    if (this.lastRender && !this.screen.hidden) this.render(this.lastRender.state, this.lastRender.access);
+  }
+
+  public clear(): void { this.advancementUi.clear(); this.lastRender = null; }
 
   public setVisible(visible: boolean): void {
     this.screen.hidden = !visible;

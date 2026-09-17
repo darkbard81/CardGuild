@@ -1,3 +1,4 @@
+import type { AncestryDefinition, CharacterBuildSource, CharacterRulesContext, ClassDefinition } from "../character";
 import type {
   ActionDefinition,
   ActionId,
@@ -25,7 +26,7 @@ import type {
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 9;
+  readonly schemaVersion: 12;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -42,6 +43,23 @@ export interface ActorDefinition {
   readonly innateActionIds: readonly ActionId[];
   readonly baseCardGrants: readonly CardGrant[];
   readonly initialConditions?: readonly ConditionInstance[];
+  /** Original authoring input retained for runtime resolution at a different level. */
+  readonly character?: CharacterBuildSource;
+}
+
+type ActorSourceBase = Omit<ActorDefinition, "statProfile" | "speedFeet" | "character">;
+export type CharacterActorSource = ActorSourceBase & {
+  readonly statProfile: CharacterBuildSource & { readonly kind: "character" };
+  readonly speedFeet?: never;
+};
+export type CreatureActorSource = ActorSourceBase & {
+  readonly statProfile: Extract<ActorStatProfile, { kind: "creature" }>;
+  readonly speedFeet: number;
+};
+export type ActorSource = CharacterActorSource | CreatureActorSource;
+
+export function isCharacterActorSource(source: ActorSource): source is CharacterActorSource {
+  return source.statProfile.kind === "character";
 }
 
 export interface LoadoutProfile {
@@ -142,11 +160,13 @@ export interface AdventureDefinition {
 export interface ContentPackSource {
   readonly manifest: ContentPackManifest;
   readonly traits: readonly TraitDefinition[];
+  readonly ancestries: readonly AncestryDefinition[];
+  readonly classes: readonly ClassDefinition[];
   readonly conditions: readonly ConditionDefinition[];
   readonly actions: readonly ActionDefinition[];
   readonly cards: readonly CardDefinition[];
   readonly equipment: readonly EquipmentDefinition[];
-  readonly actors: readonly ActorDefinition[];
+  readonly actors: readonly ActorSource[];
   readonly scenarios: readonly ScenarioSource[];
   readonly adventures: readonly AdventureDefinition[];
 }
@@ -155,6 +175,7 @@ export interface CompiledContentPack {
   readonly manifest: ContentPackManifest;
   readonly fingerprint: string;
   readonly combatContent: CombatContent;
+  readonly characterRules: CharacterRulesContext;
   readonly actorDefinitions: Readonly<Record<ActorDefinitionId, ActorDefinition>>;
   readonly scenarioSources: Readonly<Record<ScenarioId, ScenarioSource>>;
   readonly scenarios: Readonly<Record<ScenarioId, ScenarioDefinition>>;
@@ -164,6 +185,8 @@ export interface CompiledContentPack {
 export type ContentSourceCategory =
   | "manifest"
   | "traits"
+  | "ancestries"
+  | "classes"
   | "conditions"
   | "actions"
   | "cards"
@@ -186,6 +209,8 @@ export interface ContentValidationIssue {
 export interface ContentPackFiles {
   readonly manifest: unknown;
   readonly traits: unknown;
+  readonly ancestries: unknown;
+  readonly classes: unknown;
   readonly conditions: unknown;
   readonly actions: unknown;
   readonly cards: unknown;
@@ -199,6 +224,8 @@ export function assembleContentPackSource(files: ContentPackFiles): unknown {
   return {
     manifest: files.manifest,
     traits: files.traits,
+    ancestries: files.ancestries,
+    classes: files.classes,
     conditions: files.conditions,
     actions: files.actions,
     cards: files.cards,

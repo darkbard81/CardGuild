@@ -6,6 +6,7 @@ export {
   deriveTacticalDeck,
   equipmentIds,
   previewLoadoutChange,
+  resolveLoadoutStatProfile,
   validatePartyLoadout,
 } from "./loadout";
 export { EQUIPMENT_SLOT_ORDER } from "./types";

@@ -3,6 +3,8 @@ import path from "node:path";
 
 import sharp, { type OverlayOptions } from "sharp";
 
+import { assertCardArtOutput, cardArtHref, readCardArtPlan, type CardArtPlan } from "./card-art";
+
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
 import {
   ACTOR_SIDES,
@@ -616,6 +618,7 @@ async function measureInk(file: string): Promise<{
 async function buildManifest(
   root: string,
   plan: GenerationPlan,
+  cards: CardArtPlan,
   assets: readonly ProcessedAsset[],
   runtimeImages: ReadonlyMap<string, RuntimeImage>,
 ): Promise<void> {
@@ -633,7 +636,7 @@ async function buildManifest(
     if (!image) throw new Error(`Actor "${asset.frame.assetId}" has no standalone runtime image.`);
     return { source: { type: "image", path: image.path, width: image.width, height: image.height } };
   };
-  const definitions = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
+  const definitions: Record<string, Record<string, unknown>> = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
     kind: asset.frame.kind,
     ...storage(asset),
     anchor: asset.frame.anchor,
@@ -649,6 +652,15 @@ async function buildManifest(
       if (!frame.side) throw new Error(`${frame.assetId} is missing a side.`);
       return [frame.side, frame.assetId];
     }));
+  }
+  for (const card of cards.cards) {
+    definitions[card.assetId] = {
+      kind: "ui",
+      source: { type: "image", path: cardArtHref(card), ...cards.outputSize },
+      anchor: { x: 0.5, y: 0.5 },
+      displayWidth: 120,
+      displayHeight: 180,
+    };
   }
   const manifest = {
     version: 5,
@@ -667,6 +679,7 @@ async function buildManifest(
     cardVisuals: plan.presentation.cardVisuals,
   };
   const sourceMap = Object.fromEntries(assets.map((asset) => [asset.frame.assetId, repoRelative(root, asset.file)]));
+  for (const card of cards.cards) sourceMap[card.assetId] = card.output;
   await writeJson(path.join(root, "presentation", "m3", "asset-manifest.json"), manifest);
   await writeJson(path.join(root, "presentation", "m3", "asset-sources.json"), sourceMap);
 }
@@ -758,6 +771,7 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
 async function writePipelineMetadata(
   root: string,
   plan: GenerationPlan,
+  cards: CardArtPlan,
   assets: readonly ProcessedAsset[],
   runtimeImages: ReadonlyMap<string, RuntimeImage>,
 ): Promise<void> {
@@ -775,9 +789,15 @@ async function writePipelineMetadata(
     /** Which of the two runtime stores each asset ended up in, so QC can see the split. */
     runtimeStorage: {
       atlas: assets.filter((asset) => asset.frame.kind !== "actor").length,
-      image: runtimeImages.size,
+      image: runtimeImages.size + cards.cards.length,
     },
     atlasImage: atlasHref,
+    cardArtPlan: "art/source/card-art-plan.json",
+    cardImages: Object.fromEntries(cards.cards.map((card) => [card.assetId, {
+      source: card.source, output: card.output, runtime: cardArtHref(card),
+      sourceSha256: card.sourceSha256, outputSha256: card.outputSha256,
+      sourceSize: cards.sourceSize, outputSize: cards.outputSize, conversion: cards.conversion,
+    }])),
     assets: Object.fromEntries(assets.map((asset) => [asset.frame.assetId, {
       source: asset.source.input,
       output: repoRelative(root, asset.file),
@@ -905,6 +925,14 @@ async function main(): Promise<void> {
   const planPath = path.join(root, "art", "source", "generation-plan.json");
   const plan = await readJson<GenerationPlan>(planPath);
   validatePlan(plan);
+  const cards = await readCardArtPlan(root);
+  const standaloneCards = new Set(cards.cards.map((card) => card.assetId));
+  for (const card of cards.cards) {
+    if (!PRODUCTION_CONTENT.pack.combatContent.cards[card.cardId] || plan.presentation.cardVisuals[card.cardId] !== card.assetId) {
+      throw new Error(`Card art does not match production presentation: ${card.cardId}`);
+    }
+    await assertCardArtOutput(root, card);
+  }
   await access(path.join(root, plan.styleSheet));
   await access(path.join(root, plan.promptConvention));
   // Both generated actor trees are cleared first, so a renamed or retired character
@@ -912,20 +940,22 @@ async function main(): Promise<void> {
   await rm(path.join(root, "art", "processed", "actors"), { recursive: true, force: true });
   await rm(path.join(root, "art", "processed", "qc", "actors"), { recursive: true, force: true });
   const groups = await Promise.all(plan.sources.map((source) => processSource(root, source)));
-  const assets = groups.flat();
-  // Processing is shared; delivery is not. Everything that is not an actor is packed into
-  // the one atlas, and every actor gets a file of its own.
+  const allAssets = groups.flat();
+  // Keep source-sheet indexing intact, but converted card icons are not delivered.
+  const assets = allAssets.filter((asset) => !standaloneCards.has(asset.frame.assetId));
+  // Commissioned card images were already validated separately. The remaining source
+  // assets split into actor files and the shared atlas.
   const actors = assets.filter((asset) => asset.frame.kind === "actor");
   const atlasAssets = assets.filter((asset) => asset.frame.kind !== "actor");
   await buildAtlas(root, plan, atlasAssets);
   const runtimeImages = await buildActorImages(root, actors);
-  await buildManifest(root, plan, assets, runtimeImages);
+  await buildManifest(root, plan, cards, assets, runtimeImages);
   await buildTilemaps(root, plan);
-  await writePipelineMetadata(root, plan, assets, runtimeImages);
-  await buildQcPreviews(root, assets);
+  await writePipelineMetadata(root, plan, cards, assets, runtimeImages);
+  await buildQcPreviews(root, allAssets);
   process.stdout.write(
     `Assets built: ${assets.length} frames from ${plan.sources.length} generated sources ` +
-    `(${atlasAssets.length} atlas, ${runtimeImages.size} standalone actors)\n`,
+    `(${atlasAssets.length} atlas, ${runtimeImages.size} standalone actors, ${cards.cards.length} standalone cards)\n`,
   );
 }
 

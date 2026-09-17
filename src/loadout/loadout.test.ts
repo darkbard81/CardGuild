@@ -187,8 +187,8 @@ describe("loadout ownership and derivation", () => {
     };
     const preview = previewLoadoutChange(currentParty, collection, content, "party.hero-1", candidate);
     expect(preview.legal).toBe(true);
-    expect(preview.before.statistics.reflex.dc).toBe(16);
-    expect(preview.after?.statistics.reflex.dc).toBe(15);
+    expect(preview.before.statistics.reflex.dc).toBe(17);
+    expect(preview.after?.statistics.reflex.dc).toBe(16);
     expect(preview.removedContextActionIds).toEqual(["raise-shield"]);
     expect(preview.after?.deck.totalCards).toBe(7);
     expect(preview.addedCards).toContainEqual({
@@ -249,8 +249,8 @@ describe("resolved Strike and Class DC in the Loadout preview", () => {
     });
     expect(summary).toEqual([
       ["Halberd", 8, 3, 16],
-      ["Light Blade", 7, 2, 17],
-      ["Guardian Mace", 6, 3, 16],
+      ["Light Blade", 6, 0, 16],
+      ["Guardian Mace", 5, 2, 15],
     ]);
   });
 
@@ -278,9 +278,9 @@ describe("resolved Strike and Class DC in the Loadout preview", () => {
     const preview = previewLoadoutChange(party, collection, pack, "party.hero-1", ranged);
 
     expect(preview.legal).toBe(true);
-    // Finesse melee: DEX 4 + trained 3, STR 2 to damage. Ranged propulsive: DEX 4 + trained 3, half STR.
-    expect([preview.before.strike.attackModifier, preview.before.strike.damage.flatModifier, preview.before.strike.rangeFeet]).toEqual([7, 2, 5]);
-    expect([preview.after?.strike.attackModifier, preview.after?.strike.damage.flatModifier, preview.after?.strike.rangeFeet]).toEqual([7, 1, 60]);
+    // Finesse melee: DEX 3 + trained 3, STR 0 to damage. Ranged propulsive: DEX 3 + trained 3, half STR.
+    expect([preview.before.strike.attackModifier, preview.before.strike.damage.flatModifier, preview.before.strike.rangeFeet]).toEqual([6, 0, 5]);
+    expect([preview.after?.strike.attackModifier, preview.after?.strike.damage.flatModifier, preview.after?.strike.rangeFeet]).toEqual([6, 0, 60]);
     expect(preview.after?.strike.attackMode).toBe("ranged");
 
     // Preview and encounter read one resolver, so the whole resolved Strike matches.
@@ -311,7 +311,7 @@ describe("resolved Strike and Class DC in the Loadout preview", () => {
       preparedCards: [...brom.starterLoadout.preparedCards],
     };
     const snapshot = deriveLoadoutSnapshot(brom, unarmed, pack.combatContent, "party.hero-1");
-    expect([snapshot.strike.weaponName, snapshot.strike.weaponCategory, snapshot.strike.attackModifier]).toEqual(["Fist", "unarmed", 6]);
+    expect([snapshot.strike.weaponName, snapshot.strike.weaponCategory, snapshot.strike.attackModifier]).toEqual(["Fist", "unarmed", 5]);
     expect(snapshot.strike.traits).toContain("agile");
     expect(combatStrike("hero.brom", unarmed).weaponName).toBe("Fist");
   });
@@ -355,8 +355,8 @@ describe("armor loadout and derived defenses", () => {
     const preview = previewLoadoutChange(currentParty, collection, armoredContent, "party.hero-1", unarmored);
 
     expect(preview.legal).toBe(true);
-    expect(preview.before.statistics.ac).toBe(18);
-    expect(preview.after?.statistics.ac).toBe(15);
+    expect(preview.before.statistics.ac).toBe(17);
+    expect(preview.after?.statistics.ac).toBe(14);
     expect(preview.before.armor).toEqual({
       id: "scale-mail",
       name: "Scale Mail",
@@ -368,7 +368,7 @@ describe("armor loadout and derived defenses", () => {
 
     const placement = { instanceId: "hero.probe", actorDefinitionId: aerin.id, team: "heroes" as const, position: { x: 0, y: 0 }, facing: "north" as const };
     const fingerprints: string[] = [];
-    for (const [loadout, expected] of [[aerin.starterLoadout, 18], [unarmored, 15]] as const) {
+    for (const [loadout, expected] of [[aerin.starterLoadout, 17], [unarmored, 14]] as const) {
       const setup = deriveActorSetup(aerin, placement, loadout, armoredContent.combatContent, "party.hero-1");
       const state = createCombat(
         { ...armoredEncounter, scenario: { ...armoredEncounter.scenario, actors: [setup, ...armoredEncounter.scenario.actors] } },
@@ -390,9 +390,9 @@ describe("armor loadout and derived defenses", () => {
       "party.hero-1",
     );
 
-    expect(setup.maxHp).toBe(21);
+    expect(setup.maxHp).toBe(19);
     expect(setup.hp).toBe(setup.maxHp);
     expect(deriveLoadoutSnapshot(aerin, aerin.starterLoadout, armoredContent.combatContent, "party.hero-1").statistics.maxHp)
-      .toBe(21);
+      .toBe(19);
   });
 });

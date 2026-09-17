@@ -1,3 +1,4 @@
+export { resolveEffectiveActionTraits, matchesEligibilityGroups, isCardEligible, resolveCardEligibility, isRingAction } from "./capabilities";
 export {
   actionRangeFeet,
   buildResolvedActionPlan,
@@ -62,4 +63,5 @@ export {
   resolveStatisticModifier,
 } from "./statistics";
 export type { StatisticResolutionContext } from "./statistics";
+export { TRAIT_CATEGORIES, TRAIT_SOURCES, isTraitCategory, isTraitSource } from "./traits";
 export type * from "./types";

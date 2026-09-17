@@ -1,3 +1,4 @@
+import type { CharacterAdvancementChoice } from "../character";
 import type { AdventureEvent, AdventureState } from "../adventure";
 import { isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
 import { PRODUCTION_CONTENT } from "../content/production-content";
@@ -71,6 +72,7 @@ export class AdventureController {
     private readonly root: HTMLElement,
   ) {
     this.ui = new AdventureUi(PRODUCTION_CONTENT.adventure, PRODUCTION_CONTENT.pack, {
+      onAdvanceCharacter: (memberId, choice) => this.advanceCharacter(memberId, choice),
       onStart: () => this.sendIntent({ type: "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
       onChooseReward: (rewardId, choiceIndex) => this.sendIntent({ type: "choose-reward", rewardId, choiceIndex }),
@@ -199,6 +201,7 @@ export class AdventureController {
 
   private attach(credential: SessionCredential): void {
     this.client?.destroy();
+    this.ui.clear();
     this.client = new SessionClient(credential, {
       onSnapshot: (snapshot) => {
         this.snapshot = snapshot;
@@ -207,6 +210,7 @@ export class AdventureController {
       onError: (error) => {
         this.root.dataset.sessionError = error.code;
         this.loadoutUi.reportError(error.message);
+        this.ui.reportError(error.message);
         this.battle?.reportError(error.message);
         if (isTerminalHandshakeFailure(error.code)) {
           this.returnToLanding(error.message);
@@ -218,6 +222,7 @@ export class AdventureController {
         this.root.dataset.sessionStatus = status;
         if (status !== "connected") {
           this.loadoutUi.reportError(`Session ${status}…`);
+          this.ui.reportError(`Session ${status}…`);
           this.battle?.reportError(`Session ${status}…`);
         }
         this.lobbyUi.setStatus(status === "connected" ? "서버에 연결되었습니다." : `Session ${status}…`);
@@ -393,7 +398,8 @@ export class AdventureController {
       this.view = "adventure";
       this.root.dataset.screen = "adventure";
       this.loadoutUi.setVisible(false);
-      this.ui.render(state, { isHost, growth: this.growth?.summary ?? null });
+      this.ui.render(state, { isHost, growth: this.growth?.summary ?? null,
+        editableMemberIds: this.snapshot ? this.controlledMemberIds(this.snapshot, viewer.playerId) : new Set() });
       this.ui.setVisible(true);
     }
   }
@@ -414,6 +420,13 @@ export class AdventureController {
     if (!adventure || !viewer) return;
     this.view = "adventure";
     this.renderAdventure(adventure, viewer);
+  }
+
+  private advanceCharacter(memberId: string, choice: CharacterAdvancementChoice): boolean {
+    const snapshot = this.snapshot;
+    const viewer = snapshot ? this.viewerSeat(snapshot) : undefined;
+    if (!snapshot || !viewer || !this.controlledMemberIds(snapshot, viewer.playerId).has(memberId)) return false;
+    return this.sendIntent({ type: "advance-character", memberId, choice });
   }
 
   private setMemberLoadout(memberId: string, loadout: PartyMemberLoadout): boolean {

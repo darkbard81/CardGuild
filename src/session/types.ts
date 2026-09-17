@@ -1,4 +1,5 @@
 import type { AdventureEvent, AdventureState } from "../adventure";
+import type { CharacterAdvancementChoice } from "../character";
 import type { CompiledContentPack } from "../content";
 import type {
   ActionSource,
@@ -101,6 +102,7 @@ export interface ResumeSessionOptions extends SessionPlayerIdentity {
 }
 
 export type SessionIntent =
+  | { readonly type: "advance-character"; readonly memberId: string; readonly choice: CharacterAdvancementChoice }
   | { readonly type: "set-party-composition"; readonly actorDefinitionIds: readonly string[] }
   | { readonly type: "select-character"; readonly memberId: string }
   | { readonly type: "remove-offline-guest"; readonly playerId: string }

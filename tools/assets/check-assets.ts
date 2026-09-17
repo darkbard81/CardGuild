@@ -2,6 +2,7 @@ import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import sharp from "sharp";
+import { assertCardArtOutput, cardArtHref, readCardArtPlan } from "./card-art";
 
 import {
   ACTOR_SIDES,
@@ -25,8 +26,8 @@ interface Point {
 
 /**
  * Storage is a property of the asset, not of the pipeline stage that made it. The policy
- * is `kind === "actor" -> image`, everything else `-> atlas`, and nothing else — prompt
- * wording is no guide, since a wall and a lever are described as standees too.
+ * gives actors and commissioned card art standalone images; the remaining assets
+ * stay in the atlas. Prompt wording is never used to determine storage.
  */
 type AssetSource =
   | { readonly type: "atlas"; readonly frame: string }
@@ -281,16 +282,24 @@ async function main(): Promise<void> {
   // The manifest is one logical namespace over two physical stores, so the split is
   // stated as a partition rather than as an equality. This is what fails if an actor
   // drifts back into the atlas, or a tile quietly becomes a standalone file.
+  const cardPlan = await readCardArtPlan(root);
+  const cardEntries = new Map(cardPlan.cards.map((card) => [card.assetId, card]));
+  for (const card of cardPlan.cards) {
+    if (!PRODUCTION_CONTENT.pack.combatContent.cards[card.cardId] || manifest.cardVisuals[card.cardId] !== card.assetId || !manifest.assets[card.assetId]) {
+      throw new Error(`Missing commissioned card mapping: ${card.cardId}`);
+    }
+    await assertCardArtOutput(root, card);
+  }
   const actorIds = ids.filter((id) => manifest.assets[id]?.kind === "actor");
-  const atlasIds = ids.filter((id) => manifest.assets[id]?.kind !== "actor");
+  const atlasIds = ids.filter((id) => manifest.assets[id]?.kind !== "actor" && !cardEntries.has(id));
   // Named before the set comparison, because "an actor is back in the atlas" is the way
   // this partition is most likely to break and deserves to say so rather than to read as
   // two lists that happen to differ.
-  for (const id of actorIds) {
-    if (atlas.frames[id]) throw new Error(`Actor "${id}" is a standalone image and must not be packed into the atlas.`);
+  for (const id of [...actorIds, ...cardEntries.keys()]) {
+    if (atlas.frames[id]) throw new Error(`Asset "${id}" is a standalone image and must not be packed into the atlas.`);
   }
   if (JSON.stringify(atlasIds) !== JSON.stringify(Object.keys(atlas.frames).sort())) {
-    throw new Error("Atlas frame IDs and non-actor manifest asset IDs must match exactly.");
+    throw new Error("Atlas frame IDs and atlas-backed manifest asset IDs must match exactly.");
   }
 
   for (const id of ids) {
@@ -298,7 +307,13 @@ async function main(): Promise<void> {
     const source = sources[id];
     if (!asset || !source) throw new Error(`Asset "${id}" is incomplete.`);
     assertUnitPoint(id, asset.anchor);
-    if (asset.kind === "actor") {
+    const card = cardEntries.get(id);
+    if (card) {
+      if (asset.kind !== "ui" || asset.source.type !== "image" || asset.source.path !== cardArtHref(card) ||
+          asset.source.width !== 512 || asset.source.height !== 768 || source !== card.output) {
+        throw new Error(`Card "${id}" must use its commissioned standalone WebP.`);
+      }
+    } else if (asset.kind === "actor") {
       if (asset.source.type !== "image") throw new Error(`Actor "${id}" must declare an image source.`);
       await assertRuntimeActorImage(id, path.join(root, "public", asset.source.path.slice(1)), asset.source);
     } else {
@@ -316,6 +331,7 @@ async function main(): Promise<void> {
     if (asset.footprint && (asset.footprint.width !== 128 || asset.footprint.height !== 128)) {
       throw new Error(`Cell-bound asset "${id}" must declare the 128x128 square footprint.`);
     }
+    if (card) continue; // Card delivery validation never reads ignored PNG originals.
     const canvas = await assertCleanAlpha(id, path.join(root, source), asset.kind);
     if (asset.kind === "terrain") {
       assertTileVisualContract(id, asset, canvas);
@@ -354,7 +370,7 @@ async function main(): Promise<void> {
   assertVisualMap("Card", cards, manifest.cardVisuals, manifest);
   assertTilemapPack(tilemaps, manifest);
   process.stdout.write(
-    `Assets OK: ${atlasIds.length} atlas frames, ${actorIds.length} standalone actor images, ` +
+    `Assets OK: ${atlasIds.length} atlas frames, ${actorIds.length} standalone actor images, ${cardEntries.size} standalone card images, ` +
     `${Object.keys(manifest.actorVisuals).length} two-sided actors, ${Object.keys(tilemaps.maps).length} layered tilemaps\n`,
   );
 }

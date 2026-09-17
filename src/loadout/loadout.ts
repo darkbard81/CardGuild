@@ -1,3 +1,5 @@
+import { resolveCardEligibility } from "../game/capabilities";
+import { resolveCharacterRules } from "../character";
 import type { ActorDefinition, EncounterActorPlacement } from "../content/content-types";
 import { resolveStrike } from "../game/offense";
 import {
@@ -32,6 +34,7 @@ import {
   type LoadoutCollection,
   type LoadoutContent,
   type LoadoutParty,
+  type LoadoutPartyMember,
   type LoadoutPreview,
   type LoadoutValidationIssue,
   type LoadoutValidationResult,
@@ -118,6 +121,15 @@ export function validatePartyLoadout(
       }
       increment(usedCards, id);
     }
+    const ruleActor = { ...actor, statProfile: resolveLoadoutStatProfile(member, content) };
+    const deck = deriveTacticalDeck(actor, member.loadout, content.combatContent, member.id);
+    for (const id of new Set(deck.contributions.map(entry => entry.cardDefinitionId))) {
+      const card = content.combatContent.cards[id];
+      const eligibility = card && resolveCardEligibility(ruleActor, card, content.combatContent);
+      if (eligibility && !eligibility.eligible) {
+        issues.push({ code: eligibility.code, memberId: member.id, definitionId: id, message: `${actor.name}: ${eligibility.reason}` });
+      }
+    }
   }
 
   for (const [id, used] of Object.entries(usedEquipment).sort(([left], [right]) => left.localeCompare(right))) {
@@ -133,6 +145,15 @@ export function validatePartyLoadout(
     }
   }
   return { valid: issues.length === 0, issues };
+}
+
+/** One runtime profile for preparation eligibility and the derived statistics preview. */
+export function resolveLoadoutStatProfile(member: LoadoutPartyMember, content: LoadoutContent): ActorStatProfile {
+  const actor = content.actorDefinitions[member.actorDefinitionId];
+  if (!actor) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
+  if (!member.progression) return actor.statProfile;
+  if (actor.statProfile.kind !== "character" || !actor.character) throw new Error("Runtime progression requires a Character Build.");
+  return resolveCharacterRules({ traits: actor.traits, build: actor.character.build, progression: member.progression }, content.characterRules).statProfile;
 }
 
 function sameSource(left: DeckContributionSource, right: DeckContributionSource): boolean {
@@ -302,7 +323,6 @@ export function previewLoadoutChange(
   content: LoadoutContent,
   memberId: string,
   candidate: PartyMemberLoadout,
-  effectiveStatProfile?: ActorStatProfile,
 ): LoadoutPreview {
   const member = party.members[memberId];
   if (!member) throw new Error(`Party member "${memberId}" is missing.`);
@@ -312,6 +332,7 @@ export function previewLoadoutChange(
     members: { ...party.members, [memberId]: { ...member, loadout: cloneLoadout(candidate) } },
   };
   const validation = validatePartyLoadout(nextParty, collection, content);
+  const effectiveStatProfile = resolveLoadoutStatProfile(member, content);
   const before = deriveLoadoutSnapshot(actor, member.loadout, content.combatContent, memberId, effectiveStatProfile);
   const after = validation.valid ? deriveLoadoutSnapshot(actor, candidate, content.combatContent, memberId, effectiveStatProfile) : null;
   return {

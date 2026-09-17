@@ -1,3 +1,4 @@
+import { rewardAvailability } from "./reward-availability";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 
@@ -24,7 +25,7 @@ import {
   deriveTacticalDeck,
   validatePartyLoadout,
 } from "../../src/loadout";
-import type { LoadoutCollection, PartyMemberLoadout } from "../../src/loadout";
+import type { PartyMemberLoadout } from "../../src/loadout";
 import { M7_PRODUCTION_POLICY, type ReserveEntry, type VolumeRange } from "./m7-production-policy";
 
 /**
@@ -148,11 +149,15 @@ function collectReachable(pack: CompiledContentPack, reporter: Reporter): Reacha
 
   // Whatever a reward can hand the party, judged by whether a starter can use it.
   for (const reward of adventure.rewards) {
-    for (const choice of reward.choices) {
+    const availability = starters.map(starter => rewardAvailability(pack, adventure, starter, reward));
+    starters.forEach((starter, index) => {
+      if (!availability[index]!.immediate.some(Boolean)) reporter.issue(PACK_SOURCE, `adventure.rewards.${reward.id}`, "PRODUCTION_REWARD_UNUSABLE", `${starter.name} has no immediately usable reward choice.`, reward.id);
+    });
+    for (const [choiceIndex, choice] of reward.choices.entries()) {
       if (choice.kind === "card") {
         usedCardIds.add(choice.definitionId);
         playerCardIds.add(choice.definitionId);
-        if (!starters.some((starter) => canPrepare(starter, choice.definitionId, pack))) {
+        if (!availability.some(entry => entry.eventual[choiceIndex])) {
           reporter.issue(
             PACK_SOURCE,
             `adventure.rewards.${reward.id}`,
@@ -165,7 +170,7 @@ function collectReachable(pack: CompiledContentPack, reporter: Reporter): Reacha
       }
       usedEquipmentIds.add(choice.definitionId);
       playerEquipmentIds.add(choice.definitionId);
-      const wearers = starters.filter((starter) => canEquip(starter, choice.definitionId, pack));
+      const wearers = starters.filter((_starter, index) => availability[index]!.eventual[choiceIndex]);
       if (wearers.length === 0) {
         reporter.issue(
           PACK_SOURCE,
@@ -215,41 +220,6 @@ function soloParty(starter: ActorDefinition, loadout: PartyMemberLoadout): Party
       },
     },
   };
-}
-
-/** Owning one extra copy of a definition, on top of what the starter walks in with. */
-function collectionWith(
-  base: LoadoutCollection,
-  kind: "equipment" | "cards",
-  definitionId: string,
-): LoadoutCollection {
-  const bucket = { ...base[kind], [definitionId]: (base[kind][definitionId] ?? 0) + 1 };
-  return kind === "equipment" ? { ...base, equipment: bucket } : { ...base, cards: bucket };
-}
-
-function canEquip(starter: ActorDefinition, equipmentId: string, pack: CompiledContentPack): boolean {
-  const loadout = equippedLoadout(starter, equipmentId, pack);
-  const party = soloParty(starter, loadout);
-  const collection = collectionWith(
-    createStartingCollection(soloParty(starter, starter.starterLoadout), pack),
-    "equipment",
-    equipmentId,
-  );
-  return validatePartyLoadout(party, collection, pack).valid;
-}
-
-function canPrepare(starter: ActorDefinition, cardId: string, pack: CompiledContentPack): boolean {
-  const loadout: PartyMemberLoadout = {
-    equipment: { ...starter.starterLoadout.equipment },
-    preparedCards: [...starter.starterLoadout.preparedCards, cardId],
-  };
-  const party = soloParty(starter, loadout);
-  const collection = collectionWith(
-    createStartingCollection(soloParty(starter, starter.starterLoadout), pack),
-    "cards",
-    cardId,
-  );
-  return validatePartyLoadout(party, collection, pack).valid;
 }
 
 function checkIdentity(pack: CompiledContentPack, reporter: Reporter): void {
@@ -503,7 +473,7 @@ function checkPartySizeCoverage(
     try {
       session = createAdventureSession({
         definition: adventure,
-        actorDefinitions: pack.actorDefinitions,
+        actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules,
         combatContent: pack.combatContent,
       }, party, COVERAGE_SEED);
     } catch (error) {

@@ -257,9 +257,13 @@ describe("resolved action plan", () => {
         hero: { ...hero, innateActionIds: [...hero.innateActionIds, actionId] },
       },
     };
-    expect(listLegalActions(characterState, "hero", content).find((entry) => entry.actionId === actionId))
+    const cardContent = { ...content, cards: { ...content.cards, "card.class-dc-test": {
+      id: "card.class-dc-test", name: "Class DC", actionId, level: 1, traits: action.traits,
+    } } };
+    const injected = withCardInHand(characterState, "hero", "card.class-dc-test");
+    expect(listLegalActions(injected.state, "hero", cardContent).find((entry) => entry.actionId === actionId))
       .toEqual(expect.objectContaining({ enabled: true, reason: undefined }));
-    expect(listLegalTargets(characterState, "hero", source, content))
+    expect(listLegalTargets(injected.state, "hero", { kind: "card", id: injected.card.id }, cardContent))
       .toContainEqual(expect.objectContaining({ kind: "actor", actorId: goblinId }));
   });
 
@@ -273,11 +277,12 @@ describe("resolved action plan", () => {
     const content: CombatContent = {
       ...CHARACTER_RULES_CONTENT,
       actions: { ...CHARACTER_RULES_CONTENT.actions, [actionId]: action },
+      cards: { ...CHARACTER_RULES_CONTENT.cards, "card.target-class-dc": { id: "card.target-class-dc", name: "Target Class DC", actionId, level: 1, traits: action.traits } },
     };
-    const source: ActionSource = { kind: "innate", id: actionId };
+    const source: ActionSource = { kind: "card", id: "card-injected-card.target-class-dc" };
     const hero = opened.actors.hero as NonNullable<CombatState["actors"][string]>;
     const characterTargetId = "z-character-enemy";
-    const mixedState: CombatState = {
+    const mixedBase: CombatState = {
       ...opened,
       actors: {
         ...opened.actors,
@@ -291,6 +296,7 @@ describe("resolved action plan", () => {
         },
       },
     };
+    const mixedState = withCardInHand(mixedBase, "hero", "card.target-class-dc").state;
     const characterTarget: ActionTarget = { kind: "actor", actorId: characterTargetId };
 
     expect(listLegalActions(mixedState, "hero", content).find((entry) => entry.actionId === actionId))
@@ -310,12 +316,12 @@ describe("resolved action plan", () => {
     const before = structuredClone(hero.statProfile);
 
     const byDefault = resolveActionStatistic(hero, { kind: "skill", skill: "arcana" }, context);
-    const overridden = resolveActionStatistic(hero, { kind: "skill", skill: "arcana", attributeOverride: "wis" }, context);
+    const overridden = resolveActionStatistic(hero, { kind: "skill", skill: "arcana", attributeOverride: "str" }, context);
 
-    // Aerin: INT +1, WIS +3, arcana trained (+3) at level 1.
+    // Aerin: INT +1, STR +3, arcana trained (+3) at level 1.
     expect(byDefault.value).toBe(4);
     expect(overridden.value).toBe(6);
-    expect(overridden.sources.map((source) => source.label)).toEqual(["WIS", "Trained proficiency"]);
+    expect(overridden.sources.map((source) => source.label)).toEqual(["STR", "Trained proficiency"]);
     // The override selects an already-stored Attribute; it never rewrites the Character.
     expect(hero.statProfile).toEqual(before);
   });
@@ -458,7 +464,7 @@ describe("target-side save resolution", () => {
 describe("card and action ownership", () => {
   it("keeps every Card a reference to an Action rather than a rules definition", () => {
     for (const card of Object.values(CHARACTER_RULES_CONTENT.cards)) {
-      expect(Object.keys(card).sort()).toEqual(["actionId", "id", "name", "traits"]);
+      expect(Object.keys(card).sort()).toEqual(["actionId", "id", "level", "name", "traits"]);
       expect(CHARACTER_RULES_CONTENT.actions[card.actionId]).toBeDefined();
     }
   });

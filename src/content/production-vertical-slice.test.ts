@@ -1,3 +1,4 @@
+import { completeAdvancements } from "../../tests/support/campaign/complete-advancements";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -22,7 +23,7 @@ const PARTY_SIZES = [1, 2, 3] as const;
 
 const CONTEXT: AdventureRuntimeContext = {
   definition: ADVENTURE,
-  actorDefinitions: PACK.actorDefinitions,
+  actorDefinitions: PACK.actorDefinitions, characterRules: PACK.characterRules,
   combatContent: CONTENT,
 };
 
@@ -252,6 +253,7 @@ describe("production vertical slice", () => {
     let taken: { readonly rewardId: string; readonly definitionId: string } | null = null;
     for (let guard = 0; guard < 40 && !taken; guard += 1) {
       if (state.phase === "between-encounters") {
+        state = completeAdvancements(state, PACK);
         state = dispatchAdventureCommand(state, { type: "start-encounter" }, CONTEXT).state;
         continue;
       }
@@ -327,6 +329,7 @@ describe("production vertical slice", () => {
       const played: string[] = [];
       for (let guard = 0; guard < 60 && state.phase !== "complete"; guard += 1) {
         if (state.phase === "between-encounters") {
+        state = completeAdvancements(state, PACK);
           state = dispatchAdventureCommand(state, { type: "start-encounter" }, CONTEXT).state;
           continue;
         }

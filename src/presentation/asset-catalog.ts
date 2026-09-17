@@ -42,13 +42,21 @@ interface DomFrame {
 export class AssetCatalog {
   private readonly textures = new Map<PresentationAssetId, Texture>();
   private initialized = false;
+  private readonly cardAssetIds: ReadonlySet<PresentationAssetId>;
 
   public constructor(
     public readonly manifest: PresentationAssetManifest,
     public readonly tilemaps: PresentationTilemapPack,
     private readonly atlasMap: PresentationAtlasMap,
   ) {
+    this.cardAssetIds = new Set(Object.values(manifest.cardVisuals));
     validatePresentationTilemaps(tilemaps, manifest);
+  }
+
+  /** DOM card images must not become unused Pixi textures or block encounter entry. */
+  public encounterImageAssets(): { alias: string; src: string }[] {
+    return Object.entries(this.manifest.assets).flatMap(([id, asset]) =>
+      asset.source.type === "image" && !this.cardAssetIds.has(id) ? [{ alias: id, src: asset.source.path }] : []);
   }
 
   /**
@@ -60,8 +68,7 @@ export class AssetCatalog {
   public async loadEncounterBundle(): Promise<void> {
     if (this.initialized) return;
     const atlasAlias = `${this.manifest.bundle}.atlas`;
-    const imageAssets = Object.entries(this.manifest.assets).flatMap(([id, asset]) =>
-      asset.source.type === "image" ? [{ alias: id, src: asset.source.path }] : []);
+    const imageAssets = this.encounterImageAssets();
     await Assets.init({
       manifest: {
         bundles: [
@@ -76,6 +83,7 @@ export class AssetCatalog {
     const sheet = loaded[atlasAlias] as Spritesheet | undefined;
     if (!sheet) throw new Error(`Presentation atlas "${atlasAlias}" did not load.`);
     for (const [id, asset] of Object.entries(this.manifest.assets)) {
+      if (asset.source.type === "image" && this.cardAssetIds.has(id)) continue;
       if (asset.source.type === "atlas") {
         const texture = sheet.textures[asset.source.frame];
         if (!texture) throw new Error(`Presentation frame "${asset.source.frame}" is missing from the atlas.`);

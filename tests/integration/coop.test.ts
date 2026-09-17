@@ -1,3 +1,5 @@
+import { fixtureAfterFlourish } from "../fixtures/campaign-save";
+import { listLegalActions, resolveActionSource } from "../../src/game";
 import { WebSocket } from "ws";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -34,7 +36,7 @@ async function post<T>(
 }
 
 function envelope(requestId: string, expectedRevision: number, value: SessionIntent): ClientIntentEnvelope {
-  return { v: 7, type: "intent", requestId, expectedRevision, intent: value };
+  return { v: 9, type: "intent", requestId, expectedRevision, intent: value };
 }
 
 async function accepted(
@@ -108,6 +110,42 @@ describe("a real WebSocket cooperative session", () => {
     vi.restoreAllMocks();
   });
 
+  it("retains Flourish and Card eligibility in protocol v9 snapshots after reconnect", async () => {
+    const server = await start();
+    const credential = await create(server);
+    const original = server.store.get(credential.sessionId)!;
+    const preparing = await SocketClient.connect(server.origin, credential);
+    sockets.push(preparing);
+    await preparing.snapshot();
+    await accepted(preparing, original, "cap-party", { type: "set-party-composition", actorDefinitionIds: PARTY });
+    await accepted(preparing, original, "cap-begin", { type: "begin-adventure" });
+    await accepted(preparing, original, "cap-encounter", { type: "start-encounter" });
+    await preparing.close();
+    await original.whenIdle();
+    const seeded = new SessionHost(fixtureAfterFlourish(original.state),
+      { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId }, digestReconnectToken(credential.reconnectToken));
+    vi.spyOn(server.store, "get").mockReturnValue(seeded);
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const client = await SocketClient.connect(server.origin, credential);
+      sockets.push(client);
+      const snapshot = await client.snapshot();
+      expect(snapshot.v).toBe(9);
+      expect(snapshot.gameplayHash).toBe(hashSessionGameplayState(seeded.state));
+      const combat = snapshot.state.combat!;
+      expect(combat.turn.usedTraitsByActor).toEqual({ "party.hero-1": ["flourish"] });
+      expect(listLegalActions(combat, "party.hero-1", PRODUCTION_CONTENT.pack.combatContent).find(action => action.source.id === "flourish-second"))
+        .toMatchObject({ enabled: false, reason: "Only one Flourish capability can be used per turn." });
+      expect(resolveActionSource(combat, { ...combat.actors["party.hero-1"]!, traits: [{ id: "wizard" }] },
+        { kind: "card", id: "flourish-second" }, PRODUCTION_CONTENT.pack.combatContent)).toBeNull();
+      const error = await rejected(client, seeded, `cap-rejected-${attempt}`, {
+        type: "use-action", action: { kind: "card", id: "flourish-second" }, target: { kind: "actor", actorId: "party.hero-1" },
+      });
+      expect(error.message).toContain("Flourish");
+      await client.close();
+      await seeded.whenIdle();
+    }
+  });
+
   it("transports nonzero runtime progression and recovers the same gameplay after reconnect", async () => {
     const server = await start();
     const credential = await create(server);
@@ -123,21 +161,24 @@ describe("a real WebSocket cooperative session", () => {
     const adventure = original.state.adventure!;
     const seeded = new SessionHost({ ...original.state, adventure: { ...adventure, party: {
       members: Object.fromEntries(Object.entries(adventure.party.members).map(([id, member], index) =>
-        [id, { ...member, progression: { level: index + 2, experience: 375 + index } }])),
+        [id, { ...member, progression: { level: index + 2, experience: 375 + index, advancements: [] } }])),
     } } }, { pack: PRODUCTION_CONTENT.pack, adventureId: PRODUCTION_CONTENT.adventureId }, digestReconnectToken(credential.reconnectToken));
     vi.spyOn(server.store, "get").mockReturnValue(seeded);
     const client = await SocketClient.connect(server.origin, credential);
     sockets.push(client);
     const first = await client.snapshot();
-    expect(first.v).toBe(7);
-    expect(first.state.adventure?.version).toBe(3);
+    expect(first.v).toBe(9);
+    expect(first.state.adventure?.version).toBe(4);
     expect(Object.values(first.state.adventure!.party.members).map(member => member.progression)).toEqual([
-      { level: 2, experience: 375 }, { level: 3, experience: 376 }, { level: 4, experience: 377 },
+      { level: 2, experience: 375, advancements: [] }, { level: 3, experience: 376, advancements: [] }, { level: 4, experience: 377, advancements: [] },
     ]);
+    for (const memberId of ["party.hero-2", "party.hero-3"]) {
+      await accepted(client, seeded, `growth-${memberId}`, { type: "advance-character", memberId, choice: { level: 3, skillIncrease: "athletics" } });
+    }
     await accepted(client, seeded, "progression-encounter", { type: "start-encounter" });
     const member = seeded.state.adventure!.party.members["party.hero-1"]!;
-    expect(member.progression).toEqual({ level: 2, experience: 375 });
-    expect(seeded.state.combat!.actors[member.id]!.maxHp).toBe(34);
+    expect(member.progression).toEqual({ level: 2, experience: 375, advancements: [] });
+    expect(seeded.state.combat!.actors[member.id]!.maxHp).toBe(30);
     const savedHash = hashSessionGameplayState(seeded.state);
     const savedState = structuredClone(seeded.state);
     await client.close();
@@ -176,22 +217,26 @@ describe("a real WebSocket cooperative session", () => {
       },
     } as SessionCoreState);
 
-    const restored = new SessionHost(restoredWith({ level: 2, experience: 375 }), context, digest);
-    expect(restored.state.adventure!.party.members["party.hero-1"]!.progression).toEqual({ level: 2, experience: 375 });
-    expect(() => new SessionHost(restoredWith({ level: 2, experience: EXPERIENCE_PER_LEVEL }), context, digest))
+    const restored = new SessionHost(restoredWith({ level: 2, experience: 375, advancements: [] }), context, digest);
+    expect(restored.state.adventure!.party.members["party.hero-1"]!.progression).toEqual({ level: 2, experience: 375, advancements: [] });
+    expect(() => new SessionHost(restoredWith({ level: 2, experience: EXPERIENCE_PER_LEVEL, advancements: [] }), context, digest))
       .toThrow("experience");
-    expect(() => new SessionHost(restoredWith(undefined), context, digest)).toThrow("progression is required");
+    expect(() => new SessionHost(restoredWith(undefined), context, digest)).toThrow("Character progression must be an object");
+    expect(() => new SessionHost(restoredWith({ level: 5, experience: 0, advancements: [
+      { level: 3, skillIncrease: "athletics" },
+      { level: 5, skillIncrease: "athletics", attributeBoosts: ["str", "dex", "con", "wis"] },
+    ] }), context, digest)).toThrow('Skill "athletics" cannot increase at Level 5');
     expect(() => new SessionHost(
       { ...original.state, adventure: { ...adventure, version: 2 } } as unknown as SessionCoreState, context, digest,
-    )).toThrow("version 3");
+    )).toThrow("version 4");
 
     // No rejected state ever became a host, so the live session still publishes the authored progression.
     const reconnected = await SocketClient.connect(server.origin, credential);
     sockets.push(reconnected);
     const snapshot = await reconnected.snapshot();
-    expect(snapshot.state.adventure?.version).toBe(3);
+    expect(snapshot.state.adventure?.version).toBe(4);
     expect(Object.values(snapshot.state.adventure!.party.members).map((member) => member.progression))
-      .toEqual([{ level: 1, experience: 0 }, { level: 1, experience: 0 }, { level: 1, experience: 0 }]);
+      .toEqual([{ level: 1, experience: 0, advancements: [] }, { level: 1, experience: 0, advancements: [] }, { level: 1, experience: 0, advancements: [] }]);
   });
 
   it("transports atomic final facing and preserves it in a reconnect snapshot", async () => {
@@ -555,13 +600,13 @@ describe("a real WebSocket cooperative session", () => {
 
     // v3 spoke a facing-less end-turn and a facing-bearing tile target, so it is turned
     // away at the handshake rather than left to fail one rejected intent at a time.
-    for (const version of [1, 3, 4, 5, 6] as const) {
+    for (const version of [1, 3, 4, 5, 6, 7] as const) {
       const legacy = await SocketClient.connect(server.origin, hostCredential, { protocolVersion: version });
       sockets.push(legacy);
       const mismatch = await legacy.waitFor(
         (message): message is ServerError => message.type === "error" && message.code === "PROTOCOL_MISMATCH",
       );
-      expect(mismatch.message).toContain("version 7");
+      expect(mismatch.message).toContain("version 9");
     }
   }, 30_000);
 

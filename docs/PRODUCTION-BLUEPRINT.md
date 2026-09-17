@@ -9,7 +9,7 @@ routine authoring의 선행 조건이 아닙니다.
 함께 적었습니다 — 문서가 코드보다 오래됐다고 의심되면 그 경로가 정답입니다.
 
 ```text
-작성 시점 baseline   cardguild.m7@0.4.0 / schema v9 / fnv1a64:8795c80164042fbf
+작성 시점 baseline   cardguild.m7@0.6.0 / schema v11 / fnv1a64:e6430ce79e65bbdd
 지금 값 확인         npx tsx tools/content/check-content.ts && npx tsx tools/content/check-production-content.ts
 ```
 
@@ -53,7 +53,7 @@ AUTHORED GAMEPLAY          ← 여기에 콘텐츠를 씁니다
                  equipment.json actors.json scenarios.json adventures.json
 
 MACHINE CONTRACT           ← 무엇이 합법인지 정의합니다
-  content/schema/content-pack.schema.json   구조 (Draft 2020-12, schemaVersion 8)
+  content/schema/content-pack.schema.json   구조 (Draft 2020-12, schemaVersion 11)
   src/content/content-types.ts              authoring DTO
   src/content/validate-content.ts           schema 실행
   src/content/validate-semantics.ts         참조·배치·파생값 규칙 (63가지 오류 코드)
@@ -157,15 +157,20 @@ gate를 우회하는 flag는 없습니다.
   Condition은 접두사 없는 kebab-case (`spiked-shield`, `hex-bolt`, `frightened`).
 - **ID를 바꾸는 것은 새 정의를 만들고 옛 것을 지우는 것과 같습니다.** fingerprint가 바뀌고
   기존 replay/저장 상태는 거부됩니다(`CombatState`가 pack id/version/fingerprint를 들고 있음).
-- `manifest.json`: `schemaVersion` 8 고정, `id` `cardguild.m7`, `rulesetId`
+- `manifest.json`: `schemaVersion` 11 고정, `id` `cardguild.m7`, `rulesetId`
   `cardguild.pf2e-remaster.v1`.
 - **gameplay authored data를 바꾸면 `version`을 올립니다**(예: 0.2.0 → 0.3.0). 문서/asset만
   바뀌면 올리지 않습니다. 값은 `content/m7/manifest.json` **한 곳에만** 있습니다 — 테스트와
   runtime identity는 전부 거기서 파생되므로 다른 파일을 함께 고칠 일이 없어야 합니다.
   어딘가에 version 문자열을 다시 적으면 그 순간부터 routine content 변경이 남의 테스트를
   깨뜨립니다.
-- JSON shape을 호환 불가하게 바꾸면 `schemaVersion`을 올리고 명시적 migration을 추가합니다.
-  기존 schema를 덮어써 조용히 재해석하지 않습니다.
+- JSON shape을 호환 불가하게 바꾸면 `schemaVersion`을 올리고 호환 정책을 명시합니다.
+- **M11-2는 Save v1과 이전 gameplay content를 자동 이관하지 않습니다.**
+  `REGISTERED_CONTENT_MIGRATIONS`는 비어 있습니다. 새 legal Build로 기존 final stats를 정확히
+  역변환할 수 없으므로 Save v1은 `SAVE_SCHEMA_UNSUPPORTED`, 이전 content는
+  `SAVE_CONTENT_MISMATCH`로 거절합니다. 원본 row/JSON/hash/revision은 보존합니다.
+  Save 2 / AdventureState 4 / protocol 8로 올리고 SessionCoreState 3 / CombatState 4는 유지합니다.
+  SQLite column 변경이 없으므로 DB migration은 추가하지 않습니다.
 - **fingerprint는 authoring 대상이 아닙니다.** `fingerprintContentPack()`이 정규화된 pack
   전체에서 계산합니다(정의 배열 순서, object key 순서, tile 입력 순서에 영향받지 않음).
 - **presentation asset은 gameplay fingerprint에 들어가지 않습니다.** 아이콘을 다시 그려도
@@ -232,10 +237,38 @@ primitive 조합으로만 표현하고, 조합이 불가능하면 §13으로 갑
 ### 3.3 Trait
 
 ```jsonc
-{ "id": "shield", "name": "Shield", "cardGrants": [], "actionGrants": [{ "actionId": "raise-shield", "contextGroup": "shield" }] }
-{ "id": "trip",   "name": "Trip",   "cardGrants": [{ "cardDefinitionId": "card.trip", "count": 2 }], "actionGrants": [] }
+{ "id": "shield", "name": "Shield", "source": "cardguild", "category": "equipment",
+  "description": "방패입니다. 장착하면 Raise Shield 문맥 행동을 쓸 수 있습니다.",
+  "cardGrants": [], "actionGrants": [{ "actionId": "raise-shield", "contextGroup": "shield" }] }
+{ "id": "agile",  "name": "Agile",  "source": "pf2e-remaster", "category": "weapon",
+  "description": "가벼운 무기입니다. 같은 턴의 두 번째·세 번째 공격 페널티가 -4/-8로 줄어듭니다.",
+  "cardGrants": [], "actionGrants": [] }
 ```
 
+- `id`가 **유일한 identity이자 규칙 lookup key**입니다. source namespace를 붙이지 않습니다
+  (`pf2e.agile` ✗). 같은 `id`는 source가 달라도 pack 안에 하나뿐입니다(`DUPLICATE_ID`).
+- `source` (`pf2e-remaster | cardguild`) / `category` (`system ancestry class personality creature
+  action weapon equipment condition terrain damage general`) / `description` (공백 아닌 문자열)은
+  **필수 metadata**입니다. schema와 semantic validator가 함께 검사합니다
+  (`INVALID_TRAIT_SOURCE`, `INVALID_TRAIT_CATEGORY`, `EMPTY_TRAIT_DESCRIPTION`). 세 값은
+  fingerprint에 들어갑니다. **Combat provider/statistic은 `id`로 lookup**합니다.
+  Character Build resolver는 `category=ancestry|class`로 exactly-one identity slot을 찾고
+  해당 Trait `id`로 Ancestry/Class registry를 조회합니다. category 자체에 성장 수치를 넣지 않습니다.
+- **source 판단 기준**: `source`는 **vocabulary의 출처**만 말합니다. 원전(PF2e Remaster)에 같은
+  이름의 Trait이 있고 **현재 CardGuild에서의 의미가 원전과 일치하면** `pf2e-remaster`입니다.
+  `cardGrants`/`actionGrants`/`statModifiers`는 그 Trait을 CardGuild가 **어떻게 활용하는가**이지
+  출처가 아니므로, `trip`·`parry`처럼 Player Core weapon Trait에 provider를 붙인 경우도
+  `pf2e-remaster`입니다. 이름만 같은 경우(`open`은 원전에서 공격 순서 Trait, 여기서는 바닥 칸),
+  terrain/system marker, 원전에 없는 단어(`spell`, `reaction`, `weapon`, `field-medicine` …),
+  판단이 불분명한 경우는 `cardguild`입니다. 현재 audit 결과는
+  `src/content/production-content.test.ts`의 `production trait vocabulary`가 고정합니다.
+- `name`은 공용 chip의 canonical label입니다. provider 역할이 아니라 그 Trait 자체를 부릅니다
+  (`grabbed` → "Grabbed", "Grabbed Recovery" ✗).
+- `description`은 **지금 CardGuild가 구현한 의미**를 한두 문장으로 씁니다(한국어). 미구현
+  원전 효과를 약속하지 않고, 원문 규칙을 옮겨 적지 않습니다. UI는 이 문장만 보여 주며 화면별
+  설명을 따로 두지 않습니다(`src/dom/trait-view.ts`).
+- `TraitInstance.sourceId`(이 instance를 무엇이 부여했는가)와 `TraitDefinition.source`(이
+  vocabulary가 어디서 왔는가)는 다른 것이며 instance에 metadata를 복제하지 않습니다.
 - Trait은 **Card provider / Context Action provider / stat modifier 보유자**입니다.
 - Equipment·Condition이 카드나 컨텍스트 행동을 주는 유일한 경로가 이 pipeline입니다.
   개별 ID 분기는 없습니다.
@@ -454,24 +487,34 @@ Archer Perch : tower-shield / buckler / striders-boots / spiked-shield    → 1�
 ### 6.1 authored
 
 ```text
+traits: ancestry Trait 정확히 1개 + class Trait 정확히 1개 (canonical Trait ID)
 statProfile.kind = "character"
-  level
-  attributes           str dex con int wis cha   (6개 전부)
-  perception           proficiency rank
-  saves                fortitude reflex will     (3개 전부)
-  skills               16개 General Skill 전부   (Lore 없음)
-  defense              ancestryHp, classHpPerLevel, armorProficiencies(unarmored/light/medium/heavy)
-  offense              keyAttribute, weaponProficiencies(unarmed/simple/martial/advanced),
-                       classDcProficiency, unarmedStrike(characterWeaponProfile)
-speedFeet   traits(playable 포함)   initialConditions
+  build.freeBoosts      서로 다른 Attribute 4개
+  build.trainedSkills   서로 다른 Skill, Level 1 최종 INT + 2개
+  level                 authored level
+  advancements          authored level까지의 모든 공통 성장 선택
 loadoutProfile.preparedCardCapacity
 starterLoadout.equipment / .preparedCards
-innateActionIds   baseCardGrants
+initialConditions   innateActionIds   baseCardGrants
 ```
 
-`playable` trait을 가진 Actor는 반드시 character profile이어야 합니다
-(`PLAYABLE_REQUIRES_CHARACTER_STATS`). `unarmedStrike.category`는 `unarmed`여야 합니다
-(`UNARMED_STRIKE_CATEGORY_MISMATCH`).
+`ancestries.json`은 HP/speed/fixed boosts 2개, `classes.json`은 HP per level/key Attribute와
+모든 Save/Armor/Weapon/Perception/Class DC starting rank 및 증가 milestone을 소유합니다.
+Trait에는 성장 표를 넣지 않습니다. 시작 Attribute는 전부 0이며 ancestry 2 + class 1 + free 4를
+적용합니다. NPC도 같은 source/validator/resolver를 쓰고, `playable`은 조종용 표시입니다.
+Creature에는 이 identity invariant를 적용하지 않습니다.
+
+Class는 Player Core 8종 + Champion 예외 1종으로 제한하며 클래스별 고정 preset을 사용합니다.
+[원전 출처·차이·네 캐릭터 Build 표](m11-2-character-progression-foundation.md)를 먼저 확인하세요.
+
+공통 Skill Increase는 Lv3/5/7/9/11/13/15/17/19, Attribute 4개 boost는 Lv5/10/15/20입니다.
+Skill master는 Lv7, legendary는 Lv15부터이며 Attribute +4부터는 두 번에 +1입니다.
+`advancements`에는 대상만 저장하고 최종 rank/partial/pending은 저장하지 않습니다.
+Class proficiency milestone은 자동 적용하며 Skill/Attribute를 변경할 수 없습니다.
+
+Compiled `ActorDefinition.character`에는 원래 Build와 authored 성장 이력이 남습니다.
+`resolveEffectiveCharacterStatProfile(actor, member.progression, pack.characterRules)`가 runtime
+level에서 다시 계산하며, Combat/Loadout는 기존 effective profile 경계를 공유합니다.
 
 ### 6.2 authoring 금지 — 전부 파생값
 
@@ -491,8 +534,9 @@ proficiency bonus = `untrained 0`, 그 외 `level + 2/4/6/8`(trained/expert/mast
 `proficiencyBonus()` 소유. Save는 `fortitude→CON, reflex→DEX, will→WIS`, Skill의 기본
 Attribute는 `SKILL_ATTRIBUTE` 표(`athletics→STR`, `arcana→INT` …)가 소유합니다.
 
-schema가 `ac`/`maxHp`/`attackModifier`/`classDc` 같은 필드를 character profile에서 아예 거부하고,
-`production-starters.test.ts`가 authored JSON 문자열에 그 키가 없는지도 확인합니다.
+Character source의 `stats` 전체와 `speedFeet`는 금지합니다. 모든 수치와 speed는 Build,
+성장 이력, registry에서 파생합니다. Fist는 shared default(agile/finesse, d4 bludgeoning)이며
+alternate unarmed authoring은 이번 범위에 없습니다.
 
 ### 6.3 값 확인 방법
 
@@ -507,22 +551,29 @@ snapshot.deck;       // base + prepared + equipment-trait 기여
 snapshot.contextActionIds;
 ```
 
-### 6.4 Golden example — derived boundary
+### 6.4 Golden example — Build source
 
 ```jsonc
-// hero.brom (발췌) — 숫자는 입력이고, 결과는 resolver가 만듭니다
-"attributes": { "str": 3, "dex": 0, "con": 4, "int": 0, "wis": -1, "cha": 1 },
-"defense": { "ancestryHp": 10, "classHpPerLevel": 12,
-             "armorProficiencies": { "unarmored": "trained", "light": "trained",
-                                     "medium": "trained", "heavy": "expert" } },
-"offense": { "keyAttribute": "str", "classDcProficiency": "trained",
-             "weaponProficiencies": { "unarmed": "trained", "simple": "trained",
-                                      "martial": "trained", "advanced": "untrained" },
-             "unarmedStrike": { "name": "Fist", "category": "unarmed", "attackMode": "melee",
-                                "rangeFeet": 5, "damage": { "count": 1, "sides": 4,
-                                "damageType": "bludgeoning" }, "traits": [...] } }
-// → Max HP 10 + 1×(12+4) = 26. JSON 어디에도 26은 없습니다.
+// hero.brom의 identity와 Build 발췌
+"traits": [{ "id": "actor" }, { "id": "playable" }, { "id": "dwarf" }, { "id": "champion" }],
+"statProfile": {
+  "kind": "character",
+  "build": { "freeBoosts": ["str", "con", "wis", "cha"],
+             "trainedSkills": ["athletics", "intimidation"] },
+  "level": 1,
+  "advancements": []
+}
+// dwarf HP 10 + Lv1 × (champion HP 10 + CON 2) = Max HP 22
+// Lv3 선택 예: { "level": 3, "skillIncrease": "athletics" }
+// Lv5 선택 예: { "level": 5, "skillIncrease": "medicine",
+//                "attributeBoosts": ["str", "dex", "con", "wis"] }
 ```
+
+새 Level이 되어도 EXP transition은 choice를 만들지 않습니다. 모든 파티원의 pending 선택을
+Adventure Level-Up에서 확정한 뒤 다음 전투를 시작합니다. 현재 조종자만 ready/between에서
+변경할 수 있고, 오프라인 guest의 캐릭터에는 기존 host fallback을 적용합니다.
+active/completed Combat은 소급 변경하지 않습니다. Save COMMIT이 성공하기 전에는 state,
+ACK와 성장 event를 publish하지 않습니다.
 
 `advanced: untrained`는 **장착 금지가 아닙니다.** 장착도 공격도 되지만 proficiency bonus가
 0이라 명중이 크게 떨어집니다. "쓸 수 없다"와 "쓰면 손해다"를 구분해 적으세요.
@@ -1141,7 +1192,7 @@ main을 향한 PR은 `CI Full`(`check` → `build` → `npm test`)입니다. mer
 | `check-production-content` | 현재 M7 release policy: volume, reachability/reserve, tutorial prefix, starter loadout, 1P/2P/3P 구조적 조립, AI 정적 참조, visual coverage |
 | `check-assets` | 생성 asset 무결성 + Card/Equipment visual 정확 일치 |
 | Unit / Node | mechanics + content 회귀 (`src/**/*.test.ts`) |
-| Unit / Browser | 컴포넌트 하나의 DOM·PixiJS 계약 (서버 없이) |
+| Unit / Browser | 컴포넌트 하나의 DOM·PixiJS 계약 (서버 없이; Trait chip/tooltip 포함) |
 | Integration | server/session/progression 실제 경로 |
 | E2E | 브라우저/presentation/loadout 실제 경로 |
 | Recovery | 배포 산출물의 재시작·강제 종료 |
@@ -1159,6 +1210,8 @@ main을 향한 PR은 `CI Full`(`check` → `build` → `npm test`)입니다. mer
 - [ ] `npx tsx tools/assets/build-assets.ts`로 생성물 갱신 (asset을 건드렸다면)
 - [ ] `npm run check` 통과
 - [ ] gameplay data가 바뀌었으면 `manifest.json`의 `version`을 올렸다
+- [ ] 새 Trait에 `source` / `category` / `description`을 §3.3 기준으로 적었다
+- [ ] content identity가 바뀌었으면 §2의 Campaign Save migration을 **교체**하고 `verify()`가 직전 fingerprint를 재현한다
 - [ ] balance에 닿았으면 같은 seed playtest 전후 비교를 남겼다
 - [ ] 이 문서가 소유한 계약을 바꿨다면 **같은 PR에서 이 문서도 고쳤다**(§14)
 

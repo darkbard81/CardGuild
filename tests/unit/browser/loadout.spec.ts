@@ -28,7 +28,7 @@ test.beforeEach(async ({ page }) => {
       equipment[id] = { ...prototype, id, name: `Test weapon ${index}` };
     }
     const pack = { ...content.pack, combatContent: { ...content.pack.combatContent, equipment } };
-    const initial = createAdventureSession({ definition: content.adventure, actorDefinitions: pack.actorDefinitions, combatContent: pack.combatContent }, {
+    const initial = createAdventureSession({ definition: content.adventure, actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules, combatContent: pack.combatContent }, {
       members: { hero: { id: "hero", seat: 1, actorDefinitionId: actor.id, loadout: actor.starterLoadout } },
     }, 1);
     const state = { ...initial, collection: { ...initial.collection, equipment: Object.fromEntries(Object.keys(equipment).map((id) => [id, 1])) } };
@@ -38,6 +38,41 @@ test.beforeEach(async ({ page }) => {
     document.querySelector<HTMLElement>("#app")!.dataset.screen = "loadout";
     ui.render(state, new Set(["hero"]));
   });
+});
+
+test("shows a locked owned card and equipment grant, then unlocks both at the current level", async ({ page }) => {
+  await page.evaluate(() => {
+    const fixture = window.loadoutFixture;
+    fixture.state = { ...fixture.state, collection: { ...fixture.state.collection, cards: { ...fixture.state.collection.cards, "card.combat-grab": 1 } } };
+    fixture.ui.render(fixture.state, new Set(["hero"]));
+  });
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
+  const card = page.locator('[data-option-id="card.combat-grab"]');
+  await expect(card).toHaveAttribute("aria-disabled", "true");
+  await card.hover();
+  await expect(page.locator("#loadout-detail")).toContainText("요구 레벨 2 · 현재 레벨 1");
+  await card.dispatchEvent("click");
+  expect(await page.evaluate(() => window.loadoutFixture.requests)).toHaveLength(0);
+  await page.evaluate(() => {
+    const fixture = window.loadoutFixture;
+    const member = fixture.state.party.members.hero!;
+    fixture.state = { ...fixture.state, party: { members: { hero: { ...member, progression: { ...member.progression, level: 2 } } } } };
+    fixture.ui.render(fixture.state, new Set(["hero"]));
+  });
+  await expect(card).toHaveAttribute("aria-disabled", "false");
+  await card.hover();
+  await expect(page.locator("#loadout-detail")).toContainText("요구 레벨 2 · 현재 레벨 2");
+  await card.click();
+  expect(await page.evaluate(() => window.loadoutFixture.requests[0]?.preparedCards)).toContain("card.combat-grab");
+});
+
+test("explains the level of a Card granted by reward equipment", async ({ page }) => {
+  await page.getByRole("tab", { name: "무기", exact: true }).click();
+  const equipment = page.locator('[data-option-id="dueling-rapier"]');
+  await expect(equipment).toHaveAttribute("aria-disabled", "true");
+  await equipment.hover();
+  await expect(page.locator("#loadout-detail")).toContainText("Dueling Parry");
+  await expect(page.locator("#loadout-detail")).toContainText("요구 레벨 2 · 현재 레벨 1");
 });
 
 test("paginates a full grid, remembers pages and resets filters", async ({ page }) => {
@@ -56,6 +91,35 @@ test("paginates a full grid, remembers pages and resets filters", async ({ page 
   await expect(page.locator(".loadout-pagination")).toContainText("1 / 1");
   await page.getByRole("tab", { name: "신발", exact: true }).press("Home");
   await expect(page.getByRole("tab", { name: "전체", exact: true })).toBeFocused();
+});
+
+test("paginates complete portrait cards without changing equipment pagination", async ({ page }, testInfo) => {
+  await page.evaluate(async () => {
+    const contentPath = "/src/content/production-content.ts";
+    const { PRODUCTION_CONTENT } = await import(contentPath) as typeof import("../../../src/content/production-content");
+    const fixture = window.loadoutFixture;
+    fixture.state = { ...fixture.state, collection: { ...fixture.state.collection,
+      cards: Object.fromEntries(Object.keys(PRODUCTION_CONTENT.pack.combatContent.cards).map((id) => [id, 1])),
+    } };
+    fixture.ui.render(fixture.state, new Set(["hero"]));
+  });
+  await page.getByRole("tab", { name: "준비 카드", exact: true }).click();
+  await expect(page.locator(".loadout-card-items .loadout-card-tile")).toHaveCount(8);
+  await expect(page.locator(".loadout-pagination")).toContainText("1 / 4");
+  for (let index = 0; index < 4; index++) {
+    for (const card of await page.locator(".loadout-card-items .card-face").all()) {
+      const size = await card.boundingBox();
+      expect(size!.width / size!.height).toBeCloseTo(2 / 3, 2);
+    }
+    await expect(page.locator(".loadout-pagination")).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollHeight - innerHeight)).toBe(0);
+    if (index < 3) await page.getByRole("button", { name: "다음", exact: true }).click();
+  }
+  await expect(page.locator('[data-option-id="card.vicious-swing"] .card-face')).toHaveAttribute("data-image-state", "ready");
+  await page.screenshot({ path: testInfo.outputPath("loadout-cards.png") });
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - innerWidth)).toBe(0);
+  await page.screenshot({ path: testInfo.outputPath("loadout-cards-mobile.png"), fullPage: true });
 });
 
 test("guards pending changes, recovers from rejection and keeps read-only details available", async ({ page }) => {
@@ -100,5 +164,23 @@ test("touch hold and cancelled gestures inspect without submitting", async ({ pa
   // cancel, and only outliving that timer can show it.
   await page.waitForTimeout(500);
   await expect(page.locator("#loadout-detail")).toBeHidden();
+  expect(await page.evaluate(() => window.loadoutFixture.requests.length)).toBe(0);
+});
+
+test("gives up a hold when the finger leaves the tile before the hold fires", async ({ page }) => {
+  const weapon = page.locator('.equipment-slot[data-slot="weapon"]');
+  await weapon.dispatchEvent("pointerdown", { pointerType: "touch", button: 0, clientX: 100, clientY: 270 });
+  // A slide of less than the drag tolerance that still crosses the edge is a leave, not a
+  // move; the hold must not fire once the pointer is gone.
+  await weapon.dispatchEvent("pointermove", { pointerType: "touch", clientX: 104, clientY: 273 });
+  await weapon.dispatchEvent("pointerleave", { pointerType: "touch" });
+  // Real time on purpose: only outliving the 450ms hold shows it never fires.
+  await page.waitForTimeout(600);
+  await expect(page.locator("#loadout-detail")).toBeHidden();
+  expect(await page.evaluate(() => window.loadoutFixture.requests.length)).toBe(0);
+  // The tile is still a tile: the next hold works as before.
+  await weapon.dispatchEvent("pointerdown", { pointerType: "touch", button: 0, clientX: 100, clientY: 270 });
+  await expect(page.locator("#loadout-detail")).toBeVisible();
+  await weapon.dispatchEvent("pointerup", { pointerType: "touch" });
   expect(await page.evaluate(() => window.loadoutFixture.requests.length)).toBe(0);
 });

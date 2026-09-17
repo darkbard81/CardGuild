@@ -1,3 +1,5 @@
+import { isCardEligible, resolveCardEligibility } from "../game/capabilities";
+import { completeAdvancements } from "../../tests/support/campaign/complete-advancements";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -21,7 +23,7 @@ const ADVENTURE = PRODUCTION_CONTENT.adventure;
 
 const CONTEXT: AdventureRuntimeContext = {
   definition: ADVENTURE,
-  actorDefinitions: PACK.actorDefinitions,
+  actorDefinitions: PACK.actorDefinitions, characterRules: PACK.characterRules,
   combatContent: CONTENT,
 };
 
@@ -77,6 +79,7 @@ function runToCompletion(roster: readonly string[]): {
   const rewards: string[] = [];
   for (let guard = 0; guard < 24 && state.phase !== "complete"; guard += 1) {
     if (state.phase === "between-encounters") {
+        state = completeAdvancements(state, PACK);
       const started = dispatchAdventureCommand(state, { type: "start-encounter" }, CONTEXT);
       expect(started.accepted).toBe(true);
       state = started.state;
@@ -216,14 +219,15 @@ describe("tutorial onboarding prefix", () => {
     }
   });
 
-  it("lets a solo starter prepare either side of every reward", () => {
-    // A card copy always changes deck composition, but it still has to fit the Character's
-    // remaining prepared capacity for the choice to be real.
+  it("keeps rewards ownable and offers every starter an eligible choice", () => {
+    // Collection ownership is unrestricted; preparation follows the capability contract.
+    // Every reward still offers at least one immediately usable choice for each starter.
     for (const definition of Object.values(PACK.actorDefinitions)) {
       if (!definition.traits.some((trait) => trait.id === "playable")) continue;
       const free = definition.loadoutProfile.preparedCardCapacity - definition.starterLoadout.preparedCards.length;
       expect(`${definition.id}:free=${String(free >= 1)}`).toBe(`${definition.id}:free=true`);
       for (const reward of ADVENTURE.rewards) {
+        expect(reward.choices.some(choice => choice.kind === "equipment" || isCardEligible(definition, PACK.combatContent.cards[choice.definitionId]!, PACK.combatContent)), `${definition.id}/${reward.id}`).toBe(true);
         for (const choice of reward.choices) {
           if (choice.kind !== "card") continue;
           const member = { id: "party.hero-1", seat: 1 as const, actorDefinitionId: definition.id, loadout: definition.starterLoadout };
@@ -238,10 +242,14 @@ describe("tutorial onboarding prefix", () => {
           };
           const issues = validatePartyLoadout(prepared, {
             equipment: Object.fromEntries(Object.values(definition.starterLoadout.equipment).filter(Boolean).map((id) => [id as string, 1])),
-            cards: { ...collection.cards, ...Object.fromEntries(definition.starterLoadout.preparedCards.map((id) => [id, 1])) },
+            cards: { ...Object.fromEntries(definition.starterLoadout.preparedCards.map((id) => [id, 1])), [choice.definitionId]: 1 + definition.starterLoadout.preparedCards.filter(id => id === choice.definitionId).length },
           }, PACK).issues;
-          expect(`${definition.id}/${choice.definitionId}:${JSON.stringify(issues)}`)
-            .toBe(`${definition.id}/${choice.definitionId}:[]`);
+          const eligibility = resolveCardEligibility(definition, PACK.combatContent.cards[choice.definitionId]!, PACK.combatContent);
+          expect(issues.map(issue => issue.code), `${definition.id}/${choice.definitionId}`).toEqual(eligibility.eligible ? [] : [eligibility.code]);
+          expect(validatePartyLoadout({ members: { [member.id]: member } }, {
+            equipment: Object.fromEntries(Object.values(definition.starterLoadout.equipment).filter(Boolean).map(id => [id as string, 1])),
+            cards: { ...collection.cards, ...Object.fromEntries(definition.starterLoadout.preparedCards.map(id => [id, 1])) },
+          }, PACK).valid).toBe(true);
         }
       }
     }

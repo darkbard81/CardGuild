@@ -1,3 +1,5 @@
+import { cardPlanSource } from "../../tests/fixtures/card-source";
+import { isCardEligible } from "../game/capabilities";
 import { describe, expect, it } from "vitest";
 import { createTacticalCombatFixture } from "../../tests/fixtures/content";
 
@@ -192,21 +194,15 @@ describe("starter build identity", () => {
     for (const actor of STARTERS) expect(`${actor.id}:${String(weakness(actor.id))}`).toBe(`${actor.id}:true`);
   });
 
-  it("makes the tactician the Class DC specialist and the weakest striker", () => {
-    const snapshot = (id: string) => {
-      const actor = PACK.actorDefinitions[id];
-      if (!actor) throw new Error(`${id} is missing.`);
-      const derived = deriveLoadoutSnapshot(actor, actor.starterLoadout, CONTENT, id);
-      return { ...derived.statistics, damage: derived.strike.damage.flatModifier };
-    };
-    const nera = snapshot("hero.nera");
-    const others = ["hero.aerin", "hero.lyra", "hero.brom"].map(snapshot);
-    // Expert Class DC is what makes a Class-DC card hers rather than anyone's.
-    for (const other of others) expect(nera.classDc).toBeGreaterThan(other.classDc);
-    // She pays for it with the lowest Strike damage and no shield.
-    for (const other of others) expect(nera.damage).toBeLessThanOrEqual(other.damage);
-    expect(PACK.actorDefinitions["hero.nera"]?.starterLoadout.equipment.shield).toBeUndefined();
+  it("makes Nera a trained Warpriest with support skills and a weak starting martial Strike", () => {
+    const actor = PACK.actorDefinitions["hero.nera"]!;
+    const view = deriveLoadoutSnapshot(actor, actor.starterLoadout, CONTENT, actor.id);
+    expect(view.statistics.classDc).toBe(16);
+    expect(view.strike.proficiencyRank).toBe("untrained");
+    expect(view.strike.attackModifier).toBe(1);
+    expect(actor.statProfile).toMatchObject({ stats: { skills: { medicine: "trained", religion: "trained", athletics: "untrained" } } });
   });
+
 });
 
 /** One starter on the board with a chosen kit, plus a live enemy to aim at. */
@@ -242,9 +238,12 @@ const TARGET_ENEMY: ActorState = (() => {
 function planOf(actor: ActorState, actionId: string, target: ActionTarget) {
   const definition = CONTENT.actions[actionId];
   if (!definition) throw new Error(`Action "${actionId}" is missing.`);
-  const state = { map: createCombat(createTacticalCombatFixture({ rules: "character-rules" }), 33).state.map, actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } };
+  const card = cardPlanSource(CONTENT, actionId, actor.id);
+  const cardDefinition = Object.values(CONTENT.cards).find(card => card.actionId === actionId);
+  if (!cardDefinition || !isCardEligible(actor, cardDefinition, CONTENT)) return null;
+  const state = { cardZones: card.cardZones, map: createCombat(createTacticalCombatFixture({ rules: "character-rules" }), 33).state.map, actors: { [actor.id]: actor, [TARGET_ENEMY.id]: TARGET_ENEMY } };
   return buildResolvedActionPlan(
-    definition, actor, target, { kind: "card", id: "unused" }, state, CONTENT, { kind: "turn", attacksThisTurn: 0 },
+    definition, actor, target, card.source, state, CONTENT, { kind: "turn", attacksThisTurn: 0 },
   );
 }
 
@@ -253,18 +252,19 @@ const ENEMY_TARGET: ActionTarget = { kind: "actor", actorId: "enemy" };
 describe("starter signature actions", () => {
   it("resolves Aerin's reach control at her authored weapon reach", () => {
     const aerin = actorWith("hero.aerin");
-    const knockdown = planOf(aerin, "knockdown", ENEMY_TARGET);
-    if (knockdown?.resolution.kind !== "strike") throw new Error("Knockdown must resolve as a Strike.");
-    expect(knockdown.resolution.strike.rangeFeet).toBe(10);
-    expect(knockdown.resolution.outcomes.success.some((effect) =>
-      effect.kind === "apply-condition" && effect.condition === "prone")).toBe(true);
-    // Intimidating Strike carries a melee requirement her halberd satisfies.
-    expect(planOf(aerin, "intimidating-strike", ENEMY_TARGET)).not.toBeNull();
+    const swing = planOf(aerin, "vicious-swing", ENEMY_TARGET);
+    if (swing?.resolution.kind !== "strike") throw new Error("Vicious Swing must resolve as a Strike.");
+    expect(swing.resolution.strike.rangeFeet).toBe(10);
+    expect(planOf(aerin, "trip", ENEMY_TARGET)?.resolution.kind).toBe("check");
+    expect(planOf(aerin, "demoralize", ENEMY_TARGET)).not.toBeNull();
+    expect(planOf(aerin, "knockdown", ENEMY_TARGET)).toBeNull();
+    expect(planOf(aerin, "intimidating-strike", ENEMY_TARGET)).toBeNull();
   });
 
-  it("resolves Lyra's pin with a finesse weapon and her Acrobatics escape", () => {
+  it("resolves Lyra's Grapple and Acrobatics escape without a Fighter capability", () => {
     const lyra = actorWith("hero.lyra");
-    expect(planOf(lyra, "combat-grab", ENEMY_TARGET)).not.toBeNull();
+    expect(planOf(lyra, "grapple", ENEMY_TARGET)).not.toBeNull();
+    expect(planOf(lyra, "combat-grab", ENEMY_TARGET)).toBeNull();
     const slip = planOf(lyra, "slip-free", { kind: "none" });
     if (slip?.resolution.kind !== "check") throw new Error("Slip Free must resolve as a check.");
     expect(slip.resolution.check.modifier).toBe(
@@ -272,49 +272,50 @@ describe("starter signature actions", () => {
     );
   });
 
-  it("gives Brom the party's strongest Grapple", () => {
+  it("gives Brom a trained Grapple above the non-Strength starters", () => {
     const grappleModifier = (id: string): number => {
       const plan = planOf(actorWith(id), "grapple", ENEMY_TARGET);
       if (plan?.resolution.kind !== "check") throw new Error("Grapple must resolve as a check.");
       return plan.resolution.check.modifier;
     };
     const brom = grappleModifier("hero.brom");
-    for (const other of ["hero.aerin", "hero.lyra", "hero.nera"]) {
+    for (const other of ["hero.lyra", "hero.nera"]) {
       expect(`${other}:${String(brom > grappleModifier(other))}`).toBe(`${other}:true`);
     }
   });
 
-  it("rolls Nera's control against her expert Class DC", () => {
+  it("rolls Nera's control against her trained Class DC", () => {
     const nera = actorWith("hero.nera");
     const plan = planOf(nera, "iron-presence", ENEMY_TARGET);
     if (plan?.resolution.kind !== "check") throw new Error("Iron Presence must resolve as a check.");
     expect(plan.resolution.check.roller).toBe("target");
     expect(plan.resolution.check.dc).toBe(resolveClassDC(nera, { content: CONTENT }).value);
-    expect(plan.resolution.check.dc).toBe(19);
+    expect(plan.resolution.check.dc).toBe(16);
   });
 
-  it("leaves Nera's Athletics cards legal but weak, and opens Combat Grab with a melee weapon", () => {
+  it("leaves Nera's Athletics cards legal but weak and rejects Fighter Cards even with a melee weapon", () => {
     // untrained is not a legality gate: only an authored `skill-rank` requirement checks a
     // rank, and Trip and Grapple author none. Nera's weakness is the modifier, not a ban.
     const nera = actorWith("hero.nera");
     for (const actionId of ["trip", "grapple"]) {
       const plan = planOf(nera, actionId, ENEMY_TARGET);
       if (plan?.resolution.kind !== "check") throw new Error(`${actionId} must resolve as a check.`);
-      expect(`${actionId}:${String(plan.resolution.check.modifier)}`).toBe(`${actionId}:0`);
+      expect(`${actionId}:${String(plan.resolution.check.modifier)}`).toBe(`${actionId}:1`);
     }
-    // Combat Grab is closed by the weapon requirement alone, so a melee reward opens it.
+    // Equipment cannot bypass the Card's Class eligibility.
     expect(planOf(nera, "combat-grab", ENEMY_TARGET)).toBeNull();
-    expect(planOf(actorWith("hero.nera", ["light-blade", "leather-armor"]), "combat-grab", ENEMY_TARGET)).not.toBeNull();
+    expect(planOf(actorWith("hero.nera", ["light-blade", "leather-armor"]), "combat-grab", ENEMY_TARGET)).toBeNull();
   });
 
   it("keeps Battle Medicine aimed at a wounded teammate only", () => {
     const nera = actorWith("hero.nera");
     const wounded: ActorState = { ...actorWith("hero.brom"), id: "ally", hp: 4 };
-    const state = { actors: { hero: nera, ally: wounded, enemy: TARGET_ENEMY } } as unknown as CombatState;
+    const card = cardPlanSource(CONTENT, "battle-medicine", nera.id);
+    const state = { cardZones: card.cardZones, actors: { hero: nera, ally: wounded, enemy: TARGET_ENEMY } } as unknown as CombatState;
     const definition = CONTENT.actions["battle-medicine"];
     if (!definition) throw new Error("Battle Medicine is missing.");
     const aimed = (actorId: string) => buildResolvedActionPlan(
-      definition, nera, { kind: "actor", actorId }, { kind: "card", id: "unused" }, state, CONTENT,
+      definition, nera, { kind: "actor", actorId }, card.source, state, CONTENT,
       { kind: "turn", attacksThisTurn: 0 },
     );
     // Her Medicine expert satisfies the skill-rank requirement the card authors.

@@ -1,0 +1,29 @@
+[
+  {
+    "id": "dwarf",
+    "hitPoints": 10,
+    "speedFeet": 20,
+    "fixedBoosts": [
+      "con",
+      "wis"
+    ]
+  },
+  {
+    "id": "elf",
+    "hitPoints": 6,
+    "speedFeet": 30,
+    "fixedBoosts": [
+      "dex",
+      "int"
+    ]
+  },
+  {
+    "id": "human",
+    "hitPoints": 8,
+    "speedFeet": 25,
+    "fixedBoosts": [
+      "str",
+      "wis"
+    ]
+  }
+]

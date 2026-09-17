@@ -1,12 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { hashCombatState } from "../game";
+import { hashCombatState, listLegalActions, resolveActionSource } from "../game";
 import { hashSessionGameplayState, type SessionCoreState } from "../session";
 import { CampaignSaveError, createCampaignSave, restoreCampaignSave } from "./campaign-save";
 import {
   FIXTURE_CONTEXT,
-  LEGACY_CONTENT_IDENTITY,
   fixtureBegun,
+  fixtureAfterFlourish,
   fixtureDispatch,
   fixtureMidCombat,
   legacyStoredSave,
@@ -66,11 +66,36 @@ function refusal(record: CampaignSaveRecord): CampaignSaveError {
 }
 
 describe("campaign save projection", () => {
+  it("preserves spent Flourish and rechecks Card eligibility after durable restoration", () => {
+    const state = fixtureAfterFlourish();
+    const restored = restoreCampaignSave(storedRecord(state), FIXTURE_CONTEXT).projection;
+    expect(restored.combat!.turn.usedTraitsByActor).toEqual({ "party.hero-1": ["flourish"] });
+    expect(hashSessionGameplayState(restored)).toBe(hashSessionGameplayState(state));
+    const combat = restored.combat!;
+    const card = listLegalActions(combat, "party.hero-1", FIXTURE_CONTEXT.pack.combatContent).find(action => action.source.id === "flourish-second");
+    expect(card).toMatchObject({ enabled: false, reason: "Only one Flourish capability can be used per turn." });
+    const wizard = { ...combat.actors["party.hero-1"]!, traits: [{ id: "wizard" }] };
+    expect(resolveActionSource(combat, wizard, { kind: "card", id: "flourish-second" }, FIXTURE_CONTEXT.pack.combatContent)).toBeNull();
+  });
+
+  it("rejects malformed turn Trait bookkeeping instead of resetting restrictions", () => {
+    const state = fixtureAfterFlourish();
+    for (const value of [{ ghost: ["flourish"] }, { "party.hero-1": ["unknown-trait"] }, { "party.hero-1": ["flourish", "flourish"] }]) {
+      const record = tamperedRecord(state, save => {
+        (save.combat!["turn"] as Record<string, unknown>)["usedTraitsByActor"] = value;
+      });
+      // The hash agrees: this must be refused by shape/reference invariants themselves.
+      const decoded = JSON.parse(record.snapshotJson) as ReturnType<typeof createCampaignSave>;
+      expect(refusal({ ...record, snapshotHash: hashSessionGameplayState(decoded) }).code).toBe("SAVE_CORRUPT");
+    }
+  });
+
   it("round-trips mid-combat gameplay, non-default progression and the collection at the same hash", () => {
-    const state = withProgression(fixtureMidCombat(), {
-      "party.hero-1": { level: 3, experience: 750 },
-      "party.hero-2": { level: 2, experience: 125 },
+    const begun = withProgression(fixtureBegun(), {
+      "party.hero-1": { level: 3, experience: 750, advancements: [{ level: 3, skillIncrease: "athletics" }] },
+      "party.hero-2": { level: 2, experience: 125, advancements: [] },
     });
+    const state = fixtureDispatch(begun, begun.hostPlayerId, { type: "start-encounter" });
     const record = storedRecord(state);
 
     const { projection: restored, migration } = restoreCampaignSave(record, FIXTURE_CONTEXT);
@@ -80,7 +105,7 @@ describe("campaign save projection", () => {
     expect(restored.adventure).toEqual(state.adventure);
     expect(restored.combat).toEqual(state.combat);
     expect(restored.partySlots).toEqual(state.partySlots);
-    expect(restored.adventure.party.members["party.hero-1"]?.progression).toEqual({ level: 3, experience: 750 });
+    expect(restored.adventure.party.members["party.hero-1"]?.progression).toEqual({ level: 3, experience: 750, advancements: [{ level: 3, skillIncrease: "athletics" }] });
     expect(restored.adventure.collection).toEqual(state.adventure?.collection);
     // The exit criterion: the restored projection hashes exactly like the saved session.
     expect(hashSessionGameplayState(restored)).toBe(record.snapshotHash);
@@ -164,7 +189,7 @@ describe("campaign save validation", () => {
 
   it("refuses an unsupported save schema without guessing at its shape", () => {
     const state = fixtureMidCombat();
-    for (const version of [0, 2, 99]) {
+    for (const version of [0, 1, 2, 4, 99]) {
       const record = tamperedRecord(state, (save) => { save.saveSchemaVersion = version; });
       expect(refusal(record).code).toBe("SAVE_SCHEMA_UNSUPPORTED");
     }
@@ -176,6 +201,9 @@ describe("campaign save validation", () => {
       { packId: "other-pack" },
       { packVersion: "0.0.1" },
       { fingerprint: "stale-fingerprint" },
+      // Two releases back: M9-4's source identity is no longer registered, so it is refused
+      // rather than chained through a migration this build does not carry.
+      { packVersion: "0.3.0", fingerprint: "fnv1a64:887ee163d92faa57" },
     ]) {
       // A genuinely older save carries the same identity in its header and in its battle.
       const record = tamperedRecord(state, (save) => {
@@ -235,11 +263,11 @@ describe("campaign save validation", () => {
   it("rejects invalid progression, unknown encounters and an impossible reward phase", () => {
     const state = fixtureMidCombat();
     const members = (save: MutableSave) =>
-      (save.adventure["party"] as { members: Record<string, { progression: { level: number; experience: number } }> }).members;
+      (save.adventure["party"] as { members: Record<string, { progression: import("../character").CharacterProgressionState }> }).members;
 
     expect(refusal(tamperedRecord(state, (save) => {
       const member = members(save)["party.hero-1"];
-      if (member) member.progression = { level: 1, experience: 1_000 };
+      if (member) member.progression = { level: 1, experience: 1_000, advancements: [] };
     })).message).toContain("experience");
     expect(refusal(tamperedRecord(state, (save) => {
       save.adventure["completedEncounterIds"] = ["scenario.does-not-exist"];
@@ -360,73 +388,52 @@ describe("campaign save validation", () => {
       };
     }
 
-    it("carries a mid-combat save from the previous pack onto the current one without replaying it", () => {
-      // Levels are raised before the encounter starts, which is the only order the runtime
-      // can produce: a battle is always built from the progression the party walked in with.
-      const begun = withProgression(fixtureBegun(), {
-        "party.hero-1": { level: 2, experience: 640 },
-        "party.hero-2": { level: 1, experience: 300 },
-      });
-      const state = fixtureDispatch(begun, begun.hostPlayerId, { type: "start-encounter" });
-      const record = legacyRecord(state);
-      expect(record.contentIdentity.fingerprint).toBe(LEGACY_CONTENT_IDENTITY.fingerprint);
-
-      const { projection, migration } = restoreCampaignSave(record, FIXTURE_CONTEXT);
-
-      expect(migration).not.toBeNull();
-      expect(projection.contentIdentity).toEqual({
-        packId: "cardguild.m7", packVersion: "0.4.0", fingerprint: FIXTURE_CONTEXT.pack.fingerprint,
-      });
-      // Progress is carried, never recomputed: no EXP is paid for anything already done.
-      expect(projection.adventure.party.members["party.hero-1"]?.progression).toEqual({ level: 2, experience: 640 });
-      expect(projection.adventure.party.members["party.hero-2"]?.progression).toEqual({ level: 1, experience: 300 });
-      expect(projection.adventure.completedEncounterIds).toEqual(state.adventure?.completedEncounterIds);
-      expect(projection.adventure.collection).toEqual(state.adventure?.collection);
-      expect(projection.adventure.pendingReward).toEqual(state.adventure?.pendingReward);
-      // The battle itself is untouched apart from the identity and the fingerprint holding it.
-      const restoredCombat = projection.combat!;
-      const savedCombat = state.combat!;
-      expect({ ...restoredCombat, contentIdentity: null, setupFingerprint: "" })
-        .toEqual({ ...savedCombat, contentIdentity: null, setupFingerprint: "" });
-      // The fingerprint is re-derived, and it lands on exactly what this build would compute.
-      expect(restoredCombat.setupFingerprint).toBe(savedCombat.setupFingerprint);
-      expect(restoredCombat.setupFingerprint).not.toBe(JSON.parse(record.snapshotJson).combat.setupFingerprint);
-      expect(restoredCombat.commandLog).toEqual(savedCombat.commandLog);
-      // The save handed back is the one a caller must COMMIT, and it hashes to what it says.
-      expect(migration!.save.contentIdentity).toEqual(projection.contentIdentity);
-      expect(hashSessionGameplayState(projection)).toBe(migration!.snapshotHash);
-      expect(migration!.snapshotHash).not.toBe(record.snapshotHash);
+    it.each([fixtureBegun, fixtureMidCombat])("refuses previous gameplay content without mutating its row", make => {
+      const record = legacyRecord(make());
+      const before = structuredClone(record);
+      expect(refusal(record).code).toBe("SAVE_CONTENT_MISMATCH");
+      expect(record).toEqual(before);
     });
-
-    it("carries a between-encounters save and refuses one whose stored hash disagrees", () => {
-      const state = fixtureBegun();
-      const record = legacyRecord(state);
-
-      const { projection, migration } = restoreCampaignSave(record, FIXTURE_CONTEXT);
-      expect(projection.combat).toBeNull();
-      expect(migration!.save.combat).toBeNull();
-      expect(projection.adventure).toEqual(state.adventure);
-
-      // The source is judged against the content it was written for, so a doctored payload
-      // is refused before anything is re-stamped.
-      expect(refusal({ ...record, snapshotHash: "fnv1a64:0000000000000000" }).code).toBe("SAVE_CORRUPT");
+    it("refuses Save v1 before attempting to reinterpret its Character stats", () => {
+      const record = legacyRecord(fixtureMidCombat());
+      const payload = JSON.parse(record.snapshotJson);
+      payload.saveSchemaVersion = 1;
+      payload.adventure.version = 3;
+      for (const member of Object.values(payload.adventure.party.members) as { progression: Record<string, unknown> }[]) delete member.progression.advancements;
+      const old = { ...record, saveSchemaVersion: 1, snapshotJson: JSON.stringify(payload) };
+      const before = structuredClone(old);
+      expect(refusal(old).code).toBe("SAVE_SCHEMA_UNSUPPORTED");
+      expect(old).toEqual(before);
     });
+  });
+});
 
-    it("refuses a legacy mid-combat save whose battle does not match its own party", () => {
-      const state = fixtureMidCombat();
-      const record = legacyRecord(state, (payload) => {
-        const combat = payload["combat"] as Record<string, unknown>;
-        combat["setupFingerprint"] = "fnv1a64:1111111111111111";
-      });
-      // Re-hash so the doctored payload is self-consistent and only the setup is wrong.
-      const legacy = JSON.parse(record.snapshotJson) as { readonly combat: unknown };
-      expect(legacy.combat).toBeTruthy();
-      const error = refusal({
-        ...record,
-        snapshotHash: hashSessionGameplayState(JSON.parse(record.snapshotJson) as never),
-      });
-      expect(error.code).toBe("SAVE_CORRUPT");
-      expect(error.message).toContain("setup does not match the content");
+describe("Save v2 Character history", () => {
+  it("round-trips pending choices and committed history with the same hash", () => {
+    const state = withProgression(fixtureBegun(), {
+      "party.hero-1": { level: 5, experience: 25, advancements: [{ level: 3, skillIncrease: "athletics" }] },
     });
+    const record = storedRecord(state);
+    expect(record.saveSchemaVersion).toBe(3);
+    const restored = restoreCampaignSave(record, FIXTURE_CONTEXT).projection;
+    expect(restored.adventure).toEqual(state.adventure);
+    expect(hashSessionGameplayState(restored)).toBe(record.snapshotHash);
+  });
+  it("rejects fabricated, future, duplicate, off-schedule and rank-illegal history even when rehashed", () => {
+    const state = fixtureBegun();
+    for (const progression of [
+      { level: 2, experience: 0, advancements: [{ level: 3, skillIncrease: "athletics" }] },
+      { level: 3, experience: 0, advancements: [{ level: 3, skillIncrease: "athletics" }, { level: 3, skillIncrease: "medicine" }] },
+      { level: 5, experience: 0, advancements: [{ level: 3, skillIncrease: "athletics" },
+        { level: 5, skillIncrease: "athletics", attributeBoosts: ["str", "dex", "con", "wis"] }] },
+      { level: 3, experience: 0, advancements: [{ level: 3, skillIncrease: "athletics", rank: "legendary" }] },
+    ]) {
+      const record = tamperedRecord(state, save => {
+        const party = save.adventure["party"] as { members: Record<string, { progression: unknown }> };
+        party.members["party.hero-1"]!.progression = progression;
+      });
+      const rehashed = { ...record, snapshotHash: hashSessionGameplayState(JSON.parse(record.snapshotJson)) };
+      expect(refusal(rehashed).code).toBe("SAVE_CORRUPT");
+    }
   });
 });

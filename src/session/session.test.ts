@@ -100,7 +100,7 @@ describe("pure M5 Session authority", () => {
       ...initial,
       adventure: { ...initial.adventure!, party: { members: {
         ...initial.adventure!.party.members,
-        [memberId]: { ...initial.adventure!.party.members[memberId]!, progression: { level, experience } },
+        [memberId]: { ...initial.adventure!.party.members[memberId]!, progression: { level, experience, advancements: [] } },
       } } },
     });
     const hash = hashSessionGameplayState(initial);
@@ -114,7 +114,7 @@ describe("pure M5 Session authority", () => {
       expect(hashCombatState(decoded.combat!)).toBe(hashCombatState(initial.combat!));
     }
     expect(() => assertSessionInvariants(stateWith(1, 1000))).toThrow("experience");
-    expect(() => assertSessionInvariants({ ...initial, adventure: { ...initial.adventure!, version: 2 } } as unknown as SessionCoreState)).toThrow("version 3");
+    expect(() => assertSessionInvariants({ ...initial, adventure: { ...initial.adventure!, version: 2 } } as unknown as SessionCoreState)).toThrow("version 4");
   });
   it("authorizes and commits final facing plus End Turn as one revision", () => {
     const state = beginAndStart(readyThreePlayers());

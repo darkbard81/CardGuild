@@ -30,6 +30,7 @@
         "choices": [
           { "kind": "card", "definitionId": "card.trip" },
           { "kind": "card", "definitionId": "card.demoralize" },
+          { "kind": "card", "definitionId": "card.combat-grab" },
           { "kind": "card", "definitionId": "card.fear" }
         ]
       },
@@ -39,6 +40,7 @@
         "choices": [
           { "kind": "card", "definitionId": "card.spirit-lance" },
           { "kind": "card", "definitionId": "card.arcane-ward" },
+          { "kind": "card", "definitionId": "card.lay-on-hands" },
           { "kind": "card", "definitionId": "card.vicious-swing" }
         ]
       },

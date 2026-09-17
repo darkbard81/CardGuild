@@ -20,6 +20,7 @@ import {
   type SessionIntent,
 } from "../../src/session";
 import { startFaultServer, type FaultChild } from "../support/recovery/fault-child";
+import { settle } from "../support/campaign/campaign-drive";
 import { SocketClient, TEST_ORIGIN, envelope, play } from "../support/network/socket-client";
 
 const PARTY = ["hero.aerin", "hero.lyra", "hero.brom"] as const;
@@ -156,7 +157,11 @@ describe("durable campaign save over a real file database", () => {
     let snapshot = await client.snapshot();
     snapshot = await play(client, snapshot, "party", { type: "set-party-composition", actorDefinitionIds: [...PARTY] });
     snapshot = await play(client, snapshot, "begin", { type: "begin-adventure" });
-    return await play(client, snapshot, "encounter", { type: "start-encounter" });
+    snapshot = await play(client, snapshot, "encounter", { type: "start-encounter" });
+    // Deck shuffles share the seeded RNG with initiative; an enemy may act first.
+    const ready = await settle(client, snapshot.revision);
+    if (!ready) throw new Error("The encounter closed before player input.");
+    return ready;
   }
 
   it("recovers the last committed campaign into a fresh session after the server restarts", async () => {

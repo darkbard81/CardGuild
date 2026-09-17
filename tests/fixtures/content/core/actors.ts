@@ -1,285 +1,225 @@
-import type { ActorDefinition } from "../../../../src/content";
+import type { ActorSource } from "../../../../src/content";
 
-/**
- * One hero and the three Creatures that fight it.
- *
- * The hero is a Character profile — attributes, proficiencies and a starter loadout the
- * resolver derives everything else from — so the core fixture can exercise the whole
- * derivation without needing the three-character roster.
- */
-export const CORE_ACTORS: readonly ActorDefinition[] = [
+/** Legal Character build sources and fixed Creature opponents. */
+export const CORE_ACTORS: readonly ActorSource[] = [
   {
-    id: "hero.aerin",
-    name: "Aerin",
-    statProfile: {
-      kind: "character",
-      stats: {
-        level: 1,
-        attributes: {
-          str: 3,
-          dex: 2,
-          con: 3,
-          int: 1,
-          wis: 3,
-          cha: 0,
-        },
-        perception: "trained",
-        saves: {
-          fortitude: "trained",
-          reflex: "trained",
-          will: "trained",
-        },
-        skills: {
-          acrobatics: "trained",
-          arcana: "trained",
-          athletics: "expert",
-          crafting: "trained",
-          deception: "untrained",
-          diplomacy: "trained",
-          intimidation: "trained",
-          medicine: "trained",
-          nature: "trained",
-          occultism: "untrained",
-          performance: "untrained",
-          religion: "trained",
-          society: "trained",
-          stealth: "trained",
-          survival: "trained",
-          thievery: "untrained",
-        },
-        defense: {
-          ancestryHp: 8,
-          classHpPerLevel: 10,
-          armorProficiencies: {
-            unarmored: "trained",
-            light: "trained",
-            medium: "trained",
-            heavy: "untrained",
-          },
-        },
-        offense: {
-          keyAttribute: "str",
-          weaponProficiencies: {
-            unarmed: "trained",
-            simple: "trained",
-            martial: "expert",
-            advanced: "untrained",
-          },
-          classDcProficiency: "trained",
-          unarmedStrike: {
-            name: "Fist",
-            category: "unarmed",
-            attackMode: "melee",
-            rangeFeet: 5,
-            damage: {
-              count: 1,
-              sides: 4,
-              damageType: "bludgeoning",
-            },
-            traits: [
-              {
-                id: "agile",
-              },
-              {
-                id: "finesse",
-              },
-            ],
-          },
-        },
+    "id": "hero.aerin",
+    "name": "Aerin",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "str",
+          "dex",
+          "con",
+          "int"
+        ],
+        "trainedSkills": [
+          "athletics",
+          "arcana",
+          "intimidation"
+        ]
       },
+      "level": 1,
+      "advancements": []
     },
-    speedFeet: 25,
-    initialConditions: [],
-    traits: [
+    "initialConditions": [],
+    "traits": [
       {
-        id: "actor",
+        "id": "actor"
       },
       {
-        id: "hero",
+        "id": "hero"
       },
+      {
+        "id": "human"
+      },
+      {
+        "id": "fighter"
+      }
     ],
-    loadoutProfile: {
-      preparedCardCapacity: 2,
+    "loadoutProfile": {
+      "preparedCardCapacity": 2
     },
-    starterLoadout: {
-      equipment: {
-        weapon: "halberd",
-        shield: "shield",
-        feet: "boots-of-fly",
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "halberd",
+        "shield": "shield",
+        "feet": "boots-of-fly"
       },
-      preparedCards: [],
+      "preparedCards": []
     },
-    innateActionIds: [],
-    baseCardGrants: [
+    "innateActionIds": [],
+    "baseCardGrants": [
       {
-        cardDefinitionId: "card.spirit-beacon",
-        count: 2,
-        sourceId: "focus.spirit-beacon",
+        "cardDefinitionId": "card.spirit-beacon",
+        "count": 2,
+        "sourceId": "focus.spirit-beacon"
       },
       {
-        cardDefinitionId: "card.reactive-strike",
-        count: 1,
-        sourceId: "feat.reactive-strike",
-      },
-    ],
+        "cardDefinitionId": "card.reactive-strike",
+        "count": 1,
+        "sourceId": "feat.reactive-strike"
+      }
+    ]
   },
   {
-    id: "enemy.goblin-skirmisher",
-    name: "Goblin Skirmisher",
-    statProfile: {
-      kind: "creature",
-      stats: {
-        ac: 16,
-        maxHp: 18,
-        strike: {
-          name: "Goblin Blade",
-          attackModifier: 6,
-          rangeFeet: 5,
-          damage: {
-            count: 1,
-            sides: 6,
-            modifier: 2,
-            damageType: "slashing",
+    "id": "enemy.goblin-skirmisher",
+    "name": "Goblin Skirmisher",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "ac": 16,
+        "maxHp": 18,
+        "strike": {
+          "name": "Goblin Blade",
+          "attackModifier": 6,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 2,
+            "damageType": "slashing"
           },
-          traits: [],
+          "traits": []
         },
-        perception: 5,
-        saves: {
-          fortitude: 3,
-          reflex: 5,
-          will: 2,
+        "perception": 5,
+        "saves": {
+          "fortitude": 3,
+          "reflex": 5,
+          "will": 2
         },
-        skills: {
-          athletics: 4,
-          stealth: 7,
-        },
-      },
+        "skills": {
+          "athletics": 4,
+          "stealth": 7
+        }
+      }
     },
-    speedFeet: 25,
-    initialConditions: [],
-    traits: [
+    "speedFeet": 25,
+    "initialConditions": [],
+    "traits": [
       {
-        id: "actor",
+        "id": "actor"
       },
       {
-        id: "goblin",
-      },
+        "id": "goblin"
+      }
     ],
-    loadoutProfile: {
-      preparedCardCapacity: 0,
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
     },
-    starterLoadout: {
-      equipment: {},
-      preparedCards: [],
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
     },
-    innateActionIds: [],
-    baseCardGrants: [],
+    "innateActionIds": [],
+    "baseCardGrants": []
   },
   {
-    id: "enemy.goblin-brute",
-    name: "Goblin Brute",
-    statProfile: {
-      kind: "creature",
-      stats: {
-        ac: 17,
-        maxHp: 24,
-        strike: {
-          name: "Heavy Club",
-          attackModifier: 7,
-          rangeFeet: 5,
-          damage: {
-            count: 1,
-            sides: 8,
-            modifier: 3,
-            damageType: "bludgeoning",
+    "id": "enemy.goblin-brute",
+    "name": "Goblin Brute",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "ac": 17,
+        "maxHp": 24,
+        "strike": {
+          "name": "Heavy Club",
+          "attackModifier": 7,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 8,
+            "modifier": 3,
+            "damageType": "bludgeoning"
           },
-          traits: [],
+          "traits": []
         },
-        perception: 3,
-        saves: {
-          fortitude: 7,
-          reflex: 3,
-          will: 4,
+        "perception": 3,
+        "saves": {
+          "fortitude": 7,
+          "reflex": 3,
+          "will": 4
         },
-        skills: {
-          athletics: 7,
-        },
-      },
+        "skills": {
+          "athletics": 7
+        }
+      }
     },
-    speedFeet: 20,
-    initialConditions: [],
-    traits: [
+    "speedFeet": 20,
+    "initialConditions": [],
+    "traits": [
       {
-        id: "actor",
+        "id": "actor"
       },
       {
-        id: "goblin",
-      },
+        "id": "goblin"
+      }
     ],
-    loadoutProfile: {
-      preparedCardCapacity: 0,
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
     },
-    starterLoadout: {
-      equipment: {},
-      preparedCards: [],
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
     },
-    innateActionIds: [
-      "knockdown",
+    "innateActionIds": [
+      "knockdown"
     ],
-    baseCardGrants: [],
+    "baseCardGrants": []
   },
   {
-    id: "enemy.goblin-chief",
-    name: "Goblin Chief",
-    statProfile: {
-      kind: "creature",
-      stats: {
-        ac: 18,
-        maxHp: 34,
-        strike: {
-          name: "Chief's Glaive",
-          attackModifier: 9,
-          rangeFeet: 10,
-          damage: {
-            count: 1,
-            sides: 10,
-            modifier: 4,
-            damageType: "slashing",
+    "id": "enemy.goblin-chief",
+    "name": "Goblin Chief",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "ac": 18,
+        "maxHp": 34,
+        "strike": {
+          "name": "Chief's Glaive",
+          "attackModifier": 9,
+          "rangeFeet": 10,
+          "damage": {
+            "count": 1,
+            "sides": 10,
+            "modifier": 4,
+            "damageType": "slashing"
           },
-          traits: [],
+          "traits": []
         },
-        perception: 6,
-        saves: {
-          fortitude: 8,
-          reflex: 5,
-          will: 6,
+        "perception": 6,
+        "saves": {
+          "fortitude": 8,
+          "reflex": 5,
+          "will": 6
         },
-        skills: {
-          athletics: 8,
-          intimidation: 8,
-        },
-      },
+        "skills": {
+          "athletics": 8,
+          "intimidation": 8
+        }
+      }
     },
-    speedFeet: 25,
-    initialConditions: [],
-    traits: [
+    "speedFeet": 25,
+    "initialConditions": [],
+    "traits": [
       {
-        id: "actor",
+        "id": "actor"
       },
       {
-        id: "goblin",
-      },
+        "id": "goblin"
+      }
     ],
-    loadoutProfile: {
-      preparedCardCapacity: 0,
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
     },
-    starterLoadout: {
-      equipment: {},
-      preparedCards: [],
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
     },
-    innateActionIds: [
-      "knockdown",
+    "innateActionIds": [
+      "knockdown"
     ],
-    baseCardGrants: [],
-  },
+    "baseCardGrants": []
+  }
 ];

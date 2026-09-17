@@ -25,7 +25,7 @@ import process from "node:process";
 
 import { PRODUCTION_CONTENT } from "../../../src/content/production-content";
 import { createAuthService } from "../../../src/server/auth-service";
-import type { CampaignSaveV1 } from "../../../src/server/campaign-save";
+import type { CampaignSaveV3 } from "../../../src/server/campaign-save";
 import { createOpaqueId, createReconnectCredential } from "../../../src/server/credentials";
 import { createSqlitePersistence, type Persistence } from "../../../src/server/persistence";
 import { startCardGuildServer } from "../../../src/server/server";
@@ -49,20 +49,20 @@ if (seed) {
   await createAuthService(persistence).createAccount(seed.slice(0, separator), seed.slice(separator + 1));
 }
 
-function totalOwned(save: CampaignSaveV1): number {
+function totalOwned(save: CampaignSaveV3): number {
   const collection = save.adventure.collection;
   const sum = (counts: Readonly<Record<string, number>>): number =>
     Object.values(counts).reduce((total, count) => total + count, 0);
   return sum(collection.equipment) + sum(collection.cards);
 }
 
-function highestLevel(save: CampaignSaveV1): number {
+function highestLevel(save: CampaignSaveV3): number {
   return Object.values(save.adventure.party.members)
     .reduce((best, member) => Math.max(best, member.progression.level), 0);
 }
 
 /** Whether the last logged command was played by the server AI rather than by a player. */
-function lastCommandIsEnemy(save: CampaignSaveV1): boolean {
+function lastCommandIsEnemy(save: CampaignSaveV3): boolean {
   const combat = save.combat;
   const last = combat?.commandLog.at(-1);
   return Boolean(last && combat?.actors[last.actorId]?.team === "enemies");
@@ -73,7 +73,7 @@ function lastCommandIsEnemy(save: CampaignSaveV1): boolean {
  * Nothing here asks the server what it was doing: the save is the only evidence a crash
  * leaves behind, so the classifier reads the same thing the recovery does.
  */
-function matches(target: FaultTarget, previous: CampaignSaveV1 | null, next: CampaignSaveV1): boolean {
+function matches(target: FaultTarget, previous: CampaignSaveV3 | null, next: CampaignSaveV3): boolean {
   if (target === "any") return true;
   if (target === "migration") {
     return Boolean(previous) && previous?.contentIdentity.fingerprint !== next.contentIdentity.fingerprint;
@@ -82,6 +82,9 @@ function matches(target: FaultTarget, previous: CampaignSaveV1 | null, next: Cam
   switch (target) {
     case "encounter-complete":
       return next.adventure.completedEncounterIds.length > previous.adventure.completedEncounterIds.length;
+    case "advancement":
+      return Object.values(next.adventure.party.members).some(member => member.progression.advancements.length >
+        (previous.adventure.party.members[member.id]?.progression.advancements.length ?? 0));
     case "level-up":
       return highestLevel(next) > highestLevel(previous);
     case "adventure-complete":
@@ -132,9 +135,9 @@ const faulting: Persistence = {
       if (!spec) return campaigns.commitSave(input);
       const lookup = campaigns.loadOwnedSave(input.campaignId, input.ownerAccountId);
       const previous = lookup.status === "loaded"
-        ? JSON.parse(lookup.record.snapshotJson) as CampaignSaveV1
+        ? JSON.parse(lookup.record.snapshotJson) as CampaignSaveV3
         : null;
-      const next = JSON.parse(input.snapshotJson) as CampaignSaveV1;
+      const next = JSON.parse(input.snapshotJson) as CampaignSaveV3;
       if (!matches(spec.target, previous, next)) return campaigns.commitSave(input);
       matched += 1;
       if (matched !== (spec.nth ?? 1)) return campaigns.commitSave(input);

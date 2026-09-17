@@ -470,58 +470,6 @@
       "displayWidth": 64,
       "displayHeight": 64
     },
-    "ui.card.trip": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.trip"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.fly": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.fly"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.spirit-beacon": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.spirit-beacon"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.reactive-strike": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.reactive-strike"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
     "actor.skeleton-rabble.front": {
       "kind": "actor",
       "source": {
@@ -1408,369 +1356,485 @@
       "displayWidth": 64,
       "displayHeight": 64
     },
-    "ui.card.knockdown": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.knockdown"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
     "ui.card.vicious-swing": {
       "kind": "ui",
       "source": {
-        "type": "atlas",
-        "frame": "ui.card.vicious-swing"
+        "type": "image",
+        "path": "/assets/cards/vicious-swing.webp",
+        "width": 512,
+        "height": 768
       },
       "anchor": {
         "x": 0.5,
         "y": 0.5
       },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.intimidating-strike": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.intimidating-strike"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.combat-grab": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.combat-grab"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.aimed-shot": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.aimed-shot"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.shield-press": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.shield-press"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.grapple": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.grapple"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.demoralize": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.demoralize"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.slip-free": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.slip-free"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.battle-medicine": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.battle-medicine"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.frostbite": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.frostbite"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.fear": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.fear"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.harm": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.harm"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.daze": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.daze"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.iron-presence": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.iron-presence"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.telekinetic-projectile": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.telekinetic-projectile"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.ember-lash": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.ember-lash"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
+      "displayWidth": 120,
+      "displayHeight": 180
     },
     "ui.card.force-barrage": {
       "kind": "ui",
       "source": {
-        "type": "atlas",
-        "frame": "ui.card.force-barrage"
+        "type": "image",
+        "path": "/assets/cards/force-barrage.webp",
+        "width": 512,
+        "height": 768
       },
       "anchor": {
         "x": 0.5,
         "y": 0.5
       },
-      "displayWidth": 64,
-      "displayHeight": 64
+      "displayWidth": 120,
+      "displayHeight": 180
     },
     "ui.card.heal": {
       "kind": "ui",
       "source": {
-        "type": "atlas",
-        "frame": "ui.card.heal"
+        "type": "image",
+        "path": "/assets/cards/heal.webp",
+        "width": 512,
+        "height": 768
       },
       "anchor": {
         "x": 0.5,
         "y": 0.5
       },
-      "displayWidth": 64,
-      "displayHeight": 64
+      "displayWidth": 120,
+      "displayHeight": 180
     },
-    "ui.card.soothe": {
+    "ui.card.trip": {
       "kind": "ui",
       "source": {
-        "type": "atlas",
-        "frame": "ui.card.soothe"
+        "type": "image",
+        "path": "/assets/cards/trip.webp",
+        "width": 512,
+        "height": 768
       },
       "anchor": {
         "x": 0.5,
         "y": 0.5
       },
-      "displayWidth": 64,
-      "displayHeight": 64
+      "displayWidth": 120,
+      "displayHeight": 180
     },
-    "ui.card.lay-on-hands": {
+    "ui.card.fly": {
       "kind": "ui",
       "source": {
-        "type": "atlas",
-        "frame": "ui.card.lay-on-hands"
+        "type": "image",
+        "path": "/assets/cards/fly.webp",
+        "width": 512,
+        "height": 768
       },
       "anchor": {
         "x": 0.5,
         "y": 0.5
       },
-      "displayWidth": 64,
-      "displayHeight": 64
+      "displayWidth": 120,
+      "displayHeight": 180
     },
-    "ui.card.spirit-edge": {
+    "ui.card.spirit-beacon": {
       "kind": "ui",
       "source": {
-        "type": "atlas",
-        "frame": "ui.card.spirit-edge"
+        "type": "image",
+        "path": "/assets/cards/spirit-beacon.webp",
+        "width": 512,
+        "height": 768
       },
       "anchor": {
         "x": 0.5,
         "y": 0.5
       },
-      "displayWidth": 64,
-      "displayHeight": 64
+      "displayWidth": 120,
+      "displayHeight": 180
     },
-    "ui.card.brace-behind-cover": {
+    "ui.card.reactive-strike": {
       "kind": "ui",
       "source": {
-        "type": "atlas",
-        "frame": "ui.card.brace-behind-cover"
+        "type": "image",
+        "path": "/assets/cards/reactive-strike.webp",
+        "width": 512,
+        "height": 768
       },
       "anchor": {
         "x": 0.5,
         "y": 0.5
       },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.dueling-parry": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.dueling-parry"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.arcane-ward": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.arcane-ward"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.careful-advance": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.careful-advance"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
-    },
-    "ui.card.hover-step": {
-      "kind": "ui",
-      "source": {
-        "type": "atlas",
-        "frame": "ui.card.hover-step"
-      },
-      "anchor": {
-        "x": 0.5,
-        "y": 0.5
-      },
-      "displayWidth": 64,
-      "displayHeight": 64
+      "displayWidth": 120,
+      "displayHeight": 180
     },
     "ui.card.spirit-lance": {
       "kind": "ui",
       "source": {
-        "type": "atlas",
-        "frame": "ui.card.spirit-lance"
+        "type": "image",
+        "path": "/assets/cards/spirit-lance.webp",
+        "width": 512,
+        "height": 768
       },
       "anchor": {
         "x": 0.5,
         "y": 0.5
       },
-      "displayWidth": 64,
-      "displayHeight": 64
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.knockdown": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/knockdown.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.intimidating-strike": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/intimidating-strike.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.combat-grab": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/combat-grab.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.aimed-shot": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/aimed-shot.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.shield-press": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/shield-press.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.grapple": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/grapple.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.demoralize": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/demoralize.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.slip-free": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/slip-free.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.battle-medicine": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/battle-medicine.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.frostbite": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/frostbite.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.fear": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/fear.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.harm": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/harm.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.daze": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/daze.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.iron-presence": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/iron-presence.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.telekinetic-projectile": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/telekinetic-projectile.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.ember-lash": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/ember-lash.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.soothe": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/soothe.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.lay-on-hands": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/lay-on-hands.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.spirit-edge": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/spirit-edge.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.brace-behind-cover": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/brace-behind-cover.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.dueling-parry": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/dueling-parry.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.arcane-ward": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/arcane-ward.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.careful-advance": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/careful-advance.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.hover-step": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/hover-step.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
     }
   },
   "actorVisuals": {

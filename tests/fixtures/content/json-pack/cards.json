@@ -3,10 +3,12 @@
     "id": "card.trip",
     "name": "Trip",
     "actionId": "trip",
+    "level": 1,
     "traits": [
       {
         "id": "attack"
       },
+      { "id": "skill" },
       {
         "id": "trip"
       }
@@ -16,6 +18,7 @@
     "id": "card.fly",
     "name": "Fly",
     "actionId": "fly",
+    "level": 1,
     "traits": [
       {
         "id": "move"
@@ -29,6 +32,7 @@
     "id": "card.spirit-beacon",
     "name": "Spirit Beacon",
     "actionId": "spirit-beacon",
+    "level": 1,
     "traits": [
       {
         "id": "focus"
@@ -42,6 +46,7 @@
     "id": "card.reactive-strike",
     "name": "Reactive Strike",
     "actionId": "reactive-strike",
+    "level": 1,
     "traits": [
       {
         "id": "attack"

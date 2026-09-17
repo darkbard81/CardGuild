@@ -2,7 +2,7 @@ import { WebSocket } from "ws";
 
 import type { ServerSnapshot } from "../../../src/protocol";
 import type { SessionIntent } from "../../../src/session";
-import { heroIntent, reactionIntent } from "../../support/campaign/adventure-driver";
+import { heroIntent, reactionIntent, advancementIntent, prepareHealingIntent, rewardChoiceIndex } from "../../support/campaign/adventure-driver";
 import { SocketClient, SocketClosedError, envelope } from "../../support/network/socket-client";
 
 /**
@@ -88,10 +88,10 @@ export function nextIntent(snapshot: ServerSnapshot): SessionIntent | null {
   const adventure = state.adventure;
   if (!adventure) return null;
   if (adventure.phase === "complete" || adventure.phase === "failed") return null;
-  if (adventure.phase === "between-encounters" || adventure.phase === "ready") return { type: "start-encounter" };
+  if (adventure.phase === "between-encounters" || adventure.phase === "ready") return advancementIntent(adventure) ?? prepareHealingIntent(adventure) ?? { type: "start-encounter" };
   if (adventure.phase === "reward") {
     const offer = adventure.pendingReward;
-    return offer ? { type: "choose-reward", rewardId: offer.rewardId, choiceIndex: 0 } : null;
+    return offer ? { type: "choose-reward", rewardId: offer.rewardId, choiceIndex: rewardChoiceIndex(adventure) } : null;
   }
   const combat = state.combat;
   if (!combat) return null;

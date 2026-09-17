@@ -9,6 +9,8 @@ import type {
 const CATEGORIES = new Set<ContentSourceCategory>([
   "manifest",
   "traits",
+  "ancestries",
+  "classes",
   "conditions",
   "actions",
   "cards",

@@ -1,16 +1,24 @@
+import { createCardFace } from "./card-face";
 import type { AdventureState } from "../adventure";
 import { resolveEffectiveCharacterStatProfile } from "../adventure/progression";
 import type { CompiledContentPack } from "../content";
 import type { DeckContributionSource, EquipmentSlotId, ResolvedStrikeProfile } from "../game";
+import { equipmentTraits } from "../game/rules";
 import {
   EQUIPMENT_SLOT_ORDER,
   deriveLoadoutSnapshot,
   previewLoadoutChange,
+  resolveLoadoutStatProfile,
   type LoadoutPreview,
   type PartyMemberLoadout,
 } from "../loadout";
 import type { AssetCatalog } from "../presentation";
+import { HOVER_CLOSE_MS, HOVER_OPEN_MS, bindDismissal, bindPressGesture, placePopover } from "./detail-popover";
 import { progressionMeter, progressionText } from "./progression-view";
+import { cardLevelSummary } from "./card-level-view";
+
+/** Long enough that a tap to equip is never read as a request to inspect. */
+const LONG_PRESS_MS = 450;
 
 function required<T extends Element>(selector: string): T {
   const found = document.querySelector<T>(selector);
@@ -58,6 +66,7 @@ type PageTab = "equipment" | "cards" | "deck";
 interface ViewState { tab: PageTab; filter: EquipmentSlotId | "all"; pages: Record<PageTab, number> }
 interface Tile {
   id: string; label: string; asset: string | null; badge: string; description: string;
+  cardId?: string; isCard?: boolean;
   candidate?: PartyMemberLoadout; action?: () => void; className?: string; slot?: string;
 }
 
@@ -140,7 +149,7 @@ export class LoadoutUi {
       for (let index = 0; index < actor.loadoutProfile.preparedCardCapacity; index++) {
         const id = member.loadout.preparedCards[index];
         const cards = [...member.loadout.preparedCards]; cards.splice(index, 1);
-        slots.append(this.tile({ id: `prepared-${index}`, label: id ? this.pack.combatContent.cards[id]?.name ?? id : "Empty", asset: id ? this.catalog.cardVisual(id) : null,
+        slots.append(this.tile({ id: `prepared-${index}`, cardId: id, isCard: true, label: id ? this.pack.combatContent.cards[id]?.name ?? id : "Empty", asset: id ? this.catalog.cardVisual(id) : null,
           badge: id ? "−" : "+", description: id ? this.cardDescription(id) : "보유 카드를 클릭하여 준비합니다.",
           candidate: id ? { ...cloneLoadout(member.loadout), preparedCards: cards } : undefined, className: id ? "prepared-card" : "prepared-empty" }));
       }
@@ -155,7 +164,7 @@ export class LoadoutUi {
       }
     }
     const snapshot = deriveLoadoutSnapshot(actor, member.loadout, this.pack.combatContent, member.id,
-      resolveEffectiveCharacterStatProfile(actor, member.progression));
+      resolveEffectiveCharacterStatProfile(actor, member.progression, this.pack.characterRules));
     sidebar.append(slots, element("p", "loadout-core-stats", `AC ${snapshot.statistics.ac} · HP ${snapshot.statistics.maxHp} · ATK ${signed(snapshot.strike.attackModifier)}`),
       element("p", "loadout-deck-count", `${snapshot.deck.totalCards} Tactical Cards`));
     const panel = element("section", `loadout-panel collection-panel${view.tab === "deck" ? " deck-panel" : ""}`);
@@ -176,7 +185,7 @@ export class LoadoutUi {
       panel.append(element("h2", undefined, "보유 카드"));
       for (const [id, owned] of Object.entries(state.collection.cards).sort(([a], [b]) => a.localeCompare(b))) {
         const used = members.reduce((sum, m) => sum + m.loadout.preparedCards.filter((value) => value === id).length, 0);
-        items.push({ id, label: this.pack.combatContent.cards[id]?.name ?? id, asset: this.catalog.cardVisual(id), badge: `×${owned - used}`,
+        items.push({ id, cardId: id, isCard: true, label: this.pack.combatContent.cards[id]?.name ?? id, asset: this.catalog.cardVisual(id), badge: `×${owned - used}`,
           description: `${this.cardDescription(id)}\n보유 ${owned} · 사용 가능 ${owned - used}`, candidate: { ...cloneLoadout(member.loadout), preparedCards: [...member.loadout.preparedCards, id] } });
       }
     } else {
@@ -187,13 +196,13 @@ export class LoadoutUi {
         entry.count += contribution.count; entry.sources.push(`${sourceLabel(contribution.source, this.pack)} ×${contribution.count}`);
         grouped.set(contribution.cardDefinitionId, entry);
       }
-      for (const [id, entry] of grouped) items.push({ id, label: this.pack.combatContent.cards[id]?.name ?? id, asset: this.catalog.cardVisual(id), badge: `×${entry.count}`,
+      for (const [id, entry] of grouped) items.push({ id, cardId: id, isCard: true, label: this.pack.combatContent.cards[id]?.name ?? id, asset: this.catalog.cardVisual(id), badge: `×${entry.count}`,
         description: `${this.cardDescription(id)}\n${entry.sources.join("\n")}`, className: "deck-contribution" });
     }
-    const pageSize = view.tab === "deck" ? 12 : 24;
+    const pageSize = view.tab === "equipment" ? 24 : view.tab === "cards" ? 8 : 4;
     const pages = Math.max(1, Math.ceil(items.length / pageSize));
     view.pages[view.tab] = Math.min(view.pages[view.tab], pages - 1);
-    const grid = element("div", "loadout-items");
+    const grid = element("div", view.tab === "equipment" ? "loadout-items" : "loadout-items loadout-card-items");
     for (const item of items.slice(view.pages[view.tab] * pageSize, (view.pages[view.tab] + 1) * pageSize)) grid.append(this.tile(item));
     if (!items.length) grid.append(element("p", "loadout-empty", "보유 항목이 없습니다."));
     panel.append(grid);
@@ -208,15 +217,7 @@ export class LoadoutUi {
     this.tooltip.addEventListener("pointerenter", () => clearTimeout(this.hideTimer));
     this.tooltip.addEventListener("pointerleave", () => { if (!this.pinned) this.hideTooltip(); });
     this.screen.append(header, nav, workspace, status, this.tooltip);
-    const dismiss = (event: Event): void => {
-      if (event.type === "scroll" && this.tooltip?.contains(event.target as Node)) return;
-      if (event instanceof KeyboardEvent && event.key !== "Escape") return;
-      if (event.type === "pointerdown" && (this.tooltip?.contains(event.target as Node) || this.tooltipAnchor?.contains(event.target as Node))) return;
-      this.hideTooltip();
-    };
-    document.addEventListener("pointerdown", dismiss); document.addEventListener("keydown", dismiss);
-    window.addEventListener("resize", dismiss); window.addEventListener("scroll", dismiss, true);
-    this.cleanup.push(() => { document.removeEventListener("pointerdown", dismiss); document.removeEventListener("keydown", dismiss); window.removeEventListener("resize", dismiss); window.removeEventListener("scroll", dismiss, true); });
+    this.cleanup.push(bindDismissal({ panel: this.tooltip, anchor: () => this.tooltipAnchor, hide: () => this.hideTooltip() }));
     this.screen.hidden = false;
     if (focusKey) this.screen.querySelectorAll<HTMLElement>("[data-focus-key]").forEach((node) => { if (node.dataset.focusKey === focusKey) node.focus({ preventScroll: true }); });
   }
@@ -246,7 +247,10 @@ export class LoadoutUi {
   }
   private cardDescription(id: string): string {
     const card = this.pack.combatContent.cards[id]; const action = card ? this.pack.combatContent.actions[card.actionId] : undefined;
-    return action ? `${action.timing.kind === "reaction" ? "반응" : `${action.timing.actions} 액션`} · ${action.description}` : "";
+    const member = this.state?.party.members[this.selectedMemberId];
+    const actor = member && this.pack.actorDefinitions[member.actorDefinitionId];
+    const ruleActor = actor && member ? { ...actor, statProfile: resolveLoadoutStatProfile(member, this.pack) } : undefined;
+    return card && action ? `${cardLevelSummary(card, this.pack.combatContent, ruleActor)} · ${action.timing.kind === "reaction" ? "반응" : `${action.timing.actions} 액션`} · ${action.description}` : "";
   }
   private equipmentDescription(id: string): string {
     const equipment = this.pack.combatContent.equipment[id];
@@ -258,10 +262,10 @@ export class LoadoutUi {
     if (armor) parts.push(`${armor.category} · AC ${signed(armor.acItemBonus)} · DEX cap ${armor.dexCap ?? "none"}`);
     if (equipment.shieldBonus) parts.push(`Raise Shield · AC ${signed(equipment.shieldBonus)}`);
     for (const modifier of equipment.statModifiers) parts.push(`${modifier.label} ${signed(modifier.value)}`);
-    for (const trait of equipment.traits) {
+    for (const trait of equipmentTraits(equipment)) {
       const definition = this.pack.combatContent.traits[trait.id];
       parts.push(definition?.name ?? trait.id);
-      for (const grant of definition?.cardGrants ?? []) parts.push(`${this.pack.combatContent.cards[grant.cardDefinitionId]?.name ?? grant.cardDefinitionId} ×${grant.count}`);
+      for (const grant of definition?.cardGrants ?? []) parts.push(`${this.pack.combatContent.cards[grant.cardDefinitionId]?.name ?? grant.cardDefinitionId} ×${grant.count} · ${this.cardDescription(grant.cardDefinitionId)}`);
     }
     return parts.join(" · ");
   }
@@ -270,8 +274,7 @@ export class LoadoutUi {
     const member = this.state.party.members[this.selectedMemberId];
     const actor = member && this.pack.actorDefinitions[member.actorDefinitionId];
     if (!member || !actor) throw new Error("Loadout character is missing.");
-    return previewLoadoutChange(this.state.party, this.state.collection, this.pack, this.selectedMemberId, candidate,
-      resolveEffectiveCharacterStatProfile(actor, member.progression));
+    return previewLoadoutChange(this.state.party, this.state.collection, this.pack, this.selectedMemberId, candidate);
   }
   private apply(tile: Tile): void {
     if (!tile.candidate || this.waiting) return;
@@ -290,30 +293,40 @@ export class LoadoutUi {
     button.setAttribute("aria-disabled", String(unavailable));
     const verb = tile.candidate ? (tile.className === "equipment-slot" || tile.className === "prepared-card" ? "해제" : "장착") : "상세 보기";
     button.setAttribute("aria-label", `${tile.label} · ${tile.badge} · ${verb}`);
-    const icon = element("span", "loadout-icon"); icon.setAttribute("aria-hidden", "true");
-    if (tile.asset) Object.assign(icon.style, this.catalog.domAssetStyle(tile.asset, 52)); else { icon.classList.add("missing"); icon.textContent = "+"; }
-    button.append(icon, element("span", "loadout-badge", unavailable ? `⊘ ${tile.badge}` : tile.badge), element("span", "sr-only", tile.label));
-    let timer: ReturnType<typeof setTimeout> | undefined; let held = false; let cancelled = false; let origin: { x: number; y: number } | null = null;
-    const clear = (): void => { clearTimeout(timer); timer = undefined; };
+    if (tile.isCard) {
+      button.classList.add("loadout-card-tile");
+      const definition = tile.cardId ? this.pack.combatContent.cards[tile.cardId] : undefined;
+      const action = definition ? this.pack.combatContent.actions[definition.actionId] : undefined;
+      if (action) {
+        const costLabel = action.timing.kind === "reaction" ? "Reaction" : `${action.timing.actions} actions`;
+        button.setAttribute("aria-label", `${tile.label} · ${costLabel} · ${tile.badge} · ${verb}`);
+      }
+      button.append(createCardFace({
+        catalog: this.catalog, cardId: tile.cardId, name: tile.label, timing: action?.timing,
+        badges: [unavailable ? `⊘ ${tile.badge}` : tile.badge],
+      }));
+    } else {
+      const icon = element("span", "loadout-icon"); icon.setAttribute("aria-hidden", "true");
+      if (tile.asset) Object.assign(icon.style, this.catalog.domAssetStyle(tile.asset, 52)); else { icon.classList.add("missing"); icon.textContent = "+"; }
+      button.append(icon, element("span", "loadout-badge", unavailable ? `⊘ ${tile.badge}` : tile.badge), element("span", "sr-only", tile.label));
+    }
+    let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+    const clear = (): void => { clearTimeout(hoverTimer); hoverTimer = undefined; };
     const show = (): void => this.showTooltip(button, tile, preview);
-    button.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") { clear(); timer = setTimeout(show, 200); } });
-    button.addEventListener("pointerleave", () => { clear(); if (!this.pinned && this.tooltipAnchor === button) this.hideTimer = setTimeout(() => this.hideTooltip(), 150); });
+    button.addEventListener("pointerenter", (event) => { if (event.pointerType === "mouse") { clear(); hoverTimer = setTimeout(show, HOVER_OPEN_MS); } });
+    button.addEventListener("pointerleave", () => { clear(); if (!this.pinned && this.tooltipAnchor === button) this.hideTimer = setTimeout(() => this.hideTooltip(), HOVER_CLOSE_MS); });
     button.addEventListener("focus", () => { if (button.matches(":focus-visible")) show(); });
     button.addEventListener("blur", () => { if (!this.pinned) this.hideTooltip(); });
-    button.addEventListener("pointerdown", (event) => {
-      if (event.button !== 0) return; clear(); held = false; cancelled = false; origin = { x: event.clientX, y: event.clientY };
-      timer = setTimeout(() => { held = true; this.pinned = true; show(); }, 450);
+    button.addEventListener("pointerdown", clear);
+    // A hold inspects; a tap equips, unequips or navigates. The shared gesture keeps a
+    // moved, scrolled or cancelled press from being read as either.
+    const release = bindPressGesture(button, {
+      holdMs: LONG_PRESS_MS,
+      onHold: () => { this.pinned = true; show(); },
+      onTap: () => { clear(); if (tile.action) tile.action(); else if (tile.candidate) this.apply(tile); else { this.pinned = true; show(); } },
+      onCancel: () => this.hideTooltip(),
     });
-    button.addEventListener("pointermove", (event) => { if (origin && Math.hypot(event.clientX - origin.x, event.clientY - origin.y) > 8) { clear(); cancelled = true; } });
-    button.addEventListener("pointerup", () => { clear(); origin = null; });
-    button.addEventListener("pointercancel", () => { clear(); origin = null; cancelled = true; this.hideTooltip(); });
-    button.addEventListener("contextmenu", (event) => event.preventDefault());
-    button.addEventListener("click", (event) => {
-      if ((held || cancelled) && event.detail !== 0) { event.preventDefault(); return; }
-      clear(); if (tile.action) tile.action(); else if (tile.candidate) this.apply(tile); else { this.pinned = true; show(); }
-    });
-    const cancel = (): void => { clear(); if (origin) cancelled = true; };
-    window.addEventListener("scroll", cancel, true); this.cleanup.push(() => { clear(); window.removeEventListener("scroll", cancel, true); });
+    this.cleanup.push(() => { clear(); release(); });
     return button;
   }
   private showTooltip(anchor: HTMLElement, tile: Tile, preview?: LoadoutPreview): void {
@@ -330,10 +343,7 @@ export class LoadoutUi {
       if (preview.after) tooltip.append(this.stats(preview));
     }
     if (!this.editableMemberIds.has(this.selectedMemberId)) tooltip.append(element("p", undefined, "Read-only · Only this character's owner can edit this loadout."));
-    tooltip.hidden = false; tooltip.style.left = "8px"; tooltip.style.top = "8px";
-    const rect = anchor.getBoundingClientRect(); const bounds = tooltip.getBoundingClientRect();
-    tooltip.style.left = `${Math.max(8, Math.min(rect.right + 10, window.innerWidth - bounds.width - 8))}px`;
-    tooltip.style.top = `${Math.max(8, Math.min(rect.top, window.innerHeight - bounds.height - 8))}px`;
+    placePopover(tooltip, anchor, "right");
   }
   private hideTooltip(): void { clearTimeout(this.hideTimer); if (this.tooltip) this.tooltip.hidden = true; this.tooltipAnchor?.removeAttribute("aria-describedby"); this.tooltipAnchor = null; this.pinned = false; }
   private disposeInteractions(): void { this.cleanup.forEach((cleanup) => cleanup()); this.cleanup = []; this.hideTooltip(); }
@@ -343,7 +353,7 @@ export class LoadoutUi {
     const actor = this.pack.actorDefinitions[member.actorDefinitionId];
     if (!actor) return element("div");
     const shown = preview?.after ?? deriveLoadoutSnapshot(actor, member.loadout, this.pack.combatContent, member.id,
-      resolveEffectiveCharacterStatProfile(actor, member.progression));
+      resolveEffectiveCharacterStatProfile(actor, member.progression, this.pack.characterRules));
     const stats = element("div", "loadout-stat-grid");
     const values: Array<[string, string]> = [
       ["AC", preview?.after ? `${preview.before.statistics.ac} → ${preview.after.statistics.ac}` : String(shown.statistics.ac)],

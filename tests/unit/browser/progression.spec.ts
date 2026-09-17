@@ -27,14 +27,14 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
     const { PRODUCTION_CONTENT: content } = await import(contentPath) as typeof import("../../../src/content/production-content");
     const { createPresentationCatalog } = await import(catalogPath) as typeof import("../../../src/presentation/asset-catalog");
     const pack = content.pack;
-    const initial = createAdventureSession({ definition: content.adventure, actorDefinitions: pack.actorDefinitions, combatContent: pack.combatContent }, {
+    const initial = createAdventureSession({ definition: content.adventure, actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules, combatContent: pack.combatContent }, {
       members: Object.fromEntries(["hero.aerin", "hero.lyra", "hero.brom"].map((id, index) => {
         const memberId = `party.hero-${index + 1}`;
         return [memberId, { id: memberId, seat: (index + 1) as 1 | 2 | 3, actorDefinitionId: id, loadout: pack.actorDefinitions[id]!.starterLoadout }];
       })),
     }, 1);
     const state: AdventureState = { ...initial, party: { members: Object.fromEntries(Object.entries(initial.party.members)
-      .map(([id, member], index) => [id, { ...member, progression: { level: index + 2, experience: 375 + index } }])) } };
+      .map(([id, member], index) => [id, { ...member, progression: { level: index + 2, experience: 375 + index, advancements: [] } }])) } };
     const catalog = createPresentationCatalog();
     const app = document.querySelector<HTMLElement>("#app")!;
     const loadoutUi = new LoadoutUi(pack, catalog, {
@@ -42,6 +42,7 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
       onSetLoadout: () => { window.progressionFixture.requests++; return true; },
     });
     const adventureUi = new AdventureUi(content.adventure, pack, {
+      onAdvanceCharacter: () => false,
       onStart: () => undefined, onContinue: () => undefined, onChooseReward: () => undefined, onRetry: () => undefined,
       onOpenLoadout: () => {
         app.dataset.screen = "loadout";
@@ -57,11 +58,11 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
   await page.getByRole("button", { name: "Manage Loadout", exact: true }).click();
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 2 · EXP 375 / 1000");
   await page.locator('.equipment-slot[data-slot="armor"]').hover();
-  await expect(page.locator("#loadout-detail")).toContainText("19 → 16");
-  await expect(page.locator("#loadout-detail")).toContainText("34 → 34");
+  await expect(page.locator("#loadout-detail")).toContainText("18 → 15");
+  await expect(page.locator("#loadout-detail")).toContainText("30 → 30");
   await page.keyboard.press("Escape");
   await page.getByRole("tab", { name: "덱·능력치", exact: true }).click();
-  await expect(page.locator(".deck-panel .loadout-stat").filter({ has: page.getByText("HP", { exact: true }) })).toContainText("34");
+  await expect(page.locator(".deck-panel .loadout-stat").filter({ has: page.getByText("HP", { exact: true }) })).toContainText("30");
   await page.getByRole("tab", { name: "Lyra", exact: true }).click();
   await expect(page.locator("#loadout-screen .character-progression")).toHaveText("Lv. 3 · EXP 376 / 1000");
   await expect(page.locator(".loadout-panel-label")).toContainText("Read-only");
@@ -74,7 +75,7 @@ test("renders runtime Level/EXP in both views, including previews and read-only 
     const fixture = window.progressionFixture;
     const id = "party.hero-2";
     fixture.state = { ...fixture.state, party: { members: { ...fixture.state.party.members,
-      [id]: { ...fixture.state.party.members[id]!, progression: { level: 3, experience: 999 } },
+      [id]: { ...fixture.state.party.members[id]!, progression: { level: 3, experience: 999, advancements: [] } },
     } } };
     fixture.loadoutUi.render(fixture.state, new Set(["party.hero-1"]));
     fixture.adventureUi.render(fixture.state);
@@ -109,7 +110,7 @@ test("shows the victory growth summary on every screen after the battle and keep
     const { PRODUCTION_CONTENT: content } = await import(contentPath) as typeof import("../../../src/content/production-content");
     const { createPresentationCatalog } = await import(catalogPath) as typeof import("../../../src/presentation/asset-catalog");
     const pack = content.pack;
-    const initial = createAdventureSession({ definition: content.adventure, actorDefinitions: pack.actorDefinitions, combatContent: pack.combatContent }, {
+    const initial = createAdventureSession({ definition: content.adventure, actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules, combatContent: pack.combatContent }, {
       members: Object.fromEntries(["hero.aerin", "hero.lyra", "hero.brom"].map((id, index) => {
         const memberId = `party.hero-${index + 1}`;
         return [memberId, { id: memberId, seat: (index + 1) as 1 | 2 | 3, actorDefinitionId: id, loadout: pack.actorDefinitions[id]!.starterLoadout }];
@@ -119,7 +120,7 @@ test("shows the victory growth summary on every screen after the battle and keep
     const state: AdventureState = {
       ...initial,
       party: { members: Object.fromEntries(Object.entries(initial.party.members)
-        .map(([id, member]) => [id, { ...member, progression: { level: 2, experience: 100 } }])) },
+        .map(([id, member]) => [id, { ...member, progression: { level: 2, experience: 100, advancements: [] } }])) },
     };
     const catalog = createPresentationCatalog();
     const app = document.querySelector<HTMLElement>("#app")!;
@@ -128,6 +129,7 @@ test("shows the victory growth summary on every screen after the battle and keep
       onSetLoadout: () => true,
     });
     const adventureUi = new AdventureUi(content.adventure, pack, {
+      onAdvanceCharacter: () => false,
       onStart: () => undefined, onContinue: () => undefined, onChooseReward: () => undefined, onRetry: () => undefined,
       onOpenLoadout: () => {
         app.dataset.screen = "loadout";

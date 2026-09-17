@@ -1,3 +1,4 @@
+import { cardPlanSource } from "../../tests/fixtures/card-source";
 import { describe, expect, it } from "vitest";
 
 import { buildActorSetup } from "../content/compile-content";
@@ -61,6 +62,8 @@ function withInitiative(actor: ActorSetup, value: number): Partial<ActorSetup> {
           stats: {
             ...actor.statProfile.stats,
             attributes: { ...actor.statProfile.stats.attributes, wis: value },
+            // Numeric rule arena explicitly satisfies the Medicine requirement.
+            skills: { ...actor.statProfile.stats.skills, medicine: "trained" },
           },
         },
       }
@@ -164,12 +167,13 @@ function cycleTo(state: CombatState, actorId: string): {
 function planFor(state: CombatState, actionId: string, target: ActionTarget, actorId = "hero") {
   const definition = CONTENT.actions[actionId];
   if (!definition) throw new Error(`Action "${actionId}" is missing.`);
+  const card = actionId === "strike" ? null : cardPlanSource(CONTENT, actionId, actorId);
   return buildResolvedActionPlan(
     definition,
     actor(state, actorId),
     target,
-    { kind: "card", id: "unused" },
-    state,
+    card?.source ?? { kind: "basic", id: "strike" },
+    card ? { ...state, cardZones: card.cardZones } : state,
     CONTENT,
     turnMapContext(state),
   );
@@ -390,9 +394,14 @@ describe("strike extensions", () => {
 
 describe("hp restoration", () => {
   const wounded = { ally: { hp: 4 } } as const;
+  function championCombat(overrides: Readonly<Record<string, Partial<ActorSetup>>>): CombatState {
+    const champion = buildActorSetup(M7_COMPILED_PACK.actorDefinitions["hero.brom"]!,
+      { instanceId: "hero", actorDefinitionId: "hero.brom", team: "heroes", position: { x: 1, y: 1 }, facing: "east" }, CONTENT);
+    return combat({ ...overrides, hero: { ...champion, ...withInitiative(champion, 100) } });
+  }
 
   it("raises current HP without passing max HP or touching max HP itself", () => {
-    const state = combat({ ally: { hp: 1 } });
+    const state = championCombat({ ally: { hp: 1 } });
     const played = withCard(state, "hero", "card.lay-on-hands");
     const result = dispatchCombatCommand(played.state, play(played.state, played.source, ALLY), CONTENT);
     expect(result.accepted).toBe(true);
@@ -402,7 +411,7 @@ describe("hp restoration", () => {
   });
 
   it("clamps to max HP", () => {
-    const state = combat({ ally: { hp: actor(combat(), "ally").maxHp - 1 } });
+    const state = championCombat({ ally: { hp: actor(combat(), "ally").maxHp - 1 } });
     const played = withCard(state, "hero", "card.lay-on-hands");
     const result = dispatchCombatCommand(played.state, play(played.state, played.source, ALLY), CONTENT);
     expect(result.accepted).toBe(true);
@@ -418,7 +427,7 @@ describe("hp restoration", () => {
   });
 
   it("never revives a defeated actor", () => {
-    const state = combat({ ally: { hp: 0 } });
+    const state = championCombat({ ally: { hp: 0 } });
     const defeated = {
       ...state,
       actors: { ...state.actors, ally: { ...actor(state, "ally"), hp: 0, defeated: true } },

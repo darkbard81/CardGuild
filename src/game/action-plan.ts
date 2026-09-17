@@ -1,3 +1,4 @@
+import { resolveEffectiveActionTraits } from "./capabilities";
 import { attacksForMap, resolveMapPenalty, resolveStrike } from "./offense";
 import { resolveOffGuardTo } from "./off-guard";
 import {
@@ -257,7 +258,7 @@ export function buildResolvedActionPlan(
   actor: ActorState,
   target: ActionTarget,
   source: ActionSource,
-  state: Pick<CombatState, "actors" | "map">,
+  state: Pick<CombatState, "actors" | "map" | "cardZones">,
   content: CombatContent,
   mapContext: ActionMapContext,
 ): ResolvedActionPlan | null {
@@ -267,7 +268,7 @@ export function buildResolvedActionPlan(
   // An unmet requirement makes the plan unresolvable rather than producing numbers a UI
   // would then have to hide: legality, preview and execution all read the same null.
   if (!meetsActionRequirements(definition, actor, context)) return null;
-  const attacksThisTurn = attacksForMap(mapContext, definition.traits.some((trait) => trait.id === "attack"));
+  const attacksThisTurn = attacksForMap(mapContext, resolveEffectiveActionTraits(source, definition, state, content, actor.id).includes("attack"));
   const base = {
     actionId: definition.id,
     actionActorId: actor.id,

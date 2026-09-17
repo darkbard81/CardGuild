@@ -1,3 +1,4 @@
+import { chooseAdvancement } from "./advancement-policy";
 import { execFileSync } from "node:child_process";
 import { writeFile } from "node:fs/promises";
 
@@ -429,7 +430,7 @@ function rewardChoiceIndex(route: RewardRoute, choices: number, rewardIndex: num
 function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, tally: Tally): RunReport {
   const context = {
     definition: PRODUCTION_CONTENT.adventure,
-    actorDefinitions: pack.actorDefinitions,
+    actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules,
     combatContent: pack.combatContent,
   };
   let state: AdventureState = createAdventureSession(context, party(pack, spec.starterIds), seed);
@@ -456,6 +457,12 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
   while (state.phase !== "complete" && state.phase !== "failed" && guard < 64) {
     guard += 1;
     if (state.phase === "between-encounters") {
+      for (const id of Object.keys(state.party.members).sort()) {
+        let choice;
+        while ((choice = chooseAdvancement(state.party.members[id]!, pack))) {
+          send({ type: "advance-character", memberId: id, choice });
+        }
+      }
       if (spec.loadoutPolicy === "adapt") {
         const taken = new Set<string>();
         const preparedElsewhere = new Set<string>();
@@ -473,7 +480,7 @@ function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, t
             state.collection.cards,
             preparedElsewhere,
             grantedCards,
-            resolveEffectiveCharacterStatProfile(actor, member.progression),
+            resolveEffectiveCharacterStatProfile(actor, member.progression, pack.characterRules),
           );
           const result = dispatchAdventureCommand(state, { type: "set-member-loadout", memberId: member.id, loadout: next }, context);
           if (result.accepted) state = result.state;

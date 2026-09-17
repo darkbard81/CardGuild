@@ -69,12 +69,11 @@ port 8787 backend로 proxy합니다.
 - accepted transition마다 session revision이 증가하고 모든 client가 full authoritative
   snapshot과 gameplay hash를 받습니다. 한 client의 intent만 outstanding으로 유지하며,
   stale revision과 request ID 재사용/중복 retry를 server가 처리합니다.
-- wire protocol은 v7이고 `SessionCoreState`는 v3입니다. M9-1의 AdventureState v3 snapshot은
-  모든 PartyMember에 runtime Level/EXP를 필수로 포함하고, M9-3의 `resume-lobby` lifecycle과
-  `resume-adventure` intent, M9-4의 `EXPERIENCE_GAINED`/`LEVEL_UP` 성장 이벤트 계약이 v7에
-  들어 있습니다. 이전 wire version은 `PROTOCOL_MISMATCH`로 거절하며, 서버와 클라이언트를 함께
-  갱신해야 합니다. M8의 Facing 입력 계약은 유지합니다.
-- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v7 control-only
+- wire protocol은 v9, `SessionCoreState`는 v3, `AdventureState`는 v4입니다. 모든 PartyMember는
+  Level/EXP와 advancement history를 포함합니다. `advance-character` intent와 `CHARACTER_ADVANCED`
+  이벤트가 성장 선택을 전달하며, 이전 wire version은 `PROTOCOL_MISMATCH`로 거절합니다.
+  M8 Facing 및 M9 resume/성장 이벤트 계약은 유지합니다.
+- attach/detach는 gameplay state/hash/revision을 바꾸지 않는 protocol v9 control-only
   snapshot(`events=[]`)으로 배포됩니다. 신선도는 `(revision, controlRevision)` 쌍으로
   판단하며, 중복 연결은 최신 연결이 이전 연결을 대체합니다. host migration은 지원하지
   않지만, 서버가 재시작되면 Host가 Campaign을 Continue해 마지막 저장부터 이어갑니다.
@@ -481,8 +480,8 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
 gameplay 진행이 SQLite에 저장되고, Host는 My Campaigns에서 Continue해 마지막으로 **COMMIT된**
 지점부터 이어서 플레이합니다. 저장의 유일한 원본은 서버 DB입니다.
 
-- 저장 payload는 `CampaignSaveV1` gameplay projection입니다. ContentIdentity, slot 순
-  party, AdventureState v3, CombatState v4만 들어가고 sessionId·playerId·guest claim·
+- 저장 payload는 `CampaignSaveV3` gameplay projection입니다. ContentIdentity, slot 순
+  party, AdventureState v4, CombatState v5만 들어가고 sessionId·playerId·guest claim·
   reconnect credential·presence·request journal은 들어가지 않습니다.
 - 첫 저장은 Adventure 시작 시점입니다. 새 Campaign의 파티 편집만으로는 save가 생기지 않습니다.
 - accepted transition은 `durable COMMIT → 메모리 state 교체 → ACK/snapshot` 순서로만
@@ -525,14 +524,11 @@ Level이 오릅니다. 새 Campaign은 **4전 승리 후 Lv.2, 7전 승리 후 L
   승리 직후에는 보상·다음 전투·완료 화면에 `EXP +400`, `Lv.1 → Lv.2`, 잔여 EXP 요약이 뜹니다.
   요약은 COMMIT된 이벤트로만 만들고 저장하지 않으므로, 재로드나 새 Continue에서는 현재
   Level/EXP만 보이고 지난 요약은 재생되지 않습니다.
-- Content schema는 v9, 생산 pack은 `cardguild.m7@0.4.0`, wire protocol은 v7입니다. 직전
-  `cardguild.m7@0.3.0` Campaign Save 하나만 명시적으로 이관하며, 진행·Level/EXP·Collection·
-  pending reward·진행 중 전투를 보존하고 완료한 전투에 EXP를 소급하지 않습니다. 이관은
-  Continue의 CAS COMMIT으로 한 번만 저장되고, 실패하면 새 세션을 공개하지 않습니다.
+- 현재 버전은 Content schema 11 / pack 0.7.0 / Save 3 / protocol 9입니다.
+  이전 final-stat Character 저장은 자동 이관하지 않고 row를 보존한 채 명시적으로 거절합니다.
 
-EXP를 authoring하는 방법은 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md)
-§9.1에 있고, 지급과 레벨업 계산은 `src/adventure/runtime.ts`, 이관은
-`src/server/campaign-content-migration.ts`가 소유합니다.
+EXP authoring은 [`docs/PRODUCTION-BLUEPRINT.md`](docs/PRODUCTION-BLUEPRINT.md) §9.1,
+Build·성장·preset·호환 정책은 [M11-2 문서](docs/m11-2-character-progression-foundation.md)에 있습니다.
 
 ## M9-5 Server Restart Recovery
 
@@ -568,3 +564,17 @@ npm start
 `tests/integration/restart-matrix.test.ts`, 배포 산출물의 실제 재시작은
 `tests/recovery/campaign.recovery.ts`가 검증합니다. 계층별 책임은
 [`docs/TESTING.md`](docs/TESTING.md)에 있습니다.
+
+
+## M11-2 Character Build와 성장 선택
+
+Player Core 8종과 Champion 예외 1종을 지원합니다. Aerin=Human/Fighter, Lyra=Elf/Rogue,
+Brom=Dwarf/Champion, Nera=Human/Cleric를 명시적으로 authoring하며 클래스별 고정 preset을 씁니다.
+PC와 authored NPC가 같은 `src/character` resolver로 Build와 advancement history에서 스탯을 만듭니다.
+Creature fixed stat block은 그대로입니다.
+
+EXP가 선택이 필요한 level에 도달하면 Adventure에서 Skill/Attribute를 선택해야 합니다.
+현재 조종자만 선택을 확정할 수 있고, 파티에 pending 선택이 남으면 다음 전투에 들어갈 수 없습니다.
+선택은 저장 COMMIT 이후 적용됩니다. [상세 규칙과 전후 balance 비교](docs/m11-2-character-progression-foundation.md).
+
+Card의 Trait·사용 자격·Ring/Hand 계약과 버전 영향은 [Card capability foundation](docs/card-capability-foundation.md)을 참고하세요.

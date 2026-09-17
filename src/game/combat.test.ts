@@ -276,7 +276,7 @@ describe("issue #32 authoritative facing", () => {
   const step = { kind: "basic", id: "step" } as const;
   function arena() {
     return heroFirstScenario({
-      hero: { position: { x: 1, y: 1 }, facing: "east", innateActionIds: ["fly"] },
+      hero: { position: { x: 1, y: 1 }, facing: "east", innateActionIds: [], deckContributions: [{ cardDefinitionId: "card.fly", count: 1, source: { kind: "base", sourceId: "test" } }] },
       "goblin-skirmisher": { position: { x: 8, y: 5 } },
       "goblin-brute": { position: { x: 8, y: 6 } },
     });
@@ -315,16 +315,18 @@ describe("issue #32 authoritative facing", () => {
       traits: [], targeting: "tile", range: { kind: "feet", value: 10 },
       resolution: { kind: "direct", effects: [] },
     };
-    const content = { ...CORE_CONTENT, actions: { ...CORE_CONTENT.actions, [action.id]: action } };
-    const scenario = arena();
-    const state = createCoreCombat({ ...scenario, actors: scenario.actors.map((actor) => actor.id === "hero"
-      ? { ...actor, innateActionIds: [action.id] } : actor) }, 44, content).state;
-    const source = { kind: "innate", id: action.id } as const;
+    const content = { ...CORE_CONTENT, actions: { ...CORE_CONTENT.actions, [action.id]: action },
+      cards: { ...CORE_CONTENT.cards, "card.tile-test": { id: "card.tile-test", name: "Tile Test", actionId: action.id, level: 1, traits: [] } } };
+    const opened = createCoreCombat(arena(), 44, content).state;
+    const state: CombatState = { ...opened, cardZones: { ...opened.cardZones, hero: { ...opened.cardZones.hero!, hand: [
+      { id: "tile-test", definitionId: "card.tile-test", source: { kind: "prepared", memberId: "hero" } },
+    ] } } };
+    const source = { kind: "card", id: "tile-test" } as const;
     const result = dispatchCombatCommand(state, command(state, "hero", source, { kind: "tile", position: { x: 1, y: 2 } }), content);
     expect(result.accepted).toBe(true);
     expect(result.state.actors.hero?.facing).toBe("south");
     expect(result.state.actors.hero?.position).toEqual({ x: 1, y: 1 });
-    expect(result.events.map((event) => event.type)).toEqual(["ACTION_SPENT", "FACING_CHANGED"]);
+    expect(result.events.map((event) => event.type)).toEqual(["ACTION_SPENT", "CARD_PLAYED", "FACING_CHANGED"]);
     expect(dispatchCombatCommand(state, command(state, "hero", source, { kind: "tile", position: { x: 8, y: 6 } }), content).accepted).toBe(false);
   });
 
@@ -340,10 +342,12 @@ describe("issue #32 authoritative facing", () => {
 
   it.each(["stride", "fly"] as const)("%s uses the last segment, not the origin-to-destination direction", (id) => {
     const scenario = arena();
-    const source = { kind: id === "fly" ? "innate" : "basic", id } as ActionSource;
     const setup = createCoreCombat(scenario, 44);
-    const action = command(setup.state, "hero", source, { kind: "tile", position: { x: 3, y: 2 }, facing: "west" });
-    const result = dispatchCombatCommand(setup.state, action, CORE_CONTENT);
+    const fly = allCards(setup.state, "hero").find(card => card.definitionId === "card.fly")!;
+    const source: ActionSource = id === "fly" ? { kind: "card", id: fly.id } : { kind: "basic", id };
+    const ready = setup.state;
+    const action = command(ready, "hero", source, { kind: "tile", position: { x: 3, y: 2 }, facing: "west" });
+    const result = dispatchCombatCommand(ready, action, CORE_CONTENT);
     expect(result.accepted).toBe(true);
     expect(result.events.find((event) => event.type === "ACTOR_MOVED")).toMatchObject({
       path: [{ x: 2, y: 1 }, { x: 3, y: 1 }, { x: 3, y: 2 }],
@@ -435,7 +439,7 @@ describe("core combat rules", () => {
     const first = createCoreCombat(coreScenario(), CORE_SEED).state;
     const second = createCoreCombat(coreScenario(), CORE_SEED).state;
     expect(hashCombatState(first)).toBe(hashCombatState(second));
-    expect(hashCombatState(first)).toBe("77d59960f529626b");
+    expect(hashCombatState(first)).toBe("752be905ae042df2");
     expect(
       Object.values(first.actors).every(
         (actor) => actor.reactionAvailable === (actor.id === first.turn.activeActorId),
@@ -451,7 +455,7 @@ describe("core combat rules", () => {
       first.actors.hero as NonNullable<typeof first.actors.hero>,
       { kind: "save", id: "reflex" },
       { content: CORE_CONTENT },
-    ).value).toBe(16);
+    ).value).toBe(17);
   });
 
   it("uses one pipeline for Interact, Raise Shield, and sustained effects", () => {
@@ -481,7 +485,7 @@ describe("core combat rules", () => {
     expect(resolveArmorClass(
       raised.state.actors.hero as NonNullable<typeof raised.state.actors.hero>,
       { content: CORE_CONTENT },
-    ).value).toBe(17);
+    ).value).toBe(16);
 
     const beaconCard = raised.state.cardZones.hero?.hand.find(
       (card) => card.definitionId === "card.spirit-beacon",
@@ -1247,18 +1251,8 @@ describe("core combat rules", () => {
   });
 
   it("derives cards and context recovery actions from trait providers", () => {
-    const recoverTest: ActionDefinition = {
-      id: "recover-test",
-      name: "Recover Test",
-      description: "Provider regression action.",
-      timing: { kind: "turn", actions: 1 },
-      traits: [{ id: "move" }],
-      targeting: "self",
-      resolution: { kind: "direct", effects: [{ kind: "remove-condition", owner: "actor", condition: "test-condition" }] },
-    };
     const providerContent: CombatContent = {
       ...CORE_CONTENT,
-      actions: { ...CORE_CONTENT.actions, [recoverTest.id]: recoverTest },
       equipment: {
         ...CORE_CONTENT.equipment,
         "trait-only-kit": {
@@ -1274,14 +1268,17 @@ describe("core combat rules", () => {
         "test-recovery": {
           id: "test-recovery",
           name: "Test Recovery",
+          source: "cardguild",
+          category: "condition",
+          description: "테스트용 회복 Trait입니다.",
           cardGrants: [],
-          actionGrants: [{ actionId: recoverTest.id, contextGroup: "escape" }],
+          actionGrants: [{ actionId: "stand", contextGroup: "escape" }],
         },
       },
       conditions: {
         ...CORE_CONTENT.conditions,
-        "test-condition": {
-          id: "test-condition",
+        "prone": {
+          id: "prone",
           name: "Test Condition",
           traits: [{ id: "condition" }, { id: "test-recovery" }],
         },
@@ -1302,7 +1299,7 @@ describe("core combat rules", () => {
             source: { kind: "equipment-trait", equipmentId: "trait-only-kit", traitId: "fly" },
           },
         ],
-        conditions: [{ id: "test-condition", sourceId: "test" }],
+        conditions: [{ id: "prone", sourceId: "test" }],
       },
     });
     const state = createCoreCombat(scenario, 72, providerContent).state;
@@ -1316,7 +1313,7 @@ describe("core combat rules", () => {
     ).toBe(true);
     const actions = listLegalActions(state, "hero", providerContent);
     expect(actions.find((action) => action.actionId === "raise-shield")?.enabled).toBe(true);
-    expect(actions.find((action) => action.actionId === recoverTest.id)?.contextGroup).toBe("escape");
+    expect(actions.find((action) => action.actionId === "stand")?.contextGroup).toBe("escape");
   });
 
   it("shares action legality across preview, query, and dispatch", () => {

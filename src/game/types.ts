@@ -377,6 +377,7 @@ export interface TurnState {
   readonly attacksThisTurn: number;
   readonly turnNumber: number;
   readonly lockedActionIds: readonly ActionId[];
+  readonly usedTraitsByActor: Readonly<Record<EntityId, readonly TraitId[]>>;
 }
 
 export type ActionSource =
@@ -452,7 +453,7 @@ export interface PendingReaction {
 }
 
 export interface CombatState {
-  readonly version: 4;
+  readonly version: 5;
   readonly scenarioId: string;
   readonly seed: number;
   readonly contentIdentity: ContentIdentity;
@@ -630,6 +631,9 @@ export interface CardDefinition {
   readonly name: string;
   readonly actionId: ActionId;
   readonly traits: readonly TraitInstance[];
+  /** Minimum Character level to prepare or use this capability. */
+  readonly level: number;
+  readonly levelByClass?: Readonly<Partial<Record<TraitId, number>>>;
 }
 
 export interface CardGrant {
@@ -656,9 +660,40 @@ export interface ContextActionOption {
   readonly group: ContextActionGroup;
 }
 
+/**
+ * Where a Trait's vocabulary is defined: the PF2e Remaster rules, or CardGuild itself.
+ * This is provenance of the *definition*. `TraitInstance.sourceId` is a different thing —
+ * what granted one instance to one actor — and the two are never merged.
+ */
+export type TraitSource = "pf2e-remaster" | "cardguild";
+
+/**
+ * CardGuild's presentation and authoring group for a Trait. It is metadata for the DOM
+ * and for future authoring invariants (a playable Character with exactly one `class`
+ * Trait), never a rule dispatch key: combat legality and statistics read `id` alone.
+ */
+export type TraitCategory =
+  | "system"
+  | "ancestry"
+  | "class"
+  | "personality"
+  | "creature"
+  | "action"
+  | "weapon"
+  | "equipment"
+  | "condition"
+  | "terrain"
+  | "damage"
+  | "general";
+
 export interface TraitDefinition {
+  /** The one identity a rule, a provider and the UI all look up. Never namespaced. */
   readonly id: TraitId;
   readonly name: string;
+  readonly source: TraitSource;
+  readonly category: TraitCategory;
+  /** Canonical short tooltip text; the only description any screen may show. */
+  readonly description: string;
   readonly cardGrants: readonly TraitCardGrant[];
   readonly actionGrants: readonly TraitActionGrant[];
   readonly statModifiers?: readonly StatisticModifierContribution[];
@@ -728,6 +763,7 @@ export interface ScenarioDefinition {
 }
 
 export interface CombatContent {
+  readonly classes: import("../character/types").CharacterRulesContext["classes"];
   readonly actions: Readonly<Record<ActionId, ActionDefinition>>;
   readonly cards: Readonly<Record<CardDefinitionId, CardDefinition>>;
   readonly equipment: Readonly<Record<EquipmentId, EquipmentDefinition>>;
@@ -868,6 +904,7 @@ export interface LegalAction {
   readonly reason?: string;
   readonly sourceLabel?: string;
   readonly contextGroup?: ContextActionGroup;
+  readonly cardRequirement?: { readonly requiredLevel: number; readonly currentLevel?: number };
 }
 
 export interface ActionValidationResult {

@@ -1,5 +1,9 @@
+import { resolveCardEligibility, isContextualBasicAction } from "../game/capabilities";
+import { equipmentTraits } from "../game/rules";
+import { assertAncestryDefinition, assertClassDefinition, pendingCharacterAdvancements, resolveCharacterRules } from "../character";
 import { positionKey } from "../game/grid";
 import { ATTRIBUTE_IDS, SAVE_IDS, SKILL_IDS, deriveMaxHp, isUntypedPenalty } from "../game/statistics";
+import { TRAIT_CATEGORIES, TRAIT_SOURCES, isTraitCategory, isTraitSource } from "../game/traits";
 import type {
   ActionCheckDefinition,
   ActionDefinition,
@@ -96,7 +100,12 @@ function validateTraits(
   path: string,
   traits: readonly TraitInstance[],
 ): void {
+  const seen = new Set<string>();
   traits.forEach((trait, index) => {
+    if (seen.has(trait.id)) {
+      addIssue(context, category, `${path}[${index}].id`, "DUPLICATE_TRAIT", `Duplicate Trait ID "${trait.id}".`, definitionId);
+    }
+    seen.add(trait.id);
     if (!knownTraits.has(trait.id)) {
       addIssue(
         context,
@@ -290,6 +299,8 @@ export function validateContentPackSemantics(
   const context: ValidationContext = { source, locations, issues: [] };
 
   validateUniqueIds(context, "traits", source.traits);
+  validateUniqueIds(context, "ancestries", source.ancestries);
+  validateUniqueIds(context, "classes", source.classes);
   validateUniqueIds(context, "conditions", source.conditions);
   validateUniqueIds(context, "actions", source.actions);
   validateUniqueIds(context, "cards", source.cards);
@@ -306,7 +317,32 @@ export function validateContentPackSemantics(
   const equipmentById = new Map(source.equipment.map((definition) => [definition.id, definition]));
   const knownActors = new Set(source.actors.map((definition) => definition.id));
 
+  const characterRules = {
+    traits: Object.fromEntries(source.traits.map(entry => [entry.id, entry])),
+    ancestries: Object.fromEntries(source.ancestries.map(entry => [entry.id, entry])),
+    classes: Object.fromEntries(source.classes.map(entry => [entry.id, entry])),
+  };
+  source.ancestries.forEach((entry, index) => {
+    try { assertAncestryDefinition(entry, characterRules); }
+    catch (error) { addIssue(context, "ancestries", `[${index}]`, "INVALID_ANCESTRY", String(error), entry.id); }
+  });
+  source.classes.forEach((entry, index) => {
+    try { assertClassDefinition(entry, characterRules); }
+    catch (error) { addIssue(context, "classes", `[${index}]`, "INVALID_CLASS", String(error), entry.id); }
+  });
+
   source.traits.forEach((definition, definitionIndex) => {
+    // The v10 vocabulary metadata. Checked here as well as by the schema because a pack
+    // authored in TypeScript never meets the schema, and the DOM reads these fields as-is.
+    if (!isTraitSource(definition.source)) {
+      addIssue(context, "traits", `[${definitionIndex}].source`, "INVALID_TRAIT_SOURCE", `Trait "${definition.id}" source must be one of ${TRAIT_SOURCES.join(", ")}.`, definition.id);
+    }
+    if (!isTraitCategory(definition.category)) {
+      addIssue(context, "traits", `[${definitionIndex}].category`, "INVALID_TRAIT_CATEGORY", `Trait "${definition.id}" category must be one of ${TRAIT_CATEGORIES.join(", ")}.`, definition.id);
+    }
+    if (typeof definition.description !== "string" || definition.description.trim().length === 0) {
+      addIssue(context, "traits", `[${definitionIndex}].description`, "EMPTY_TRAIT_DESCRIPTION", `Trait "${definition.id}" needs a non-empty description.`, definition.id);
+    }
     validateStatModifiers(context, "traits", definition.id, `[${definitionIndex}].statModifiers`, definition.statModifiers);
     const grantKeys = new Set<string>();
     definition.cardGrants.forEach((grant, index) => {
@@ -321,6 +357,9 @@ export function validateContentPackSemantics(
     });
     definition.actionGrants.forEach((grant, index) => {
       const key = `action:${grant.actionId}:${grant.contextGroup}`;
+      if (!isContextualBasicAction(grant.actionId, grant.contextGroup)) {
+        addIssue(context, "traits", `[${definitionIndex}].actionGrants[${index}]`, "INVALID_CONTEXT_ACTION_GRANT", `Action "${grant.actionId}" is not a contextual Basic action in group "${grant.contextGroup}".`, definition.id);
+      }
       if (!knownActions.has(grant.actionId)) {
         addIssue(context, "traits", `[${definitionIndex}].actionGrants[${index}].actionId`, "UNKNOWN_ACTION", `Action "${grant.actionId}" is not defined.`, definition.id);
       }
@@ -395,10 +434,36 @@ export function validateContentPackSemantics(
   });
 
   source.cards.forEach((definition, index) => {
+    const validLevel = (value: unknown): boolean => typeof value === "number" && Number.isSafeInteger(value) && value >= 1;
+    if (!validLevel(definition.level)) addIssue(context, "cards", `[${index}].level`, "INVALID_CARD_LEVEL", "Card level must be a positive safe integer.", definition.id);
+    if (definition.levelByClass !== undefined) {
+      if (!definition.levelByClass || typeof definition.levelByClass !== "object" || Array.isArray(definition.levelByClass)) {
+        addIssue(context, "cards", `[${index}].levelByClass`, "INVALID_CARD_LEVEL", "Class levels must be an object.", definition.id);
+      } else for (const [id, level] of Object.entries(definition.levelByClass)) {
+        if (!validLevel(level)) addIssue(context, "cards", `[${index}].levelByClass.${id}`, "INVALID_CARD_LEVEL", "Class level must be a positive safe integer.", definition.id);
+        if (!Object.hasOwn(characterRules.classes, id) || !definition.traits.some(trait => trait.id === id)) {
+          addIssue(context, "cards", `[${index}].levelByClass.${id}`, "INVALID_CARD_LEVEL_CLASS", "Level override requires a registered Class present in the Card Traits.", definition.id);
+        }
+      }
+    }
     if (!knownActions.has(definition.actionId)) {
       addIssue(context, "cards", `[${index}].actionId`, "UNKNOWN_ACTION", `Action "${definition.actionId}" is not defined.`, definition.id);
     }
     validateTraits(context, knownTraits, "cards", definition.id, `[${index}].traits`, definition.traits);
+    const action = source.actions.find(action => action.id === definition.actionId);
+    const requiredTraits = [
+      ...(action?.resolution.kind === "move" ? ["move"] : []),
+      ...(action?.timing.kind === "reaction" ? ["reaction"] : []),
+    ];
+    for (const id of requiredTraits) {
+      if (!definition.traits.some(trait => trait.id === id)) addIssue(context, "cards", `[${index}].traits`, "MISSING_CAPABILITY_TRAIT", `Card requires the "${id}" Trait for its execution primitive.`, definition.id);
+    }
+    for (const trait of definition.traits) {
+      // Authoring consistency only; eligibility itself uses registry membership.
+      if (source.traits.find(entry => entry.id === trait.id)?.category === "class" && !characterRules.classes[trait.id]) {
+        addIssue(context, "cards", `[${index}].traits`, "UNKNOWN_CLASS", `Class Trait "${trait.id}" has no ClassDefinition.`, definition.id);
+      }
+    }
   });
 
   source.equipment.forEach((definition, index) => {
@@ -436,30 +501,38 @@ export function validateContentPackSemantics(
         actor.id,
       );
     }
+    if (actor.statProfile.kind === "character" && actor.innateActionIds.length > 0) {
+      addIssue(context, "actors", `[${index}].innateActionIds`, "CHARACTER_INNATE_FORBIDDEN", "Character special capabilities must be granted by Cards.", actor.id);
+    }
+    const equipmentCards = Object.values(actor.starterLoadout.equipment).flatMap(id => {
+      const equipment = id && equipmentById.get(id);
+      return equipment ? equipmentTraits(equipment).flatMap(trait => characterRules.traits[trait.id]?.cardGrants.map(grant => grant.cardDefinitionId) ?? []) : [];
+    });
+    const eligibilityActor = { traits: actor.traits, statProfile: actor.statProfile.kind === "character"
+      ? { kind: "character" as const, stats: { level: actor.statProfile.level } } : actor.statProfile };
+    for (const cardId of new Set([...actor.starterLoadout.preparedCards, ...actor.baseCardGrants.map(grant => grant.cardDefinitionId), ...equipmentCards])) {
+      const card = source.cards.find(card => card.id === cardId);
+      const eligibility = card && resolveCardEligibility(eligibilityActor, card, characterRules);
+      if (eligibility && !eligibility.eligible) {
+        addIssue(context, "actors", `[${index}]`, eligibility.code, `Character cannot receive Card "${cardId}": ${eligibility.reason}`, actor.id);
+      }
+    }
     if (actor.statProfile.kind === "character") {
-      validateStrikeShape(context, "actors", actor.id, `[${index}].statProfile.stats.offense.unarmedStrike`, actor.statProfile.stats.offense.unarmedStrike, knownTraits);
-      if (actor.statProfile.stats.offense.unarmedStrike.category !== "unarmed") {
-        addIssue(
-          context,
-          "actors",
-          `[${index}].statProfile.stats.offense.unarmedStrike.category`,
-          "UNARMED_STRIKE_CATEGORY_MISMATCH",
-          `Actor "${actor.id}" declares an unarmed Strike in the "${actor.statProfile.stats.offense.unarmedStrike.category}" weapon category.`,
-          actor.id,
-        );
+      try {
+        if (Object.hasOwn(actor, "speedFeet") || Object.hasOwn(actor, "character")
+          || Object.keys(actor.statProfile).some(key => !["kind", "build", "level", "advancements"].includes(key))) {
+          throw new Error("Character source must author Build and advancement history, never final stats or speed.");
+        }
+        const { build, level, advancements } = actor.statProfile;
+        const result = resolveCharacterRules({ traits: actor.traits, build, progression: { level, experience: 0, advancements } }, characterRules);
+        if (pendingCharacterAdvancements(level, advancements).length) throw new Error("Authored Character advancements must be complete.");
+        if (deriveMaxHp(result.statProfile.stats) < 1) throw new Error("Derived Character maximum HP must be positive.");
+        validateStrikeShape(context, "actors", actor.id, `[${index}].statProfile`, result.statProfile.stats.offense.unarmedStrike, knownTraits);
+      } catch (error) {
+        addIssue(context, "actors", `[${index}].statProfile`, "INVALID_CHARACTER_BUILD", error instanceof Error ? error.message : String(error), actor.id);
       }
     } else {
       validateStrikeShape(context, "actors", actor.id, `[${index}].statProfile.stats.strike`, actor.statProfile.stats.strike, knownTraits);
-    }
-    if (actor.statProfile.kind === "character" && deriveMaxHp(actor.statProfile.stats) < 1) {
-      addIssue(
-        context,
-        "actors",
-        `[${index}].statProfile.stats.defense`,
-        "DERIVED_MAX_HP_NOT_POSITIVE",
-        `Actor "${actor.id}" derives ${deriveMaxHp(actor.statProfile.stats)} maximum HP; ancestry, class, and CON must total at least 1.`,
-        actor.id,
-      );
     }
     Object.entries(actor.starterLoadout.equipment).forEach(([slot, equipmentId]) => {
       if (!equipmentId) return;
