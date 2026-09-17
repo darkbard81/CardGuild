@@ -17,6 +17,10 @@ function element<K extends keyof HTMLElementTagNameMap>(
 }
 
 export interface SessionLobbyHandlers {
+  readonly onNewAdventure: () => void;
+  readonly onShowJoin: () => void;
+  readonly onShowCampaigns: () => void;
+  readonly onRetryAuth: () => void;
   readonly onShowLogin: () => void;
   readonly onShowRegister: () => void;
   readonly onShowLanding: () => void;
@@ -36,7 +40,8 @@ export interface SessionLobbyHandlers {
 export class SessionLobbyUi {
   private readonly screen: HTMLElement;
   private readonly partyBuilder: PartyBuilderUi;
-  private status = "호스트가 방을 만들고 세션 ID를 초대할 플레이어에게 전달합니다.";
+  private status = "";
+  private drafts = new Map<string, string>();
   /** Every Continue button on the current campaign list, so one attempt can disable them all. */
   private continueButtons: HTMLButtonElement[] = [];
   private continueInFlight = false;
@@ -55,192 +60,213 @@ export class SessionLobbyUi {
     });
   }
 
-  public renderLanding(): void {
+  private card(title: string, description: string): HTMLElement {
+    for (const input of this.screen.querySelectorAll<HTMLInputElement>("input:not([type=password])")) {
+      this.drafts.set(input.id, input.value);
+    }
+    this.status = "";
     this.screen.replaceChildren();
-    const card = element("section", "session-card");
-    card.append(
-      element("p", "eyebrow", "Host-invited co-op"),
-      element("h1", undefined, "CardGuild Session"),
-      element("p", "session-description", "공개 방 목록 없이 호스트가 만든 세션 ID로 최대 3명이 참가합니다."),
-    );
-    const displayName = element("input", "session-input");
-    displayName.id = "session-display-name";
-    displayName.placeholder = "Display name";
-    displayName.maxLength = 40;
-    displayName.autocomplete = "name";
-    const joinCode = element("input", "session-input");
-    joinCode.id = "join-session-id";
-    joinCode.placeholder = "Session ID from host";
-    joinCode.autocomplete = "off";
-    const join = element("button", "session-secondary", "Join Host");
-    join.id = "join-session";
-    join.type = "button";
-    join.addEventListener("click", () => this.handlers.onJoin(joinCode.value, displayName.value));
-    const form = element("div", "session-form");
-    form.append(displayName, join, joinCode, element("span"));
-
-    // Hosting needs an account; joining never does.
-    const host = element("button", "session-primary", "Host sign in");
-    host.id = "host-login";
-    host.type = "button";
-    host.addEventListener("click", () => this.handlers.onShowLogin());
-    const signUp = element("button", "session-secondary", "Create account");
-    signUp.id = "host-register";
-    signUp.type = "button";
-    signUp.addEventListener("click", () => this.handlers.onShowRegister());
-    const hostActions = element("div", "session-form");
-    hostActions.append(host, signUp);
-    card.append(form, element("p", "party-builder-label", "HOST"), hostActions, this.statusLine());
+    this.screen.removeAttribute("aria-busy");
+    delete this.screen.dataset.sessionId;
+    delete this.screen.dataset.viewerRole;
+    delete this.screen.dataset.lobbyKind;
+    const card = element("section", "session-card session-entry");
+    card.append(element("h1", undefined, title), element("p", "session-description", description));
     this.screen.append(card);
     this.setVisible(true);
+    const heading = card.querySelector("h1")!;
+    heading.tabIndex = -1;
+    heading.focus();
+    return card;
+  }
+
+  private button(label: string, id: string, action: () => void, primary = false): HTMLButtonElement {
+    const button = element("button", primary ? "session-primary" : "session-secondary", label);
+    button.id = id;
+    button.type = "button";
+    button.addEventListener("click", action);
+    return button;
+  }
+
+  private field(form: HTMLFormElement, id: string, label: string, options: {
+    password?: boolean; autocomplete?: string; maxLength?: number; required?: boolean; hint?: string;
+  } = {}): HTMLInputElement {
+    const wrapper = element("div", "session-field");
+    const caption = element("label", undefined, label);
+    caption.htmlFor = id;
+    const input = element("input", "session-input");
+    input.id = id;
+    input.name = id;
+    input.type = options.password ? "password" : "text";
+    input.setAttribute("autocomplete", options.autocomplete ?? "off");
+    input.required = options.required ?? true;
+    if (options.maxLength) input.maxLength = options.maxLength;
+    if (!options.password) input.value = this.drafts.get(id) ?? "";
+    wrapper.append(caption, input);
+    if (options.hint) {
+      const hint = element("p", "session-description", options.hint);
+      hint.id = `${id}-hint`;
+      input.setAttribute("aria-describedby", hint.id);
+      wrapper.append(hint);
+    }
+    input.addEventListener("input", () => {
+      input.setCustomValidity("");
+      input.removeAttribute("aria-invalid");
+    });
+    form.append(wrapper);
+    return input;
+  }
+
+  private form(card: HTMLElement, label: string, id: string, submit: () => void): HTMLFormElement {
+    const form = element("form", "session-entry-form");
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (this.screen.getAttribute("aria-busy") === "true") return;
+      submit();
+    });
+    const button = element("button", "session-primary", label);
+    button.id = id;
+    button.type = "submit";
+    // Fields are inserted before this action when the form is completed.
+    card.append(form);
+    form.append(button);
+    form.dataset.action = id;
+    return form;
+  }
+
+  private finishForm(card: HTMLElement, form: HTMLFormElement, back: () => void, backId: string): void {
+    form.append(form.querySelector('button[type="submit"]')!);
+    card.append(this.button("시작 화면으로", backId, back), this.statusLine());
+  }
+
+  public clearDrafts(): void {
+    this.drafts.clear();
+    for (const input of this.screen.querySelectorAll<HTMLInputElement>("input")) input.value = "";
+  }
+
+  public setBusy(busy: boolean): void {
+    this.screen.setAttribute("aria-busy", String(busy));
+    for (const control of this.screen.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button")) {
+      if (busy) {
+        control.dataset.entryDisabled = String(control.disabled);
+        control.disabled = true;
+      } else if (control.dataset.entryDisabled !== undefined) {
+        control.disabled = control.dataset.entryDisabled === "true";
+        delete control.dataset.entryDisabled;
+      }
+    }
+  }
+
+  public renderLanding(account: AccountIdentity | null = null, auth: "checking" | "ready" | "failed" = "ready"): void {
+    const card = this.card("CardGuild", "새 모험을 시작하거나 친구의 초대 코드로 참가하세요.");
+    const start = this.button("새 모험 시작", "entry-new-adventure", this.handlers.onNewAdventure, true);
+    start.disabled = auth !== "ready";
+    const choices = element("div", "session-entry-choices");
+    choices.append(start, this.button("초대 코드로 참가", "entry-join", this.handlers.onShowJoin));
+    card.append(choices);
+    if (account) {
+      choices.append(this.button("이어하기", "entry-continue", this.handlers.onShowCampaigns));
+      card.append(element("p", "session-description", `${account.username}님으로 로그인됨`));
+      card.append(this.button("로그아웃", "account-logout", this.handlers.onLogout));
+    } else if (auth === "ready") {
+      card.append(this.button("로그인", "host-login", this.handlers.onShowLogin));
+    }
+    if (auth === "failed") card.append(this.button("로그인 상태 다시 확인", "entry-retry-auth", this.handlers.onRetryAuth));
+    card.append(this.statusLine());
+    if (auth === "checking") this.setStatus("로그인 상태를 확인하고 있습니다…");
+    if (auth === "failed") this.setStatus("로그인 상태를 확인하지 못했습니다. 다시 시도하거나 초대 코드로 참가하세요.", "error");
   }
 
   public renderLogin(): void {
-    this.screen.replaceChildren();
-    const card = element("section", "session-card");
-    card.append(
-      element("p", "eyebrow", "Host account"),
-      element("h1", undefined, "Host Sign In"),
-      element("p", "session-description", "Campaign은 계정이 소유합니다. 계정이 없다면 새로 만드세요."),
-    );
-    const username = element("input", "session-input");
-    username.id = "account-username";
-    username.placeholder = "Username";
-    username.autocomplete = "username";
-    const password = element("input", "session-input");
-    password.id = "account-password";
-    password.type = "password";
-    password.placeholder = "Password";
-    password.autocomplete = "current-password";
-
-    const submit = element("button", "session-primary", "Sign in");
-    submit.id = "account-login";
-    submit.type = "button";
-    submit.addEventListener("click", () => this.handlers.onLogin(username.value, password.value));
-    const back = element("button", "session-secondary", "Back");
-    back.id = "account-back";
-    back.type = "button";
-    back.addEventListener("click", () => this.handlers.onShowLanding());
-    const signUp = element("button", "session-secondary", "Create account");
-    signUp.id = "account-show-register";
-    signUp.type = "button";
-    signUp.addEventListener("click", () => this.handlers.onShowRegister());
-
-    const form = element("div", "session-form");
-    form.append(username, submit, password, back);
-    card.append(form, element("p", "party-builder-label", "NO ACCOUNT YET"), signUp, this.statusLine());
-    this.screen.append(card);
-    this.setVisible(true);
+    const card = this.card("로그인", "모험 진행을 저장하고 이어하려면 계정이 필요합니다.");
+    const form = this.form(card, "로그인", "account-login", () => this.handlers.onLogin(username.value, password.value));
+    const username = this.field(form, "account-username", "계정 이름", { autocomplete: "username" });
+    const password = this.field(form, "account-password", "비밀번호", { password: true, autocomplete: "current-password" });
+    this.finishForm(card, form, this.handlers.onShowLanding, "account-back");
+    card.insertBefore(this.button("계정 만들기", "account-show-register", this.handlers.onShowRegister), card.lastChild);
   }
 
-  /**
-   * Making an account, which the server then signs in.
-   *
-   * The password is asked for twice because there is no reset flow: a typo here would lock the
-   * account away from the only person who wanted it. The match is checked before the
-   * request so a mistyped confirmation never reaches the server as a real attempt.
-   */
   public renderRegister(): void {
-    this.screen.replaceChildren();
-    const card = element("section", "session-card");
-    card.append(
-      element("p", "eyebrow", "Host account"),
-      element("h1", undefined, "Create Account"),
-      element("p", "session-description", "Campaign을 만들려면 계정이 필요합니다. 비밀번호는 다시 찾을 수 없으니 잘 보관하세요."),
-    );
-    const username = element("input", "session-input");
-    username.id = "register-username";
-    username.placeholder = "Username";
-    username.autocomplete = "username";
-    const password = element("input", "session-input");
-    password.id = "register-password";
-    password.type = "password";
-    password.placeholder = "Password (8+ characters)";
-    password.autocomplete = "new-password";
-    const confirm = element("input", "session-input");
-    confirm.id = "register-password-confirm";
-    confirm.type = "password";
-    confirm.placeholder = "Repeat password";
-    confirm.autocomplete = "new-password";
-
-    const submit = element("button", "session-primary", "Create account");
-    submit.id = "register-submit";
-    submit.type = "button";
-    submit.addEventListener("click", () => {
+    const card = this.card("계정 만들기", "진행을 저장할 계정을 만드세요. 비밀번호 복구는 지원하지 않으므로 잘 보관하세요.");
+    const form = this.form(card, "계정 만들기", "register-submit", () => {
       if (password.value !== confirm.value) {
-        this.setStatus("비밀번호가 서로 다릅니다.");
+        confirm.setAttribute("aria-invalid", "true");
+        confirm.setAttribute("aria-describedby", "session-status");
+        this.setStatus("비밀번호가 서로 다릅니다.", "error");
         confirm.focus();
         return;
       }
       this.handlers.onRegister(username.value, password.value);
     });
-    const back = element("button", "session-secondary", "Back");
-    back.id = "register-back";
-    back.type = "button";
-    back.addEventListener("click", () => this.handlers.onShowLogin());
+    const username = this.field(form, "register-username", "계정 이름", {
+      autocomplete: "username", maxLength: 32, hint: "영문·숫자로 시작하는 3~32자. 영문, 숫자, 점, 하이픈, 밑줄을 사용할 수 있습니다.",
+    });
+    const password = this.field(form, "register-password", "비밀번호", {
+      password: true, autocomplete: "new-password", hint: "8자 이상 입력하세요.",
+    });
+    const confirm = this.field(form, "register-password-confirm", "비밀번호 확인", { password: true, autocomplete: "new-password" });
+    this.finishForm(card, form, this.handlers.onShowLogin, "register-back");
+    card.querySelector("#register-back")!.textContent = "로그인으로 돌아가기";
+  }
 
-    const form = element("div", "session-form");
-    form.append(username, submit, password, back, confirm, element("span"));
-    card.append(form, this.statusLine());
-    this.screen.append(card);
-    this.setVisible(true);
+  public renderJoin(): void {
+    const card = this.card("초대 코드로 참가", "계정 없이 참가할 수 있습니다. 친구에게 받은 초대 코드를 입력하세요.");
+    const form = this.form(card, "참가하기", "join-session", () => {
+      if (!this.nonblank(code, "초대 코드를 입력하세요.")) return;
+      this.handlers.onJoin(code.value.trim(), name.value);
+    });
+    const code = this.field(form, "join-session-id", "초대 코드");
+    code.spellcheck = false;
+    code.setAttribute("autocapitalize", "none");
+    const name = this.field(form, "session-display-name", "표시 이름 (선택)", { required: false, maxLength: 40, autocomplete: "name", hint: "비워 두면 자동 이름을 사용합니다." });
+    this.finishForm(card, form, this.handlers.onShowLanding, "join-back");
+  }
+
+  private nonblank(input: HTMLInputElement, message: string): boolean {
+    if (input.value.trim()) return true;
+    input.setAttribute("aria-invalid", "true");
+    input.setAttribute("aria-describedby", "session-status");
+    this.setStatus(message, "error");
+    input.focus();
+    return false;
+  }
+
+  public renderNewAdventure(): void {
+    const card = this.card("새 모험 시작", "모험 이름을 정하세요. 진행은 로그인한 계정에 저장됩니다.");
+    const form = this.form(card, "모험 만들기", "new-campaign", () => {
+      if (!this.nonblank(name, "모험 이름을 입력하세요.")) return;
+      this.handlers.onCreateCampaign(name.value.trim(), displayName.value);
+    });
+    const name = this.field(form, "new-campaign-name", "모험 이름", { maxLength: 60 });
+    const displayName = this.field(form, "campaign-display-name", "표시 이름 (선택)", { required: false, maxLength: 40, autocomplete: "name", hint: "비워 두면 자동 이름을 사용합니다." });
+    this.finishForm(card, form, this.handlers.onShowLanding, "new-adventure-back");
   }
 
   public renderCampaigns(account: AccountIdentity, campaigns: readonly CampaignSummary[]): void {
-    this.screen.replaceChildren();
-    const card = element("section", "session-card");
-    card.append(
-      element("p", "eyebrow", "Host account"),
-      element("h1", undefined, "My Campaigns"),
-      element("p", "session-description", `${account.username} 계정이 소유한 Campaign입니다.`),
-    );
-
-    const name = element("input", "session-input");
-    name.id = "new-campaign-name";
-    name.placeholder = "New campaign name";
-    name.maxLength = 60;
-    const displayName = element("input", "session-input");
-    displayName.id = "campaign-display-name";
-    displayName.placeholder = "Display name";
-    displayName.maxLength = 40;
-    displayName.autocomplete = "name";
-    const create = element("button", "session-primary", "New Campaign");
-    create.id = "new-campaign";
-    create.type = "button";
-    create.addEventListener("click", () => this.handlers.onCreateCampaign(name.value, displayName.value));
-    const form = element("div", "session-form");
-    form.append(name, create, displayName, element("span"));
-    card.append(form);
-
+    const card = this.card("이어하기", `${account.username}님의 모험을 선택하세요.`);
     const list = element("ul", "session-seats");
     list.id = "campaign-list";
-    // A freshly rendered list is a fresh chance to continue, whatever the last attempt did.
     this.continueButtons = [];
     this.continueInFlight = false;
     for (const campaign of campaigns) {
       const row = element("li", "occupied");
       row.dataset.campaignId = campaign.campaignId;
-      const resume = element("button", "session-secondary", "Continue");
-      resume.type = "button";
-      // Continue restores the last committed gameplay save; a campaign with none is new.
+      const resume = this.button("이어하기", `continue-${campaign.campaignId}`, () => this.beginContinue(campaign.campaignId));
       resume.disabled = !campaign.hasSave;
       if (campaign.hasSave) this.continueButtons.push(resume);
-      resume.addEventListener("click", () => this.beginContinue(campaign.campaignId));
       row.append(element("span", undefined, campaign.name), resume);
+      if (!campaign.hasSave) row.append(element("span", "session-description", "아직 저장된 진행이 없습니다."));
       list.append(row);
     }
-    if (!campaigns.length) {
-      list.append(element("li", "open", "아직 Campaign이 없습니다."));
-    }
-    card.append(element("p", "party-builder-label", "CAMPAIGNS"), list);
+    if (!campaigns.length) list.append(element("li", "open", "저장된 모험이 없습니다."));
+    card.append(list, this.button("새 모험 시작", "entry-new-adventure", this.handlers.onNewAdventure));
+    card.append(this.button("시작 화면으로", "campaigns-back", this.handlers.onShowLanding), this.statusLine());
+  }
 
-    const logout = element("button", "session-secondary", "Sign out");
-    logout.id = "account-logout";
-    logout.type = "button";
-    logout.addEventListener("click", () => this.handlers.onLogout());
-    card.append(logout, this.statusLine());
-    this.screen.append(card);
-    this.setVisible(true);
+  public renderCampaignLoading(): void {
+    const card = this.card("이어하기", "저장된 모험을 불러옵니다.");
+    card.append(this.button("다시 불러오기", "campaigns-retry", this.handlers.onShowCampaigns),
+      this.button("시작 화면으로", "campaigns-back", this.handlers.onShowLanding), this.statusLine());
   }
 
   /**
@@ -443,10 +469,25 @@ export class SessionLobbyUi {
     return root;
   }
 
-  public setStatus(status: string): void {
+  public setStatus(status: string, kind: "info" | "error" = "info"): void {
     this.status = status;
     const line = this.screen.querySelector<HTMLElement>("#session-status");
-    if (line) line.textContent = status;
+    if (line) {
+      line.dataset.kind = kind;
+      line.textContent = status;
+    }
+  }
+
+  public reportEntryError(message: string, fieldId?: string): void {
+    this.setStatus(message, "error");
+    const input = fieldId ? this.screen.querySelector<HTMLInputElement>(`#${fieldId}`) : null;
+    if (input) {
+      input.setAttribute("aria-invalid", "true");
+      const descriptions = new Set((input.getAttribute("aria-describedby") ?? "").split(" ").filter(Boolean));
+      descriptions.add("session-status");
+      input.setAttribute("aria-describedby", [...descriptions].join(" "));
+      input.focus();
+    }
   }
 
   private statusLine(): HTMLElement {

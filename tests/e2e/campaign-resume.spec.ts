@@ -25,6 +25,7 @@ function uniqueName(prefix: string): string {
 
 async function createCampaign(page: Page, name: string, displayName: string): Promise<void> {
   await signInAsHost(page, DEV_HOST_A);
+  await page.locator("#entry-new-adventure").click();
   await page.locator("#new-campaign-name").fill(name);
   await page.locator("#campaign-display-name").fill(displayName);
   await page.locator("#new-campaign").click();
@@ -58,7 +59,7 @@ async function playIntoCombat(page: Page): Promise<string> {
 }
 
 function continueButton(page: Page, name: string) {
-  return page.locator("#campaign-list li").filter({ hasText: name }).getByRole("button", { name: "Continue" });
+  return page.locator("#campaign-list li").filter({ hasText: name }).getByRole("button", { name: "이어하기" });
 }
 
 /** Back to My Campaigns without signing out: the auth cookie outlives the reload. */
@@ -66,7 +67,8 @@ async function backToCampaigns(page: Page): Promise<void> {
   await page.evaluate(() => sessionStorage.clear());
   await page.goto("/");
   await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
-  await expect(page.locator("#new-campaign")).toBeVisible();
+  await page.locator("#entry-continue").click();
+  await expect(page.locator("#campaign-list")).toBeVisible();
 }
 
 async function continueCampaign(page: Page, name: string): Promise<void> {
@@ -155,8 +157,8 @@ test("retires the previous browser session and clears only its own credential", 
     await expect(original.page.locator("#app")).toHaveAttribute("data-session-status", "closed");
     await expect.poll(() =>
       original.page.evaluate(() => sessionStorage.getItem("cardguild.session.v2"))).toBeNull();
-    // A signed-in host lands back on their campaigns rather than the guest landing.
-    await expect(original.page.locator("#new-campaign")).toBeVisible();
+    // A signed-in host returns to the purpose-based entry screen.
+    await expect(original.page.locator("#entry-continue")).toBeVisible();
 
     // The tab that continued is unaffected and still holds its own fresh credential.
     await expect(returning.page.locator("#app")).toHaveAttribute("data-lifecycle", "resume-lobby");
@@ -182,6 +184,7 @@ test("lets a guest rejoin a resumed campaign, reclaim a character, and resume wi
     const inviteId = await returning.page.locator("#invite-session-id").innerText();
 
     await openApp(guest.page);
+    await guest.page.locator("#entry-join").click();
     await guest.page.locator("#session-display-name").fill("Returning Guest");
     await guest.page.locator("#join-session-id").fill(inviteId);
     await guest.page.locator("#join-session").click();
@@ -245,7 +248,7 @@ test("keeps Continue retryable when the attempt and the list refresh both fail",
     await resume.click();
 
     await expect(returning.page.locator("#session-status")).not.toHaveText(/이어가는 중/, { timeout: 20_000 });
-    await expect(returning.page.locator("#app")).toHaveAttribute("data-auth", "anonymous");
+    await expect(returning.page.locator("#app")).toHaveAttribute("data-auth", "authenticated");
     // The campaign row and its save are untouched, so the host must be able to try again
     // without reloading the page.
     await expect(resume).toBeEnabled();
@@ -274,6 +277,7 @@ test("arms only one Continue at a time and gives every button back when it fails
     // so getting back to My Campaigns never needs a sign-out and sign-in round trip.
     await signInAsHost(host.page, DEV_HOST_A);
     for (const name of [first, second]) {
+      await host.page.locator("#entry-new-adventure").click();
       await host.page.locator("#new-campaign-name").fill(name);
       await host.page.locator("#campaign-display-name").fill("Pair Host");
       await host.page.locator("#new-campaign").click();

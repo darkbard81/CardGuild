@@ -12,6 +12,7 @@ import { startDeployment, type RecoveryDeployment } from "../support/recovery/de
  * test process holding anything together.
  */
 interface Player {
+  readonly name: string;
   readonly context: BrowserContext;
   readonly page: Page;
   /** Uncaught exceptions. A restart must never produce one. */
@@ -43,8 +44,8 @@ async function openPlayer(browser: Browser, deployment: RecoveryDeployment, name
   await page.goto(deployment.origin);
   await expect(page.locator("#app")).toHaveAttribute("data-ready", "true");
   await expect(page.locator("#app")).not.toHaveAttribute("data-auth", "unknown");
-  await page.locator("#session-display-name").fill(name);
-  return { context, page, pageErrors, consoleErrors };
+
+  return { name, context, page, pageErrors, consoleErrors };
 }
 
 async function signIn(player: Player, deployment: RecoveryDeployment): Promise<void> {
@@ -55,10 +56,11 @@ async function signIn(player: Player, deployment: RecoveryDeployment): Promise<v
   await player.page.locator("#account-password").fill(deployment.account.password);
   await player.page.locator("#account-login").click();
   await expect(player.page.locator("#app")).toHaveAttribute("data-auth", "authenticated");
-  await expect(player.page.locator("#new-campaign")).toBeVisible();
+  await expect(player.page.locator("#entry-continue")).toBeVisible();
 }
 
 async function createCampaign(player: Player, name: string, displayName: string): Promise<string> {
+  await player.page.locator("#entry-new-adventure").click();
   await player.page.locator("#new-campaign-name").fill(name);
   await player.page.locator("#campaign-display-name").fill(displayName);
   await player.page.locator("#new-campaign").click();
@@ -73,6 +75,8 @@ async function applyParty(page: Page): Promise<void> {
 }
 
 async function joinAs(player: Player, sessionId: string): Promise<void> {
+  await player.page.locator("#entry-join").click();
+  await player.page.locator("#session-display-name").fill(player.name);
   await player.page.locator("#join-session-id").fill(sessionId);
   await player.page.locator("#join-session").click();
   await expect(player.page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "guest");
@@ -96,10 +100,11 @@ async function reachCombat(page: Page): Promise<string> {
 }
 
 async function continueCampaign(page: Page, campaignName: string): Promise<void> {
+  await page.locator("#entry-continue").click();
   const row = page.locator("#campaign-list li").filter({ hasText: campaignName });
   await expect(row).toHaveCount(1);
-  await expect(row.getByRole("button", { name: "Continue" })).toBeEnabled();
-  await row.getByRole("button", { name: "Continue" }).click();
+  await expect(row.getByRole("button", { name: "이어하기" })).toBeEnabled();
+  await row.getByRole("button", { name: "이어하기" }).click();
 }
 
 async function expectResumeLobby(page: Page): Promise<void> {
@@ -203,7 +208,7 @@ test.describe("deployment recovery", () => {
     for (const guest of [guestOne, guestTwo]) {
       await guest.page.reload();
       await expect(guest.page.locator("#app")).toHaveAttribute("data-ready", "true", { timeout: 60_000 });
-      await guest.page.locator("#session-display-name").fill("Returning Guest");
+
       await joinAs(guest, secondSessionId);
       await expect(guest.page.locator("#session-screen")).toHaveAttribute("data-lobby-kind", "resume");
     }
@@ -260,18 +265,19 @@ test.describe("deployment recovery", () => {
     await deployment.start();
     await host.page.reload();
     await expect(host.page.locator("#app")).toHaveAttribute("data-auth", "authenticated", { timeout: 60_000 });
+    await host.page.locator("#entry-continue").click();
     const row = host.page.locator("#campaign-list li").filter({ hasText: campaign });
-    await expect(row.getByRole("button", { name: "Continue" })).toBeEnabled();
+    await expect(row.getByRole("button", { name: "이어하기" })).toBeEnabled();
 
     // Continue and the campaign-list refetch fail together, which is the case that used to
     // leave the only retry path disabled until a page reload.
     await host.page.context().setOffline(true);
-    await row.getByRole("button", { name: "Continue" }).click();
+    await row.getByRole("button", { name: "이어하기" }).click();
     await expect(host.page.locator("#session-status")).not.toHaveText("", { timeout: 30_000 });
-    await expect(row.getByRole("button", { name: "Continue" })).toBeEnabled({ timeout: 30_000 });
+    await expect(row.getByRole("button", { name: "이어하기" })).toBeEnabled({ timeout: 30_000 });
 
     await host.page.context().setOffline(false);
-    await continueCampaign(host.page, campaign);
+    await row.getByRole("button", { name: "이어하기" }).click();
     await expectResumeLobby(host.page);
     await host.page.locator("#resume-adventure").click();
     await expect(host.page.locator("#app")).toHaveAttribute("data-screen", "combat", { timeout: 60_000 });

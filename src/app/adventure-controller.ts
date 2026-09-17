@@ -1,6 +1,6 @@
 import type { CharacterAdvancementChoice } from "../character";
 import type { AdventureEvent, AdventureState } from "../adventure";
-import { isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
+import { ApiError, isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
 import { PRODUCTION_CONTENT } from "../content/production-content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { LoadoutUi } from "../dom/loadout-ui";
@@ -59,6 +59,13 @@ export class AdventureController {
   private encounterBundle: Promise<void> | null = null;
   private view: "adventure" | "loadout" = "adventure";
   private continuing = false;
+  private account: AccountIdentity | null = null;
+  private entryView: "landing" | "login" | "register" | "join" | "new-adventure" | "campaigns" = "landing";
+  private authState: "checking" | "ready" | "failed" = "checking";
+  private authDestination: "landing" | "new-adventure" | "campaigns" = "landing";
+  private entryBusy = false;
+  private entryVersion = 0;
+
   /**
    * The last victory's growth, and the snapshot that published it. Built from committed
    * events only, so it can never show growth the campaign save does not hold, and kept in
@@ -84,9 +91,13 @@ export class AdventureController {
       onDone: () => this.closeLoadout(),
     });
     this.lobbyUi = new SessionLobbyUi(PRODUCTION_CONTENT.pack, this.catalog, {
-      onShowLogin: () => this.lobbyUi.renderLogin(),
-      onShowRegister: () => this.lobbyUi.renderRegister(),
-      onShowLanding: () => this.lobbyUi.renderLanding(),
+      onNewAdventure: () => this.openNewAdventure(),
+      onShowJoin: () => this.navigateEntry("join"),
+      onShowCampaigns: () => void this.showCampaigns(),
+      onRetryAuth: () => void this.restoreAccount(),
+      onShowLogin: () => this.navigateEntry("login"),
+      onShowRegister: () => this.navigateEntry("register"),
+      onShowLanding: () => { this.authDestination = "landing"; this.navigateEntry("landing"); },
       onLogin: (username, password) => void this.signIn(username, password),
       onRegister: (username, password) => void this.signUp(username, password),
       onLogout: () => void this.signOut(),
@@ -104,98 +115,189 @@ export class AdventureController {
     // data-auth starts as "unknown" synchronously, so nothing has to race the /api/auth/me
     // round trip to know whether the landing it is looking at is the final one.
     this.root.dataset.auth = "unknown";
-    this.lobbyUi.renderLanding();
+    this.lobbyUi.renderLanding(null, "checking");
     const stored = SessionClient.loadCredential();
     if (stored) {
       this.root.dataset.auth = "resumed";
+      this.beginEntry("모험에 다시 연결하는 중입니다…");
       this.attach(stored);
     } else {
       void this.restoreAccount();
     }
   }
 
-  private async restoreAccount(): Promise<void> {
-    try {
-      const account = await SessionClient.currentAccount();
-      this.root.dataset.auth = account ? "authenticated" : "anonymous";
-      if (account) await this.showCampaigns(account);
-    } catch {
-      // A server that cannot answer is treated as signed out, not as a broken page.
-      this.root.dataset.auth = "anonymous";
+  private navigateEntry(view: typeof this.entryView): void {
+    if (this.entryBusy) return;
+    this.entryView = view;
+    this.entryVersion++;
+    switch (view) {
+      case "landing": this.lobbyUi.renderLanding(this.account, this.authState); break;
+      case "login": this.lobbyUi.renderLogin(); break;
+      case "register": this.lobbyUi.renderRegister(); break;
+      case "join": this.lobbyUi.renderJoin(); break;
+      case "new-adventure": this.lobbyUi.renderNewAdventure(); break;
+      case "campaigns": this.lobbyUi.renderCampaignLoading(); break;
     }
   }
 
-  private async showCampaigns(account: AccountIdentity): Promise<void> {
-    this.lobbyUi.renderCampaigns(account, await SessionClient.listCampaigns());
+  private openNewAdventure(): void {
+    if (this.entryBusy || this.authState !== "ready") return;
+    this.authDestination = "new-adventure";
+    this.navigateEntry(this.account ? "new-adventure" : "login");
+  }
+
+  private async restoreAccount(): Promise<void> {
+    this.authState = "checking";
+    if (this.entryView === "landing") this.lobbyUi.renderLanding(null, "checking");
+    try {
+      this.account = await SessionClient.currentAccount();
+      this.authState = "ready";
+      this.root.dataset.auth = this.account ? "authenticated" : "anonymous";
+    } catch {
+      this.authState = "failed";
+      this.root.dataset.auth = "error";
+    }
+    if (this.entryView === "landing" && !this.client && !this.entryBusy) {
+      this.lobbyUi.renderLanding(this.account, this.authState);
+    }
+  }
+
+  private beginEntry(message: string): boolean {
+    if (this.entryBusy) return false;
+    this.entryBusy = true;
+    this.lobbyUi.setBusy(true);
+    this.lobbyUi.setStatus(message);
+    return true;
+  }
+
+  private finishEntry(): void {
+    this.entryBusy = false;
+    this.lobbyUi.setBusy(false);
+  }
+
+  private entryError(error: unknown, fallback: string): string {
+    if (!(error instanceof ApiError)) return `${fallback} 연결을 확인하고 다시 시도하세요.`;
+    const messages: Record<string, string> = {
+      UNAUTHENTICATED: "계정 이름 또는 비밀번호를 확인하세요.",
+      USERNAME_TAKEN: "이미 사용 중인 계정 이름입니다. 다른 이름을 입력하세요.",
+      INVALID_USERNAME: "계정 이름은 영문·숫자로 시작하는 3~32자이며 영문, 숫자, 점, 하이픈, 밑줄만 사용할 수 있습니다.",
+      INVALID_PASSWORD: "비밀번호는 8자 이상 입력하세요.",
+      SESSION_NOT_FOUND: "초대 코드를 찾을 수 없습니다. 친구에게 현재 초대 코드를 확인하세요.",
+      SESSION_FULL: "참가 인원이 가득 찼습니다. 친구에게 빈자리가 있는지 확인하세요.",
+      ROSTER_LOCKED: "지금은 참가할 수 없습니다. 친구에게 참가 가능한 상태인지 확인하세요.",
+    };
+    return messages[error.code ?? ""] ?? `${fallback} 다시 시도하세요.`;
+  }
+
+  private showEntryError(error: unknown, fallback: string): void {
+    const fieldByCode: Record<string, string> = {
+      INVALID_USERNAME: "register-username", USERNAME_TAKEN: "register-username",
+      INVALID_PASSWORD: "register-password", SESSION_NOT_FOUND: "join-session-id",
+    };
+    this.lobbyUi.reportEntryError(this.entryError(error, fallback),
+      error instanceof ApiError ? fieldByCode[error.code ?? ""] : undefined);
+  }
+
+  private expired(error: unknown, destination: "new-adventure" | "campaigns"): boolean {
+    if (!(error instanceof ApiError) || error.code !== "UNAUTHENTICATED") return false;
+    this.account = null;
+    this.root.dataset.auth = "anonymous";
+    this.authDestination = destination;
+    this.navigateEntry("login");
+    this.lobbyUi.setStatus("로그인이 만료되었습니다. 다시 로그인하면 계속할 수 있습니다.");
+    return true;
+  }
+
+  private async showCampaigns(): Promise<void> {
+    if (this.entryBusy) return;
+    if (!this.account) {
+      this.authDestination = "campaigns";
+      this.navigateEntry("login");
+      return;
+    }
+    this.navigateEntry("campaigns");
+    this.beginEntry("모험을 불러오는 중입니다…");
+    try {
+      const campaigns = await SessionClient.listCampaigns();
+      this.finishEntry();
+      this.lobbyUi.renderCampaigns(this.account, campaigns);
+    } catch (error) {
+      this.finishEntry();
+      if (!this.expired(error, "campaigns")) this.showEntryError(error, "모험을 불러오지 못했습니다.");
+    }
   }
 
   private async signIn(username: string, password: string): Promise<void> {
-    this.lobbyUi.setStatus("로그인하는 중입니다…");
-    try {
-      const account = await SessionClient.login(username, password);
-      this.root.dataset.auth = "authenticated";
-      await this.showCampaigns(account);
-    } catch (error) {
-      this.lobbyUi.setStatus(error instanceof Error ? error.message : "로그인할 수 없습니다.");
-    }
+    await this.authenticate(() => SessionClient.login(username, password), "로그인 중…");
   }
 
-  /** Signing up lands on the campaign list, because the server signed the new account in. */
   private async signUp(username: string, password: string): Promise<void> {
-    this.lobbyUi.setStatus("계정을 만드는 중입니다…");
+    await this.authenticate(() => SessionClient.register(username, password), "계정 만드는 중…");
+  }
+
+  private async authenticate(request: () => Promise<AccountIdentity>, message: string): Promise<void> {
+    if (!this.beginEntry(message)) return;
     try {
-      const account = await SessionClient.register(username, password);
+      this.account = await request();
+      this.authState = "ready";
       this.root.dataset.auth = "authenticated";
-      await this.showCampaigns(account);
+      this.finishEntry();
+      if (this.authDestination === "campaigns") await this.showCampaigns();
+      else this.navigateEntry(this.authDestination);
     } catch (error) {
-      this.lobbyUi.setStatus(error instanceof Error ? error.message : "계정을 만들 수 없습니다.");
+      this.finishEntry();
+      this.showEntryError(error, "로그인 또는 계정 만들기를 완료하지 못했습니다.");
     }
   }
 
   private async signOut(): Promise<void> {
+    if (!this.beginEntry("로그아웃 중…")) return;
     try {
       await SessionClient.logout();
-    } finally {
+      this.finishEntry();
+      this.account = null;
+      this.authDestination = "landing";
+      this.authState = "ready";
+      this.lobbyUi.clearDrafts();
       this.root.dataset.auth = "anonymous";
-      this.lobbyUi.renderLanding();
+      this.navigateEntry("landing");
+    } catch (error) {
+      this.finishEntry();
+      this.showEntryError(error, "로그아웃하지 못했습니다.");
     }
   }
 
   private async createCampaign(name: string, displayName: string): Promise<void> {
-    this.lobbyUi.setStatus("Campaign을 만드는 중입니다…");
+    if (!this.beginEntry("모험 만드는 중…")) return;
     try {
       this.attach(await SessionClient.createCampaign(name, displayName));
     } catch (error) {
-      this.lobbyUi.setStatus(error instanceof Error ? error.message : "Campaign을 만들 수 없습니다.");
+      this.finishEntry();
+      if (!this.expired(error, "new-adventure")) this.showEntryError(error, "모험을 만들지 못했습니다.");
     }
   }
 
   private async continueCampaign(campaignId: string): Promise<void> {
-    // Continue retires whatever live session the campaign has, so a second in-flight call
-    // would tear down the session the first one just opened.
-    if (this.continuing) return;
+    if (this.continuing || !this.beginEntry("모험을 이어가는 중…")) return;
     this.continuing = true;
-    this.lobbyUi.setStatus("Campaign을 이어가는 중입니다…");
     try {
       this.attach(await SessionClient.continueCampaign(campaignId));
     } catch (error) {
-      this.lobbyUi.setStatus(error instanceof Error ? error.message : "Campaign을 이어갈 수 없습니다.");
-      // Re-arm Continue before anything that can fail on its own. The campaign row and its
-      // save are untouched by a refused Continue, so the retry has to stay reachable even
-      // when the refresh below fails too — otherwise one outage costs a page reload.
+      this.finishEntry();
       this.lobbyUi.settleContinue();
-      void this.restoreAccount();
+      if (!this.expired(error, "campaigns")) this.showEntryError(error, "모험을 이어가지 못했습니다.");
     } finally {
       this.continuing = false;
     }
   }
 
   private async joinSession(sessionId: string, displayName: string): Promise<void> {
-    this.lobbyUi.setStatus("호스트 세션에 참가하는 중입니다…");
+    if (!this.beginEntry("참가 중…")) return;
     try {
       this.attach(await SessionClient.join(sessionId, displayName));
     } catch (error) {
-      this.lobbyUi.setStatus(error instanceof Error ? error.message : "세션에 참가할 수 없습니다.");
+      this.finishEntry();
+      this.showEntryError(error, "참가하지 못했습니다.");
     }
   }
 
@@ -204,6 +306,7 @@ export class AdventureController {
     this.ui.clear();
     this.client = new SessionClient(credential, {
       onSnapshot: (snapshot) => {
+        this.finishEntry();
         this.snapshot = snapshot;
         void this.renderSnapshot(snapshot);
       },
@@ -213,7 +316,10 @@ export class AdventureController {
         this.ui.reportError(error.message);
         this.battle?.reportError(error.message);
         if (isTerminalHandshakeFailure(error.code)) {
-          this.returnToLanding(error.message);
+          const message = error.code === "CONTENT_MISMATCH" || error.code === "PROTOCOL_MISMATCH"
+            ? "게임 버전이 맞지 않습니다. 페이지를 새로고침한 뒤 다시 참가하세요."
+            : "이전 모험에 연결할 수 없습니다. 친구에게 새 초대 코드를 받거나 이어하기를 선택하세요.";
+          this.returnToLanding(message);
           return;
         }
         this.lobbyUi.setStatus(error.message);
@@ -225,7 +331,7 @@ export class AdventureController {
           this.ui.reportError(`Session ${status}…`);
           this.battle?.reportError(`Session ${status}…`);
         }
-        this.lobbyUi.setStatus(status === "connected" ? "서버에 연결되었습니다." : `Session ${status}…`);
+        this.lobbyUi.setStatus(status === "connected" ? "서버에 연결되었습니다." : "서버에 연결하는 중입니다…");
       },
     });
     this.client.connect();
@@ -248,11 +354,14 @@ export class AdventureController {
     delete this.root.dataset.viewerRole;
     this.ui.setVisible(false);
     this.loadoutUi.setVisible(false);
-    this.lobbyUi.renderLanding();
-    this.lobbyUi.setStatus(message);
-    // A signed-in host whose session died belongs back at their campaigns, not at the
-    // guest landing; a guest stays where they are.
-    void this.restoreAccount().then(() => this.lobbyUi.setStatus(message));
+    this.finishEntry();
+    this.navigateEntry("landing");
+    this.lobbyUi.setStatus(message, "error");
+    // Restore account choices without replacing a screen the player has since opened.
+    const version = this.entryVersion;
+    void this.restoreAccount().then(() => {
+      if (version === this.entryVersion) this.lobbyUi.setStatus(message, "error");
+    });
   }
 
   private viewerSeat(snapshot: ServerSnapshot): SessionSeat | undefined {

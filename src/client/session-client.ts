@@ -58,6 +58,14 @@ interface ApiErrorBody {
   readonly message?: string;
 }
 
+/** Structured HTTP failures retain the server code for presentation without changing the wire format. */
+export class ApiError extends Error {
+  public constructor(public readonly status: number, public readonly code: string | undefined, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 /** `same-origin` is the default, but the auth cookie makes it worth saying out loud. */
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const response = await fetch(path, {
@@ -68,7 +76,7 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
   });
   const text = await response.text();
   const payload = (text ? JSON.parse(text) : {}) as T & ApiErrorBody;
-  if (!response.ok) throw new Error(payload.message ?? payload.code ?? `Request failed with ${response.status}.`);
+  if (!response.ok) throw new ApiError(response.status, payload.code, payload.message ?? payload.code ?? `Request failed with ${response.status}.`);
   return payload;
 }
 

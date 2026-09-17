@@ -2239,3 +2239,31 @@ button {
   .loadout-card-items { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .reward-card-choice { grid-template-columns: minmax(0, 120px) minmax(0, 1fr); }
 }
+
+/* Entry forms keep reading, keyboard and visual order identical at every width. */
+.session-entry-form, .session-field { display: grid; gap: 0.7rem; min-width: 0; }
+.session-entry-form { gap: 1rem; }
+.session-field label { font-weight: 700; }
+.session-field .session-input { width: 100%; min-width: 0; box-sizing: border-box; }
+.session-entry .session-description, .session-entry .session-status { overflow-wrap: anywhere; font-size: 1rem; }
+.session-entry h1 { font-size: clamp(1.8rem, 6vw, 3rem); line-height: 1.2; }
+.session-entry button:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
+.session-entry [aria-invalid="true"] { border-color: #ef998a; }
+.session-entry button:disabled { cursor: not-allowed; opacity: 0.6; }
+.session-screen[aria-busy="true"] .session-entry button:disabled { cursor: wait; }
+.session-entry .session-status[data-kind="error"] { color: #ef998a; }
+
+/* The primary entry target is iPad mini landscape (1024 x 768). */
+.session-entry { width: min(100%, 60rem); }
+.session-entry h1:focus { outline: none; }
+.session-entry-choices { display: grid; gap: 1rem; }
+@media (min-width: 760px) and (orientation: landscape) {
+  .session-entry { padding: 2.5rem; gap: 1.5rem; }
+  .session-entry-choices { grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); }
+  .session-entry-choices button { min-height: 7rem; font-size: 1.25rem; }
+  .session-entry-form { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; gap: 1.25rem; }
+  .session-entry-form > button { grid-column: 1 / -1; min-height: 3.25rem; }
+  .session-entry-form[data-action="register-submit"] .session-field:first-child { grid-column: 1 / -1; }
+  .session-entry > .session-secondary { justify-self: end; min-width: 12rem; }
+  .session-entry .session-input { min-height: 3.25rem; font-size: 1rem; }
+}

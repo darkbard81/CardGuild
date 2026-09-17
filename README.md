@@ -19,9 +19,14 @@ npm install
 npm run dev
 ```
 
-브라우저는 `http://127.0.0.1:4173`에서 엽니다. 호스트는 `Host sign in`으로 로그인한 뒤
-`New Campaign`으로 방을 만들고, 화면에 표시되는 Session ID만 B/C에게 전달합니다. 공개 방
-목록이나 matchmaking은 없고, 게스트는 계정 없이 그 ID로 `Join Host`합니다. `npm run dev`는
+브라우저는 `http://127.0.0.1:4173`에서 엽니다. `새 모험 시작`을 선택하고 로그인하거나
+계정을 만든 뒤, 모험 이름을 입력해 `모험 만들기`를 누릅니다. 로비에 표시되는 Session ID를
+초대 코드로 친구에게 전달하면, 친구는 계정 없이 `초대 코드로 참가`에서 참가할 수 있습니다.
+로그인 상태에서는 시작 화면의 `이어하기`로 저장된 모험을 선택합니다. 모든 입력 폼은
+고정 라벨과 Enter 제출을 지원하며 표시 이름은 선택 입력입니다. 진입 화면은 iPad mini의
+1024×768 가로 모드를 기본으로 목적 선택과 입력을 가로 배치하고, 좁은 화면에서는 세로로
+배치합니다. 공개 방 목록이나
+matchmaking은 없습니다. `npm run dev`는
 개발용 계정(`dev-host-a` / `dev-host-b`)을 자동으로 심어 둡니다. 재접속 credential은 각 탭의
 `sessionStorage`에만 보관되며 URL이나 초대 코드에는 포함되지 않습니다. 로그인 토큰은
 `HttpOnly` 쿠키에만 있어 페이지 스크립트가 읽을 수 없습니다.
@@ -459,8 +464,9 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
 - 계정·auth session·Campaign metadata는 single-file SQLite(`node:sqlite`)에 저장합니다.
   경로는 `CARDGUILD_DB_PATH`(기본 `.data/cardguild.sqlite`)입니다. 개발과 Playwright는
   `.data/cardguild.dev.sqlite`를 따로 쓰며, `--seed-dev`는 그 경로에서만 동작합니다.
-- 로그인 화면과 랜딩의 **Create account**로 계정을 만들 수 있습니다(`POST /api/auth/register`).
-  가입은 곧바로 로그인까지 마치므로 다음 화면이 My Campaigns입니다. 비밀번호 재설정 경로는
+- 로그인 화면의 **계정 만들기**로 계정을 만들 수 있습니다(`POST /api/auth/register`).
+  가입은 곧바로 로그인까지 마치고, 선택했던 새 모험 생성이나 이어하기로 돌아옵니다.
+  목적 없이 로그인했다면 시작 화면으로 돌아옵니다. 비밀번호 재설정 경로는
   없으므로 가입 화면은 비밀번호를 두 번 받습니다. 운영자가 직접 만들 때는 여전히
   `npm run account:create`를 씁니다.
 - 서버가 공개적으로 접근 가능하다면 가입도 공개됩니다. 초대제로 운영하려면 리버스 프록시에서
@@ -477,7 +483,7 @@ Host는 ID/PW로 로그인해야 Campaign을 열 수 있고, Campaign의 소유�
 
 ## M9-3 Durable Campaign Save & Resume Lobby
 
-gameplay 진행이 SQLite에 저장되고, Host는 My Campaigns에서 Continue해 마지막으로 **COMMIT된**
+gameplay 진행이 SQLite에 저장되고, Host는 시작 화면의 이어하기에서 모험을 선택해 마지막으로 **COMMIT된**
 지점부터 이어서 플레이합니다. 저장의 유일한 원본은 서버 DB입니다.
 
 - 저장 payload는 `CampaignSaveV3` gameplay projection입니다. ContentIdentity, slot 순
@@ -548,7 +554,7 @@ npm start
 - **강제 종료(SIGKILL·크래시)도 같은 보장**입니다. 모든 진행은 COMMIT 후에만 공개되므로,
   클라이언트가 본 것은 언제나 DB가 이미 가진 것의 부분집합입니다. 전투 명령·Encounter
   완료·EXP·Level-Up·보상·AI step·콘텐츠 이관은 각각 0회 또는 1회만 반영됩니다.
-- **재시작 후 Host는** 로그인 → My Campaigns → Continue입니다. Continue는 죽은 세션을
+- **재시작 후 Host는** 로그인 → 시작 화면의 이어하기 → 모험 선택입니다. 이어하기는 죽은 세션을
   되살리는 것이 아니라 **새 라이브 세션을 재수화**합니다. Session ID·Host credential이 모두
   새로 발급되므로, **새 Session ID를 게스트에게 다시 공유**해야 합니다.
 - **재시작 후 Guest는** 새 Session ID로 다시 참가해 저장된 캐릭터를 다시 선택합니다. 참가·

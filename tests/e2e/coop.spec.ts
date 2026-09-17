@@ -22,7 +22,7 @@ async function createPlayer(
   });
   await openApp(page);
   await expect(page.locator("#app")).toHaveAttribute("data-screen", "session");
-  await page.locator("#session-display-name").fill(name);
+
   return { context, page, name, errors };
 }
 
@@ -53,6 +53,8 @@ async function applyThreeCharacterParty(page: Page): Promise<void> {
 }
 
 async function joinGuest(player: BrowserPlayer, sessionId: string): Promise<void> {
+  await player.page.locator("#entry-join").click();
+  await player.page.locator("#session-display-name").fill(player.name);
   await player.page.locator("#join-session-id").fill(sessionId);
   await player.page.locator("#join-session").click();
   await expect(player.page.locator("#session-screen")).toHaveAttribute("data-viewer-role", "guest");

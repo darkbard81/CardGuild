@@ -5,18 +5,20 @@ import { DEV_HOST_A, DEV_HOST_B, openApp, signInAsHost } from "../support/browse
 test("keeps hosting behind a sign-in while a guest still needs nothing", async ({ page }) => {
   await openApp(page);
 
-  // The guest entry is the landing itself: a session ID and a name, no account.
+  await page.locator("#entry-join").click();
+  // Guest entry asks for an invite code without an account.
   await expect(page.locator("#join-session-id")).toBeVisible();
   await expect(page.locator("#session-display-name")).toBeVisible();
   await expect(page.locator("#app")).toHaveAttribute("data-auth", "anonymous");
 
+  await page.locator("#join-back").click();
   await page.locator("#host-login").click();
   await expect(page.locator("#account-username")).toBeVisible();
   await page.locator("#account-username").fill(DEV_HOST_A.username);
   await page.locator("#account-password").fill("not the password");
   await page.locator("#account-login").click();
 
-  await expect(page.locator("#session-status")).toContainText("incorrect");
+  await expect(page.locator("#session-status")).toContainText("계정 이름 또는 비밀번호");
   await expect(page.locator("#app")).toHaveAttribute("data-auth", "anonymous");
   await expect(page.locator("#new-campaign")).toHaveCount(0);
 });
@@ -24,6 +26,7 @@ test("keeps hosting behind a sign-in while a guest still needs nothing", async (
 test("opens a campaign the account owns and starts its live session", async ({ page }) => {
   await signInAsHost(page);
   const name = `Owned ${Date.now()}`;
+  await page.locator("#entry-new-adventure").click();
   await page.locator("#new-campaign-name").fill(name);
   await page.locator("#campaign-display-name").fill("Campaign Host");
   await page.locator("#new-campaign").click();
@@ -37,6 +40,7 @@ test("opens a campaign the account owns and starts its live session", async ({ p
   await page.evaluate(() => sessionStorage.removeItem("cardguild.session.v2"));
   await page.reload();
   await expect(page.locator("#app")).toHaveAttribute("data-auth", "authenticated");
+  await page.locator("#entry-continue").click();
   await expect(page.locator(`#campaign-list li:has-text("${name}")`)).toHaveCount(1);
 });
 
@@ -47,6 +51,7 @@ test("never shows one account's campaign to another, and signing out returns to 
     const owner = await first.newPage();
     await signInAsHost(owner, DEV_HOST_A);
     const name = `Private ${Date.now()}`;
+    await owner.locator("#entry-new-adventure").click();
     await owner.locator("#new-campaign-name").fill(name);
     await owner.locator("#campaign-display-name").fill("Owner");
     await owner.locator("#new-campaign").click();
@@ -57,6 +62,7 @@ test("never shows one account's campaign to another, and signing out returns to 
     // The other account's campaign is not merely locked; it is not listed at all.
     await expect(stranger.locator(`#campaign-list li:has-text("${name}")`)).toHaveCount(0);
 
+    await stranger.locator("#campaigns-back").click();
     await stranger.locator("#account-logout").click();
     await expect(stranger.locator("#app")).toHaveAttribute("data-auth", "anonymous");
     await expect(stranger.locator("#host-login")).toBeVisible();
@@ -70,6 +76,7 @@ test("never shows one account's campaign to another, and signing out returns to 
 test("offers no way to continue a campaign that has no saved progress yet", async ({ page }) => {
   await signInAsHost(page);
   const name = `Fresh ${Date.now()}`;
+  await page.locator("#entry-new-adventure").click();
   await page.locator("#new-campaign-name").fill(name);
   await page.locator("#campaign-display-name").fill("Owner");
   await page.locator("#new-campaign").click();
@@ -78,7 +85,8 @@ test("offers no way to continue a campaign that has no saved progress yet", asyn
   await page.evaluate(() => sessionStorage.removeItem("cardguild.session.v2"));
   await page.reload();
   await expect(page.locator("#app")).toHaveAttribute("data-auth", "authenticated");
-  // M9-2 stores no gameplay snapshot, so Continue stays unavailable until M9-3.
+  await page.locator("#entry-continue").click();
+  // An unstarted adventure has no saved progress.
   await expect(page.locator(`#campaign-list li:has-text("${name}") button`)).toBeDisabled();
 });
 
@@ -89,7 +97,8 @@ test("creates an account from the landing page and lets it host straight away", 
   const password = "a long enough password";
   await openApp(page);
   await expect(page.locator("#app")).toHaveAttribute("data-auth", "anonymous");
-  await page.locator("#host-register").click();
+  await page.locator("#entry-new-adventure").click();
+  await page.locator("#account-show-register").click();
   await expect(page.locator("#register-submit")).toBeVisible();
 
   // A mistyped confirmation is caught here, before it can become a real attempt.
@@ -104,13 +113,13 @@ test("creates an account from the landing page and lets it host straight away", 
   await page.locator("#register-password").fill("short");
   await page.locator("#register-password-confirm").fill("short");
   await page.locator("#register-submit").click();
-  await expect(page.locator("#session-status")).toContainText("8 characters");
+  await expect(page.locator("#session-status")).toContainText("8자 이상");
 
   await page.locator("#register-password").fill(password);
   await page.locator("#register-password-confirm").fill(password);
   await page.locator("#register-submit").click();
 
-  // Signing up signs you in, so the next screen is the campaign list, not the login form.
+  // Signing up continues the original new-adventure intent.
   await expect(page.locator("#app")).toHaveAttribute("data-auth", "authenticated");
   await expect(page.locator("#new-campaign")).toBeVisible();
 
@@ -120,12 +129,13 @@ test("creates an account from the landing page and lets it host straight away", 
   try {
     const impostor = await context.newPage();
     await openApp(impostor);
-    await impostor.locator("#host-register").click();
+    await impostor.locator("#entry-new-adventure").click();
+    await impostor.locator("#account-show-register").click();
     await impostor.locator("#register-username").fill(username);
     await impostor.locator("#register-password").fill("a different password");
     await impostor.locator("#register-password-confirm").fill("a different password");
     await impostor.locator("#register-submit").click();
-    await expect(impostor.locator("#session-status")).toContainText("already taken");
+    await expect(impostor.locator("#session-status")).toContainText("이미 사용 중");
     await expect(impostor.locator("#app")).toHaveAttribute("data-auth", "anonymous");
   } finally {
     await context.close();
