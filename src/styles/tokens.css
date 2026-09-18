@@ -53,6 +53,10 @@
   --ui-surface-hp-empty: #161c24;
   --ui-surface-shield: #535b63;
   --ui-surface-rank: #39495c;
+  --ui-condition-harmful-surface: #38252b;
+  --ui-condition-beneficial-surface: #20372f;
+  --ui-save-surface: #344457;
+  --ui-save-border: #60758c;
   --ui-surface-caption: #10161edb;
 
   /* Compatibility names for specialized game components, not a second palette. */

@@ -1,3 +1,4 @@
+import { CombatActorSummary } from "./combat-actor-summary";
 import { canInspectActor } from "../game/knowledge";
 import { formatActionCost } from "./card-face";
 import { requirementText } from "./card-level-view";
@@ -99,6 +100,7 @@ export class BattleUi {
   private detailDialog: HTMLDialogElement | null = null;
   private readonly inspectActive = required<HTMLButtonElement>("#inspect-active");
   private readonly sheet: CharacterDetailPanel;
+  private readonly actorSummary: CombatActorSummary;
   private readonly hand: CombatHandUi;
   private state: CombatState | null = null;
   private members: readonly LoadoutPartyMember[] = [];
@@ -141,6 +143,8 @@ export class BattleUi {
     this.actionTraits = this.traits.createList();
     this.cardTraits = this.traits.createList();
     this.sheet = new CharacterDetailPanel(content, catalog, "combat", "dialog");
+    this.actorSummary = new CombatActorSummary(content);
+    this.inspectActive.before(this.actorSummary.root);
     this.inspectSelect.setAttribute("aria-label", "상세 대상");
     this.hand = new CombatHandUi(this.handCards, catalog, {
       onCard: handlers.onCard, onHover: handlers.onCardHover,
@@ -187,6 +191,7 @@ export class BattleUi {
     this.hand.destroy();
     this.closeActorDetail();
     this.sheet.destroy();
+    this.actorSummary.destroy();
     this.hideCardDetail();
     this.traits.destroy();
     this.abortController.abort();
@@ -211,6 +216,7 @@ export class BattleUi {
     this.state = state;
     this.members = presentation.members ?? [];
     this.heroHeading.textContent = activeActor?.name ?? hero.name;
+    this.actorSummary.update(activeActor && canInspectActor(state, activeActor.id) ? activeActor : null);
     this.status.textContent = presentation.status ?? (presentation.canControl ? "내 턴" : "다른 행동자 대기 중");
     if (state.outcome || (state.pendingReaction && presentation.ownsReaction)) this.closeActorDetail();
     this.renderInspector();

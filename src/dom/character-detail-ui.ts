@@ -1,4 +1,4 @@
-import { conditionEffects } from "../game/condition-effects";
+import { conditionPresentation, statisticButton, statisticPresentation } from "./actor-effect-view";
 import type { CompiledContentPack, ActorDefinition } from "../content";
 import type { ActorState, SkillId, CombatContent, ProficiencyRank, ResolvedStatistic } from "../game";
 import { resolveStrike, resolveArmorClass, resolveClassDC, resolveInitiative, resolveStatisticDC, resolveStatisticModifier } from "../game";
@@ -60,29 +60,19 @@ export class CharacterDetailPanel {
     const focusedTrait = focused instanceof HTMLElement && this.root.contains(focused) ? focused.dataset.traitId : undefined;
     const context = { content: this.content };
     const profile = actor.statProfile;
-    const baselineActor: ActorState = { ...actor, conditions: [], shieldRaised: false };
     this.changeNote.hidden = true;
     const annotate = (element: HTMLElement, resolve: (actor: ActorState) => ResolvedStatistic): HTMLElement => {
-      const current = resolve(actor), baseline = resolve(baselineActor);
-      const delta = current.value - baseline.value;
-      if (this.contextKind !== "combat" || delta === 0) return element;
+      const result = statisticPresentation(actor, resolve);
+      if (this.contextKind !== "combat" || result.delta === 0) return element;
       const value = element.querySelector("strong");
       if (!value) return element;
-      const reasons = current.sources.filter(source => source.applied && source.value !== 0 &&
-        !baseline.sources.some(base => base.applied && base.kind === source.kind && base.sourceId === source.sourceId && base.label === source.label && base.value === source.value))
-        .map(source => `${source.label} ${signed(source.value)}`);
-      const explanation = `${baseline.value} → ${current.value} (${signed(delta)})${reasons.length ? ` · ${reasons.join(" · ")}` : ""}`;
-      const button = node("button", value.textContent ?? "", "ui-stat-change") as HTMLButtonElement;
-      button.dataset.statKey = element.dataset.statKey ?? element.className;
-      button.type = "button"; button.dataset.change = delta < 0 ? "decrease" : "increase";
-      button.title = explanation; button.setAttribute("aria-label", `${element.textContent} · ${explanation}`);
-      button.append(node("small", delta < 0 ? "↓" : "↑", "ui-stat-change__direction"));
-      button.addEventListener("click", () => {
+      const button = statisticButton(element.dataset.statKey ?? element.textContent ?? "", value.textContent ?? "", result, (explanation, button) => {
         const close = node("button", "닫기", "ui-button ui-button--secondary") as HTMLButtonElement;
         close.type = "button";
         close.addEventListener("click", () => { this.changeNote.hidden = true; button.focus(); });
         this.changeNote.replaceChildren(node("p", explanation), close); this.changeNote.hidden = false;
       });
+      button.dataset.statKey = element.dataset.statKey ?? element.className;
       value.replaceChildren(button);
       return element;
     };
@@ -134,9 +124,10 @@ export class CharacterDetailPanel {
     const conditions = node("div", "", "ui-character-detail__conditions");
     if (this.contextKind === "combat") {
       for (const condition of actor.conditions) {
-        const group = node("div", "", "ui-character-detail__condition");
-        group.append(node("span", `${this.content.conditions[condition.id]?.name ?? condition.id}${condition.value === undefined ? "" : ` ${condition.value}`} `));
-        const effects = conditionEffects(condition);
+        const group = node("div", "", "ui-character-detail__condition ui-condition-chip");
+        const { label, effects, tone } = conditionPresentation(condition, this.content);
+        group.dataset.tone = tone;
+        group.append(node("span", label));
         if (effects.length) {
           const list = node("ul", "", "ui-character-detail__derived-effects");
           for (const effect of effects) list.append(node("li", effect.label));

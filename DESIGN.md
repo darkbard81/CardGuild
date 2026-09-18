@@ -162,3 +162,18 @@ CardGuild의 DOM UI는 **공통 테마 변수 → 공통 컴포넌트 → 화면
 - 현재 장비·레벨은 유지하고 Condition·Raised Shield를 제외한 값을 비교 기준으로 삼는다. AC·내성·Class DC·Perception·Initiative·스킬·공격·피해 보정에서 감소는 빨강, 증가는 초록, 최종 차이가 없으면 기존 글자색이다. HP 소모와 능력치 원본은 버프/패널티로 해석하지 않는다.
 - `ui-stat-change[data-change="decrease|increase"]`는 공통 의미 색상 `--ui-color-error-text` / `--ui-color-status-text`를 사용한다. 방향 화살표를 함께 보여주며, hover 또는 탭·키보드 활성화로 기준값 → 현재값과 실제 적용된 원인을 읽는다. 중첩에서 제외된 보정은 적용 원인으로 표시하지 않는다.
 - Frightened의 기존 값·판정은 유지한다. 이번 변경에 수치 증감이나 상태 수동 추가/삭제 버튼은 포함하지 않는다.
+
+## 우측 전투 요약의 Condition / Saves
+
+- 현재 행동자의 Condition 칩과 `Fort / Ref / Will` 보정치를 상세 버튼 바로 위에 배치한다. 상위 Condition만 칩으로 표시하고 상태가 없으면 해당 줄을 숨긴다. 내성은 3열 한 줄을 유지한다.
+- 칩을 탭하면 파생 효과 또는 현재 보정 설명을 읽는다. 내성을 탭하면 전체 이름, 기준값 → 현재값, 적용 근거를 읽는다. 설명은 패널 내부에서 열고 닫으며 게임 명령을 보내지 않는다.
+- `actor-effect-view.ts`의 공통 수치 비교·색상·버튼·Condition 설명을 전체 상세창과 공유한다. 내성도 감소는 빨강, 증가는 초록, 변화가 없으면 기본 글자색이다.
+- 요약은 최신 snapshot을 따라가며 손패 소유자와 별도로 현재 행동자 정보를 표시한다. 아직 Recall Knowledge로 해금하지 않은 적의 요약은 숨긴다.
+- 배치는 `ui-combat-actor-summary`와 `__conditions / __saves / __note`, 수치 표현은 공통 `ui-stat-change`를 사용한다. 상태 칩과 내성 버튼은 최소 44px 입력 높이를 유지한다.
+
+## Condition과 내성의 외형 구분
+
+- Trait은 기존 작은 캡슐형을 유지한다. Condition은 공통 `ui-condition-chip`으로 모서리 4px의 사각형과 4px 좌측 색상 띠를 사용한다. HUD와 전체 상세창이 같은 외형을 공유한다.
+- 적용 효과에 이동 제한 또는 음수 보정만 있으면 `data-tone="harmful"`(어두운 적색 배경·밝은 적색 띠), 양수 보정만 있으면 `beneficial`(어두운 녹색 배경·녹색 띠)이다. 혼합·불명·효과 없음은 중립색으로 표시한다. 분류는 표시 용도이며 판정을 변경하지 않는다.
+- HUD 내성은 공통 `ui-save-tile` 3개로 표시한다. `__label`은 상단 11px FORT/REF/WILL, `__value`는 하단 굵은 22px 숫자다. 높이는 66px 이상이고 타일 전체를 탭할 수 있다. 숫자의 점선 밑줄은 제거한다.
+- 타일 배경은 `--ui-save-surface`(`#344457`), 테두리는 `--ui-save-border`를 공유한다. 숫자의 감소·증가 색상과 방향 표시는 기존 공통 `ui-stat-change`를 유지한다. 공통 외형은 components layer, HUD 배치는 screens layer가 소유한다.

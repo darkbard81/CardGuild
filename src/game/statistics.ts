@@ -283,7 +283,7 @@ function derivedEquipmentModifiers(
  * is also why the `all` selector already excludes damage: a fear penalty hits checks, DCs
  * and AC, never a weapon's damage roll.
  */
-function scaleConditionModifiers(
+export function scaleConditionModifiers(
   definition: ConditionDefinition,
   instance: ConditionInstance,
 ): readonly StatisticModifierContribution[] {

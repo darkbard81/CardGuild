@@ -51,3 +51,11 @@ The final captures also verify the shared slate/orange theme in preparation. The
 The sheet compares current statistics against the same equipped/leveled actor without Conditions or Raised Shield. Reduced numbers use red plus a down arrow, increased numbers green plus an up arrow; equal final values retain ordinary styling. Tapping a changed value explains the baseline, current value and applied source changes. No Frightened controls were added.
 
 The final derived-effects revision passed `CI=true npm run check && CI=true npm run test:all` on 2026-09-18 (exit 0): Domain 51, Integration 11, Interaction 30, Journey 4 — 96 passing. Content/assets, all TypeScript checks, ESLint and both builds passed. Only this verification note and screenshot copies changed afterward. The earlier 93-test count describes the preceding layout/theme revision. GitHub CI and physical iPad/Safari verification were not run.
+
+## Compact active-actor feedback
+
+The right HUD now shows parent Condition chips and a single Fort/Ref/Will row above the detail and End Turn buttons. Empty Conditions take no row. The shared `actor-effect-view.ts` owns display comparisons and stat buttons for both HUD and sheet. Chip/stat activation opens a read-only inline explanation. Live snapshots refresh values; unknown enemy summaries remain hidden under `canInspectActor`.
+
+The compact-summary final gate passed `CI=true npm run check && CI=true npm run test:all` on 2026-09-18 (exit 0): Domain 51, Integration 11, Interaction 31, Journey 4 — 97 passing. Only verification documentation and screenshot copies changed afterward. GitHub CI and physical-device checks were not run.
+
+Condition chips now use a shared squared shape and semantic left edge in HUD and sheet. Save tiles put 11px labels above 22px numbers on a shared slate background; the full tile is interactive and the dotted underline is removed. The final visual revision passed `CI=true npm run check && CI=true npm run test:all` (exit 0): Domain 51, Integration 11, Interaction 31, Journey 4 — 97 passing. Only this verification note and screenshot copies changed afterward; GitHub CI and physical-device checks were not run.

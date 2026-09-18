@@ -116,10 +116,42 @@ test("U-EFFECTS condition hierarchy, stat colors and tap explanations track live
   await expect(ac.getByRole("button")).toHaveAttribute("data-change", "increase");
   await expect(ac.getByRole("button")).toContainText("18");
   await expect(grabbed).toHaveCount(0);
+  await expect(sheet.locator(".ui-condition-chip")).toHaveAttribute("data-tone", "beneficial");
   publish([{ id: "covered", sourceId: "cover" }, { id: "prone", sourceId: "trip" }]);
   await expect(ac.getByRole("button")).toHaveCount(0);
   await expect(ac).toContainText("17");
   publish([]);
   await expect(sheet.locator(".ui-character-detail__conditions")).toContainText("상태 이상 없음");
+  expect(backend.requests).toHaveLength(0);
+});
+
+test("U-HUD-EFFECTS compact conditions and saves are read-only, live and gated by knowledge", async ({ page }, testInfo) => {
+  const backend = await controlledSession(page, combatCheckpoint());
+  const summary = page.getByRole("region", { name: "현재 행동자 상태와 내성" });
+  await expect(summary).toBeVisible();
+  await expect(summary.locator(".ui-combat-actor-summary__conditions")).toBeHidden();
+  await expect(summary.locator(".ui-save-tile__value")).toHaveText(["+6", "+7", "+5"]);
+  const hero = backend.state.combat!.actors[HERO]!;
+  backend.publish({ ...backend.state, combat: { ...backend.state.combat!, actors: { ...backend.state.combat!.actors,
+    [HERO]: { ...hero, conditions: [{ id: "grabbed", sourceId: "enemy" }, { id: "frightened", value: 1, sourceId: "fear" }] },
+  } } });
+  await expect(summary.locator(".ui-combat-actor-summary__conditions button")).toHaveText(["Grabbed", "Frightened 1"]);
+  await expect(summary.getByRole("button", { name: "Grabbed", exact: true })).toHaveAttribute("data-tone", "harmful");
+  await expect(summary.getByRole("button", { name: /^Fortitude/ })).toHaveAttribute("data-change", "decrease");
+  await expect(summary.getByRole("button", { name: /^Fortitude/ }).locator(".ui-save-tile__value")).toContainText("+5");
+  await page.screenshot({ path: testInfo.outputPath("combat-hud-effects.png") });
+  await summary.getByRole("button", { name: "Grabbed", exact: true }).click();
+  await expect(summary.getByRole("status")).toContainText("Immobilized · 이동 제한 · Off-guard · AC −2");
+  await summary.getByRole("button", { name: /^Fortitude/ }).click();
+  await expect(summary.getByRole("status")).toContainText("6 → 5 (-1)");
+  await expect(summary.getByRole("status")).toContainText("Frightened 1");
+  await summary.getByRole("button", { name: "설명 닫기" }).click();
+  await expect(summary.getByRole("status")).toBeHidden();
+  const combat = backend.state.combat!;
+  const enemy = Object.values(combat.actors).find(actor => actor.team === "enemies")!;
+  backend.publish({ ...backend.state, combat: { ...combat, turn: { ...combat.turn, activeActorId: enemy.id } } });
+  await expect(summary).toBeHidden();
+  backend.publish({ ...backend.state, combat: { ...backend.state.combat!, knowledge: [{ actorId: HERO, targetId: enemy.id, success: true }] } });
+  await expect(summary).toBeVisible();
   expect(backend.requests).toHaveLength(0);
 });

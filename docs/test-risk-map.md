@@ -73,3 +73,4 @@ Existing U-BOARD owns changed board hit testing, pan/zoom/resize and touch direc
 | --- | --- | --- |
 | G-CONDITION: parent removed but effects persist, repeated Off-guard penalties, preview/execution divergence | Domain | `condition-effects.test.ts`: parent effects, strongest circumstance penalty, movement refusal, attack preview and command/replay |
 | U-EFFECTS: misleading condition hierarchy or stale colored numbers | Interaction | `combat-sheet.spec.ts`: derived children, decrease/increase/neutral snapshots, tap explanation, no gameplay command |
+| U-HUD-EFFECTS: compact summary diverges from sheet or reveals locked enemy saves | Interaction | `combat-sheet.spec.ts`: empty condition row, three saves, live penalty snapshot, read-only chip/stat explanations, enemy disclosure gate |

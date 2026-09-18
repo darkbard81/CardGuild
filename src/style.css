@@ -2404,7 +2404,7 @@
   .ui-character-detail__effects > h3:not(:first-child) { margin-top: 6px; }
   .ui-character-detail__effects .trait-list { display: flex; flex-wrap: wrap; gap: 4px; }
   .ui-character-detail__conditions { display: flex; flex-wrap: wrap; gap: 5px; }
-  .ui-character-detail__condition { padding: 4px 8px; border: 1px solid var(--sheet-border); border-radius: 5px; background: var(--sheet-panel); }
+  .ui-character-detail__condition { font-size: 12px; }
   .ui-character-detail__combat-state { flex-basis: 100%; color: var(--sheet-muted); font-size: 11px; }
   .ui-character-detail__skills { grid-column: 1; grid-row: 2; min-height: 0; overflow: auto; padding: 8px; background: var(--sheet-panel); border-radius: 5px; }
   .ui-character-detail__skills h3 { font-size: 12px; text-transform: uppercase; color: var(--sheet-muted); border-top: 1px solid var(--sheet-border); margin: 8px 0 4px; padding-top: 8px; }
@@ -2433,11 +2433,15 @@
 @layer screens {
   .ui-character-detail__derived-effects { padding-left: 14px; margin: 4px 0 0; border-left: 1px solid var(--ui-color-border); list-style: none; color: var(--ui-color-muted); font-size: 11px; }
   .ui-character-detail__derived-effects li + li { margin-top: 3px; }
-  .ui-stat-change { border: 0; padding: 0; background: none; font: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
-  .ui-stat-change[data-change="decrease"] { color: var(--ui-color-error-text); }
-  .ui-stat-change[data-change="increase"] { color: var(--ui-color-status-text); }
-  .ui-stat-change__direction { font-size: 9px; margin-left: 1px; }
-  .ui-stat-change:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
   .ui-character-detail__change-note { position: fixed; bottom: 16px; right: 16px; z-index: 50; max-width: min(420px, calc(100vw - 32px)); padding: 12px; border: 1px solid var(--ui-color-border); border-radius: 6px; background: var(--ui-surface-panel); box-shadow: var(--ui-shadow-popover); }
   .ui-character-detail__change-note .ui-button { margin-top: 8px; }
+}
+
+@layer screens {
+  .ui-combat-actor-summary { grid-column: 1 / -1; min-width: 0; display: grid; gap: 6px; }
+  .ui-combat-actor-summary__conditions { display: flex; flex-wrap: wrap; gap: 4px; }
+  .ui-combat-sidebar .ui-combat-actor-summary__condition { font-size: 11px; padding: 4px 8px; }
+  .ui-combat-actor-summary__saves { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; }
+  .ui-combat-actor-summary__note { font-size: 12px; padding: 8px; background: var(--ui-surface-input); border-radius: 5px; }
+  .ui-combat-actor-summary__note p { margin: 0 0 6px; }
 }
