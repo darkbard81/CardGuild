@@ -109,6 +109,7 @@ export class AdventureController {
       onRegister: (username, password) => void this.signUp(username, password),
       onLogout: () => void this.signOut(),
       onCreateCampaign: (name, displayName) => void this.createCampaign(name, displayName),
+      onDeleteCampaign: (campaignId) => void this.deleteCampaign(campaignId),
       onContinueCampaign: (campaignId) => void this.continueCampaign(campaignId),
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
       onSetParty: (actorDefinitionIds) => this.sendIntent({ type: "set-party-composition", actorDefinitionIds }),
@@ -278,6 +279,23 @@ export class AdventureController {
     } catch (error) {
       this.finishEntry();
       if (!this.expired(error, "new-adventure")) this.showEntryError(error, "모험을 만들지 못했습니다.");
+    }
+  }
+
+  private async deleteCampaign(campaignId: string): Promise<void> {
+    if (!this.beginEntry("모험을 삭제하는 중…")) return;
+    try {
+      await SessionClient.deleteCampaign(campaignId);
+      this.finishEntry();
+      this.lobbyUi.removeCampaign(campaignId);
+      this.lobbyUi.setStatus("모험을 삭제했습니다.");
+    } catch (error) {
+      this.finishEntry();
+      if (!this.expired(error, "campaigns")) {
+        this.lobbyUi.reportEntryError(error instanceof ApiError && error.code === "PERSISTENCE_FAILED"
+          ? "모험을 삭제하지 못했습니다. 다시 시도하세요."
+          : this.entryError(error, "모험을 삭제하지 못했습니다."));
+      }
     }
   }
 

@@ -60,3 +60,50 @@ test("U-ENTRY expired campaign access returns to login and preserves the Continu
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page.getByRole("heading", { name: "이어하기", exact: true })).toBeVisible();
 });
+
+test("U-ENTRY campaign deletion confirms the name, cancels safely and retries after failure without duplicate requests", async ({ page }) => {
+  await page.route("**/api/auth/me", route => route.fulfill({ json: { account: { accountId: "account", username: "Player" } } }));
+  await page.route("**/api/campaigns", route => route.fulfill({ json: { campaigns: [
+    { campaignId: "broken", name: "손상된 모험", saveStatus: "SAVE_CORRUPT", savedAt: null },
+  ] } }));
+  let attempts = 0; let finish!: () => Promise<void>;
+  await page.route("**/api/campaigns/broken", route => {
+    expect(route.request().method()).toBe("DELETE");
+    attempts++;
+    finish = () => route.fulfill(attempts === 1
+      ? { status: 503, json: { code: "PERSISTENCE_FAILED", message: "Unavailable" } }
+      : { json: { deleted: true } });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "이어하기", exact: true }).click();
+  const remove = page.getByRole("button", { name: "손상된 모험 삭제", exact: true });
+  await expect(page.locator("#continue-broken")).toBeDisabled();
+  await remove.click();
+  const dialog = page.getByRole("dialog", { name: "모험 삭제" });
+  await expect(dialog).toContainText("손상된 모험");
+  await expect(dialog.getByRole("button", { name: "취소" })).toBeFocused();
+  await dialog.getByRole("button", { name: "취소" }).click();
+  await expect(dialog).toHaveCount(0);
+  await expect(remove).toBeFocused();
+  expect(attempts).toBe(0);
+  await remove.click();
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  expect(attempts).toBe(0);
+  await remove.click();
+  await dialog.getByRole("button", { name: "영구 삭제" }).click();
+  await expect.poll(() => attempts).toBe(1);
+  await expect(remove).toBeDisabled();
+  await expect(page.locator("#campaigns-back")).toBeDisabled();
+  await finish();
+  await expect(page.getByRole("status")).toContainText("모험을 삭제하지 못했습니다");
+  await expect(remove).toBeEnabled();
+  await expect(page.locator("#continue-broken")).toBeDisabled();
+  await remove.click();
+  await dialog.getByRole("button", { name: "영구 삭제" }).click();
+  await expect.poll(() => attempts).toBe(2);
+  await finish();
+  await expect(remove).toHaveCount(0);
+  await expect(page.locator("#campaign-list")).toContainText("아직 모험이 없습니다");
+  await expect(page.getByRole("status")).toContainText("모험을 삭제했습니다");
+});

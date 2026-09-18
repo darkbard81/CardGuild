@@ -45,6 +45,7 @@ export interface SessionLobbyHandlers {
   readonly onRegister: (username: string, password: string) => void;
   readonly onLogout: () => void;
   readonly onCreateCampaign: (name: string, displayName: string) => void;
+  readonly onDeleteCampaign: (campaignId: string) => void;
   readonly onContinueCampaign: (campaignId: string) => void;
   readonly onJoin: (sessionId: string, displayName: string) => void;
   readonly onSetParty: (actorDefinitionIds: readonly string[]) => void;
@@ -303,7 +304,12 @@ export class SessionLobbyUi {
         time.dateTime = new Date(campaign.savedAt).toISOString();
         details.append(time);
       }
-      row.append(details, resume);
+      const actions = element("div", "campaign-row-actions");
+      const remove = this.button("삭제", `delete-${campaign.campaignId}`, () => this.confirmDelete(campaign, remove));
+      remove.classList.add("ui-button--danger");
+      remove.setAttribute("aria-label", `${campaign.name} 삭제`);
+      actions.append(resume, remove);
+      row.append(details, actions);
       list.append(row);
     }
     if (!campaigns.length) list.append(element("li", "campaign-empty", "아직 모험이 없습니다. 새 모험을 시작하세요."));
@@ -312,6 +318,37 @@ export class SessionLobbyUi {
       this.button("새 모험 시작", "entry-new-adventure", this.handlers.onNewAdventure),
       this.button("시작 화면으로", "campaigns-back", this.handlers.onShowLanding));
     card.append(list, actions, this.statusLine());
+  }
+
+  private confirmDelete(campaign: CampaignSummary, trigger: HTMLButtonElement): void {
+    const dialog = element("dialog", "ui-panel ui-panel--dialog campaign-delete-dialog");
+    dialog.setAttribute("aria-labelledby", "campaign-delete-title");
+    dialog.setAttribute("aria-describedby", "campaign-delete-description");
+    const title = element("h2", undefined, "모험 삭제");
+    title.id = "campaign-delete-title";
+    const description = element("p", undefined, `“${campaign.name}” 모험과 저장된 진행 상황을 영구 삭제합니다. 진행 중인 세션과 참가자의 연결도 종료됩니다. 삭제 후 복구할 수 없습니다.`);
+    description.id = "campaign-delete-description";
+    const cancel = this.button("취소", "campaign-delete-cancel", () => dialog.close());
+    const confirm = this.button("영구 삭제", "campaign-delete-confirm", () => {
+      dialog.close();
+      this.handlers.onDeleteCampaign(campaign.campaignId);
+    });
+    confirm.classList.add("ui-button--danger");
+    const actions = element("div", "campaign-actions");
+    actions.append(cancel, confirm);
+    dialog.append(title, description, actions);
+    dialog.addEventListener("close", () => { dialog.remove(); if (!trigger.disabled) trigger.focus(); }, { once: true });
+    this.screen.append(dialog);
+    dialog.showModal();
+    cancel.focus();
+  }
+
+  public removeCampaign(campaignId: string): void {
+    this.screen.querySelector(`[data-campaign-id="${CSS.escape(campaignId)}"]`)?.remove();
+    this.continueButtons = this.continueButtons.filter(button => button.isConnected);
+    const list = this.screen.querySelector("#campaign-list");
+    if (list && !list.children.length) list.append(element("li", "campaign-empty", "아직 모험이 없습니다. 새 모험을 시작하세요."));
+    this.screen.querySelector<HTMLButtonElement>("#campaigns-refresh")?.focus();
   }
 
   public renderCampaignLoading(): void {

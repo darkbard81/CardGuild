@@ -61,11 +61,11 @@ test("J-COOP two browsers join, claim, play and restore guest control after leav
     await guest.goto(server.origin);
     await expect(guestEnd).toBeEnabled();
     await expect(hostEnd).toBeDisabled();
-    await endTurn(guest);
-    const pass = host.getByRole("button", { name: "Pass", exact: true });
-    if (await pass.isVisible()) await pass.click();
+    // Open both logs while the guest owns the turn. Ending it may immediately open
+    // an enemy-triggered Reaction, which must not race a later click on the log.
     await host.getByText("Combat Log", { exact: true }).click();
     await guest.getByText("Combat Log", { exact: true }).click();
+    await endTurn(guest);
     await expect(host.locator("#combat-log")).toContainText("Lyra ended the turn.");
     await expect(guest.locator("#combat-log")).toContainText("Lyra ended the turn.");
   } finally { await guestContext.close(); }

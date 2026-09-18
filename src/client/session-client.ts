@@ -133,6 +133,10 @@ export class SessionClient {
     return credential;
   }
 
+  public static async deleteCampaign(campaignId: string): Promise<void> {
+    await api("DELETE", `/api/campaigns/${encodeURIComponent(campaignId)}`);
+  }
+
   public static async continueCampaign(campaignId: string): Promise<SessionCredential> {
     const credential = await apiPost<SessionCredential>(
       `/api/campaigns/${encodeURIComponent(campaignId)}/continue`, {});

@@ -69,3 +69,42 @@ it("B-COOP actual guest disconnect/reconnect transfers control without changing 
     await running.dispose();
   }
 });
+
+it("B-ACCOUNT campaign deletion requires ownership, retires connected guests and removes saved progress", async () => {
+  const running = await server();
+  const wires: Wire[] = [];
+  try {
+    const account = await register(running.origin, "delete-owner");
+    const stranger = await register(running.origin, "delete-stranger");
+    const response = await api(running.origin, "/api/campaigns", { name: "Delete adventure" }, account.cookie);
+    const created = await response.json() as SessionCredentialResponse & { campaign: { campaignId: string } };
+    const id = created.campaign.campaignId;
+    const remove = (cookie = "") => fetch(`${running.origin}/api/campaigns/${id}`, { method: "DELETE", headers: { cookie } });
+    const host = await Wire.open(running.origin, created); wires.push(host);
+    await host.snapshot();
+    await host.intent({ type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.lyra"] });
+    const joined = await api(running.origin, `/api/sessions/${created.sessionId}/join`, { displayName: "Guest" });
+    const guest = await Wire.open(running.origin, await joined.json() as SessionCredentialResponse); wires.push(guest);
+    await guest.snapshot();
+    const claimed = await guest.intent({ type: "select-character", memberId: SECOND });
+    await host.snapshot(message => message.revision >= claimed.revision);
+    await host.intent({ type: "begin-adventure" });
+    expect(running.disk.persistence.campaigns.loadOwnedSave(id, account.account.accountId).status).toBe("loaded");
+    expect((await remove()).status).toBe(401);
+    expect((await remove(stranger.cookie)).status).toBe(404);
+    expect(running.disk.persistence.campaigns.findOwned(id, account.account.accountId)).toBeDefined();
+    const hostClosed = new Promise<number>(resolve => host.socket.once("close", code => resolve(code)));
+    const guestClosed = new Promise<number>(resolve => guest.socket.once("close", code => resolve(code)));
+    expect((await remove(account.cookie)).status).toBe(200);
+    expect(await hostClosed).toBe(4005);
+    expect(await guestClosed).toBe(4005);
+    expect(running.disk.persistence.campaigns.loadOwnedSave(id, account.account.accountId).status).toBe("not-found");
+    expect(await (await api(running.origin, "/api/campaigns", undefined, account.cookie)).json()).toEqual({ campaigns: [] });
+    expect((await api(running.origin, `/api/campaigns/${id}/continue`, {}, account.cookie)).status).toBe(404);
+    expect((await api(running.origin, `/api/sessions/${created.sessionId}/join`, {})).status).toBe(404);
+    expect((await remove(account.cookie)).status).toBe(404);
+  } finally {
+    await Promise.all(wires.map(wire => wire.close()));
+    await running.dispose();
+  }
+});

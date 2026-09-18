@@ -46,7 +46,12 @@ export type CampaignContinueResult =
   | { readonly ok: true; readonly campaign: CampaignRecord; readonly credential: SessionCredentialResponse }
   | { readonly ok: false; readonly code: CampaignContinueFailureCode; readonly message: string };
 
+export type CampaignDeleteResult =
+  | { readonly ok: true }
+  | { readonly ok: false; readonly code: "CAMPAIGN_NOT_FOUND"; readonly message: string };
+
 export interface CampaignService {
+  delete(accountId: string, campaignId: string): Promise<CampaignDeleteResult>;
   create(accountId: string, name: string, displayName?: string): NewCampaign;
   list(accountId: string): readonly CampaignRecord[];
   listSummaries(accountId: string): readonly CampaignSummary[];
@@ -101,7 +106,7 @@ export function createCampaignService(
     });
   }
 
-  /** Continue is serialized per campaign, so two concurrent calls cannot both become writer. */
+  /** Continue and deletion share a queue so a deleted campaign cannot gain a new writer. */
   function serialize<T>(campaignId: string, operation: () => Promise<T>): Promise<T> {
     const previous = continueQueues.get(campaignId) ?? Promise.resolve();
     const next = previous.then(operation, operation);
@@ -135,6 +140,20 @@ export function createCampaignService(
   }
 
   return {
+    delete(accountId, campaignId) {
+      return serialize(campaignId, async (): Promise<CampaignDeleteResult> => {
+        const missing = { ok: false, code: "CAMPAIGN_NOT_FOUND", message: "Campaign was not found." } as const;
+        if (!persistence.campaigns.findOwned(campaignId, accountId)) return missing;
+        const sessionId = liveSessionByCampaignId.get(campaignId);
+        if (sessionId) {
+          // Drain already accepted writes before removing their durable destination.
+          await store.retire(sessionId, "The owner deleted this campaign.");
+          forget(sessionId);
+        }
+        return persistence.campaigns.delete(campaignId, accountId) ? { ok: true } : missing;
+      });
+    },
+
     create(accountId, name, displayName) {
       const trimmed = name.trim();
       if (!trimmed || trimmed.length > MAX_CAMPAIGN_NAME_LENGTH) throw new Error(INVALID_CAMPAIGN_NAME);

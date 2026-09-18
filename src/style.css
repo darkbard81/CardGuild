@@ -2445,3 +2445,10 @@
   .ui-combat-actor-summary__note { font-size: 12px; padding: 8px; background: var(--ui-surface-input); border-radius: 5px; }
   .ui-combat-actor-summary__note p { margin: 0 0 6px; }
 }
+
+@layer screens {
+  .campaign-row-actions { display: flex; gap: var(--ui-space-3); flex-wrap: wrap; }
+  .campaign-delete-dialog { width: min(30rem, calc(100vw - 2rem)); padding: var(--ui-space-4); }
+  .campaign-delete-dialog::backdrop { background: rgb(0 0 0 / 65%); }
+  .campaign-delete-dialog p { line-height: 1.6; overflow-wrap: anywhere; }
+}

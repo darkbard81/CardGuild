@@ -246,6 +246,23 @@ export function createHttpApi(
       return true;
     }
 
+    const deletion = /^\/api\/campaigns\/([^/]+)$/.exec(url.pathname);
+    if (method === "DELETE" && deletion?.[1]) {
+      const account = signedIn(request);
+      if (!account) {
+        fail(response, "UNAUTHENTICATED", "Deleting a campaign requires signing in.");
+        return true;
+      }
+      try {
+        const result = await campaigns.delete(account.accountId, decodeURIComponent(deletion[1]));
+        if (!result.ok) fail(response, result.code, result.message);
+        else json(response, 200, { deleted: true });
+      } catch {
+        fail(response, "PERSISTENCE_FAILED", "Campaign deletion failed. Try again shortly.");
+      }
+      return true;
+    }
+
     const resume = /^\/api\/campaigns\/([^/]+)\/continue$/.exec(url.pathname);
     if (method === "POST" && resume?.[1]) {
       const account = signedIn(request);
