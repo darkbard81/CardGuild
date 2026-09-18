@@ -40,6 +40,7 @@ const ACTOR_TARGETING: readonly ActionTargeting[] = ["enemy", "ally", "creature"
 
 /** Which targeting a resolution can legally pair with, replacing the old 1:1 effect table. */
 const RESOLUTION_TARGETING: Readonly<Record<ActionResolution["kind"], readonly ActionTargeting[]>> = {
+  "recall-knowledge": ["enemy"],
   move: ["tile"],
   strike: ["enemy"],
   check: ["enemy", "ally", "creature", "self"],
@@ -50,6 +51,7 @@ const RESOLUTION_TARGETING: Readonly<Record<ActionResolution["kind"], readonly A
 const EFFECT_TARGETING: Readonly<Partial<Record<ActionOutcomeEffect["kind"], ActionTargeting>>> = {
   interact: "object",
   "sustain-effect": "effect",
+  "record-knowledge": "enemy",
 };
 
 const DEGREES = ["critical-success", "success", "failure", "critical-failure"] as const;

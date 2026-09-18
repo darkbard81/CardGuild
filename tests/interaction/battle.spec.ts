@@ -5,8 +5,8 @@ import { combatCheckpoint, HERO } from "../support/session";
 // Screen targets independently inspected in the 1024×768 product screenshot: the 3×3
 // Road Ambush board is already rotated 45 degrees. These are pixel input targets, not
 // calls back into the product's inverse projection or test-only scene-graph exports.
-const hero = { x: 235, y: 300 };
-const east = { x: 342, y: 354 };
+const hero = { x: 260, y: 386 };
+const east = { x: 379, y: 446 };
 
 test("U-BATTLE hover and Step direction cancellation are inert; End Turn commits only its chosen facing", async ({ page }, testInfo) => {
   const backend = await controlledSession(page, combatCheckpoint());
@@ -79,7 +79,7 @@ test("U-BOARD pinch/pan release cannot answer End Turn; the next deliberate tap 
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect(page.locator("#board-prompt")).toContainText("턴을 마칠 때 바라볼 위치");
     expect(backend.requests).toHaveLength(0);
-    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 450, y: 400, id: 3 }] });
+    await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 600, y: 530, id: 3 }] });
     await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
     await expect.poll(() => backend.requests.map(r => r.intent.type)).toEqual(["end-turn"]);
   } finally { await cdp.detach(); }
@@ -112,6 +112,8 @@ test("U-INSPECT ring and hand detail modes never send gameplay requests", async 
   await card.tap();
   await expect(page.locator("#card-detail")).toBeVisible();
   expect(backend.requests).toHaveLength(0);
+  await page.getByRole("button", { name: "손패 접기", exact: true }).tap();
+  await expect(page.locator("#card-detail")).toBeHidden();
   await page.touchscreen.tap(hero.x, hero.y);
   await page.getByRole("button", { name: "행동 상세 보기", exact: true }).tap();
   await page.getByRole("menuitem", { name: /Step/ }).tap();

@@ -56,7 +56,7 @@ export async function beginBattle(page: Page) {
 
 export async function stepToCenter(page: Page) {
   await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
-  await page.mouse.click(342, 354);
+  await page.mouse.click(379, 446);
   await page.getByRole("menu", { name: "Tile 1,1", exact: true }).getByRole("menuitem", { name: /Step/ }).click();
   await page.getByText("Combat Log", { exact: true }).click();
   await expect(page.locator("#combat-log")).toContainText("Aerin used Step");
@@ -66,5 +66,5 @@ export async function endTurn(page: Page) {
   await page.getByRole("button", { name: "End Turn", exact: true }).click();
   await page.getByRole("button", { name: "턴 종료", exact: true }).click();
   await expect(page.locator("#board-prompt")).toContainText("턴을 마칠 때");
-  await page.mouse.click(550, 350);
+  await page.mouse.click(499, 504);
 }

@@ -55,38 +55,31 @@
             </div>
           </div>
 
-          <aside class="hud-side ui-combat-detail" data-hud-gutter="right" aria-label="Combat details">
-            <section class="ui-panel ui-panel--hud hud-card ui-combat-summary" aria-labelledby="hero-heading">
-              <span class="hud-label">현재 행동자</span>
-              <div class="hero-id"><div class="hero-name"><h2 id="hero-heading"></h2><div id="action-pips" class="action-pips" aria-label="Actions remaining"></div></div></div>
-              <p id="combat-status" role="status"></p>
-              <div id="hero-stats" class="actor-stats"></div>
-            </section>
-            <section class="ui-panel ui-panel--hud hud-card inspector">
-              <div class="ui-combat-inspect-controls">
-                <label class="sr-only" for="inspect-actor">상세 대상</label><select id="inspect-actor"></select>
-                <button id="inspect-active" class="ui-button ui-button--secondary" type="button">현재 행동자</button>
-              </div>
-              <div id="character-panel"></div>
-              <div id="selected-detail" class="selected-detail"></div>
-            </section>
-            <details class="ui-panel ui-panel--hud hud-card log-panel">
-              <summary class="hud-label">Combat Log</summary>
-              <ol id="combat-log" class="combat-log" aria-live="polite"></ol>
-            </details>
-            <div class="hand-side ui-panel ui-panel--hud">
-              <p id="hand-owner" class="hud-label"></p>
-              <p class="pile-counts"><span>Hand <strong id="hand-count">0</strong></span><span>Deck <strong id="deck-count">0</strong></span><span>Discard <strong id="discard-count">0</strong></span></p>
+          <aside class="ui-combat-sidebar" data-hud-gutter="right" aria-label="전투 정보">
+          <section class="ui-panel ui-panel--hud hud-card ui-combat-action-bar" aria-label="전투 행동">
+            <div class="ui-combat-action-bar__controls">
+              <span class="hud-label">현재 행동자</span><h2 id="hero-heading" class="ui-combat-action-bar__name"></h2>
+              <div id="action-pips" class="action-pips ui-combat-action-bar__pips" aria-label="Actions remaining"></div>
+              <p id="combat-status" class="ui-combat-action-bar__status" role="status"></p>
+              <button id="inspect-active" class="ui-button ui-button--secondary" type="button">캐릭터 상세</button>
               <button id="end-turn" class="ui-button ui-button--primary ui-button--compact end-turn-button" type="button">End Turn</button>
             </div>
-          </aside>
-
-          <div class="board-prompt-dock" data-hud-gutter="bottom">
+          <div class="board-prompt-dock">
             <p id="move-legend" class="move-legend" aria-label="이동 범위 색 안내" hidden></p>
             <p id="board-prompt" class="board-prompt" aria-live="polite">행동을 선택하세요.</p>
           </div>
 
+            <details class="ui-combat-action-preview"><summary id="action-preview-summary">행동 상세</summary><div id="selected-detail" class="ui-panel ui-panel--popover selected-detail"></div></details>
+          </section>
+
+          <details class="ui-panel ui-panel--hud hud-card log-panel ui-combat-log">
+            <summary class="hud-label">Combat Log</summary>
+            <ol id="combat-log" class="combat-log" aria-live="polite"></ol>
+          </details>
+          </aside>
+
           <footer class="hand-dock" data-hud-gutter="bottom" data-expanded="false">
+            <div class="ui-hand-piles"><span id="hand-owner" class="hud-label"></span><span>Hand <strong id="hand-count">0</strong> · Deck <strong id="deck-count">0</strong> · Discard <strong id="discard-count">0</strong></span></div>
             <div class="ui-hand-controls">
               <button id="hand-previous" class="ui-button ui-button--secondary" type="button" aria-label="이전 손패">‹</button>
               <button id="hand-toggle" class="ui-button ui-button--secondary" type="button" aria-controls="hand-cards" aria-expanded="false">손패 펼치기</button>

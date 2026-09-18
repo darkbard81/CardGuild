@@ -44,7 +44,7 @@ export async function controlledSession(page: Page, initial = adventure()) {
     requests,
     get state() { return state; },
     send,
-    publish(next: SessionCoreState = state) { state = next; send(snapshot()); },
+    publish(next: SessionCoreState = state, events: ServerSnapshot["events"] = []) { state = next; send({ ...snapshot(), events }); },
     control(next: Record<string, string>) { controllers = next; controlRevision++; send(snapshot({ kind: "control" })); },
     candidate(request = requests.at(-1)!) { return act(state, request.intent); },
     ack(accepted: boolean, revision = state.revision + 1, request = requests.at(-1)!) {

@@ -1,3 +1,4 @@
+export { canInspectActor, canRecallKnowledge, recallKnowledgeSkill, levelDifficultyClass } from "./knowledge";
 export { resolveEffectiveActionTraits, matchesEligibilityGroups, isCardEligible, resolveCardEligibility, isRingAction } from "./capabilities";
 export {
   actionRangeFeet,

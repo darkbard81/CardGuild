@@ -1,5 +1,7 @@
 # #59 Human Interface 구현 점검
 
+> 후속 Combat HUD·전체 화면 상세·Recall Knowledge 구현과 최신 검증은 [Combat sheet 기록](issue-59-combat-sheet.md)을 참조한다. 아래 HUD 배치와 87개 검증 기록은 해당 후속 변경 이전의 기록이다.
+
 기준: 2026-09-17의 issue #59 본문·후속 코멘트와 현재 `feat-human-interface` 작업 트리. 이 문서는 GitHub 이슈의 체크박스나 실제 기기 검증을 대신하지 않는다.
 
 | 범위 | 현재 구현 근거 | 검증 근거 |

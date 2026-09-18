@@ -1,3 +1,5 @@
+import { conditionBlocksMovement } from "./condition-effects";
+import { canRecallKnowledge } from "./knowledge";
 import { canUseRuleTraits, isCardEligible, resolveCardEligibility, isContextualBasicAction, resolveEffectiveActionTraits } from "./capabilities";
 import { actionRangeFeet, buildResolvedActionPlan, turnMapContext } from "./action-plan";
 import { degreeProbabilities } from "./checks";
@@ -31,16 +33,12 @@ import type {
   LegalTarget,
 } from "./types";
 
-const BASIC_ACTION_IDS = ["step", "stride", "strike"] as const;
+const BASIC_ACTION_IDS = ["step", "stride", "strike", "recall-knowledge"] as const;
 
 export interface ResolvedAction {
   readonly definition: ActionDefinition;
   readonly card?: CardInstance;
   readonly sourceLabel?: string;
-}
-
-function hasCondition(actor: ActorState, condition: "prone" | "grabbed"): boolean {
-  return actor.conditions.some((entry) => entry.id === condition);
 }
 
 export function getContextActionOptions(
@@ -140,8 +138,7 @@ function movementTargets(
 ): readonly LegalTarget[] {
   if (definition.resolution.kind !== "move") return [];
   const moveEffect = definition.resolution;
-  if (hasCondition(actor, "prone")) return [];
-  if (hasCondition(actor, "grabbed")) return [];
+  if (conditionBlocksMovement(actor)) return [];
 
   const maximumCost = moveEffect.step ? 5 : actor.speedFeet;
   const reachable = findReachableTiles(
@@ -179,7 +176,7 @@ function enemyTargets(
         !target.defeated &&
         target.team !== actor.team &&
         gridDistance(actor.position, target.position) <= range &&
-        isInFrontOrSide(actor, target.position) &&
+        (definition.resolution.kind === "recall-knowledge" ? canRecallKnowledge(state, actor.id, target.id) : isInFrontOrSide(actor, target.position)) &&
         hasLineOfSight(state.map, actor.position, target.position) &&
         hasLineOfEffect(state.map, actor.position, target.position),
     )

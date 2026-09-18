@@ -1,3 +1,4 @@
+import { canInspectActor, recallKnowledgeSkill } from "../game/knowledge";
 import { validateActionIntent } from "../game/queries";
 import type { LoadoutPartyMember } from "../loadout";
 import { isRingAction } from "../game/capabilities";
@@ -127,9 +128,10 @@ export class BattleController {
   private readonly pacedUpdates: PacedUpdate[] = [];
   private ringAnchor: ScreenPoint = { x: 0, y: 0 };
   private ringTitle = "";
+  private ringActorId: string | null = null;
   private readonly keyHandler = (event: KeyboardEvent): void => {
     if (event.target instanceof Element && event.target.closest("dialog[open]")) return;
-    if (event.defaultPrevented || (event.target instanceof Element && event.target.id !== "end-turn" && event.target.closest(".hud-side, .hand-dock"))) return;
+    if (event.defaultPrevented || (event.target instanceof Element && event.target.id !== "end-turn" && event.target.closest(".ui-combat-sidebar, .hand-dock"))) return;
     if (this.interaction.kind === "direction") {
       // The keyboard names the direction outright; the board names the place to look at.
       const direction = ({ ArrowUp: "north", ArrowRight: "east", ArrowDown: "south", ArrowLeft: "west" } as const)[event.key as "ArrowUp"];
@@ -186,7 +188,8 @@ export class BattleController {
     }, {
       // The inspector describes the option under the finger; its Trait chips stay readable
       // while the ring is up instead of closing it.
-      passthrough: ".hud-side button, .hud-side summary, .hand-dock .ui-button",
+      safeArea: () => measureHudSafeArea(stage),
+      passthrough: ".ui-combat-action-bar button, .ui-combat-action-bar summary, .hand-dock .ui-button",
     });
     this.refreshMoveBands();
     window.addEventListener("keydown", this.keyHandler);
@@ -397,7 +400,11 @@ export class BattleController {
 
   /** A board target was picked: resolve it against the selected card, or open the ring menu. */
   private handlePick(pick: BoardPick, screen: ScreenPoint): void {
-    if (this.inputBlocked() || !this.activeHeroId() || this.state.pendingReaction || this.state.outcome) return;
+    if (this.state.outcome) return;
+    if (this.inputBlocked() || !this.activeHeroId() || this.state.pendingReaction) {
+      if (pick.kind === "actor") this.ui.openActorDetail(pick.actorId);
+      return;
+    }
     const interaction = this.interaction;
     // A board pick in direction mode is an aim, and the view has already routed it there.
     if (interaction.kind === "direction") return;
@@ -406,7 +413,8 @@ export class BattleController {
       return;
     }
     const entries = this.entriesFor(pick);
-    if (entries.length === 0) {
+    this.ringActorId = pick.kind === "actor" ? pick.actorId : null;
+    if (entries.length === 0 && !this.ringActorId) {
       this.goIdle();
       this.prompt = "이 대상에 사용할 수 있는 행동이 없습니다.";
       this.render();
@@ -417,17 +425,26 @@ export class BattleController {
     this.render();
     this.ringAnchor = screen;
     this.ringTitle = this.pickLabel(pick);
-    this.ring.show(screen, this.ringTitle, entries.map((entry) => this.ringOption(entry, entries)));
+    this.ring.show(screen, this.ringTitle, this.ringOptions(entries));
+  }
+
+  private ringOptions(entries: readonly RingEntry[]): RingMenuOption[] {
+    const options = entries.map(entry => this.ringOption(entry, entries));
+    if (this.ringActorId) options.push({ id: "inspect-actor", actionId: "inspect-actor", label: canInspectActor(this.state, this.ringActorId) ? "캐릭터 상세" : "상세 잠김", cost: "", activation: "정보 열람", hint: "적 상세는 Recall Knowledge 성공 후 열립니다." });
+    return options;
   }
 
   private ringOption(entry: RingEntry, entries: readonly RingEntry[]): RingMenuOption {
     const duplicated = entries.filter((other) => other.action.source.id === entry.action.source.id).length > 1;
     const suffix = duplicated && "label" in entry.target ? ` · ${entry.target.label}` : "";
+    const knowledgeTarget = entry.target.kind === "actor" ? this.state.actors[entry.target.actorId] : undefined;
+    const knowledgeSkill = this.definition.content.actions[entry.action.actionId]?.resolution.kind === "recall-knowledge" && knowledgeTarget
+      ? ` · ${recallKnowledgeSkill(knowledgeTarget, this.definition.content)}` : "";
     const copies = entry.copies > 1 ? ` ×${entry.copies}` : "";
     return {
       id: entry.id,
       actionId: entry.action.actionId,
-      label: `${entry.action.name}${suffix}${copies}`,
+      label: `${entry.action.name}${knowledgeSkill}${suffix}${copies}`,
       cost: actionCost(entry.action),
       activation: this.definition.content.actions[entry.action.actionId]?.resolution.kind === "move"
         && entry.target.kind === "tile" && samePosition(entry.target.position, this.state.actors[this.heroId()]!.position)
@@ -481,6 +498,9 @@ export class BattleController {
   }
 
   private handleRingSelect(optionId: string): void {
+    if (optionId === "inspect-actor" && this.ringActorId) {
+      const id = this.ringActorId; this.goIdle(); this.render(); this.ui.openActorDetail(id); return;
+    }
     const interaction = this.interaction;
     if (interaction.kind !== "ring") return;
     const entry = interaction.entries.find((candidate) => candidate.id === optionId);
@@ -682,7 +702,7 @@ export class BattleController {
     this.render();
     if (this.interaction.kind === "ring") {
       const entries = this.interaction.entries;
-      this.ring.show(this.ringAnchor, this.ringTitle, entries.map((entry) => this.ringOption(entry, entries)));
+      this.ring.show(this.ringAnchor, this.ringTitle, this.ringOptions(entries));
     }
   }
 

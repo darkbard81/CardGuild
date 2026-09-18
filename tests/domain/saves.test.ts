@@ -91,3 +91,17 @@ it("G-SAVE unspent growth choices survive restore and continue to gate departure
   expect(restored.adventure.party.members[HERO]!.progression).toEqual({ level: 3, experience: 100, advancements: [] });
   expect(dispatchAdventureCommand(restored.adventure, { type: "start-encounter" }, adventureContext).accepted).toBe(false);
 });
+
+
+it("G-KNOWLEDGE save and Resume preserve successful and failed identification attempts", () => {
+  const active = act(adventure(), { type: "start-encounter" });
+  const targetId = Object.values(active.combat!.actors).find(actor => actor.team === "enemies")!.id;
+  for (const success of [false, true]) {
+    const knowledge = [{ actorId: HERO, targetId, success }];
+    const state = { ...active, combat: { ...active.combat!, knowledge } };
+    const restored = restoreCampaignSave(saveRecord(state), context).projection;
+    expect(restored.combat!.knowledge).toEqual(knowledge);
+    const fresh = createResumedSessionCoreState({ sessionId: "knowledge-resume", playerId: "host", displayName: "Host" }, restored, context);
+    expect(act(fresh, { type: "resume-adventure" }).combat!.knowledge).toEqual(knowledge);
+  }
+});

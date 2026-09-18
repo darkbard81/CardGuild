@@ -120,7 +120,7 @@ test("U-REACTION observers can inspect the battlefield without decision buttons"
   await expect(page.getByRole("dialog", { name: "Reactive Strike?", exact: true })).toBeHidden();
   await expect(page.getByText(/님이 Reaction을 선택하고 있습니다/)).toBeVisible();
   await page.getByRole("button", { name: "Aerin 상세", exact: true }).click();
-  await expect(page.getByRole("tab", { name: "CORE", exact: true })).toBeVisible();
+  await expect(page.getByRole("region", { name: "기본 정보와 방어", exact: true })).toBeVisible();
   expect(backend.requests).toHaveLength(0);
 });
 

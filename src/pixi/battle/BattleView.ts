@@ -369,7 +369,9 @@ export class BattleView {
       viewportHeight: this.app.screen.height,
       columns: this.state?.map.width ?? 1,
       rows: this.state?.map.height ?? 1,
-      safeArea: this.safeArea,
+      // Headroom belongs to fitting the tile plane, not to the HUD occlusion rectangle
+      // used by ensureActorVisible. Treating it as HUD made TURN_STARTED pan twice.
+      safeArea: { ...this.safeArea, top: this.safeArea.top + Math.min(144, this.app.screen.height * 0.18) },
     };
   }
 

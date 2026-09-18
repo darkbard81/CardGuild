@@ -16,6 +16,8 @@ export interface RingMenuHandlers {
 }
 
 export interface RingMenuOptions {
+  /** Actual occupied HUD edges, in the same stage coordinates as the anchor. */
+  readonly safeArea?: () => { readonly left: number; readonly top: number; readonly right: number; readonly bottom: number };
   /**
    * Controls beneath the backdrop a tap is passed on to instead of closing the menu. The
    * backdrop covers the whole stage so that a press anywhere else is a dismissal and
@@ -150,14 +152,17 @@ export class RingMenu {
 
     const width = this.root.clientWidth;
     const height = this.root.clientHeight;
+    const safe = this.options.safeArea?.() ?? { left: 0, top: 0, right: 0, bottom: 0 };
+    this.inspectToggle.style.left = `${safe.left + EDGE_MARGIN}px`;
+    this.inspectToggle.style.bottom = `${safe.bottom + EDGE_MARGIN}px`;
     const radius = ringRadius(options.length);
     const halfWidth = OPTION_WIDTH / 2 + EDGE_MARGIN;
     const halfHeight = OPTION_HEIGHT / 2 + EDGE_MARGIN;
 
     options.forEach((option, index) => {
       const angle = -Math.PI / 2 + (index * 2 * Math.PI) / options.length;
-      const x = clamp(anchor.x + Math.cos(angle) * radius, halfWidth, width - halfWidth);
-      const y = clamp(anchor.y + Math.sin(angle) * radius, halfHeight, height - halfHeight);
+      const x = clamp(anchor.x + Math.cos(angle) * radius, safe.left + halfWidth, width - safe.right - halfWidth);
+      const y = clamp(anchor.y + Math.sin(angle) * radius, safe.top + halfHeight, height - safe.bottom - halfHeight);
       this.menu.append(this.optionButton(option, x, y));
       this.connectors.append(this.connector(anchor, x, y));
     });

@@ -56,3 +56,20 @@ These are detection checks, not full-suite passes. Focused filter output may lab
 | U-STARTUP | Renderer failure exposes a visible retry | Interaction `feedback.spec.ts` |
 
 U-FEEDBACK also owns terminal exit/reload and displayed derived growth effects. J-PROGRESS follows explicit reward acquisition without repeating the inspection assertions.
+
+## Combat sheet and Recall Knowledge
+
+| Risk | Owner | Evidence |
+| --- | --- | --- |
+| G-KNOWLEDGE: wrong skill/DC, repeat cost, lost party knowledge | Domain | `knowledge.test.ts`, `saves.test.ts`: command, replay and save/Resume |
+| U-SHEET: duplicate panels, stale sheet, input leaks, blocked Reaction | Interaction | `combat-sheet.spec.ts`: full-screen bounds, selection/close, live snapshot, owned Reaction |
+| U-KNOWLEDGE: inspection executes an action or client unlocks before server state | Interaction | `combat-sheet.spec.ts`: Ring inspect/execute, ACK before snapshot, locked/unlocked entry |
+
+Existing U-BOARD owns changed board hit testing, pan/zoom/resize and touch direction. Existing Journey owns full service navigation; no repeated journey is added for sheet assertions.
+
+## Derived conditions and sheet feedback
+
+| Risk | Owner | Evidence |
+| --- | --- | --- |
+| G-CONDITION: parent removed but effects persist, repeated Off-guard penalties, preview/execution divergence | Domain | `condition-effects.test.ts`: parent effects, strongest circumstance penalty, movement refusal, attack preview and command/replay |
+| U-EFFECTS: misleading condition hierarchy or stale colored numbers | Interaction | `combat-sheet.spec.ts`: derived children, decrease/increase/neutral snapshots, tap explanation, no gameplay command |

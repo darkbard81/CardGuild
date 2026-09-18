@@ -1,5 +1,15 @@
 [
   {
+    "id": "recall-knowledge",
+    "name": "Recall Knowledge",
+    "description": "대상의 가장 높은 스킬과 같은 스킬로 레벨 DC에 판정합니다. 성공하면 현재 전투에서 파티가 대상 상세를 열람합니다. 실패한 캐릭터는 같은 대상에게 재시도할 수 없습니다.",
+    "timing": { "kind": "turn", "actions": 1 },
+    "traits": [{ "id": "concentrate" }, { "id": "skill" }],
+    "targeting": "enemy",
+    "range": { "kind": "feet", "value": 120 },
+    "resolution": { "kind": "recall-knowledge" }
+  },
+  {
     "id": "step",
     "name": "Step",
     "description": "인접한 Open 칸으로 5ft 이동하고 바라볼 방향을 정합니다.",

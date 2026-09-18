@@ -15,39 +15,40 @@ import type { SessionEvent, SessionIntent, SessionSeat } from "../session";
 import { BattleController } from "./battle-controller";
 import type { Application } from "pixi.js";
 
-const COMBAT_EVENT_TYPES = new Set<CombatEvent["type"]>([
-  "COMBAT_STARTED",
-  "INITIATIVE_ROLLED",
-  "TURN_STARTED",
-  "TURN_ENDED",
-  "ACTION_SPENT",
-  "CARD_PLAYED",
-  "ACTOR_MOVED",
-  "FACING_CHANGED",
-  "CHECK_ROLLED",
-  "DAMAGE_DEALT",
-  "HP_RESTORED",
-  "CONDITION_APPLIED",
-  "CONDITION_VALUE_CHANGED",
-  "CONDITION_REMOVED",
-  "ACTION_LOCKED",
-  "SHIELD_RAISED",
-  "EFFECT_CREATED",
-  "EFFECT_SUSTAINED",
-  "EFFECT_EXPIRED",
-  "OBJECT_INTERACTED",
-  "TERRAIN_CHANGED",
-  "CARD_DRAWN",
-  "DISCARD_RESHUFFLED",
-  "REACTION_OPENED",
-  "REACTION_USED",
-  "REACTION_PASSED",
-  "ACTOR_DEFEATED",
-  "COMBAT_ENDED",
-]);
+const COMBAT_EVENT_TYPES: Record<CombatEvent["type"], true> = {
+  "COMBAT_STARTED": true,
+  "INITIATIVE_ROLLED": true,
+  "TURN_STARTED": true,
+  "TURN_ENDED": true,
+  "ACTION_SPENT": true,
+  "CARD_PLAYED": true,
+  "ACTOR_MOVED": true,
+  "FACING_CHANGED": true,
+  "CHECK_ROLLED": true,
+  "DAMAGE_DEALT": true,
+  "HP_RESTORED": true,
+  "CONDITION_APPLIED": true,
+  "CONDITION_VALUE_CHANGED": true,
+  "CONDITION_REMOVED": true,
+  "ACTION_LOCKED": true,
+  "SHIELD_RAISED": true,
+  "EFFECT_CREATED": true,
+  "EFFECT_SUSTAINED": true,
+  "EFFECT_EXPIRED": true,
+  "OBJECT_INTERACTED": true,
+  "TERRAIN_CHANGED": true,
+  "CARD_DRAWN": true,
+  "DISCARD_RESHUFFLED": true,
+  "REACTION_OPENED": true,
+  "REACTION_USED": true,
+  "REACTION_PASSED": true,
+  "ACTOR_DEFEATED": true,
+  "COMBAT_ENDED": true,
+  "KNOWLEDGE_RECALLED": true,
+};
 
 function combatEvents(events: readonly SessionEvent[]): readonly CombatEvent[] {
-  return events.filter((event): event is CombatEvent => COMBAT_EVENT_TYPES.has(event.type as CombatEvent["type"]));
+  return events.filter((event): event is CombatEvent => Object.hasOwn(COMBAT_EVENT_TYPES, event.type));
 }
 
 export class AdventureController {

@@ -275,7 +275,7 @@
     "name": "Grabbed",
     "source": "cardguild",
     "category": "condition",
-    "description": "붙잡힌 상태입니다. 상태가 있는 동안 Escape 문맥 행동을 쓸 수 있습니다.",
+    "description": "붙잡힌 상태입니다. Immobilized로 이동이 제한되고 Off-guard로 AC에 -2 circumstance 패널티를 받습니다. Escape 문맥 행동으로 벗어날 수 있습니다. 같은 유형의 AC 패널티는 중첩되지 않습니다.",
     "cardGrants": [],
     "actionGrants": [
       {
@@ -402,7 +402,7 @@
     "name": "Prone",
     "source": "cardguild",
     "category": "condition",
-    "description": "넘어진 상태입니다. 상태가 있는 동안 Stand 문맥 행동을 쓸 수 있습니다.",
+    "description": "넘어진 상태입니다. Off-guard로 AC에 -2 circumstance 패널티를 받습니다. 이동하려면 Stand 문맥 행동으로 먼저 일어나야 합니다. 같은 유형의 AC 패널티는 중첩되지 않습니다.",
     "cardGrants": [],
     "actionGrants": [
       {

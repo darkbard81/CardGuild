@@ -456,6 +456,19 @@ export function assertSessionInvariants(state: SessionCoreState): void {
     }
   }
   if (state.combat) {
+    for (const actor of Object.values(state.combat.actors)) {
+      const level = actor.statProfile.stats.level;
+      if (actor.statProfile.kind === "creature" && level !== undefined && (!Number.isInteger(level) || level < -1 || level > 25)) throw new Error("Creature level must be -1 through 25.");
+    }
+    const knowledge = state.combat.knowledge ?? [];
+    if (!Array.isArray(knowledge)) throw new Error("Combat knowledge must be a list.");
+    const attempts = new Set<string>();
+    for (const entry of knowledge) {
+      const actor = state.combat.actors[entry.actorId], target = state.combat.actors[entry.targetId];
+      const key = JSON.stringify([entry.actorId, entry.targetId]);
+      if (!actor || !target || actor.team === target.team || typeof entry.success !== "boolean" || attempts.has(key)) throw new Error("Invalid combat knowledge attempt.");
+      attempts.add(key);
+    }
     if (state.combat.version !== 5) throw new Error("CombatState must use version 5.");
     for (const [actorId, traits] of Object.entries(state.combat.turn.usedTraitsByActor)) {
       if (!state.combat.actors[actorId] || new Set(traits).size !== traits.length || traits.some(id => !id)) {

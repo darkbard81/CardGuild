@@ -1,7 +1,8 @@
+import { canInspectActor } from "../game/knowledge";
 import { formatActionCost } from "./card-face";
 import { requirementText } from "./card-level-view";
 import { listLegalActions, listLegalTargets, resolveStrike } from "../game";
-import { CharacterDetailPanel, type CharacterDetailTab } from "./character-detail-ui";
+import { CharacterDetailPanel } from "./character-detail-ui";
 import { CombatHandUi } from "./combat-hand-ui";
 import type { LoadoutPartyMember } from "../loadout";
 import type {
@@ -78,25 +79,6 @@ const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
 
 const INITIATIVE_PORTRAIT_SIZE = 34;
 
-function hpBlock(actor: ActorState): readonly HTMLElement[] {
-  const hpRow = element("div", "hp-row");
-  hpRow.append(element("span", undefined, "HP"), element("strong", undefined, `${actor.hp}/${actor.maxHp}`));
-  const bar = element("div", "hp-bar");
-  const fill = element("span", "hp-fill");
-  fill.style.width = `${Math.max(0, Math.min(100, (actor.hp / actor.maxHp) * 100))}%`;
-  bar.append(fill);
-  return [hpRow, bar];
-}
-
-function conditionLine(actor: ActorState): HTMLElement {
-  const conditions = actor.conditions.map((condition) => condition.id);
-  return element(
-    "p",
-    conditions.length ? "condition-line" : "condition-line empty",
-    conditions.length ? conditions.join(" · ") : "상태 이상 없음",
-  );
-}
-
 function percentage(value: number | undefined): string {
   return value === undefined ? "—" : `${Math.round(value * 100)}%`;
 }
@@ -112,17 +94,15 @@ export class BattleUi {
   private readonly round = required<HTMLElement>("#round-value");
   private readonly initiative = required<HTMLOListElement>("#initiative-list");
   private readonly heroHeading = required<HTMLElement>("#hero-heading");
-  private readonly heroStats = required<HTMLElement>("#hero-stats");
   private readonly status = required<HTMLElement>("#combat-status");
-  private readonly inspectSelect = required<HTMLSelectElement>("#inspect-actor");
+  private readonly inspectSelect = element("select") as HTMLSelectElement;
+  private detailDialog: HTMLDialogElement | null = null;
   private readonly inspectActive = required<HTMLButtonElement>("#inspect-active");
   private readonly sheet: CharacterDetailPanel;
   private readonly hand: CombatHandUi;
   private state: CombatState | null = null;
   private members: readonly LoadoutPartyMember[] = [];
   private inspectedActorId: string | null = null;
-  private actionInteraction = false;
-  private restoreTab: CharacterDetailTab | null = null;
   private readonly actionPips = required<HTMLElement>("#action-pips");
   private readonly endTurn = required<HTMLButtonElement>("#end-turn");
   private readonly selectedDetail = required<HTMLElement>("#selected-detail");
@@ -160,16 +140,15 @@ export class BattleUi {
     this.traits = new TraitView(content.traits);
     this.actionTraits = this.traits.createList();
     this.cardTraits = this.traits.createList();
-    this.sheet = new CharacterDetailPanel(content, catalog, "combat", "panel", this.selectedDetail, this.traits);
-    required<HTMLElement>("#character-panel").replaceChildren(this.sheet.root);
-    this.sheet.onTabChange = () => { this.restoreTab = null; };
+    this.sheet = new CharacterDetailPanel(content, catalog, "combat", "dialog");
+    this.inspectSelect.setAttribute("aria-label", "상세 대상");
     this.hand = new CombatHandUi(this.handCards, catalog, {
       onCard: handlers.onCard, onHover: handlers.onCardHover,
       onDetail: (button, action, card) => this.showCardDetail(button, action, card),
       onHideDetail: () => this.hideCardDetail(false), detailOpen: () => !this.cardDetail.hidden,
     });
     this.inspectSelect.addEventListener("change", () => { this.inspectedActorId = this.inspectSelect.value; this.renderInspector(); }, { signal: this.abortController.signal });
-    this.inspectActive.addEventListener("click", () => { this.inspectedActorId = null; this.renderInspector(); }, { signal: this.abortController.signal });
+    this.inspectActive.addEventListener("click", () => { this.openActorDetail(this.state?.turn.activeActorId); }, { signal: this.abortController.signal });
     const listenerOptions = { signal: this.abortController.signal };
     // Anything that is not the card being pressed, or the detail it opened, puts the
     // detail away again; a Trait chip inside the detail is part of it.
@@ -178,7 +157,7 @@ export class BattleUi {
       if (!(target instanceof Node) || (!this.handCards.contains(target) && !this.cardDetail.contains(target))) this.hideCardDetail();
     }, listenerOptions);
     document.addEventListener("keydown", event => {
-      if (event.key !== "Escape" || event.defaultPrevented || this.endConfirmation?.open) return;
+      if (event.key !== "Escape" || event.defaultPrevented || this.endConfirmation?.open || this.detailDialog?.open) return;
       if (!this.cardDetail.hidden) { this.hideCardDetail(); event.preventDefault(); event.stopPropagation(); return; }
       if (handlers.onEscape?.()) { event.preventDefault(); event.stopPropagation(); return; }
       this.hand.collapse();
@@ -206,8 +185,7 @@ export class BattleUi {
   public destroy(): void {
     this.endConfirmation?.remove();
     this.hand.destroy();
-    required<HTMLElement>(".inspector").append(this.selectedDetail);
-    this.selectedDetail.hidden = false;
+    this.closeActorDetail();
     this.sheet.destroy();
     this.hideCardDetail();
     this.traits.destroy();
@@ -234,16 +212,12 @@ export class BattleUi {
     this.members = presentation.members ?? [];
     this.heroHeading.textContent = activeActor?.name ?? hero.name;
     this.status.textContent = presentation.status ?? (presentation.canControl ? "내 턴" : "다른 행동자 대기 중");
+    if (state.outcome || (state.pendingReaction && presentation.ownsReaction)) this.closeActorDetail();
     this.renderInspector();
-    const interaction = presentation.interactionActive ?? Boolean(presentation.selectedAction);
-    if (interaction && !this.actionInteraction) { this.restoreTab = this.sheet.tab; this.sheet.show("ACTION"); }
-    if (!interaction && this.actionInteraction && this.restoreTab) { this.sheet.show(this.restoreTab); this.restoreTab = null; }
-    this.actionInteraction = interaction;
     this.boardPrompt.textContent = presentation.prompt;
     this.renderMoveLegend(presentation.moveBands);
 
     this.renderInitiative(state);
-    this.renderHeroCard(activeActor ?? hero);
     this.renderPips(state.turn.actionsRemaining);
     this.hand.update(
       actions.filter((action) => action.source.kind === "card"),
@@ -255,7 +229,10 @@ export class BattleUi {
         return targets.length === 1 && (targets[0]?.kind === "none" || targets[0]?.kind === "effect");
       }).map(action => action.source.id)),
     );
+    const historyChanged = history !== this.lastHistory;
     this.renderLog(state, history);
+    const knowledgeResult = history.at(-1);
+    if (historyChanged && knowledgeResult?.type === "KNOWLEDGE_RECALLED") this.status.textContent = knowledgeResult.success ? "Recall Knowledge 성공 · 적 상세 해금" : "Recall Knowledge 실패 · 같은 대상 재시도 불가";
 
     required<HTMLElement>("#hand-owner").textContent = `${hero.name}의 손패`;
     this.handCount.textContent = String(zones?.hand.length ?? 0);
@@ -289,32 +266,52 @@ export class BattleUi {
       this.paintPortrait(portrait, actor, INITIATIVE_PORTRAIT_SIZE);
       const button = element("button", "ui-button ui-button--initiative"); button.type = "button";
       button.setAttribute("aria-label", `${actor.name} 상세`);
+      if (!canInspectActor(state, actor.id)) button.setAttribute("aria-label", `${actor.name} 상세 잠김 · Recall Knowledge 필요`);
       button.append(portrait, element("span", "sr-only", actor.name));
-      button.addEventListener("click", () => { this.inspectedActorId = actor.id; this.renderInspector(); });
+      button.addEventListener("click", () => { this.openActorDetail(actor.id); });
       item.append(button);
       this.initiative.append(item);
     }
   }
 
-  /** Live state belongs to the fixed summary; the shared sheet omits this same header. */
-  private renderHeroCard(hero: ActorState): void {
-    this.heroStats.replaceChildren(...hpBlock(hero), conditionLine(hero));
+  public closeActorDetail(): void { this.sheet.dismissDetails(); this.detailDialog?.close(); }
+
+  public openActorDetail(actorId?: string): void {
+    if (!actorId || !this.state?.actors[actorId]) return;
+    if (!canInspectActor(this.state, actorId)) {
+      this.boardPrompt.textContent = "적 상세는 Recall Knowledge 성공 후 열람할 수 있습니다.";
+      return;
+    }
+    this.inspectedActorId = actorId;
+    if (this.detailDialog?.open) { this.renderInspector(); return; }
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = element("dialog", "ui-panel ui-panel--dialog ui-character-detail-dialog ui-character-detail-dialog--fullscreen");
+    dialog.setAttribute("aria-label", "캐릭터 상세");
+    const close = element("button", "ui-button ui-button--secondary", "닫기"); close.type = "button";
+    close.addEventListener("click", () => dialog.close());
+    const header = element("header", "ui-character-detail-dialog__header"); header.append(this.inspectSelect, close);
+    dialog.append(header, this.sheet.root);
+    dialog.addEventListener("close", () => {
+      this.sheet.dismissDetails();
+      if (this.detailDialog === dialog) this.detailDialog = null;
+      dialog.remove(); (opener?.isConnected ? opener : this.inspectActive).focus();
+    }, { once: true });
+    this.detailDialog = dialog; this.renderInspector(); document.body.append(dialog); dialog.showModal(); close.focus();
   }
 
   private renderInspector(): void {
-    if (!this.state) return;
-    if (this.inspectedActorId && !this.state.actors[this.inspectedActorId]) this.inspectedActorId = null;
+    if (!this.state || !this.detailDialog) return;
+    if (this.inspectedActorId && !this.state.actors[this.inspectedActorId]) { this.closeActorDetail(); return; }
     const actor = this.state.actors[this.inspectedActorId ?? this.state.turn.activeActorId];
-    if (!actor) return;
-    const actors = Object.values(this.state.actors);
+    if (!actor || !canInspectActor(this.state, actor.id)) { this.closeActorDetail(); return; }
+    const actors = Object.values(this.state.actors).filter(actor => canInspectActor(this.state!, actor.id));
     const signature = actors.map(actor => actor.id + actor.name).join();
     if (this.inspectSelect.dataset.actors !== signature) {
       this.inspectSelect.replaceChildren(...actors.map(actor => { const option = element("option", undefined, actor.name); option.value = actor.id; return option; }));
       this.inspectSelect.dataset.actors = signature;
     }
     this.inspectSelect.value = actor.id;
-    this.inspectActive.disabled = this.inspectedActorId === null;
-    this.sheet.update(actor, this.members.find(member => member.id === actor.id), actor.id === this.state.turn.activeActorId);
+    this.sheet.update(actor, this.members.find(member => member.id === actor.id));
   }
 
   /** A bust crop of the same standee the board draws, so a panel can name a face. */
@@ -386,10 +383,12 @@ export class BattleUi {
   /** Replaces the inspector with one line, for a phase that has nothing to inspect. */
   public renderHint(text: string): void {
     this.actionTraits.clear();
+    required<HTMLElement>("#action-preview-summary").textContent = "행동 상세";
     this.selectedDetail.replaceChildren(element("p", "detail-hint", text));
   }
 
   public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null, state?: CombatState): void {
+    required<HTMLElement>("#action-preview-summary").textContent = action ? `${action.name} · ${actionCost(action)} · 행동 상세` : "행동 상세";
     if (!action) {
       this.actionTraits.clear();
       this.selectedDetail.replaceChildren(element("p", "detail-hint", DETAIL_HINT));
@@ -402,6 +401,7 @@ export class BattleUi {
       element("p", undefined, action.description),
       chips,
     ));
+    if (this.content.actions[action.actionId]?.resolution.kind === "recall-knowledge" && preview) this.selectedDetail.append(element("p", undefined, preview.notes[0] ?? ""));
     if (action.sourceLabel) this.selectedDetail.append(element("p", "detail-source", `Source: ${action.sourceLabel}`));
     if (action.reason) this.selectedDetail.append(element("p", "detail-warning", action.reason));
     if (!preview) return;

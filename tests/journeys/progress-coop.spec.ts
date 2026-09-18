@@ -10,7 +10,7 @@ test("J-PROGRESS victory flows through reward, required growth and preparation i
   await page.getByRole("button", { name: "이어하기", exact: true }).click();
   await page.getByRole("button", { name: "모험 이어가기", exact: true }).click();
   await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
-  await page.mouse.click(449, 407);
+  await page.mouse.click(499, 504);
   await page.getByRole("menu", { name: "Goblin Lackey", exact: true }).getByRole("menuitem", { name: /^Strike / }).click();
   await expect(page.getByRole("heading", { name: "Choose one reward", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Brace Behind Cover/ }).click();

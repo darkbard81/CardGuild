@@ -47,7 +47,7 @@ function startsWithHealing(actor: ActorDefinition, pack: CompiledContentPack): b
     const resolution = action.resolution;
     const effects = resolution.kind === "direct"
       ? resolution.effects
-      : resolution.kind === "move"
+      : resolution.kind === "move" || resolution.kind === "recall-knowledge"
         ? []
         : Object.values(resolution.outcomes).flat();
     return effects.some((effect) => effect.kind === "restore-hp");

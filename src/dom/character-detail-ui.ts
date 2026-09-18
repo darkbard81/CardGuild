@@ -1,11 +1,12 @@
+import { conditionEffects } from "../game/condition-effects";
 import type { CompiledContentPack, ActorDefinition } from "../content";
-import type { ActorState, SkillId, CombatContent } from "../game";
-import { equippedArmor, resolveStrike, resolveArmorClass, resolveClassDC, resolveInitiative, resolveStatisticDC, resolveStatisticModifier } from "../game";
+import type { ActorState, SkillId, CombatContent, ProficiencyRank, ResolvedStatistic } from "../game";
+import { resolveStrike, resolveArmorClass, resolveClassDC, resolveInitiative, resolveStatisticDC, resolveStatisticModifier } from "../game";
 import { ATTRIBUTE_IDS, SKILL_IDS } from "../game/statistics";
 import { deriveActorSetup, resolveLoadoutStatProfile, type LoadoutPartyMember } from "../loadout";
 import type { AssetCatalog } from "../presentation";
 import { TraitView } from "./trait-view";
-import { progressionMeter, progressionText } from "./progression-view";
+import { progressionMeter } from "./progression-view";
 
 function node(tag: string, text = "", className = ""): HTMLElement {
   const result = document.createElement(tag); result.textContent = text; result.className = className; return result;
@@ -20,129 +21,195 @@ export function preparationDetailActor(definition: ActorDefinition, pack: Compil
   return { ...setup, defeated: false, reactionAvailable: false, shieldRaised: false };
 }
 
-let detailInstance = 0;
-export type CharacterDetailTab = "CORE" | "SKILLS" | "TRAITS" | "ACTION";
-
-/** Shared sheet. The combat adapter supplies live actors; preparation supplies resolved loadouts. */
+/** Shared read-only sheet; all numbers come from the authoritative stat resolvers. */
 export class CharacterDetailPanel {
-  public readonly root = node("div", "", "ui-character-detail");
-  public readonly body = node("section", "", "ui-character-detail__body");
-  private readonly heading = node("h2");
-  private readonly buttons = new Map<CharacterDetailTab, HTMLButtonElement>();
+  public readonly root = node("div", "", "ui-character-detail ui-character-detail--sheet");
+  public readonly body = node("section", "", "ui-character-detail__workspace");
+  private readonly overview = node("section", "", "ui-character-detail__overview");
+  private readonly effects = node("section", "", "ui-character-detail__effects");
+  private readonly skills = node("aside", "", "ui-character-detail__skills");
   private readonly traits: TraitView;
+  private readonly traitList;
   private readonly strikeTraits;
-  private actor: ActorState | null = null;
-  private member?: LoadoutPartyMember;
   private fingerprint = "";
-  private externalSummary = false;
-  public tab: CharacterDetailTab = "CORE";
-  public onTabChange?: (tab: CharacterDetailTab) => void;
+  private readonly changeNote = node("aside", "", "ui-character-detail__change-note");
   public constructor(private readonly content: CombatContent, private readonly catalog: AssetCatalog,
-    private readonly contextKind: "preparation" | "combat", layout: "dialog" | "panel",
-    private readonly actionBody?: HTMLElement, private readonly sharedTraits?: TraitView) {
+    private readonly contextKind: "preparation" | "combat", layout: "dialog" | "panel") {
     this.root.dataset.layout = layout;
     this.root.dataset.context = contextKind;
-    this.traits = sharedTraits ?? new TraitView(content.traits);
+    this.overview.setAttribute("aria-label", "기본 정보와 방어");
+    this.skills.setAttribute("aria-label", "스킬과 지각");
+    this.body.setAttribute("aria-label", "장비와 카드");
+    this.changeNote.hidden = true;
+    this.changeNote.setAttribute("role", "status");
+    this.root.append(this.overview, this.effects, this.skills, this.body, this.changeNote);
+    this.traits = new TraitView(content.traits, this.root);
+    this.traitList = this.traits.createList();
     this.strikeTraits = this.traits.createList();
-    const id = `character-detail-${++detailInstance}`;
-    const tabs = node("nav", "", "ui-character-detail__tabs");
-    tabs.setAttribute("role", "tablist"); tabs.setAttribute("aria-label", "캐릭터 정보");
-    this.body.id = id + "-panel"; this.body.setAttribute("role", "tabpanel");
-    const entries: CharacterDetailTab[] = ["CORE", "SKILLS", "TRAITS", ...(actionBody ? ["ACTION" as const] : [])];
-    entries.forEach((tab, index) => {
-      const button = node("button", tab, "ui-button ui-button--secondary") as HTMLButtonElement;
-      button.type = "button"; button.id = id + "-" + tab; button.setAttribute("role", "tab"); button.setAttribute("aria-controls", this.body.id);
-      button.addEventListener("click", () => { this.show(tab); this.onTabChange?.(tab); });
-      button.addEventListener("keydown", event => {
-        const next = event.key === "ArrowRight" ? (index + 1) % entries.length : event.key === "ArrowLeft" ? (index + entries.length - 1) % entries.length : event.key === "Home" ? 0 : event.key === "End" ? entries.length - 1 : -1;
-        if (next >= 0) { event.preventDefault(); event.stopPropagation(); const value = entries[next]!; this.show(value); this.onTabChange?.(value); this.buttons.get(value)!.focus(); }
-      });
-      this.buttons.set(tab, button); tabs.append(button);
-    });
-    this.root.append(this.heading, tabs, this.body);
-    if (actionBody) { actionBody.hidden = true; this.root.append(actionBody); }
   }
-  public update(actor: ActorState, member?: LoadoutPartyMember, externalSummary = false): void {
-    const fingerprint = JSON.stringify([actor, member, externalSummary]);
+  public update(actor: ActorState, member?: LoadoutPartyMember): void {
+    const fingerprint = JSON.stringify([actor, member]);
     if (fingerprint === this.fingerprint) return;
-    this.fingerprint = fingerprint; this.actor = actor; this.member = member; this.externalSummary = externalSummary;
-    this.heading.hidden = externalSummary;
-    this.heading.textContent = actor.name;
+    this.fingerprint = fingerprint;
     this.root.dataset.actorId = actor.id;
-    this.show(this.tab);
-  }
-  public show(tab: CharacterDetailTab): void {
-    this.tab = tab;
-    for (const [value, button] of this.buttons) { button.setAttribute("aria-selected", String(value === tab)); button.tabIndex = value === tab ? 0 : -1; }
-    this.body.setAttribute("aria-labelledby", this.buttons.get(tab)!.id);
-    const destination = this.body;
-    const scroll = destination.scrollTop;
-    const body = node("div");
-    // ACTION is persistent: preview updates must not recreate its controls on snapshots.
-    if (this.actionBody) { this.actionBody.hidden = tab !== "ACTION"; if (tab !== "ACTION") this.root.append(this.actionBody); }
-    if (tab === "ACTION") { if (this.actionBody && destination.firstChild !== this.actionBody) destination.replaceChildren(this.actionBody); return; }
-    const actor = this.actor; if (!actor) return;
-    const member = this.member, contextKind = this.contextKind, context = { content: this.content };
+    const scroll = this.body.scrollTop;
+    const skillsScroll = this.skills.scrollTop;
+    const focused = document.activeElement;
+    const focusedStat = focused instanceof HTMLElement ? focused.dataset.statKey : undefined;
+    const focusedNote = focused instanceof HTMLElement && this.changeNote.contains(focused);
+    const focusedTrait = focused instanceof HTMLElement && this.root.contains(focused) ? focused.dataset.traitId : undefined;
+    const context = { content: this.content };
+    const profile = actor.statProfile;
+    const baselineActor: ActorState = { ...actor, conditions: [], shieldRaised: false };
+    this.changeNote.hidden = true;
+    const annotate = (element: HTMLElement, resolve: (actor: ActorState) => ResolvedStatistic): HTMLElement => {
+      const current = resolve(actor), baseline = resolve(baselineActor);
+      const delta = current.value - baseline.value;
+      if (this.contextKind !== "combat" || delta === 0) return element;
+      const value = element.querySelector("strong");
+      if (!value) return element;
+      const reasons = current.sources.filter(source => source.applied && source.value !== 0 &&
+        !baseline.sources.some(base => base.applied && base.kind === source.kind && base.sourceId === source.sourceId && base.label === source.label && base.value === source.value))
+        .map(source => `${source.label} ${signed(source.value)}`);
+      const explanation = `${baseline.value} → ${current.value} (${signed(delta)})${reasons.length ? ` · ${reasons.join(" · ")}` : ""}`;
+      const button = node("button", value.textContent ?? "", "ui-stat-change") as HTMLButtonElement;
+      button.dataset.statKey = element.dataset.statKey ?? element.className;
+      button.type = "button"; button.dataset.change = delta < 0 ? "decrease" : "increase";
+      button.title = explanation; button.setAttribute("aria-label", `${element.textContent} · ${explanation}`);
+      button.append(node("small", delta < 0 ? "↓" : "↑", "ui-stat-change__direction"));
+      button.addEventListener("click", () => {
+        const close = node("button", "닫기", "ui-button ui-button--secondary") as HTMLButtonElement;
+        close.type = "button";
+        close.addEventListener("click", () => { this.changeNote.hidden = true; button.focus(); });
+        this.changeNote.replaceChildren(node("p", explanation), close); this.changeNote.hidden = false;
+      });
+      value.replaceChildren(button);
+      return element;
+    };
+    const statRow = (label: string, resolve: (actor: ActorState) => ResolvedStatistic, rank?: ProficiencyRank, unsigned = false) =>
+      annotate(row(label, unsigned ? String(resolve(actor).value) : signed(resolve(actor).value), rank), resolve);
+    const field = (label: string, value: string, className = "") => {
+      const field = node("div", "", `ui-character-detail__field ${className}`);
+      field.dataset.statKey = label;
+      field.append(node("span", label), node("strong", value));
+      return field;
+    };
+    const row = (label: string, value: string, rank?: ProficiencyRank) => {
+      const row = node("div", "", "ui-character-detail__stat-row");
+      row.dataset.statKey = label;
+      const badge = node("span", rank ? rank[0]!.toUpperCase() : "—", "ui-character-detail__rank");
+      badge.dataset.rank = rank ?? "fixed";
+      badge.title = rank ?? "Fixed";
+      badge.setAttribute("aria-label", rank ?? "고정 수치");
+      row.append(badge, node("strong", value), node("span", label));
+      return row;
+    };
+    const identity = node("div", "", "ui-character-detail__identity");
+    identity.append(field("Level", String(profile.stats.level ?? 1)), field("XP", member?.progression ? String(member.progression.experience) : "—"));
+    const name = node("div", "", "ui-character-detail__name");
+    name.append(node("span", "Character Name"), node("h2", actor.name));
+    identity.append(name);
+    const attributes = node("div", "", "ui-character-detail__attributes");
+    attributes.append(field("SPEED", `${actor.speedFeet} ft.`));
+    if (profile.kind === "character") for (const id of ATTRIBUTE_IDS) attributes.append(field(id.toUpperCase(), signed(profile.stats.attributes[id])));
+    const defense = node("div", "", "ui-character-detail__defense");
+    const ac = annotate(field("AC", String(resolveArmorClass(actor, context).value), "ui-character-detail__ac"), actor => resolveArmorClass(actor, context));
+    const vitality = node("div", "", "ui-character-detail__vitality");
+    const hp = node("div", this.contextKind === "combat" ? `HP ${actor.hp} / ${actor.maxHp}` : `최대 HP ${actor.maxHp}`, "ui-character-detail__hp");
+    hp.style.setProperty("--hp-fill", `${Math.max(0, Math.min(100, actor.hp / actor.maxHp * 100))}%`);
+    const shield = actor.equipmentIds.map(id => this.content.equipment[id]).find(item => item?.slot === "shield");
+    vitality.append(hp, node("div", shield ? `${shield.name}${this.contextKind === "combat" ? actor.shieldRaised ? " · Raised" : " · Lowered" : ""}` : "No Shield", "ui-character-detail__shield"));
+    if (member?.progression) vitality.append(progressionMeter(actor.name, member.progression));
+    const saves = node("div", "", "ui-character-detail__saves");
+    for (const id of ["fortitude", "reflex", "will"] as const) {
+      const save = statRow(id[0]!.toUpperCase() + id.slice(1), actor => resolveStatisticModifier(actor, { kind: "save", id }, context), profile.kind === "character" ? profile.stats.saves[id] : undefined);
+      save.title = `DC ${resolveStatisticDC(actor, { kind: "save", id }, context).value}`;
+      saves.append(save);
+    }
+    defense.append(ac, vitality, saves);
+    this.overview.replaceChildren(identity, attributes, defense);
 
-      if (tab === "CORE") {
-        const hp = node("p", contextKind === "preparation" ? `최대 HP ${actor.maxHp}` : `HP ${actor.hp} / ${actor.maxHp}`);
-        const meter = document.createElement("progress"); meter.max = actor.maxHp; meter.value = contextKind === "preparation" ? actor.maxHp : actor.hp; meter.setAttribute("aria-label", contextKind === "preparation" ? "최대 HP" : "HP");
-        const top = node("div", "", "ui-character-detail__core");
-        const visual = this.catalog.actorVisual(actor.definitionId);
-        const portrait = node("div", "", "ui-character-detail__portrait"); portrait.setAttribute("aria-hidden", "true");
-        if (visual) Object.assign(portrait.style, this.catalog.domStandeeStyle(visual.front, 210));
-        const attributes = node("dl");
-        if (actor.statProfile.kind === "character") for (const attribute of ATTRIBUTE_IDS) {
-          attributes.append(node("dt", attribute.toUpperCase()), node("dd", signed(actor.statProfile.stats.attributes[attribute])));
+    const traitsHeading = node("h3", "Traits");
+    const conditionHeading = node("h3", "Condition");
+    const conditions = node("div", "", "ui-character-detail__conditions");
+    if (this.contextKind === "combat") {
+      for (const condition of actor.conditions) {
+        const group = node("div", "", "ui-character-detail__condition");
+        group.append(node("span", `${this.content.conditions[condition.id]?.name ?? condition.id}${condition.value === undefined ? "" : ` ${condition.value}`} `));
+        const effects = conditionEffects(condition);
+        if (effects.length) {
+          const list = node("ul", "", "ui-character-detail__derived-effects");
+          for (const effect of effects) list.append(node("li", effect.label));
+          group.append(list);
         }
-        top.append(portrait, attributes);
-        if (!this.externalSummary) body.append(hp, meter);
-        body.append(top);
-        const classNames = actor.traits.flatMap(trait => this.content.traits[trait.id]?.category === "class" ? [this.content.traits[trait.id]!.name] : []);
-        if (classNames.length) body.append(node("p", classNames.join(" · ")));
-        if (member?.progression) body.append(node("p", progressionText(member.progression)), progressionMeter(actor.name, member.progression));
-        else if (actor.statProfile.kind === "character") body.append(node("p", `Lv. ${actor.statProfile.stats.level}`));
-        const stats = node("dl", "", "ui-character-detail__stats");
-        for (const save of ["fortitude", "reflex", "will"] as const) {
-          const rank = actor.statProfile.kind === "character" ? ` · ${actor.statProfile.stats.saves[save]}` : "";
-          stats.append(node("dt", save.toUpperCase()), node("dd", signed(resolveStatisticModifier(actor, { kind: "save", id: save }, context).value) + rank));
-        }
-        for (const save of ["fortitude", "reflex", "will"] as const) stats.append(node("dt", `${save[0]!.toUpperCase()}${save.slice(1)} DC`), node("dd", String(resolveStatisticDC(actor, { kind: "save", id: save }, context).value)));
-        stats.append(node("dt", "AC"), node("dd", String(resolveArmorClass(actor, context).value)));
-        if (actor.statProfile.kind === "character") stats.append(node("dt", "Class DC"), node("dd", String(resolveClassDC(actor, context).value)));
-        stats.append(node("dt", "우선권"), node("dd", signed(resolveInitiative(actor, context).value)), node("dt", "이동"), node("dd", `${actor.speedFeet} ft`));
-        const strike = resolveStrike(actor, context);
-        stats.append(node("dt", "Perception"), node("dd", signed(resolveStatisticModifier(actor, { kind: "perception" }, context).value)),
-          node("dt", "Strike"), node("dd", `${strike.weaponName} ${signed(strike.attackModifier)} · ${strike.damage.count}d${strike.damage.sides}${signed(strike.damage.flatModifier)}`),
-          node("dt", "Damage"), node("dd", strike.damage.damageType), node("dt", "Reach"), node("dd", `${strike.rangeFeet}ft`),
-          node("dt", "Armor"), node("dd", equippedArmor(actor, context)?.name ?? "Unarmored"));
-        if (contextKind === "combat") stats.append(node("dt", "Facing"), node("dd", actor.facing),
-          node("dt", "Reaction"), node("dd", actor.reactionAvailable ? "Available" : "Spent"),
-          node("dt", "Shield"), node("dd", actor.shieldRaised ? "Raised" : "Lowered"));
-        if (contextKind === "combat" && !this.externalSummary) stats.append(node("dt", "Conditions"), node("dd", actor.conditions.map(condition => condition.id).join(" · ") || "—"));
-        body.append(stats);
-
-      } else if (tab === "SKILLS") {
-        const list = node("dl");
-        const skills: readonly SkillId[] = actor.statProfile.kind === "character" ? SKILL_IDS : Object.keys(actor.statProfile.stats.skills) as SkillId[];
-        for (const skill of skills) {
-          const rank = actor.statProfile.kind === "character" ? ` · ${actor.statProfile.stats.skills[skill]}` : "";
-          list.append(node("dt", skill), node("dd", signed(resolveStatisticModifier(actor, { kind: "skill", id: skill }, context).value) + rank));
-        }
-        body.append(skills.length ? list : node("p", "등록된 기술 정보가 없습니다."));
-      } else for (const trait of actor.traits) {
-        const definition = this.content.traits[trait.id];
-        body.append(node("h3", definition?.name ?? trait.id), node("p", definition?.description ?? ""));
+        conditions.append(group);
       }
+      if (!actor.conditions.length) conditions.append(node("span", "상태 이상 없음", "ui-character-detail__muted"));
+      conditions.append(node("p", `Facing ${actor.facing} · Reaction ${actor.reactionAvailable ? "Available" : "Spent"}`, "ui-character-detail__combat-state"));
+    } else conditions.append(node("span", "전투 중 표시", "ui-character-detail__muted"));
+    this.traitList.render(actor.traits.map(trait => trait.id), chips => this.effects.replaceChildren(traitsHeading, chips, conditionHeading, conditions));
 
-    if (tab === "CORE") this.strikeTraits.render(resolveStrike(actor, context).traits, chips => { body.append(chips); destination.replaceChildren(...body.childNodes); });
-    else { this.strikeTraits.clear(); destination.replaceChildren(...body.childNodes); }
-    destination.scrollTop = scroll;
+    const skillRows: HTMLElement[] = [];
+    if (profile.kind === "character") skillRows.push(statRow("Class DC", actor => resolveClassDC(actor, context), profile.stats.offense.classDcProficiency, true));
+    skillRows.push(statRow("Perception", actor => resolveStatisticModifier(actor, { kind: "perception" }, context), profile.kind === "character" ? profile.stats.perception : undefined),
+      statRow("Initiative", actor => resolveInitiative(actor, context)), node("h3", "Skills"));
+    const skills: readonly SkillId[] = profile.kind === "character" ? SKILL_IDS : Object.keys(profile.stats.skills) as SkillId[];
+    for (const id of skills) skillRows.push(statRow(id[0]!.toUpperCase() + id.slice(1), actor => resolveStatisticModifier(actor, { kind: "skill", id }, context), profile.kind === "character" ? profile.stats.skills[id] : undefined));
+    if (!skills.length) skillRows.push(node("p", "등록된 기술 정보가 없습니다."));
+    this.skills.replaceChildren(...skillRows);
+
+    const equipment = node("div", "", "ui-character-detail__equipment");
+    const slots = { armor: "몸", weapon: "주손", shield: "보조손", feet: "악세서리" } as const;
+    for (const slot of ["armor", "weapon", "shield", "feet"] as const) {
+      const item = actor.equipmentIds.map(id => this.content.equipment[id]).find(item => item?.slot === slot);
+      const tile = node("article", "", "ui-character-detail__equipment-slot");
+      tile.append(node("span", slots[slot], "ui-character-detail__muted"));
+      if (item) {
+        const visual = this.catalog.equipmentVisual(item.id);
+        if (visual) { const art = node("div", "", "ui-character-detail__equipment-art"); art.setAttribute("aria-hidden", "true"); Object.assign(art.style, this.catalog.domAssetStyle(visual, 48)); tile.append(art); }
+      }
+      tile.append(node("strong", item?.name ?? "비어 있음")); equipment.append(tile);
+    }
+    const strike = resolveStrike(actor, context);
+    const attack = node("p", `${strike.weaponName} `, "ui-character-detail__strike");
+    attack.append(node("strong", signed(strike.attackModifier)));
+    annotate(attack, actor => { const resolved = resolveStrike(actor, context); return { value: resolved.attackModifier, sources: resolved.sources }; });
+    const damage = node("span");
+    damage.dataset.statKey = "Damage";
+    damage.append(node("strong", `${strike.damage.count}d${strike.damage.sides}${signed(strike.damage.flatModifier)}`));
+    annotate(damage, actor => { const resolved = resolveStrike(actor, context).damage; return { value: resolved.flatModifier, sources: resolved.sources }; });
+    attack.append(node("span", " · "), damage, node("span", ` ${strike.damage.damageType} · Reach ${strike.rangeFeet} ft.`));
+    const weaponTraits = node("div", "", "ui-character-detail__weapon-traits");
+    this.strikeTraits.render(strike.traits, chips => weaponTraits.replaceChildren(chips));
+    const cards = node("div", "", "ui-character-detail__cards");
+    const counts = new Map<string, number>();
+    for (const grant of actor.deckContributions) counts.set(grant.cardDefinitionId, (counts.get(grant.cardDefinitionId) ?? 0) + grant.count);
+    for (const [id, count] of counts) {
+      const card = this.content.cards[id];
+      const tile = node("article", "", "ui-character-detail__card");
+      const visual = this.catalog.cardVisual(id);
+      if (visual) Object.assign(tile.style, this.catalog.domFillStyle(visual));
+      tile.append(node("strong", card?.name ?? id), node("span", `×${count}`));
+      cards.append(tile);
+    }
+    if (!counts.size) cards.append(node("p", "구성된 카드가 없습니다."));
+    const innate = actor.innateActionIds.map(id => this.content.actions[id]?.name ?? id);
+    this.body.replaceChildren(node("h3", "장비"), equipment, attack, weaponTraits, node("h3", "카드"), cards);
+    if (innate.length) this.body.append(node("h3", "고유 행동"), node("p", innate.join(" · ")));
+    this.body.scrollTop = scroll;
+    this.skills.scrollTop = skillsScroll;
+    if (focusedStat || focusedNote) {
+      const replacement = [...this.root.querySelectorAll<HTMLElement>("[data-stat-key]")].find(item => item instanceof HTMLButtonElement && item.dataset.statKey === focusedStat);
+      const fallback = this.root.closest("dialog")?.querySelector<HTMLButtonElement>("button");
+      (replacement ?? fallback)?.focus({ preventScroll: true });
+    }
+    if (focusedTrait) [...this.root.querySelectorAll<HTMLElement>("[data-trait-id]")].find(chip => chip.dataset.traitId === focusedTrait)?.focus({ preventScroll: true });
   }
-  public destroy(): void { this.strikeTraits.clear(); if (!this.sharedTraits) this.traits.destroy(); this.root.remove(); }
+  public dismissDetails(): void { this.changeNote.hidden = true; this.traits.dismiss(); }
+  public destroy(): void { this.strikeTraits.clear(); this.traitList.clear(); this.traits.destroy(); this.root.remove(); }
 }
 
-/** Modal wrapper used by lobby and preparation; combat embeds the same panel. */
+/** Lobby and preparation wrapper; combat supplies its own live snapshot adapter. */
 export class CharacterDetailUi {
   private dialog: HTMLDialogElement | null = null;
   public constructor(private readonly pack: CompiledContentPack, private readonly catalog: AssetCatalog) {}
@@ -154,13 +221,13 @@ export class CharacterDetailUi {
     this.close();
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     const dialog = document.createElement("dialog");
-    dialog.className = "ui-panel ui-panel--dialog ui-character-detail-dialog";
+    dialog.className = "ui-panel ui-panel--dialog ui-character-detail-dialog ui-character-detail-dialog--fullscreen";
     dialog.setAttribute("aria-label", actor.name + " 상세"); this.dialog = dialog;
     const close = node("button", "닫기", "ui-button ui-button--secondary") as HTMLButtonElement;
     close.type = "button"; close.addEventListener("click", () => dialog.close());
     const panel = new CharacterDetailPanel(this.pack.combatContent, this.catalog, prepared ? "preparation" : "combat", "dialog");
     panel.update(actor, member); dialog.append(close, panel.root);
     dialog.addEventListener("close", () => { panel.destroy(); dialog.remove(); if (this.dialog === dialog) this.dialog = null; if (opener?.isConnected) opener.focus(); }, { once: true });
-    document.body.append(dialog); dialog.showModal(); panel.root.querySelector<HTMLButtonElement>("[role=tab]")!.focus();
+    document.body.append(dialog); dialog.showModal(); close.focus();
   }
 }

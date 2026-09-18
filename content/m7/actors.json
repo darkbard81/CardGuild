@@ -215,6 +215,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 16,
         "maxHp": 18,
         "strike": {
@@ -267,6 +268,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 17,
         "maxHp": 24,
         "strike": {
@@ -320,6 +322,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 18,
         "maxHp": 28,
         "strike": {
@@ -375,6 +378,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 14,
         "maxHp": 16,
         "strike": {
@@ -427,6 +431,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 15,
         "maxHp": 12,
         "strike": {
@@ -478,6 +483,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 15,
         "maxHp": 11,
         "strike": {
@@ -529,6 +535,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 15,
         "maxHp": 12,
         "strike": {
@@ -583,6 +590,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 17,
         "maxHp": 22,
         "strike": {
@@ -638,6 +646,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 16,
         "maxHp": 14,
         "strike": {
@@ -692,6 +701,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 17,
         "maxHp": 32,
         "strike": {
@@ -745,6 +755,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 17,
         "maxHp": 26,
         "strike": {
@@ -800,6 +811,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 17,
         "maxHp": 20,
         "strike": {
@@ -853,6 +865,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 18,
         "maxHp": 22,
         "strike": {
@@ -907,6 +920,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 15,
         "maxHp": 14,
         "strike": {
@@ -959,6 +973,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 16,
         "maxHp": 16,
         "strike": {
@@ -1010,6 +1025,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 16,
         "maxHp": 18,
         "strike": {
@@ -1065,6 +1081,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 17,
         "maxHp": 24,
         "strike": {
@@ -1121,6 +1138,7 @@
     "statProfile": {
       "kind": "creature",
       "stats": {
+        "level": 1,
         "ac": 18,
         "maxHp": 30,
         "strike": {
