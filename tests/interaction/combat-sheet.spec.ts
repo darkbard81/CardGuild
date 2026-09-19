@@ -20,10 +20,16 @@ test("U-SHEET full screen ally details, locked enemy, shared knowledge and live 
   const rect = await sheet.boundingBox();
   expect(rect).toMatchObject({ x: 0, y: 0, width: 1024, height: 768 });
   await expect(sheet.getByRole("tab", { name: "ACTION", exact: true })).toHaveCount(0);
-  await expect(sheet.getByLabel("상세 대상").locator("option")).toHaveCount(1);
+  await expect(sheet.getByLabel("상세 대상").getByRole("button")).toHaveCount(1);
   const overview = sheet.getByRole("region", { name: "기본 정보와 방어" });
   const workspace = sheet.getByRole("region", { name: "장비와 카드" });
   await expect(overview).toContainText("AC");
+  const traitsBounds = await sheet.getByRole("region", { name: "Traits", exact: true }).boundingBox();
+  const conditionsBounds = await sheet.getByRole("region", { name: "Condition", exact: true }).boundingBox();
+  expect(traitsBounds!.y).toBe(conditionsBounds!.y);
+  expect(traitsBounds!.x + traitsBounds!.width).toBeLessThanOrEqual(conditionsBounds!.x);
+  const overviewBounds = await overview.boundingBox();
+  expect(overviewBounds!.x + overviewBounds!.width).toBeLessThanOrEqual(traitsBounds!.x);
   await expect(workspace).toContainText("Halberd");
   await expect(sheet.getByRole("complementary", { name: "스킬과 지각" })).toContainText("Thievery");
   const defense = await sheet.locator(".ui-character-detail__defense").boundingBox();
@@ -41,7 +47,7 @@ test("U-SHEET full screen ally details, locked enemy, shared knowledge and live 
   backend.publish({ ...backend.state, combat: { ...combat, knowledge: [{ actorId: HERO, targetId: enemy.id, success: true }] } });
   await page.getByRole("button", { name: `${enemy.name} 상세`, exact: true }).click();
   await expect(sheet).toBeVisible();
-  await expect(sheet.getByLabel("상세 대상")).toHaveValue(enemy.id);
+  await expect(sheet.getByLabel("상세 대상").locator(`[data-actor-id="${enemy.id}"]`)).toHaveAttribute("aria-pressed", "true");
   backend.publish({ ...backend.state, combat: { ...backend.state.combat!, actors: { ...combat.actors, [enemy.id]: { ...enemy, hp: 3 } } } });
   await expect(sheet).toContainText(`HP 3 / ${enemy.maxHp}`);
   expect(backend.requests).toHaveLength(0);

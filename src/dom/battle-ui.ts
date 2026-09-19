@@ -1,3 +1,4 @@
+import { updateCharacterPicker } from "./character-picker";
 import { CombatActorSummary } from "./combat-actor-summary";
 import { canInspectActor } from "../game/knowledge";
 import { formatActionCost } from "./card-face";
@@ -96,7 +97,7 @@ export class BattleUi {
   private readonly initiative = required<HTMLOListElement>("#initiative-list");
   private readonly heroHeading = required<HTMLElement>("#hero-heading");
   private readonly status = required<HTMLElement>("#combat-status");
-  private readonly inspectSelect = element("select") as HTMLSelectElement;
+  private readonly inspectSelect = element("div");
   private detailDialog: HTMLDialogElement | null = null;
   private readonly inspectActive = required<HTMLButtonElement>("#inspect-active");
   private readonly sheet: CharacterDetailPanel;
@@ -151,7 +152,6 @@ export class BattleUi {
       onDetail: (button, action, card) => this.showCardDetail(button, action, card),
       onHideDetail: () => this.hideCardDetail(false), detailOpen: () => !this.cardDetail.hidden,
     });
-    this.inspectSelect.addEventListener("change", () => { this.inspectedActorId = this.inspectSelect.value; this.renderInspector(); }, { signal: this.abortController.signal });
     this.inspectActive.addEventListener("click", () => { this.openActorDetail(this.state?.turn.activeActorId); }, { signal: this.abortController.signal });
     const listenerOptions = { signal: this.abortController.signal };
     // Anything that is not the card being pressed, or the detail it opened, puts the
@@ -297,6 +297,7 @@ export class BattleUi {
     close.addEventListener("click", () => dialog.close());
     const header = element("header", "ui-character-detail-dialog__header"); header.append(this.inspectSelect, close);
     dialog.append(header, this.sheet.root);
+    dialog.addEventListener("cancel", event => { if (this.sheet.workspace.escape()) event.preventDefault(); });
     dialog.addEventListener("close", () => {
       this.sheet.dismissDetails();
       if (this.detailDialog === dialog) this.detailDialog = null;
@@ -310,13 +311,8 @@ export class BattleUi {
     if (this.inspectedActorId && !this.state.actors[this.inspectedActorId]) { this.closeActorDetail(); return; }
     const actor = this.state.actors[this.inspectedActorId ?? this.state.turn.activeActorId];
     if (!actor || !canInspectActor(this.state, actor.id)) { this.closeActorDetail(); return; }
-    const actors = Object.values(this.state.actors).filter(actor => canInspectActor(this.state!, actor.id));
-    const signature = actors.map(actor => actor.id + actor.name).join();
-    if (this.inspectSelect.dataset.actors !== signature) {
-      this.inspectSelect.replaceChildren(...actors.map(actor => { const option = element("option", undefined, actor.name); option.value = actor.id; return option; }));
-      this.inspectSelect.dataset.actors = signature;
-    }
-    this.inspectSelect.value = actor.id;
+    const actors = this.state.turn.initiativeOrder.map(id => this.state!.actors[id]).filter((actor): actor is ActorState => !!actor && canInspectActor(this.state!, actor.id));
+    updateCharacterPicker(this.inspectSelect, actors, actor.id, this.catalog, id => { this.inspectedActorId = id; this.renderInspector(); });
     this.sheet.update(actor, this.members.find(member => member.id === actor.id));
   }
 

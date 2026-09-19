@@ -1,10 +1,10 @@
-import type { LoadoutDestination } from "../dom/loadout-ui";
+import type { CharacterSheetDestination } from "../dom/character-workspace";
 import type { CharacterAdvancementChoice } from "../character";
 import type { AdventureEvent, AdventureState } from "../adventure";
 import { ApiError, isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
 import { PRODUCTION_CONTENT } from "../content/production-content";
 import { AdventureUi } from "../dom/adventure-ui";
-import { LoadoutUi } from "../dom/loadout-ui";
+import { CharacterDetailUi } from "../dom/character-detail-ui";
 import { trackGrowthSummary, type GrowthNotice } from "../dom/progression-view";
 import { SessionLobbyUi } from "../dom/session-lobby-ui";
 import type { CombatEvent, CombatState } from "../game";
@@ -56,10 +56,9 @@ export class AdventureController {
   private snapshot: ServerSnapshot | null = null;
   private battle: BattleController | null = null;
   private readonly ui: AdventureUi;
-  private readonly loadoutUi: LoadoutUi;
+  private readonly characterDetail: CharacterDetailUi;
   private readonly lobbyUi: SessionLobbyUi;
   private encounterBundle: Promise<void> | null = null;
-  private view: "adventure" | "loadout" = "adventure";
   private continuing = false;
   private account: AccountIdentity | null = null;
   private entryView: "landing" | "login" | "register" | "join" | "new-adventure" | "campaigns" = "landing";
@@ -85,7 +84,7 @@ export class AdventureController {
       onStart: () => this.sendIntent({ type: "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
       onChooseReward: (rewardId, choiceIndex, settled) => this.client?.sendIntent({ type: "choose-reward", rewardId, choiceIndex }, settled) ?? false,
-      onOpenLoadout: destination => this.openLoadout(destination),
+      onOpenCharacter: destination => this.openCharacter(destination),
       onExit: () => {
         if (this.client) SessionClient.clearCredential(this.client.credential);
         this.client?.destroy();
@@ -93,9 +92,8 @@ export class AdventureController {
         this.returnToLanding("");
       },
     }, this.catalog);
-    this.loadoutUi = new LoadoutUi(PRODUCTION_CONTENT.pack, this.catalog, {
+    this.characterDetail = new CharacterDetailUi(PRODUCTION_CONTENT.pack, this.catalog, {
       onSetLoadout: (memberId, loadout, settled) => this.setMemberLoadout(memberId, loadout, settled),
-      onDone: () => this.closeLoadout(),
     });
     this.lobbyUi = new SessionLobbyUi(PRODUCTION_CONTENT.pack, this.catalog, {
       onNewAdventure: () => this.openNewAdventure(),
@@ -333,7 +331,7 @@ export class AdventureController {
         void this.renderSnapshot(snapshot);
       },
       onError: (error) => {
-        this.loadoutUi.reportError(error.message);
+        this.characterDetail.reportError(error.message);
         this.ui.reportError(error.message);
         this.battle?.reportError(error.message);
         if (isTerminalHandshakeFailure(error.code)) {
@@ -347,7 +345,7 @@ export class AdventureController {
       },
       onStatus: (status) => {
         this.root.dataset.sessionStatus = status;
-        this.loadoutUi.setConnectionStatus(status);
+        this.characterDetail.setConnectionStatus(status);
         this.battle?.setConnectionStatus(status);
         if (status !== "connected") {
           this.ui.reportError(`Session ${status}…`);
@@ -367,7 +365,7 @@ export class AdventureController {
     this.battle = null;
     this.root.dataset.screen = "session";
     this.ui.setVisible(false);
-    this.loadoutUi.setVisible(false);
+    this.characterDetail.close();
     this.finishEntry();
     this.navigateEntry("landing");
     this.lobbyUi.setStatus(message, "error");
@@ -447,12 +445,12 @@ export class AdventureController {
     this.root.dataset.screen = "session";
     this.lobbyUi.renderLobby(state, viewerPlayerId, control);
     this.ui.setVisible(false);
-    this.loadoutUi.setVisible(false);
+    this.characterDetail.close();
   }
 
   private renderCombat(snapshot: ServerSnapshot, viewer: SessionSeat, combat: CombatState): void {
     this.root.dataset.screen = "combat";
-    this.loadoutUi.setVisible(false);
+    this.characterDetail.close();
     this.ui.render(snapshot.state.adventure as AdventureState, {
       isHost: snapshot.state.hostPlayerId === viewer.playerId,
       growth: this.growth?.summary ?? null,
@@ -497,44 +495,23 @@ export class AdventureController {
     const session = this.snapshot?.state;
     if (!session) return;
     const isHost = session.hostPlayerId === viewer.playerId;
-    if (this.view === "loadout" && (state.phase === "ready" || state.phase === "between-encounters")) {
-      this.root.dataset.screen = "loadout";
-      this.ui.setVisible(false);
-      const snapshot = this.snapshot;
-      this.loadoutUi.render(
-        state,
-        snapshot ? this.controlledMemberIds(snapshot, viewer.playerId) : new Set(),
-      );
-    } else {
-      this.view = "adventure";
-      this.root.dataset.screen = "adventure";
-      this.loadoutUi.setVisible(false);
-      this.ui.render(state, { isHost, growth: this.growth?.summary ?? null,
-        editableMemberIds: this.snapshot ? this.controlledMemberIds(this.snapshot, viewer.playerId) : new Set(),
-        controllerNames: Object.fromEntries(Object.entries(this.snapshot?.control.effectiveControllerByMemberId ?? {}).map(([memberId, playerId]) => [memberId,
-          this.snapshot?.state.seats.find(seat => seat.playerId === playerId)?.displayName ?? "호스트"])),
-      });
-      this.ui.setVisible(true);
-    }
+    this.root.dataset.screen = "adventure";
+    const editableMemberIds = this.snapshot ? this.controlledMemberIds(this.snapshot, viewer.playerId) : new Set<string>();
+    this.ui.render(state, { isHost, growth: this.growth?.summary ?? null,
+      editableMemberIds,
+      controllerNames: Object.fromEntries(Object.entries(this.snapshot?.control.effectiveControllerByMemberId ?? {}).map(([memberId, playerId]) => [memberId,
+        this.snapshot?.state.seats.find(seat => seat.playerId === playerId)?.displayName ?? "호스트"])),
+    });
+    this.ui.setVisible(true);
+    this.characterDetail.updateAdventure(state, editableMemberIds);
   }
 
-  private openLoadout(destination?: LoadoutDestination): void {
+  private openCharacter(destination?: CharacterSheetDestination): void {
     const snapshot = this.snapshot;
     const adventure = snapshot?.state.adventure;
     const viewer = snapshot ? this.viewerSeat(snapshot) : undefined;
-    if (!adventure || !viewer || (adventure.phase !== "ready" && adventure.phase !== "between-encounters")) return;
-    this.loadoutUi.navigate(destination);
-    this.view = "loadout";
-    this.renderAdventure(adventure, viewer);
-  }
-
-  private closeLoadout(): void {
-    const snapshot = this.snapshot;
-    const adventure = snapshot?.state.adventure;
-    const viewer = snapshot ? this.viewerSeat(snapshot) : undefined;
-    if (!adventure || !viewer) return;
-    this.view = "adventure";
-    this.renderAdventure(adventure, viewer);
+    if (!adventure || !viewer || !snapshot || snapshot.state.combat) return;
+    this.characterDetail.openAdventure(adventure, this.controlledMemberIds(snapshot, viewer.playerId), destination);
   }
 
   private advanceCharacter(memberId: string, choice: CharacterAdvancementChoice): boolean {
@@ -556,7 +533,7 @@ export class AdventureController {
   }
 
   public destroy(): void {
-    this.loadoutUi.destroy();
+    this.characterDetail.destroy();
     this.battle?.destroy();
     this.client?.destroy();
   }

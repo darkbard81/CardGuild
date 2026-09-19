@@ -1,7 +1,10 @@
+import { updateCharacterPicker } from "./character-picker";
+import type { AdventureState } from "../adventure";
+import { CharacterWorkspace, sheetNode, type CharacterSheetDestination, type CharacterSheetEditor, type CharacterSheetHandlers } from "./character-workspace";
 import { conditionPresentation, statisticButton, statisticPresentation } from "./actor-effect-view";
 import type { CompiledContentPack, ActorDefinition } from "../content";
 import type { ActorState, SkillId, CombatContent, ProficiencyRank, ResolvedStatistic } from "../game";
-import { resolveStrike, resolveArmorClass, resolveClassDC, resolveInitiative, resolveStatisticDC, resolveStatisticModifier } from "../game";
+import { resolveArmorClass, resolveClassDC, resolveInitiative, resolveStatisticDC, resolveStatisticModifier } from "../game";
 import { ATTRIBUTE_IDS, SKILL_IDS } from "../game/statistics";
 import { deriveActorSetup, resolveLoadoutStatProfile, type LoadoutPartyMember } from "../loadout";
 import type { AssetCatalog } from "../presentation";
@@ -21,7 +24,7 @@ export function preparationDetailActor(definition: ActorDefinition, pack: Compil
   return { ...setup, defeated: false, reactionAvailable: false, shieldRaised: false };
 }
 
-/** Shared read-only sheet; all numbers come from the authoritative stat resolvers. */
+/** Shared sheet; all numbers come from the authoritative stat resolvers. */
 export class CharacterDetailPanel {
   public readonly root = node("div", "", "ui-character-detail ui-character-detail--sheet");
   public readonly body = node("section", "", "ui-character-detail__workspace");
@@ -30,11 +33,11 @@ export class CharacterDetailPanel {
   private readonly skills = node("aside", "", "ui-character-detail__skills");
   private readonly traits: TraitView;
   private readonly traitList;
-  private readonly strikeTraits;
+  public readonly workspace: CharacterWorkspace;
   private fingerprint = "";
   private readonly changeNote = node("aside", "", "ui-character-detail__change-note");
-  public constructor(private readonly content: CombatContent, private readonly catalog: AssetCatalog,
-    private readonly contextKind: "preparation" | "combat", layout: "dialog" | "panel") {
+  public constructor(private readonly content: CombatContent, catalog: AssetCatalog,
+    private readonly contextKind: "preparation" | "combat", layout: "dialog" | "panel", onBusy?: (busy: boolean) => void) {
     this.root.dataset.layout = layout;
     this.root.dataset.context = contextKind;
     this.overview.setAttribute("aria-label", "기본 정보와 방어");
@@ -45,15 +48,18 @@ export class CharacterDetailPanel {
     this.root.append(this.overview, this.effects, this.skills, this.body, this.changeNote);
     this.traits = new TraitView(content.traits, this.root);
     this.traitList = this.traits.createList();
-    this.strikeTraits = this.traits.createList();
+    this.workspace = new CharacterWorkspace(content, catalog, onBusy);
+    this.body.append(this.workspace.root);
   }
-  public update(actor: ActorState, member?: LoadoutPartyMember): void {
+  public update(actor: ActorState, member?: LoadoutPartyMember, editor?: CharacterSheetEditor): void {
+    this.workspace.update(actor, member, editor);
     const fingerprint = JSON.stringify([actor, member]);
     if (fingerprint === this.fingerprint) return;
     this.fingerprint = fingerprint;
     this.root.dataset.actorId = actor.id;
     const scroll = this.body.scrollTop;
     const skillsScroll = this.skills.scrollTop;
+    const untrainedOpen = this.skills.querySelector("details")?.open ?? false;
     const focused = document.activeElement;
     const focusedStat = focused instanceof HTMLElement ? focused.dataset.statKey : undefined;
     const focusedNote = focused instanceof HTMLElement && this.changeNote.contains(focused);
@@ -138,55 +144,33 @@ export class CharacterDetailPanel {
       if (!actor.conditions.length) conditions.append(node("span", "상태 이상 없음", "ui-character-detail__muted"));
       conditions.append(node("p", `Facing ${actor.facing} · Reaction ${actor.reactionAvailable ? "Available" : "Spent"}`, "ui-character-detail__combat-state"));
     } else conditions.append(node("span", "전투 중 표시", "ui-character-detail__muted"));
-    this.traitList.render(actor.traits.map(trait => trait.id), chips => this.effects.replaceChildren(traitsHeading, chips, conditionHeading, conditions));
+    const traitsGroup = node("section", "", "ui-character-detail__effect-group");
+    traitsGroup.setAttribute("aria-label", "Traits");
+    const conditionGroup = node("section", "", "ui-character-detail__effect-group");
+    conditionGroup.setAttribute("aria-label", "Condition");
+    conditionGroup.append(conditionHeading, conditions);
+    this.traitList.render(actor.traits.map(trait => trait.id), chips => {
+      traitsGroup.replaceChildren(traitsHeading, chips);
+      this.effects.replaceChildren(traitsGroup, conditionGroup);
+    });
 
     const skillRows: HTMLElement[] = [];
     if (profile.kind === "character") skillRows.push(statRow("Class DC", actor => resolveClassDC(actor, context), profile.stats.offense.classDcProficiency, true));
     skillRows.push(statRow("Perception", actor => resolveStatisticModifier(actor, { kind: "perception" }, context), profile.kind === "character" ? profile.stats.perception : undefined),
-      statRow("Initiative", actor => resolveInitiative(actor, context)), node("h3", "Skills"));
+      statRow("Initiative", actor => resolveInitiative(actor, context)), node("h3", profile.kind === "character" ? "Skills (Trained or higher)" : "Skills"));
     const skills: readonly SkillId[] = profile.kind === "character" ? SKILL_IDS : Object.keys(profile.stats.skills) as SkillId[];
-    for (const id of skills) skillRows.push(statRow(id[0]!.toUpperCase() + id.slice(1), actor => resolveStatisticModifier(actor, { kind: "skill", id }, context), profile.kind === "character" ? profile.stats.skills[id] : undefined));
+    const untrained = document.createElement("details");
+    untrained.className = "ui-character-detail__untrained"; untrained.open = untrainedOpen;
+    const untrainedRows: HTMLElement[] = [];
+    for (const id of skills) {
+      const rank = profile.kind === "character" ? profile.stats.skills[id] : undefined;
+      const item = statRow(id[0]!.toUpperCase() + id.slice(1), actor => resolveStatisticModifier(actor, { kind: "skill", id }, context), rank);
+      if (rank === "untrained") untrainedRows.push(item); else skillRows.push(item);
+    }
+    if (untrainedRows.length) { untrained.append(node("summary", `Untrained (${untrainedRows.length})`), ...untrainedRows); skillRows.push(untrained); }
     if (!skills.length) skillRows.push(node("p", "등록된 기술 정보가 없습니다."));
     this.skills.replaceChildren(...skillRows);
 
-    const equipment = node("div", "", "ui-character-detail__equipment");
-    const slots = { armor: "몸", weapon: "주손", shield: "보조손", feet: "악세서리" } as const;
-    for (const slot of ["armor", "weapon", "shield", "feet"] as const) {
-      const item = actor.equipmentIds.map(id => this.content.equipment[id]).find(item => item?.slot === slot);
-      const tile = node("article", "", "ui-character-detail__equipment-slot");
-      tile.append(node("span", slots[slot], "ui-character-detail__muted"));
-      if (item) {
-        const visual = this.catalog.equipmentVisual(item.id);
-        if (visual) { const art = node("div", "", "ui-character-detail__equipment-art"); art.setAttribute("aria-hidden", "true"); Object.assign(art.style, this.catalog.domAssetStyle(visual, 48)); tile.append(art); }
-      }
-      tile.append(node("strong", item?.name ?? "비어 있음")); equipment.append(tile);
-    }
-    const strike = resolveStrike(actor, context);
-    const attack = node("p", `${strike.weaponName} `, "ui-character-detail__strike");
-    attack.append(node("strong", signed(strike.attackModifier)));
-    annotate(attack, actor => { const resolved = resolveStrike(actor, context); return { value: resolved.attackModifier, sources: resolved.sources }; });
-    const damage = node("span");
-    damage.dataset.statKey = "Damage";
-    damage.append(node("strong", `${strike.damage.count}d${strike.damage.sides}${signed(strike.damage.flatModifier)}`));
-    annotate(damage, actor => { const resolved = resolveStrike(actor, context).damage; return { value: resolved.flatModifier, sources: resolved.sources }; });
-    attack.append(node("span", " · "), damage, node("span", ` ${strike.damage.damageType} · Reach ${strike.rangeFeet} ft.`));
-    const weaponTraits = node("div", "", "ui-character-detail__weapon-traits");
-    this.strikeTraits.render(strike.traits, chips => weaponTraits.replaceChildren(chips));
-    const cards = node("div", "", "ui-character-detail__cards");
-    const counts = new Map<string, number>();
-    for (const grant of actor.deckContributions) counts.set(grant.cardDefinitionId, (counts.get(grant.cardDefinitionId) ?? 0) + grant.count);
-    for (const [id, count] of counts) {
-      const card = this.content.cards[id];
-      const tile = node("article", "", "ui-character-detail__card");
-      const visual = this.catalog.cardVisual(id);
-      if (visual) Object.assign(tile.style, this.catalog.domFillStyle(visual));
-      tile.append(node("strong", card?.name ?? id), node("span", `×${count}`));
-      cards.append(tile);
-    }
-    if (!counts.size) cards.append(node("p", "구성된 카드가 없습니다."));
-    const innate = actor.innateActionIds.map(id => this.content.actions[id]?.name ?? id);
-    this.body.replaceChildren(node("h3", "장비"), equipment, attack, weaponTraits, node("h3", "카드"), cards);
-    if (innate.length) this.body.append(node("h3", "고유 행동"), node("p", innate.join(" · ")));
     this.body.scrollTop = scroll;
     this.skills.scrollTop = skillsScroll;
     if (focusedStat || focusedNote) {
@@ -196,29 +180,89 @@ export class CharacterDetailPanel {
     }
     if (focusedTrait) [...this.root.querySelectorAll<HTMLElement>("[data-trait-id]")].find(chip => chip.dataset.traitId === focusedTrait)?.focus({ preventScroll: true });
   }
-  public dismissDetails(): void { this.changeNote.hidden = true; this.traits.dismiss(); }
-  public destroy(): void { this.strikeTraits.clear(); this.traitList.clear(); this.traits.destroy(); this.root.remove(); }
+  public dismissDetails(): void { this.changeNote.hidden = true; this.traits.dismiss(); this.workspace.dismissDetails(); }
+  public destroy(): void { this.workspace.destroy(); this.traitList.clear(); this.traits.destroy(); this.root.remove(); }
 }
 
-/** Lobby and preparation wrapper; combat supplies its own live snapshot adapter. */
+/** Preparation/lobby adapter for the same full-screen sheet used by combat. */
 export class CharacterDetailUi {
   private dialog: HTMLDialogElement | null = null;
-  public constructor(private readonly pack: CompiledContentPack, private readonly catalog: AssetCatalog) {}
-  public close(): void { this.dialog?.close(); }
-  public openPrepared(definition: ActorDefinition, member?: LoadoutPartyMember): void {
-    this.open(preparationDetailActor(definition, this.pack, member), member, true);
+  private panel: CharacterDetailPanel | null = null;
+  private select: HTMLElement | null = null;
+  private adventure: AdventureState | null = null;
+  private editableMemberIds: ReadonlySet<string> = new Set();
+  private selectedMemberId = "";
+  private connection = "connected";
+  public constructor(private readonly pack: CompiledContentPack, private readonly catalog: AssetCatalog,
+    private readonly handlers?: CharacterSheetHandlers) {}
+  public close(): void {
+    const dialog = this.dialog;
+    if (!dialog) return;
+    // Forced lifecycle transitions may close a pending editor. The SessionClient still owns
+    // the request; destroying its view does not cancel or resubmit that request.
+    dialog.close(); this.panel?.destroy(); this.panel = null; this.dialog = null;
+    this.select = null; this.adventure = null; dialog.remove();
   }
-  public open(actor: ActorState, member?: LoadoutPartyMember, prepared = false): void {
+  public destroy(): void { this.close(); }
+  public setConnectionStatus(status: string): void { this.connection = status; this.renderAdventure(); }
+  public reportError(message: string): void { this.panel?.workspace.reportError(message); }
+  private create(prepared: boolean): CharacterDetailPanel {
     this.close();
     const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const dialog = document.createElement("dialog");
-    dialog.className = "ui-panel ui-panel--dialog ui-character-detail-dialog ui-character-detail-dialog--fullscreen";
-    dialog.setAttribute("aria-label", actor.name + " 상세"); this.dialog = dialog;
-    const close = node("button", "닫기", "ui-button ui-button--secondary") as HTMLButtonElement;
-    close.type = "button"; close.addEventListener("click", () => dialog.close());
-    const panel = new CharacterDetailPanel(this.pack.combatContent, this.catalog, prepared ? "preparation" : "combat", "dialog");
-    panel.update(actor, member); dialog.append(close, panel.root);
-    dialog.addEventListener("close", () => { panel.destroy(); dialog.remove(); if (this.dialog === dialog) this.dialog = null; if (opener?.isConnected) opener.focus(); }, { once: true });
-    document.body.append(dialog); dialog.showModal(); close.focus();
+    const openerLabel = opener?.getAttribute("aria-label") ?? opener?.textContent;
+    const dialog = sheetNode("dialog", "", "ui-panel ui-panel--dialog ui-character-detail-dialog ui-character-detail-dialog--fullscreen");
+    dialog.setAttribute("aria-label", "캐릭터 상세"); this.dialog = dialog;
+    const select = sheetNode("div"); this.select = select;
+    const close = sheetNode("button", "닫기", "ui-button ui-button--secondary"); close.type = "button";
+    close.addEventListener("click", () => { if (!this.panel?.workspace.busy) this.close(); });
+    const header = sheetNode("header", "", "ui-character-detail-dialog__header"); header.append(select, close);
+    const panel = new CharacterDetailPanel(this.pack.combatContent, this.catalog, prepared ? "preparation" : "combat", "dialog", busy => {
+      close.disabled = busy; select.querySelectorAll<HTMLButtonElement>("button").forEach(button => { button.disabled = busy; });
+    });
+    this.panel = panel; dialog.append(header, panel.root);
+    dialog.addEventListener("cancel", event => { if (panel.workspace.escape()) event.preventDefault(); });
+    dialog.addEventListener("close", () => {
+      if (this.dialog === dialog) this.close();
+      if (document.querySelector("dialog[open]")) return;
+      const replacement = [...document.querySelectorAll<HTMLButtonElement>("button:not(:disabled)")].find(button =>
+        button.getClientRects().length > 0 && (button.getAttribute("aria-label") ?? button.textContent) === openerLabel);
+      if (opener?.isConnected) opener.focus();
+      else (replacement ?? document.querySelector<HTMLButtonElement>("#adventure-screen button:not(:disabled)"))?.focus();
+    }, { once: true });
+    document.body.append(dialog); dialog.showModal(); close.focus(); return panel;
+  }
+  public openPrepared(definition: ActorDefinition, member?: LoadoutPartyMember): void { this.open(preparationDetailActor(definition, this.pack, member), member, true); }
+  public open(actor: ActorState, member?: LoadoutPartyMember, prepared = false): void {
+    const panel = this.create(prepared);
+    updateCharacterPicker(this.select!, [actor], actor.id, this.catalog, () => {});
+    panel.update(actor, member);
+  }
+  public openAdventure(state: AdventureState, editableMemberIds: ReadonlySet<string>, destination: CharacterSheetDestination = {}): void {
+    const panel = this.create(true);
+    this.adventure = state; this.editableMemberIds = editableMemberIds;
+    const members = Object.values(state.party.members);
+    this.selectedMemberId = destination.memberId ?? members.find(member => editableMemberIds.has(member.id))?.id ?? members[0]?.id ?? "";
+    this.renderAdventure(); panel.workspace.navigate(destination);
+  }
+  public updateAdventure(state: AdventureState, editableMemberIds: ReadonlySet<string>): void {
+    if (!this.adventure) return;
+    const wasPreparing = this.adventure.phase === "ready" || this.adventure.phase === "between-encounters";
+    const preparing = state.phase === "ready" || state.phase === "between-encounters";
+    if (wasPreparing && !preparing) { this.close(); return; }
+    this.adventure = state; this.editableMemberIds = editableMemberIds; this.renderAdventure();
+  }
+  private renderAdventure(): void {
+    const state = this.adventure; if (!state || !this.panel || !this.select) return;
+    const members = Object.values(state.party.members);
+    const member = members.find(m => m.id === this.selectedMemberId);
+    if (!member) { this.close(); return; }
+    const definition = this.pack.actorDefinitions[member.actorDefinitionId]; if (!definition) { this.close(); return; }
+    updateCharacterPicker(this.select, members.map(m => ({ id: m.id, definitionId: m.actorDefinitionId, name: this.pack.actorDefinitions[m.actorDefinitionId]?.name ?? m.id })), member.id, this.catalog, id => {
+      this.selectedMemberId = id; this.renderAdventure();
+    }, this.panel.workspace.busy);
+    const editable = (state.phase === "ready" || state.phase === "between-encounters") && this.editableMemberIds.has(member.id);
+    this.panel.update(preparationDetailActor(definition, this.pack, member), member, this.handlers ? {
+      pack: this.pack, state, editable, connection: this.connection, onSetLoadout: this.handlers.onSetLoadout,
+    } : undefined);
   }
 }

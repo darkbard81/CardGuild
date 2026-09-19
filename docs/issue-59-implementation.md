@@ -10,7 +10,7 @@
 | 2 Campaign list / Continue | `renderCampaigns`의 진행·파티·저장 시각·도착 화면·저장 오류 표시, Resume Lobby | B-RESUME, J-CONTINUE 및 현재 렌더러 검토 |
 | 3 Lobby / Party Builder | `PartyBuilderUi`의 초안/적용·선택/해제, 담당자·접속·준비 관계, 성공 후 clipboard 안내 | G-AUTHORITY, J-COOP 및 현재 렌더러 검토 |
 | 4 Adventure / Between Encounters | 다음 목표·필수 성장·출발을 먼저 표시하고 전체 진행/Collection을 접음 | U-FEEDBACK, J-PROGRESS |
-| 5 Loadout / Prepared Cards | Standee 고정 슬롯, 비교와 장착/해제 분리, 서버 확인 후 저장 상태 | G-LOADOUT, U-PREPARE |
+| 5 Loadout / Prepared Cards | 공통 전체 화면 상세의 가로 4슬롯·카드 편집/전체 덱, 비교와 확정 분리, 서버 확인 후 저장 상태 | G-LOADOUT, U-PREPARE |
 | 6 Combat HUD | 현재 행동자·손패 소유자·열람 대상 구분, 우측 공통 상세, 부채꼴 손패, 접는 로그 | U-BATTLE, U-BOARD, 전투 캡처 |
 | 7 Card / Ring | 명시적 상세 모드, 즉시 실행/방향/대상 선택 안내, invalid target 후 선택 유지와 공용 검증 이유 | U-INSPECT(터치), U-TARGET |
 | 8 Facing / End Turn | 남은 Action 확인·취소, 0 Action 확인 생략, 마지막 제자리 Step의 서버 내 턴 종료 | U-END-TURN, G-FACING(명령 중복·replay 포함) |

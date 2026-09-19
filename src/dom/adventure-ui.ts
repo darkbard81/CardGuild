@@ -1,5 +1,4 @@
-import { CharacterDetailUi } from "./character-detail-ui";
-import type { LoadoutDestination } from "./loadout-ui";
+import type { CharacterSheetDestination } from "./character-workspace";
 import { createCardFace } from "./card-face";
 import { cardLevelSummary } from "./card-level-view";
 import { equipmentTraits } from "../game/rules";
@@ -35,7 +34,7 @@ export interface AdventureUiHandlers {
   readonly onStart: () => void;
   readonly onContinue: () => void;
   readonly onChooseReward: (rewardId: string, choiceIndex: number, settled: (accepted: boolean) => void) => boolean;
-  readonly onOpenLoadout: (destination?: LoadoutDestination) => void;
+  readonly onOpenCharacter: (destination?: CharacterSheetDestination) => void;
   readonly onExit: () => void;
 }
 
@@ -104,7 +103,6 @@ export class AdventureUi {
   private readonly collection = required<HTMLElement>("#adventure-collection");
   private readonly party = required<HTMLElement>("#adventure-party");
 
-  private readonly detail: CharacterDetailUi | null;
   private readonly advancementUi: CharacterAdvancementUi;
   private rewardDraft: { rewardId: string; index: number } | null = null;
   private rewardPending = false;
@@ -118,7 +116,6 @@ export class AdventureUi {
     private readonly catalog?: AssetCatalog,
   ) {
     this.advancementUi = new CharacterAdvancementUi(pack, handlers.onAdvanceCharacter);
-    this.detail = catalog ? new CharacterDetailUi(pack, catalog) : null;
     const rail = this.progress.parentElement!;
     for (const [target, label] of [[this.progress, "전체 모험 진행"], [this.collection, "보유 보상·Collection"]] as const) {
       const section = element("details", "adventure-secondary"); section.append(element("summary", undefined, label));
@@ -198,11 +195,7 @@ export class AdventureUi {
         );
         const advancement = this.advancementUi.render(member, access.editableMemberIds?.has(member.id) ?? false,
           state.phase === "ready" || state.phase === "between-encounters", access.controllerNames?.[member.id]);
-        const actor = this.pack.actorDefinitions[member.actorDefinitionId];
-        if (this.detail && actor) row.append(this.secondaryActionButton("상세", () => this.detail?.openPrepared(actor, member)));
-        if (state.phase === "ready" || state.phase === "between-encounters") {
-          row.append(this.secondaryActionButton(`${name} ${access.editableMemberIds?.has(member.id) ? "장비·카드 준비" : "장비·카드 보기"}`, () => this.handlers.onOpenLoadout({ memberId: member.id })));
-        }
+        row.append(this.secondaryActionButton(`${name} 상세`, () => this.handlers.onOpenCharacter({ memberId: member.id })));
         if (advancement) {
           const details = element("details", "adventure-growth-editor");
           details.open = openGrowth.has(member.id);
@@ -220,7 +213,7 @@ export class AdventureUi {
       const actions = element("div", "adventure-actions");
       actions.append(
         this.actionButton(access.isHost ? "모험 시작" : "호스트를 기다리는 중", this.handlers.onStart, access.isHost && !hasPending && !this.rewardPending),
-        this.secondaryActionButton("장비·카드 준비", () => this.handlers.onOpenLoadout()),
+        this.secondaryActionButton("캐릭터 상세", () => this.handlers.onOpenCharacter()),
       );
       const partySize = Object.keys(state.party.members).length;
       this.content.append(
@@ -236,7 +229,7 @@ export class AdventureUi {
       const actions = element("div", "adventure-actions");
       actions.append(
         this.actionButton(access.isHost ? "전투 시작" : "호스트를 기다리는 중", this.handlers.onContinue, access.isHost && !hasPending && !this.rewardPending),
-        this.secondaryActionButton("장비·카드 준비", () => this.handlers.onOpenLoadout()),
+        this.secondaryActionButton("캐릭터 상세", () => this.handlers.onOpenCharacter()),
       );
       const step = state.currentEncounterId
         ? this.definition.encounterIds.indexOf(state.currentEncounterId) + 1
@@ -266,7 +259,7 @@ export class AdventureUi {
         note.append(
           element("strong", undefined, `미사용 보상 ${String(waiting)}개`),
           element("span", undefined, "보상은 선택 사항입니다. 사용하지 않아도 전투를 시작할 수 있습니다."),
-          this.secondaryActionButton("보상 확인", () => this.handlers.onOpenLoadout({
+          this.secondaryActionButton("보상 확인", () => this.handlers.onOpenCharacter({
             tab: rewards.some(reward => reward.kind === "equipment") ? "equipment" : "cards", rewardIds: rewards.map(reward => reward.id),
           })),
         );
@@ -522,10 +515,9 @@ export class AdventureUi {
     if (this.lastRender && !this.screen.hidden) this.render(this.lastRender.state, this.lastRender.access);
   }
 
-  public clear(): void { this.detail?.close(); this.advancementUi.clear(); this.lastRender = null; this.rewardDraft = null; this.rewardPending = false; this.rewardMessage = ""; }
+  public clear(): void { this.advancementUi.clear(); this.lastRender = null; this.rewardDraft = null; this.rewardPending = false; this.rewardMessage = ""; }
 
   public setVisible(visible: boolean): void {
-    if (!visible) this.detail?.close();
     this.screen.hidden = !visible;
   }
 }

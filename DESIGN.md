@@ -108,27 +108,27 @@ CardGuild의 DOM UI는 **공통 테마 변수 → 공통 컴포넌트 → 화면
 - 동작은 `ui-button`과 기존 modifier를 사용한다. 카드 자체를 클릭 대상으로 만들지 않고 별도 버튼으로 실행한다. 특색 있는 외형이 필요하면 `ui-button ui-button--이름`으로 확장한다.
 - 선택한 캐릭터는 `data-claim-state="mine"`으로 표시한다. 참가자의 선택과 실제 조작 담당자는 별도로 표시하며, 외형만으로 조작 권한을 판정하지 않는다.
 
-## 캐릭터 상세 공통 기준 — 플레이어와 적
+## 캐릭터 상세와 장비·카드 준비
 
-앞으로 추가하거나 개편하는 캐릭터 상세 화면은 [#59의 캐릭터 디테일 공용 UI 목업](https://github.com/darkbard81/CardGuild/issues/59#issuecomment-5709181501)을 기본으로 한다. 플레이어 캐릭터와 적 모두 동일한 상세 패널 구조를 재사용한다.
+- 로비·준비·전투·적 조회는 `CharacterDetailPanel`과 `CharacterWorkspace`를 공유한다. 별도 Loadout Manage 화면은 사용하지 않는다. 준비 단계의 캐릭터별 상세와 전체 파티 상세, 미사용 보상 확인도 이 전체 화면으로 연결한다.
+- 상단 좌측은 Level·XP·이름·이동·능력치·AC·HP·방패·세이브, 상단 우측은 캐릭터 선택·닫기와 수평으로 나란한 Traits·Condition이다. 스탯 영역은 상단 절반 너비의 압축 배치이며 Traits/Condition은 독립적으로 스크롤한다. 하단 좌측은 장비/카드 작업 영역, 하단 우측은 Class DC·Perception·Initiative·Skills다. 기본 해상도는 1024×768 가로이며 더 넓은 화면에서는 작업 영역이 확장된다.
+- Skills는 Trained 이상을 기본 표시하고 Untrained는 개수가 있는 접기 영역에 둔다. 최종 보너스가 양수여도 U는 접힌 그룹에 속한다. 고정 보너스를 가진 몬스터는 숙련도를 추정하지 않고 등록된 스킬만 표시한다.
+- 이미지의 항목과 수치는 레이아웃 참고이며 실제 데이터는 공통 resolver에서 얻는다. 준비 단계는 최대 HP, 전투는 현재 HP와 방패 상태·Condition을 표시한다. 비어 있는 XP나 지원하지 않는 장비 설명을 임의로 만들지 않는다.
+- 장비는 Standee 없이 몸(`armor`), 주손(`weapon`), 보조손(`shield`), 악세서리(`feet`)의 가로 4슬롯이다. `feet`는 기존 저장 호환 키다. 기본 선택은 주손이며 슬롯 아래에는 상세·비교와 해당 부위의 교체 목록을 나란히 둔다.
+- 카드 탭은 준비 편집/전체 덱으로 전환한다. 준비 편집은 준비 슬롯·보유 카드·비교를 보여주며, 전체 덱은 기본/장비/준비 출처와 수량을 읽기 전용으로 표시한다. 카드 이미지는 `createCardFace`의 2:3 외형을 사용한다.
+- `ui-character-workspace` 기본 클래스와 `__slots`, `__choices`, `__comparison`, `__confirm`, `__cards` 등의 하위 클래스로 관리한다. 버튼·패널은 공통 `ui-button`/`ui-panel`과 modifier를 함께 붙인다. 화면 배치와 공통 토큰을 분리한다.
 
-- 기본 `CORE` 탭은 이름·초상·HP와 HP 바, 주요 능력치, 레벨 등 정체성 정보, 내성·방어·이동 등 핵심 수치를 목업의 정보 계층에 맞춰 보여준다. 실제 표시 항목과 값은 CardGuild의 해당 캐릭터 데이터에 따른다.
-- 추가 정보는 필요한 탭으로 확장한다. `SKILLS`를 비롯해 특성·행동·장비 등의 탭은 해당 기능과 표시할 정보가 있을 때 추가하며, 각 화면마다 별개의 상세 UI를 만들지 않는다.
-- 클래스·XP처럼 캐릭터 유형에 따라 적용되지 않는 항목은 생략하거나 해당 유형에 맞는 정보로 구성한다. 목업의 수치·아이콘·항목을 맞추기 위해 존재하지 않는 데이터를 만들지 않는다. 적에게 표시할 정보의 공개 범위는 게임 규칙을 따른다.
-- 목업의 세로 패널은 상세 컴포넌트의 기준이다. 전체 화면은 기존 1024×768 가로 모드 원칙을 유지하고, 사용 문맥에 맞게 패널을 배치한다. 정보가 많아지면 탭과 패널 내부 스크롤을 사용한다.
-- 공통 패널·버튼·탭은 기존 `ui-*` 클래스와 테마 토큰을 사용한다. 캐릭터 유형별 차이는 공통 컴포넌트의 데이터와 필요한 modifier로 표현한다. 탭은 선택 상태와 키보드 탐색을 지원한다.
+## 파티·전투 준비·캐릭터 상세의 선택 계약
 
-이 규칙은 향후 상세 UI 구현의 기준이며, 현재 화면이 모두 목업 구조로 전환되었다는 의미는 아니다.
-
-## 파티·전투 준비·Loadout의 선택 계약
-
-- 로비의 카드 선택은 호스트에게는 파티 초안이며 `파티 적용`으로 확정한다. 게스트는 자기 캐릭터를 선택·해제할 수 있다. 선택된 카드를 disabled 외형으로 표현하지 않는다. 재참가 파티 구성은 고정이다.
-- 공통 상세 모달은 `ui-panel ui-panel--dialog ui-character-detail-dialog` 안에 `ui-character-detail` 콘텐츠를 사용한다. `CORE / SKILLS / TRAITS` 탭은 실제 제공되는 데이터로 구성하며, 준비 화면은 현재 HP 대신 최대 HP를 표시한다. 공개된 Character/Creature 데이터만 입력으로 받는다.
-- Loadout의 Standee 주변 고정 사각 슬롯은 몸(`armor`), 주손(`weapon`), 보조손(`shield`), 악세서리(`feet`)다. `feet`는 저장 호환성을 위한 내부 키이며 화면에서는 악세서리로 표시한다.
-- 탭/클릭과 드롭은 상세·비교 선택만 한다. `장착 / 교환 / 해제 / 준비 추가`가 실제 변경이며, `비교 취소`와 Esc는 미확정 입력만 취소한다. 해제한 장비는 공유 장비함에 남는다.
-- `loadout-drag-handle`은 최소 44px 조작 영역과 `touch-action: none`을 사용한다. 일반 목록은 세로 스크롤을 허용한다. 드래그·잘못된 드롭·pointercancel은 서버 변경을 발생시키지 않는다.
-- 적용 상태는 해당 요청의 ACK와 확정 revision의 snapshot으로 판정한다. `닫기`는 저장 버튼이 아니며 적용 중에는 비활성화한다. 재연결 중에는 저장 성공을 추정하지 않는다.
-- 전투 준비 화면은 다음 목표, 필수 성장 선택, 전투 시작을 먼저 배치한다. 미사용 보상은 확인 경로를 제공하되 필수 준비 조건으로 취급하지 않는다. 전체 진행도와 Collection은 접을 수 있다.
+- 로비 선택은 호스트의 파티 초안이며 `파티 적용`으로 확정한다. 게스트는 자기 캐릭터를 선택·해제할 수 있다. 재참가 파티 구성은 고정이다.
+- 상세 편집은 ready/between-encounters 단계에서 현재 플레이어가 조작 가능한 캐릭터만 허용한다. 로비·전투·보상·종료 및 다른 참가자의 캐릭터는 같은 화면으로 조회만 한다. 적 정보는 기존 Recall Knowledge 공개 규칙을 따른다.
+- 탭/클릭과 드롭은 상세·비교 선택만 한다. `장착 / 교환 / 해제 / 준비 추가`가 실제 변경이다. 취소·캐릭터/슬롯/탭 전환은 미확정 비교안만 버린다. 상단 수치는 확정 상태이며 변경 예정 값은 아래 비교 영역에서만 보여준다.
+- `ui-character-workspace__drag-handle`은 최소 44px와 `touch-action: none`을 사용한다. 일반 목록은 세로 스크롤을 허용한다. 장비를 올바른 슬롯 또는 반환 영역으로 드롭해 비교한다. 잘못된 드롭·pointercancel·Escape는 저장하지 않는다.
+- 카드의 짧은 탭은 선택, 긴 누르기는 조회 전용이다. 길게 누른 뒤 release나 스크롤·취소가 준비 변경으로 이어지지 않는다.
+- 저장은 기존 set-loadout 요청의 ACK와 적용 snapshot을 모두 확인해야 완료다. 처리 중에는 닫기/Escape 종료·캐릭터/탭 전환·중복 확정을 막는다. 재연결 중 성공을 추정하지 않는다. 실패 시 최신 상태로 다시 비교하고 재시도할 수 있다.
+- 권한이나 공유 보유량은 snapshot마다 갱신한다. 권한 상실은 비교·드래그를 해제하고 조회 전용으로 바꾼다. 준비 단계 종료 시 창을 닫아도 이미 보낸 요청은 기존 SessionClient가 추적한다.
+- 모달을 닫으면 진입 버튼으로 포커스를 복귀한다. 미확정 작업은 Escape로 취소하고, 작업이 없으면 Escape로 창을 닫는다. 보상 확인은 해당 탭/슬롯과 보상 필터로 열며 필터를 해제할 수 있다.
+- 전투 준비의 목표·필수 성장·전투 시작 우선순위는 유지한다. 미사용 보상은 필수가 아니며 성장 선택 UI는 이번 통합 범위 밖이다.
 
 ## Combat HUD — 상단 목표·라운드, 우측 정보와 전체 화면 캐릭터 상세
 
@@ -136,7 +136,7 @@ CardGuild의 DOM UI는 **공통 테마 변수 → 공통 컴포넌트 → 화면
 - 행동 설명·예상 결과·실패 이유와 로그는 사이드바 안에서 펼친다. 긴 내용은 내부 스크롤하며 전장 크기를 바꾸지 않는다. 보드와 Ring 모두 실제 HUD gutter를 사용해 상단과 우측 패널을 피한다.
 - 손패 소유자와 Hand/Deck/Discard는 전장 하단에 둔다. 부채꼴 손패의 펼침·접힘, 짧은 탭 실행과 상세 모드 열람 계약을 유지한다.
 - 배치 클래스는 `ui-combat-sidebar`, `ui-combat-action-bar`, `ui-combat-action-preview`, `ui-combat-log`다. 공통 외형은 `ui-panel`, `ui-button`과 modifier·테마 토큰을 사용한다.
-- 공통 `CharacterDetailPanel`은 로비·준비·전투의 전체 화면 DOM 모달에 재사용한다. `ui-character-detail-dialog--fullscreen`은 100vw × 100dvh를 사용한다. 첨부 레퍼런스에 맞춰 상단 좌측은 Level·XP·이름·능력치·AC·HP·방패·내성, 상단 우측은 Traits·Condition, 하단 좌측은 Class DC·Perception·Initiative·Skills, 하단 중앙부터 우측은 장비·카드를 배치한다. 탭 전환이나 큰 Standee 없이 정보를 함께 읽는다.
+- 공통 `CharacterDetailPanel`은 로비·준비·전투의 전체 화면 DOM 모달에 재사용한다. `ui-character-detail-dialog--fullscreen`은 100vw × 100dvh를 사용한다. 첨부 레퍼런스에 맞춰 상단 좌측은 Level·XP·이름·능력치·AC·HP·방패·내성, 상단 우측은 Traits·Condition, 하단 우측은 Class DC·Perception·Initiative·Skills, 하단 좌측은 장비/카드 탭을 배치한다. 큰 Standee는 사용하지 않는다.
 - `ui-character-detail--sheet` 변형과 `ui-character-detail__*` 하위 클래스로 공통 스타일을 적용한다. 앱 전체 색상은 공통 `--ui-*` 토큰에서 수정한다. 상세창의 `--sheet-background`, `--sheet-panel`, `--sheet-border`, `--sheet-accent`, `--sheet-muted`는 해당 토큰의 별칭이며, 상세창만의 명시적 변형이 필요할 때에만 theme layer에서 재정의한다. 각 영역은 독립 스크롤하고 카드 면은 2:3을 유지한다.
 - 모든 수치는 공통 resolver에서 가져온다. 준비에서는 최대 HP, 전투에서는 현재 HP·Condition·Facing·Reaction·방패 올림 상태를 표시한다. Creature에 없는 능력치·숙련도·XP와 미지원 Size·방패 내구도는 임의로 만들지 않는다. 장비와 카드 목록은 현재 장착·덱 기여에서 읽으며 이 창에서는 변경하지 않는다.
 - 우측 상세 버튼·우선권 초상·Ring의 캐릭터 상세로 연다. 대상 선택은 조작 캐릭터·손패 소유자·공격 대상을 바꾸지 않는다. 닫기/Esc는 열람 전 입력으로 복귀하되, 서버 상태 변경으로 무효화된 선택은 복원하지 않는다.
@@ -183,3 +183,5 @@ CardGuild의 DOM UI는 **공통 테마 변수 → 공통 컴포넌트 → 화면
 캠페인 행의 이어하기 옆에 `.ui-button.ui-button--danger` 삭제 버튼을 둔다. 비어 있거나 읽을 수 없는 저장도 삭제 가능하다. `.ui-panel.ui-panel--dialog.campaign-delete-dialog` 확인창은 모험 이름, 영구 삭제와 참가자 연결 종료를 안내하며 최초 포커스는 취소에 둔다. Escape/취소는 요청 없이 닫고 원래 버튼으로 돌아간다. 확정 요청 중에는 목록 조작을 잠그며 실패 시 재시도할 수 있다. 성공 시 해당 행을 제거하고 마지막 행이면 빈 목록 안내를 표시한다.
 
 삭제 API는 소유자만 허용하며, 이어하기와 같은 캠페인별 직렬 큐를 사용한다. 이미 수락한 저장 작업과 세션 종료를 기다린 뒤 캠페인 행 및 그 안의 저장 데이터를 삭제한다. 저장소 오류로 삭제가 실패하면 행은 유지되지만 종료된 세션은 복구하지 않는다. 사용자는 삭제를 재시도하거나 유효한 저장으로 이어갈 수 있다.
+
+Character Detail uses a horizontal face picker with the initiative strip's portrait crop. Combat choices follow initiative order and retain the inspection knowledge gate; preparation choices follow party order and lock while a change is pending. Sheet action and tab buttons are compact (32px), while portrait and drag controls retain their dedicated sizes. Prepared cards remain fixed above an independently scrolling owned-card grid. Persistent footer help takes no layout space; operational status stays available without reducing the tab page.

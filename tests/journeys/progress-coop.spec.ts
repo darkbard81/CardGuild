@@ -20,12 +20,21 @@ test("J-PROGRESS victory flows through reward, required growth and preparation i
   await page.getByLabel("Skill Increase").selectOption("athletics");
   await page.getByRole("button", { name: "성장 확정", exact: true }).click();
   await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeEnabled();
-  await page.getByRole("button", { name: "장비·카드 준비", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "장비·카드 준비", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "닫기", exact: true }).click();
+  await page.getByRole("button", { name: "캐릭터 상세", exact: true }).click();
+  const sheet = page.getByRole("dialog", { name: "캐릭터 상세", exact: true });
+  await expect(sheet).toBeVisible();
+  await sheet.getByRole("button", { name: "보조손 · Steel Shield", exact: true }).click();
+  await sheet.getByRole("button", { name: "장비 해제 비교", exact: true }).click();
+  await sheet.getByRole("button", { name: "해제", exact: true }).click();
+  await expect(sheet.getByRole("status")).toContainText("저장됨");
+  await sheet.getByRole("button", { name: "보조손 · 빈 보조손", exact: true }).click();
+  await sheet.getByRole("button", { name: "닫기", exact: true }).click();
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   await expect(page.getByRole("region", { name: "Tactical combat", exact: true })).toBeVisible();
   await expect(page.getByRole("list", { name: "Initiative order", exact: true })).toContainText("Spear");
+  await page.getByRole("button", { name: "Aerin 상세", exact: true }).click();
+  await expect(sheet.getByRole("button", { name: "보조손 · 빈 보조손", exact: true })).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "장비 해제 비교", exact: true })).toHaveCount(0);
 });
 
 test("J-COOP two browsers join, claim, play and restore guest control after leaving", async ({ page: host, browser, server }) => {
