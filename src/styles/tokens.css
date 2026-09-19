@@ -1,0 +1,75 @@
+/* Public DOM theme tokens. Keep visual values here; see /DESIGN.md. */
+:root {
+  --ui-font-body: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --ui-font-heading: Georgia, "Times New Roman", serif;
+  --ui-color-text: #f3f5f7;
+  --ui-color-muted: #aeb8c5;
+  --ui-color-description: #c5ced9;
+  --ui-color-page: #171b20;
+  --ui-color-border: #354457;
+  --ui-color-accent: #ff6338;
+  --ui-color-accent-bright: #ff946f;
+  --ui-color-danger: #b94032;
+  --ui-color-success: #4f9a78;
+  --ui-color-error-text: #ef998a;
+  --ui-color-status-text: #9fd5b2;
+  --ui-surface-panel: #222a34;
+  --ui-surface-solid: #222a34;
+  --ui-surface-hud: #222a34;
+  --ui-border-hud: #354457;
+  --ui-surface-workspace: #1b2129;
+  --ui-surface-input: #12171d;
+  --ui-surface-button: #293441;
+  --ui-border-control: #354457;
+  --ui-surface-primary: #9e351b;
+  --ui-border-primary: #ff6338;
+  --ui-surface-danger: #351b16;
+  --ui-border-danger: #9d5746;
+  --ui-text-danger: #ffb2a2;
+  --ui-surface-danger-hover: #51251d;
+  --ui-border-danger-hover: #e88b74;
+  --ui-surface-selected: #344457;
+  --ui-radius-panel: 0.75rem;
+  --ui-radius-control: 0.5rem;
+  --ui-shadow-panel: 0 1.5rem 4rem rgb(0 0 0 / 45%);
+  --ui-shadow-dialog: 0 2rem 5rem rgb(0 0 0 / 55%);
+  --ui-shadow-hud: 0 0.6rem 1.6rem rgb(0 0 0 / 42%);
+  --ui-shadow-popover: 0 12px 40px #000a;
+  --ui-focus-ring: 2px solid var(--ui-color-accent-bright);
+  --ui-control-min-height: 44px;
+  --ui-opacity-disabled: 0.5;
+  --ui-space-1: 0.25rem;
+  --ui-space-2: 0.5rem;
+  --ui-space-3: 0.75rem;
+  --ui-space-4: 1rem;
+  --ui-space-6: 1.5rem;
+  --ui-space-8: 2rem;
+  --ui-space-10: 2.5rem;
+  --ui-card-text: #f3f5f7;
+  --ui-card-surface: #222a34;
+  --ui-card-radius: 4px;
+
+  --ui-surface-hp: #344e6b;
+  --ui-surface-hp-empty: #161c24;
+  --ui-surface-shield: #535b63;
+  --ui-surface-rank: #39495c;
+  --ui-condition-harmful-surface: #38252b;
+  --ui-condition-beneficial-surface: #20372f;
+  --ui-save-surface: #344457;
+  --ui-save-border: #60758c;
+  --ui-surface-caption: #10161edb;
+
+  /* Compatibility names for specialized game components, not a second palette. */
+  --ink: var(--ui-color-text);
+  --muted: var(--ui-color-muted);
+  --panel: var(--ui-surface-hud);
+  --panel-solid: var(--ui-surface-solid);
+  --line: var(--ui-border-hud);
+  --gold: var(--ui-color-accent);
+  --gold-bright: var(--ui-color-accent-bright);
+  --red: var(--ui-color-danger);
+  --green: var(--ui-color-success);
+  --hud-gap: 0.7rem;
+  --min-width: 1024px;
+  --min-height: 768px;
+}

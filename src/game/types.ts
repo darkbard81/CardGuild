@@ -81,6 +81,8 @@ export interface CharacterStatProfile {
 }
 
 export interface FixedCreatureStats {
+  /** Authored encounter level; older content without it uses level 1. */
+  readonly level?: number;
   readonly ac: number;
   readonly maxHp: number;
   readonly strike: FixedStrikeProfile;
@@ -452,7 +454,11 @@ export interface PendingReaction {
   readonly continuation: MoveContinuation;
 }
 
+export interface KnowledgeAttempt { readonly actorId: EntityId; readonly targetId: EntityId; readonly success: boolean }
+
 export interface CombatState {
+  /** Absent in older v5 snapshots: no knowledge has been earned. */
+  readonly knowledge?: readonly KnowledgeAttempt[];
   readonly version: 5;
   readonly scenarioId: string;
   readonly seed: number;
@@ -526,6 +532,7 @@ export type ActionRange =
  * adds a primitive here — never a formula string or script in content.
  */
 export type ActionOutcomeEffect =
+  | { readonly kind: "record-knowledge"; readonly success: boolean }
   | {
       readonly kind: "apply-condition";
       readonly owner: ActionParticipant;
@@ -566,6 +573,7 @@ export interface ActionCheckDefinition {
  * action: a Card selects a resolution, never its own executor.
  */
 export type ActionResolution =
+  | { readonly kind: "recall-knowledge" }
   | {
       readonly kind: "move";
       readonly movementMode: MovementMode;
@@ -786,6 +794,7 @@ export interface CombatReplay {
 }
 
 export type CombatEvent =
+  | { readonly type: "KNOWLEDGE_RECALLED"; readonly actorId: EntityId; readonly targetId: EntityId; readonly success: boolean }
   | { readonly type: "COMBAT_STARTED"; readonly scenarioId: string; readonly seed: number }
   | {
       readonly type: "INITIATIVE_ROLLED";

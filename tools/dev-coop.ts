@@ -43,8 +43,7 @@ function start(label: string, command: string, args: readonly string[]): ChildPr
 // anything can try to sign in. Seeding is idempotent and refuses to touch a production
 // database, and it must finish before the server starts.
 const seeded = spawnSync(bin("tsx"), ["tools/accounts/create-account.ts", "--seed-dev"], {
-  stdio: "inherit",
-  env: process.env,
+  stdio: "inherit", env: process.env,
 });
 if (seeded.status !== 0) throw new Error("Could not seed the development accounts.");
 

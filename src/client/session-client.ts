@@ -39,13 +39,8 @@ export interface AccountIdentity {
   readonly username: string;
 }
 
-export interface CampaignSummary {
-  readonly campaignId: string;
-  readonly name: string;
-  readonly hasSave: boolean;
-  readonly createdAt: number;
-  readonly updatedAt: number;
-}
+export type { CampaignSummary } from "../campaign/types";
+import type { CampaignSummary } from "../campaign/types";
 
 export interface SessionClientHandlers {
   readonly onSnapshot: (snapshot: ServerSnapshot) => void;
@@ -58,6 +53,14 @@ interface ApiErrorBody {
   readonly message?: string;
 }
 
+/** Structured HTTP failures retain the server code for presentation without changing the wire format. */
+export class ApiError extends Error {
+  public constructor(public readonly status: number, public readonly code: string | undefined, message: string) {
+    super(message);
+    this.name = "ApiError";
+  }
+}
+
 /** `same-origin` is the default, but the auth cookie makes it worth saying out loud. */
 async function api<T>(method: string, path: string, body?: unknown): Promise<T> {
   const response = await fetch(path, {
@@ -68,7 +71,7 @@ async function api<T>(method: string, path: string, body?: unknown): Promise<T> 
   });
   const text = await response.text();
   const payload = (text ? JSON.parse(text) : {}) as T & ApiErrorBody;
-  if (!response.ok) throw new Error(payload.message ?? payload.code ?? `Request failed with ${response.status}.`);
+  if (!response.ok) throw new ApiError(response.status, payload.code, payload.message ?? payload.code ?? `Request failed with ${response.status}.`);
   return payload;
 }
 
@@ -90,7 +93,7 @@ export class SessionClient {
   private terminallyClosed = false;
   private authenticatedSocket: WebSocket | null = null;
   private snapshotValue: ServerSnapshot | null = null;
-  private outstanding: { readonly envelope: ClientIntentEnvelope; committedRevision?: number } | null = null;
+  private outstanding: { readonly envelope: ClientIntentEnvelope; committedRevision?: number; settled?: (accepted: boolean) => void } | null = null;
 
   public constructor(
     public readonly credential: SessionCredential,
@@ -128,6 +131,10 @@ export class SessionClient {
     const credential = await apiPost<SessionCredential>("/api/campaigns", { name, displayName });
     SessionClient.storeCredential(credential);
     return credential;
+  }
+
+  public static async deleteCampaign(campaignId: string): Promise<void> {
+    await api("DELETE", `/api/campaigns/${encodeURIComponent(campaignId)}`);
   }
 
   public static async continueCampaign(campaignId: string): Promise<SessionCredential> {
@@ -256,7 +263,7 @@ export class SessionClient {
     });
   }
 
-  public sendIntent(intent: SessionIntent): boolean {
+  public sendIntent(intent: SessionIntent, settled?: (accepted: boolean) => void): boolean {
     const socket = this.socket;
     const snapshot = this.snapshotValue;
     if (!socket || socket.readyState !== WebSocket.OPEN || !snapshot || this.outstanding) return false;
@@ -267,7 +274,7 @@ export class SessionClient {
       expectedRevision: snapshot.revision,
       intent,
     };
-    this.outstanding = { envelope };
+    this.outstanding = { envelope, settled };
     socket.send(JSON.stringify(envelope));
     return true;
   }
@@ -285,7 +292,7 @@ export class SessionClient {
       return;
     }
     if (message.type === "error") {
-      if (!message.requestId || this.outstanding?.envelope.requestId === message.requestId) this.outstanding = null;
+      if (!message.requestId || this.outstanding?.envelope.requestId === message.requestId) this.settleOutstanding(false);
       if (isTerminalHandshakeFailure(message.code)) {
         this.stopTerminal(message, true);
         if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
@@ -299,10 +306,10 @@ export class SessionClient {
     if (message.type === "ack") {
       if (this.outstanding?.envelope.requestId !== message.requestId) return;
       if (!message.accepted) {
-        this.outstanding = null;
+        this.settleOutstanding(false);
       } else {
         this.outstanding = { ...this.outstanding, committedRevision: message.committedRevision };
-        if ((this.snapshotValue?.revision ?? -1) >= message.committedRevision) this.outstanding = null;
+        if ((this.snapshotValue?.revision ?? -1) >= message.committedRevision) this.settleOutstanding(true);
       }
       return;
     }
@@ -320,11 +327,17 @@ export class SessionClient {
       this.handlers.onStatus("connected");
     }
     this.snapshotValue = message;
+    this.handlers.onSnapshot(message);
     if (
       this.outstanding?.committedRevision !== undefined &&
       message.revision >= this.outstanding.committedRevision
-    ) this.outstanding = null;
-    this.handlers.onSnapshot(message);
+    ) this.settleOutstanding(true);
+  }
+
+  private settleOutstanding(accepted: boolean): void {
+    const pending = this.outstanding;
+    this.outstanding = null;
+    pending?.settled?.(accepted);
   }
 
   private scheduleReconnect(): void {
@@ -341,7 +354,7 @@ export class SessionClient {
   private stopTerminal(error: ServerError, clearCredential: boolean): void {
     if (this.terminallyClosed) return;
     this.terminallyClosed = true;
-    this.outstanding = null;
+    this.settleOutstanding(false);
     if (this.reconnectTimer !== null) {
       window.clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;

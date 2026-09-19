@@ -174,22 +174,13 @@ Nera의 expert Class DC를 trained로 낮췄습니다. Nera는 Warpriest Lv1에 
 | `3P-brom+nera+lyra-last-authored` | Complete | spear-line |
 | `3P-brom+nera+lyra-last-adapt` | Complete | archer-perch |
 
-## 완료 조건과 검증 위치
+## 현재 검증 위치
 
-| 계약 | 검증 |
-|---|---|
-| Actor ID 없는 공통 Build 계산, 시작 skill pool, Lv20까지 partial replay와 rank gate | `src/character/rules.test.ts` |
-| NPC와 synthetic PC의 동일 결과, Creature 예외, final-stat authoring 거절, 선언 순서 정규화 | `src/content/character-build.test.ts` |
-| 9개 클래스 범위와 네 Character의 Lv1/Lv3/Lv5 profile·HP·AC·Strike | `src/content/character-build.test.ts`의 12개 snapshot |
-| EXP 이후 pending, 이전 Combat object/hash 불변, 다음 전투와 Loadout의 같은 profile/full HP | `src/adventure/progression.test.ts`, `src/session/character-advancement.test.ts` |
-| ready/between 제한, 1P/2P/3P effective controller, offline guest의 host fallback | `src/session/character-advancement.test.ts` |
-| 선택 draft, 가장 이른 pending, 정확히 네 boost, partial 표시, 오류 재시도, 좁은 화면 | `tests/unit/browser/character-advancement.spec.ts` — component harness를 사용하는 Browser Unit |
-| Save v2 history/pending/hash roundtrip, 불법 history 거절, Save v1과 이전 content row 보존 | `src/server/campaign-save.test.ts`, `tests/integration/campaign-service.test.ts` |
-| protocol v7 거절, reconnect 후 history 유지 | `src/protocol/validate-message.test.ts`, `tests/integration/coop.test.ts` |
-| COMMIT 대기/실패 중 미공개, 동일 request 재시도 1회 적용 | `src/server/session-host.test.ts` |
-| 성장 COMMIT 직전/직후 SIGKILL 복구, history 중복 없이 8번째 전투 진입 | `tests/integration/restart-matrix.test.ts` |
-| 실제 transport/authority를 거쳐 Lv3 성장 선택 후 8개 전투 완주 | `tests/integration/adventure-progression.test.ts` |
-| 배포 client/server와 전용 DB/process를 사용하는 브라우저 restart 회귀 | `tests/recovery/campaign.recovery.ts` |
+#60에서 기존 테스트·snapshot을 전부 교체했습니다. 현재 성장 수치/출전 gate/다음 전투 전달은
+`tests/domain/adventure-contracts.test.ts`, 저장은 `tests/domain/saves.test.ts`, 성장 화면 입력은
+`tests/interaction/feedback.spec.ts`, 실제 다음 전투 연결은 `tests/journeys/progress-coop.spec.ts`가
+소유합니다. 구체적으로 assertion하는 범위만 [위험 지도](test-risk-map.md)에 기록합니다.
+아래 결과는 2026-09-14의 역사적 실행 기록이며 현재 gate나 현재 테스트 수를 뜻하지 않습니다.
 
 ## 최종 검증 결과
 

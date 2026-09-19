@@ -76,7 +76,7 @@ function useActionCommand(
 
 function outcomeEffects(definition: ActionDefinition, degrees: readonly DegreeOfSuccess[]): readonly ActionOutcomeEffect[] {
   const resolution = definition.resolution;
-  if (resolution.kind === "move") return [];
+  if (resolution.kind === "move" || resolution.kind === "recall-knowledge") return [];
   if (resolution.kind === "direct") return resolution.effects;
   return degrees.flatMap((degree) => resolution.outcomes[degree]);
 }
@@ -99,7 +99,7 @@ function actorTargets(targets: readonly LegalTarget[]): readonly Extract<LegalTa
 function effectValue(definition: ActionDefinition, preview: ActionPreview): number {
   const probabilities = preview.degreeProbabilities;
   const resolution = definition.resolution;
-  if (resolution.kind === "move") return 0;
+  if (resolution.kind === "move" || resolution.kind === "recall-knowledge") return 0;
   if (resolution.kind === "direct" || !probabilities) {
     return outcomeEffects(definition, ["success"]).reduce(
       (total, effect) => total + hostileEffectValue(effect),

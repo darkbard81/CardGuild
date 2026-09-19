@@ -1,3 +1,4 @@
+import { conditionEffects } from "./condition-effects";
 import { equipmentTraits } from "./rules";
 import type {
   ActorStatProfile,
@@ -282,7 +283,7 @@ function derivedEquipmentModifiers(
  * is also why the `all` selector already excludes damage: a fear penalty hits checks, DCs
  * and AC, never a weapon's damage roll.
  */
-function scaleConditionModifiers(
+export function scaleConditionModifiers(
   definition: ConditionDefinition,
   instance: ConditionInstance,
 ): readonly StatisticModifierContribution[] {
@@ -311,6 +312,9 @@ function collectModifiers(actor: ActorState, context: StatisticResolutionContext
   }
   for (const condition of [...actor.conditions]
     .sort((left, right) => left.id.localeCompare(right.id) || left.sourceId.localeCompare(right.sourceId))) {
+    for (const effect of conditionEffects(condition)) {
+      if (effect.modifier) modifiers.push(...sourced([{ ...effect.modifier, label: `${effect.modifier.label} (${condition.id})` }], "condition", `${condition.id}:${condition.sourceId}:${effect.id}`));
+    }
     const definition = context.content.conditions[condition.id];
     if (!definition) continue;
     modifiers.push(

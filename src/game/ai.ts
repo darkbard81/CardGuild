@@ -47,7 +47,7 @@ function useActionCommand(
 /** Every effect an Action can apply, whatever resolution carries it. */
 function actionEffects(definition: ActionDefinition): readonly ActionOutcomeEffect[] {
   const resolution = definition.resolution;
-  if (resolution.kind === "move") return [];
+  if (resolution.kind === "move" || resolution.kind === "recall-knowledge") return [];
   if (resolution.kind === "direct") return resolution.effects;
   return Object.values(resolution.outcomes).flat();
 }

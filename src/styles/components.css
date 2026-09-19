@@ -1,0 +1,81 @@
+/* Shared appearance. Screen selectors own geometry and spacing. */
+.ui-panel {
+  color: var(--ui-color-text);
+  border: 1px solid var(--ui-color-border);
+  border-radius: var(--ui-radius-panel);
+  background: var(--ui-surface-panel);
+  box-shadow: var(--ui-shadow-panel);
+}
+.ui-panel.ui-panel--hud {
+  border-color: var(--ui-border-hud);
+  background: linear-gradient(160deg, rgb(255 255 255 / 4%), transparent 38%), var(--ui-surface-hud);
+  box-shadow: var(--ui-shadow-hud);
+  backdrop-filter: blur(7px);
+}
+.ui-panel.ui-panel--dialog { box-shadow: var(--ui-shadow-dialog); }
+.ui-panel.ui-panel--workspace { background: var(--ui-surface-workspace); box-shadow: none; }
+.ui-panel.ui-panel--popover { background: var(--ui-surface-solid); box-shadow: var(--ui-shadow-popover); }
+
+.ui-button,
+.ui-input {
+  min-height: var(--ui-control-min-height);
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--ui-border-control);
+  border-radius: var(--ui-radius-control);
+  color: var(--ui-color-text);
+  font: inherit;
+}
+.ui-button { background: var(--ui-surface-button); cursor: pointer; font-weight: 800; }
+.ui-button.ui-button--primary { border-color: var(--ui-border-primary); background: var(--ui-surface-primary); }
+.ui-button.ui-button--secondary { background: var(--ui-surface-button); }
+.ui-button.ui-button--danger {
+  border-color: var(--ui-border-danger);
+  color: var(--ui-text-danger);
+  background: var(--ui-surface-danger);
+}
+.ui-button.ui-button--danger:hover:not(:disabled),
+.ui-button.ui-button--danger:focus-visible {
+  border-color: var(--ui-border-danger-hover);
+  background: var(--ui-surface-danger-hover);
+}
+.ui-button.ui-button--compact,
+.ui-input.ui-input--compact { min-height: 0; }
+.ui-button:disabled { opacity: var(--ui-opacity-disabled); cursor: not-allowed; }
+.ui-button[aria-selected="true"] {
+  color: var(--ui-color-accent-bright);
+  border-color: var(--ui-color-accent);
+  background: var(--ui-surface-selected);
+}
+.ui-input { background: var(--ui-surface-input); }
+.ui-input:disabled { opacity: var(--ui-opacity-disabled); cursor: not-allowed; }
+.ui-input[aria-invalid="true"] { border-color: var(--ui-color-error-text); }
+.ui-button:focus-visible,
+.ui-input:focus-visible { outline: var(--ui-focus-ring); outline-offset: 3px; }
+.ui-status { color: var(--ui-color-status-text); }
+.ui-status[data-kind="error"] { color: var(--ui-color-error-text); }
+
+
+/* Conditions are transient states: squared chips with a strong semantic edge. */
+.ui-condition-chip {
+  padding: 5px 8px; border: 1px solid var(--ui-color-border); border-left: 4px solid var(--ui-color-muted);
+  border-radius: 4px; color: var(--ui-color-text); background: var(--ui-surface-panel); font-weight: 600;
+}
+.ui-condition-chip[data-tone="harmful"] { border-left-color: var(--ui-color-error-text); background: var(--ui-condition-harmful-surface); }
+.ui-condition-chip[data-tone="beneficial"] { border-left-color: var(--ui-color-status-text); background: var(--ui-condition-beneficial-surface); }
+
+.ui-stat-change { border: 0; padding: 0; background: none; font: inherit; cursor: pointer; text-decoration: underline dotted; text-underline-offset: 3px; }
+.ui-stat-change[data-change="decrease"] { color: var(--ui-color-error-text); }
+.ui-stat-change[data-change="increase"] { color: var(--ui-color-status-text); }
+.ui-stat-change__direction { font-size: 9px; margin-left: 1px; }
+.ui-stat-change:focus-visible { outline: var(--ui-focus-ring); outline-offset: 2px; }
+.ui-stat-change[data-change="neutral"] { color: var(--ui-color-text); }
+
+.ui-save-tile {
+  display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 3px;
+  min-width: 0; min-height: 66px; padding: 7px 4px; border: 1px solid var(--ui-save-border); border-radius: 6px;
+  background: var(--ui-save-surface); color: var(--ui-color-text); text-decoration: none; white-space: nowrap;
+}
+.ui-save-tile__label { color: var(--ui-color-text); font-size: 11px; font-weight: 600; letter-spacing: .06em; }
+.ui-save-tile__value { font-size: 22px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; }
+.ui-save-tile .ui-stat-change__direction { font-size: 12px; margin-left: 3px; }
+.ui-save-tile:hover { border-color: var(--ui-color-accent-bright); }

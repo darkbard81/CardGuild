@@ -1,3 +1,4 @@
+import { recallKnowledgeSkill, levelDifficultyClass } from "./knowledge";
 import { resolveEffectiveActionTraits } from "./capabilities";
 import { attacksForMap, resolveMapPenalty, resolveStrike } from "./offense";
 import { resolveOffGuardTo } from "./off-guard";
@@ -279,6 +280,18 @@ export function buildResolvedActionPlan(
   };
 
   const resolution = definition.resolution;
+  if (resolution.kind === "recall-knowledge") {
+    if (!targetActor) return null;
+    const skill = recallKnowledgeSkill(targetActor, content);
+    const modifier = resolveStatisticModifier(actor, { kind: "skill", id: skill }, context);
+    const dc = levelDifficultyClass(targetActor.statProfile.stats.level ?? 1);
+    const check: ResolvedActionCheck = { roller: "actor", rollerActorId: actor.id, modifier: modifier.value, dc,
+      modifierSources: modifier.sources, dcSources: [{ kind: "dc", sourceId: "target-level", label: "Target level DC", value: dc, applied: true }] };
+    return { ...base, resolution: { kind: "check", check, outcomes: {
+      "critical-success": [{ kind: "record-knowledge", success: true }], success: [{ kind: "record-knowledge", success: true }],
+      failure: [{ kind: "record-knowledge", success: false }], "critical-failure": [{ kind: "record-knowledge", success: false }],
+    } }, notes: [`Recall Knowledge: ${skill}`] };
+  }
   if (resolution.kind === "move") {
     return { ...base, resolution, notes: [target.kind === "tile" && target.position.x === actor.position.x && target.position.y === actor.position.y
       ? `Face ${target.facing ?? actor.facing} in place (1 Action).`

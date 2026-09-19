@@ -124,18 +124,12 @@ Trait arrays checked by the shared semantic validator.
 
 ## Verification
 
-- `src/game/capabilities.test.ts`: registry grouping, prepare/use/ownership boundaries,
-  authoritative MAP, Flourish, deterministic state/events, and production audit.
-- `tests/unit/browser/capabilities.spec.ts`: real mouse/touch Ring and Hand interactions,
-  Trip/Fly execution, Escape, Stand, Raise Shield, Interact. These are Browser Unit tests
-  with injected state, not campaign E2E.
-- `src/server/campaign-save.test.ts`: used Flourish survives serialization and restore;
-  malformed bookkeeping is refused.
-- `tests/integration/coop.test.ts`: protocol v9 snapshots and WebSocket reconnect retain
-  Flourish, Card eligibility, and the server-side refusal of another Flourish.
-- Existing action requirement, Creature AI, card library, campaign, E2E, and Recovery suites
-  remain part of the full `npm run check` → `npm run build` → `npm test` gate.
-
+Issue #60 replaced the original suites. Current assertion ownership is in
+[test-risk-map.md](test-risk-map.md): G-RULE/G-COMBAT cover rule and resource contracts,
+G-LOADOUT covers preparation eligibility, G-SAVE covers durable gameplay, and U-BATTLE
+covers actual input. Content structure and references are checked by `npm run check`.
+The complete gate is `npm run check` followed by `npm run test:all`.
+Historical verification below describes the earlier implementation, not current coverage.
 
 ## Minimum Character level (content 0.8.0)
 
@@ -227,14 +221,14 @@ and WebSocket protocol 9 retain their shapes. Legal-action requirement metadata 
 query-only. Previous content identity is refused for saves/replays; no content migration
 is registered, and stored rows are retained.
 
-The tests cover invalid authoring, Class-specific boundaries, preparation and equipment
+Historical verification before #60: the tests covered invalid authoring, Class-specific boundaries, preparation and equipment
 grants after growth, locked hand display/preview/dispatch, Reaction revalidation, Host
 and restore ingress, and the real UI campaign from Spear Line ownership through level-2
-preparation and next-encounter use. UI state-injection tests remain Browser Unit tests.
+preparation and next-encounter use. Those suites were removed in #60; current Interaction tests control only backend responses.
 Durability test setup waits for a published player-input boundary after encounter start:
 deck shuffles share the seeded RNG with initiative, so changing deck size can make an
 enemy act first even with the same Adventure seed.
-The release gate is `npm run check` → `npm run build` → `npm test`.
+The current gate is `npm run check` → `npm run test:all`.
 
 Implementation verification: `check` and `build` passed. Across the full test run and
 the affected-suite reruns after fixes, Node Unit 644, Browser Unit 59, Integration 104,

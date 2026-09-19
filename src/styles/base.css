@@ -1,0 +1,50 @@
+/* Document defaults; no screen-specific appearance. */
+:root {
+  color: var(--ui-color-text);
+  background: var(--ui-color-page);
+  font-family: var(--ui-font-body);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html,
+body,
+#app {
+  min-width: 0;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  /*
+   * A floor, not a promise to overflow the device: an iPad mini is 744pt on its short
+   * side, under both floors, and forcing the page past the viewport pushed its bottom
+   * edge off the screen.
+   */
+  min-height: min(var(--min-height), 100dvh);
+  background:
+    radial-gradient(circle at 50% -20%, var(--ui-surface-panel) 0, transparent 35rem),
+    var(--ui-color-page);
+}
+
+button {
+  color: inherit;
+  font: inherit;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

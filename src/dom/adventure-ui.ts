@@ -1,3 +1,4 @@
+import type { CharacterSheetDestination } from "./character-workspace";
 import { createCardFace } from "./card-face";
 import { cardLevelSummary } from "./card-level-view";
 import { equipmentTraits } from "../game/rules";
@@ -7,7 +8,7 @@ import type { AdventureState } from "../adventure";
 import type { CompiledContentPack } from "../content";
 import { placementAppliesToPartySize } from "../content";
 import type { AdventureDefinition, RewardGrant } from "../content";
-import { createStartingCollection } from "../loadout";
+import { createStartingCollection, previewLoadoutChange } from "../loadout";
 import type { AssetCatalog } from "../presentation";
 import { growthSummaryPanel, progressionMeter, progressionText, type GrowthSummary } from "./progression-view";
 
@@ -32,14 +33,15 @@ export interface AdventureUiHandlers {
   readonly onAdvanceCharacter: (memberId: string, choice: CharacterAdvancementChoice) => boolean;
   readonly onStart: () => void;
   readonly onContinue: () => void;
-  readonly onChooseReward: (rewardId: string, choiceIndex: number) => void;
-  readonly onOpenLoadout: () => void;
-  readonly onRetry: () => void;
+  readonly onChooseReward: (rewardId: string, choiceIndex: number, settled: (accepted: boolean) => void) => boolean;
+  readonly onOpenCharacter: (destination?: CharacterSheetDestination) => void;
+  readonly onExit: () => void;
 }
 
 export interface AdventureUiAccess {
   readonly isHost: boolean;
   readonly editableMemberIds?: ReadonlySet<string>;
+  readonly controllerNames?: Readonly<Record<string, string>>;
   /**
    * The last committed victory's growth, or nothing. The UI never derives this from state:
    * Level and EXP are in the snapshot, but "what just changed" only exists in the events
@@ -102,6 +104,9 @@ export class AdventureUi {
   private readonly party = required<HTMLElement>("#adventure-party");
 
   private readonly advancementUi: CharacterAdvancementUi;
+  private rewardDraft: { rewardId: string; index: number } | null = null;
+  private rewardPending = false;
+  private rewardMessage = "";
   private lastRender: { state: AdventureState; access: AdventureUiAccess } | null = null;
 
   public constructor(
@@ -109,7 +114,15 @@ export class AdventureUi {
     private readonly pack: CompiledContentPack,
     private readonly handlers: AdventureUiHandlers,
     private readonly catalog?: AssetCatalog,
-  ) { this.advancementUi = new CharacterAdvancementUi(pack, handlers.onAdvanceCharacter); }
+  ) {
+    this.advancementUi = new CharacterAdvancementUi(pack, handlers.onAdvanceCharacter);
+    const rail = this.progress.parentElement!;
+    for (const [target, label] of [[this.progress, "전체 모험 진행"], [this.collection, "보유 보상·Collection"]] as const) {
+      const section = element("details", "adventure-secondary"); section.append(element("summary", undefined, label));
+      target.before(section); section.append(target);
+    }
+    this.screen.append(this.content, rail);
+  }
 
   /** The enemies this party will actually face, which party size decides (#16). */
   private threatPreview(state: AdventureState, encounterId: string): readonly string[] {
@@ -151,7 +164,15 @@ export class AdventureUi {
   }
 
   public render(state: AdventureState, access: AdventureUiAccess = { isHost: true }): void {
+    const openGrowth = new Set([...this.party.querySelectorAll<HTMLElement>("details[open] [data-advancement-member]")].map(node => node.dataset.advancementMember));
+    const previous = this.lastRender?.state;
     this.lastRender = { state, access };
+    if (this.rewardDraft && state.pendingReward?.rewardId !== this.rewardDraft.rewardId) {
+      this.rewardDraft = null;
+      const added = previous && (["cards", "equipment"] as const).some(kind =>
+        Object.entries(state.collection[kind]).some(([id, count]) => count > (previous.collection[kind][id] ?? 0)));
+      this.rewardMessage = added ? "Collection에 추가되었습니다 · 장비·카드 준비에서 Loadout에 반영하세요." : "";
+    }
     const hasPending = Object.values(state.party.members).some(member =>
       pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length > 0);
     this.screen.hidden = state.phase === "combat";
@@ -173,27 +194,33 @@ export class AdventureUi {
           progressionMeter(name, member.progression),
         );
         const advancement = this.advancementUi.render(member, access.editableMemberIds?.has(member.id) ?? false,
-          state.phase === "ready" || state.phase === "between-encounters");
-        if (advancement) row.append(advancement);
+          state.phase === "ready" || state.phase === "between-encounters", access.controllerNames?.[member.id]);
+        row.append(this.secondaryActionButton(`${name} 상세`, () => this.handlers.onOpenCharacter({ memberId: member.id })));
+        if (advancement) {
+          const details = element("details", "adventure-growth-editor");
+          details.open = openGrowth.has(member.id);
+          details.append(element("summary", undefined, "성장 선택"), advancement); row.append(details);
+        }
         return row;
       }));
     this.content.replaceChildren();
-    if (hasPending && (state.phase === "ready" || state.phase === "between-encounters")) {
-      this.content.append(element("p", "advancement-notice", "모든 캐릭터의 성장 선택을 완료하면 다음 전투를 시작할 수 있습니다."));
-    }
+    this.content.classList.toggle("ui-reward-workspace", state.phase === "reward");
+    if (state.phase !== "reward" && (this.rewardMessage || this.rewardPending)) this.content.append(element("p", "ui-status",
+      this.rewardPending ? "보상 적용 결과 확인 중…" : this.rewardMessage));
+    this.progress.closest(".adventure-map-card")?.append(this.party);
 
     if (state.phase === "ready") {
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "Begin Adventure" : "Waiting for Host", this.handlers.onStart, access.isHost && !hasPending),
-        this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
+        this.actionButton(access.isHost ? "모험 시작" : "호스트를 기다리는 중", this.handlers.onStart, access.isHost && !hasPending && !this.rewardPending),
+        this.secondaryActionButton("캐릭터 상세", () => this.handlers.onOpenCharacter()),
       );
       const partySize = Object.keys(state.party.members).length;
       this.content.append(
         element("p", "eyebrow", `${String(this.definition.encounterIds.length)} Encounters · ${String(partySize)}P`),
         element("h1", undefined, this.definition.name),
         element("p", "adventure-description", this.definition.description),
-        actions,
+        this.preparation(state, access), actions, this.party,
       );
       return;
     }
@@ -201,8 +228,8 @@ export class AdventureUi {
       const scenario = state.currentEncounterId ? this.pack.scenarios[state.currentEncounterId] : undefined;
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "Enter Encounter" : "Waiting for Host", this.handlers.onContinue, access.isHost && !hasPending),
-        this.secondaryActionButton("Manage Loadout", this.handlers.onOpenLoadout),
+        this.actionButton(access.isHost ? "전투 시작" : "호스트를 기다리는 중", this.handlers.onContinue, access.isHost && !hasPending && !this.rewardPending),
+        this.secondaryActionButton("캐릭터 상세", () => this.handlers.onOpenCharacter()),
       );
       const step = state.currentEncounterId
         ? this.definition.encounterIds.indexOf(state.currentEncounterId) + 1
@@ -225,16 +252,20 @@ export class AdventureUi {
         );
         this.content.append(preview);
       }
-      const waiting = this.unequipped(state);
+      const rewards = this.unusedRewards(state);
+      const waiting = rewards.reduce((sum, reward) => sum + reward.count, 0);
       if (waiting > 0) {
         const note = element("p", "loadout-nudge");
         note.append(
-          element("strong", undefined, `미장착 보상 ${String(waiting)}개`),
-          element("span", undefined, "Manage Loadout에서 장착하거나 준비해야 다음 전투에 반영됩니다."),
+          element("strong", undefined, `미사용 보상 ${String(waiting)}개`),
+          element("span", undefined, "보상은 선택 사항입니다. 사용하지 않아도 전투를 시작할 수 있습니다."),
+          this.secondaryActionButton("보상 확인", () => this.handlers.onOpenCharacter({
+            tab: rewards.some(reward => reward.kind === "equipment") ? "equipment" : "cards", rewardIds: rewards.map(reward => reward.id),
+          })),
         );
         this.content.append(note);
       }
-      this.content.append(actions);
+      this.content.append(this.preparation(state, access), actions, this.party);
       return;
     }
     if (state.phase === "reward" && state.pendingReward) {
@@ -250,9 +281,11 @@ export class AdventureUi {
       state.pendingReward.choices.forEach((grant, index) => {
         const name = rewardName(grant, this.pack);
         const button = this.actionButton(name, () => {
-          const offer = state.pendingReward;
-          if (offer) this.handlers.onChooseReward(offer.rewardId, index);
-        }, access.isHost);
+          this.rewardDraft = { rewardId: state.pendingReward!.rewardId, index };
+          this.rewardMessage = "";
+          this.render(state, access);
+        }, !this.rewardPending);
+        button.setAttribute("aria-pressed", String(this.rewardDraft?.index === index));
         button.classList.add("reward-choice");
         const assetId = grant.kind === "card"
           ? this.catalog?.cardVisual(grant.definitionId) ?? null
@@ -274,6 +307,43 @@ export class AdventureUi {
         choices.append(button);
       });
       this.content.append(choices);
+      const draft = this.rewardDraft;
+      if (draft) {
+        const selected = state.pendingReward.choices[draft.index]!;
+        this.content.append(element("p", "ui-status", `선택: ${rewardName(selected, this.pack)} · ${rewardDetail(selected, this.pack)}`));
+        const comparison = element("ul", "ui-reward-comparison");
+        const key = selected.kind === "card" ? "cards" : "equipment";
+        const collection = { ...state.collection, [key]: { ...state.collection[key], [selected.definitionId]: (state.collection[key][selected.definitionId] ?? 0) + 1 } };
+        for (const member of Object.values(state.party.members)) {
+          const equipment = selected.kind === "equipment" ? this.pack.combatContent.equipment[selected.definitionId] : undefined;
+          const candidate = equipment ? { ...member.loadout, equipment: { ...member.loadout.equipment, [equipment.slot]: equipment.id } }
+            : { ...member.loadout, preparedCards: [...member.loadout.preparedCards, selected.definitionId] };
+          const preview = previewLoadoutChange(state.party, collection, this.pack, member.id, candidate);
+          const name = this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id;
+          comparison.append(element("li", undefined, preview.after
+            ? `${name} · 준비 가능 · HP ${preview.before.statistics.maxHp} → ${preview.after.statistics.maxHp} · AC ${preview.before.statistics.ac} → ${preview.after.statistics.ac} · Strike ${preview.before.strike.attackModifier} → ${preview.after.strike.attackModifier} · 카드 ${preview.before.deck.totalCards} → ${preview.after.deck.totalCards}`
+            : `${name} · 현재 준비 불가: ${preview.validation.issues.map(issue => issue.message).join(" · ")}`));
+        }
+        this.content.append(comparison);
+      }
+      this.content.append(element("p", "ui-status", this.rewardMessage || (access.isHost
+        ? "보상을 눌러 비교한 뒤 획득을 확정하세요. 하나를 획득하면 다른 선택지는 포기합니다."
+        : "호스트가 보상을 선택하고 있습니다. 보상 상세는 자유롭게 확인할 수 있습니다.")));
+      this.content.append(this.actionButton(this.rewardPending ? "보상 적용 중…" : "이 보상 획득", () => {
+        if (!draft || this.rewardPending) return;
+        this.rewardPending = true;
+        this.render(state, access);
+        const started = this.handlers.onChooseReward(draft.rewardId, draft.index, accepted => {
+          this.rewardPending = false;
+          if (!accepted) this.rewardMessage = "보상을 적용하지 못했습니다. 선택을 확인하고 다시 시도하세요.";
+          if (this.lastRender) this.render(this.lastRender.state, this.lastRender.access);
+        });
+        if (!started) {
+          this.rewardPending = false;
+          this.rewardMessage = "서버 연결을 확인하고 다시 시도하세요.";
+          this.render(state, access);
+        }
+      }, access.isHost && !!draft && !this.rewardPending));
       return;
     }
     if (state.phase === "complete") {
@@ -284,15 +354,15 @@ export class AdventureUi {
       );
       const growth = this.growth(access);
       if (growth) this.content.append(growth);
-      this.content.append(this.actionButton("Session Complete", this.handlers.onRetry, false));
+      this.content.append(this.actionButton("시작 화면으로", this.handlers.onExit));
       return;
     }
     if (state.phase === "failed") {
       this.content.append(
         element("p", "eyebrow", "Adventure Failed"),
         element("h1", undefined, "The party was defeated"),
-        element("p", "adventure-description", "같은 Adventure seed로 처음부터 다시 도전할 수 있습니다. Loadout을 바꾼 뒤 다시 시도해 보세요."),
-        this.actionButton("Session Failed", this.handlers.onRetry, false),
+        element("p", "adventure-description", "이번 모험은 종료되었습니다. 시작 화면으로 돌아가 새 모험을 만들거나 다른 저장을 이어갈 수 있습니다."),
+        this.actionButton("시작 화면으로", this.handlers.onExit),
       );
     }
   }
@@ -314,7 +384,6 @@ export class AdventureUi {
       const completed = state.completedEncounterIds.includes(encounterId);
       const current = encounterId === state.currentEncounterId;
       const item = element("li", completed ? "complete" : current ? "current" : "upcoming");
-      item.dataset.encounterId = encounterId;
       if (current) item.setAttribute("aria-current", "step");
       if (index === total - 1) item.classList.add("finale");
       item.append(
@@ -353,7 +422,7 @@ export class AdventureUi {
    * offers a starter a reward it already has equipped" holds that — so this only decides how
    * the notice behaves if a later pack starts handing out duplicates.
    */
-  private unequipped(state: AdventureState): number {
+  private unusedRewards(state: AdventureState): readonly { id: string; count: number; kind: "equipment" | "cards" }[] {
     const started = createStartingCollection(state.party, this.pack);
     const carried = new Map<string, number>();
     const use = (id: string): void => {
@@ -363,15 +432,29 @@ export class AdventureUi {
       for (const id of Object.values(member.loadout.equipment)) if (id) use(id);
       for (const id of member.loadout.preparedCards) use(id);
     }
-    const count = (
-      owned: Readonly<Record<string, number>>,
-      base: Readonly<Record<string, number>>,
-    ): number => Object.entries(owned).reduce((total, [id, copies]) => {
-      const fromRewards = Math.max(0, copies - (base[id] ?? 0));
-      const unused = Math.max(0, copies - (carried.get(id) ?? 0));
-      return total + Math.min(fromRewards, unused);
-    }, 0);
-    return count(state.collection.equipment, started.equipment) + count(state.collection.cards, started.cards);
+    return (["equipment", "cards"] as const).flatMap(kind => Object.entries(state.collection[kind]).flatMap(([id, copies]) => {
+      const count = Math.min(Math.max(0, copies - (started[kind][id] ?? 0)), Math.max(0, copies - (carried.get(id) ?? 0)));
+      return count ? [{ id, count, kind }] : [];
+    }));
+  }
+
+  private preparation(state: AdventureState, access: AdventureUiAccess): HTMLElement {
+    const panel = element("section", "adventure-preparation");
+    panel.append(element("h2", undefined, "전투 준비"));
+    const pending = Object.values(state.party.members).filter(member => pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length);
+    if (!pending.length) panel.append(element("p", undefined, "필수 성장 선택이 완료되었습니다. 장비와 카드는 원하는 경우 변경하세요."));
+    for (const member of pending) {
+      const name = this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id;
+      const editable = access.editableMemberIds?.has(member.id) ?? false;
+      const owner = access.controllerNames?.[member.id] ?? "담당 참가자";
+      const button = this.secondaryActionButton(editable ? `${name} 성장 선택` : `${name} · ${owner}님의 성장 선택을 기다리는 중`, () => {
+        const form = this.party.querySelector<HTMLElement>(`[data-advancement-member="${CSS.escape(member.id)}"]`);
+        const details = form?.closest("details"); if (details) details.open = true;
+        form?.scrollIntoView({ block: "center" }); form?.querySelector<HTMLElement>("select, input, button")?.focus();
+      });
+      button.disabled = !editable; panel.append(button);
+    }
+    return panel;
   }
 
   private chip(assetId: string | null, name: string, count: number, kind: string): HTMLElement {
@@ -413,7 +496,7 @@ export class AdventureUi {
   }
 
   private actionButton(label: string, onClick: () => void, enabled = true): HTMLButtonElement {
-    const button = element("button", "adventure-action", label);
+    const button = element("button", "ui-button ui-button--primary adventure-action", label);
     button.type = "button";
     button.disabled = !enabled;
     button.addEventListener("click", onClick);
@@ -422,6 +505,7 @@ export class AdventureUi {
 
   private secondaryActionButton(label: string, onClick: () => void): HTMLButtonElement {
     const button = this.actionButton(label, onClick);
+    button.classList.replace("ui-button--primary", "ui-button--secondary");
     button.classList.add("adventure-action-secondary");
     return button;
   }
@@ -431,7 +515,7 @@ export class AdventureUi {
     if (this.lastRender && !this.screen.hidden) this.render(this.lastRender.state, this.lastRender.access);
   }
 
-  public clear(): void { this.advancementUi.clear(); this.lastRender = null; }
+  public clear(): void { this.advancementUi.clear(); this.lastRender = null; this.rewardDraft = null; this.rewardPending = false; this.rewardMessage = ""; }
 
   public setVisible(visible: boolean): void {
     this.screen.hidden = !visible;

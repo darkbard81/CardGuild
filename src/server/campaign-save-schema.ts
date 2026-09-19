@@ -259,6 +259,8 @@ const combat = {
     "commandLog",
   ],
   properties: {
+    knowledge: { type: "array", items: { type: "object", additionalProperties: false,
+      required: ["actorId", "targetId", "success"], properties: { actorId: nonEmptyString, targetId: nonEmptyString, success: { type: "boolean" } } } },
     version: integer,
     scenarioId: nonEmptyString,
     seed: integer,

@@ -47,6 +47,8 @@ function actionHeadline(event: CombatEvent, names: ActorNameLookup, content: Com
 function resultClause(event: CombatEvent, names: ActorNameLookup, actorId: string | null): string | null {
   const subject = (id: string): string => (id === actorId ? "" : `${names(id)} `);
   switch (event.type) {
+    case "KNOWLEDGE_RECALLED":
+      return event.success ? `${names(event.targetId)} 상세를 파티에 공개했습니다.` : `${names(event.targetId)} 지식 회상 실패 · 이 캐릭터는 재시도할 수 없습니다.`;
     case "DAMAGE_DEALT":
       return `${names(event.targetActorId)} took ${event.amount} ${event.damageType} damage (${event.remainingHp} HP)`;
     case "HP_RESTORED":

@@ -12,7 +12,7 @@ import {
  *
  * Client UI, battle rendering and the authoritative server all read production
  * content from here so they cannot drift onto different packs. The rules fixtures
- * are somewhere else entirely — `tests/fixtures/content` — and a lint rule keeps
+ * are somewhere else entirely — `tests/support` — and a lint rule keeps
  * them there, because a fixture reachable from this module would be a fixture in
  * the shipped bundle.
  *

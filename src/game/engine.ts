@@ -1,3 +1,4 @@
+import { conditionBlocksMovement } from "./condition-effects";
 import { canUseRuleTraits, resolveEffectiveActionTraits } from "./capabilities";
 import { rollCheck } from "./checks";
 import { computeCombatSetupFingerprint } from "./determinism";
@@ -58,6 +59,7 @@ import type {
 } from "./types";
 
 interface CombatDraft {
+  knowledge?: CombatState["knowledge"];
   version: 5;
   scenarioId: string;
   seed: number;
@@ -561,6 +563,14 @@ function applyOutcomeEffect(
       events.push({ type: "EFFECT_SUSTAINED", effectId: sustained.id, actorId: plan.actionActorId });
       break;
     }
+    case "record-knowledge": {
+      if (plan.targetActorId) {
+        const attempt = { actorId: plan.actionActorId, targetId: plan.targetActorId, success: effect.success };
+        draft.knowledge = [...(draft.knowledge ?? []), attempt];
+        events.push({ type: "KNOWLEDGE_RECALLED", ...attempt });
+      }
+      break;
+    }
     case "raise-shield": {
       const actor = draft.actors[plan.actionActorId];
       const shield = actor
@@ -748,7 +758,7 @@ export function validateMoveContinuation(
   if (!actor || actor.defeated) return { legal: false, reason: "Mover cannot continue." };
   if (state.outcome) return { legal: false, reason: "Combat has ended." };
   if (state.turn.activeActorId !== actor.id) return { legal: false, reason: "Mover is no longer active." };
-  if (actor.conditions.some((condition) => condition.id === "prone" || condition.id === "grabbed")) {
+  if (conditionBlocksMovement(actor)) {
     return { legal: false, reason: "Mover can no longer move." };
   }
 
@@ -1041,6 +1051,13 @@ function useAction(
   }
   executeResolvedAction(draft, plan, resolved.definition, content, events);
   checkCombatOutcome(draft, events);
+  // A final in-place Step already contains the player's final facing decision.
+  if (!draft.outcome && !draft.pendingReaction && draft.turn.actionsRemaining === 0
+    && resolved.definition.resolution.kind === "move" && resolved.definition.resolution.step
+    && command.target.kind === "tile" && command.target.facing
+    && positionKey(command.target.position) === positionKey(actor.position)) {
+    advanceTurn(draft, content, events);
+  }
   return { accepted: true, state: asState(draft), events };
 }
 

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "CardGuild Content Pack v12",
+  "title": "CardGuild Content Pack v13",
   "type": "object",
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures", "ancestries", "classes"],
@@ -238,6 +238,7 @@
     },
     "actionOutcomeEffect": {
       "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind", "success"], "properties": { "kind": { "const": "record-knowledge" }, "success": { "type": "boolean" } } },
         {
           "type": "object",
           "additionalProperties": false,
@@ -361,6 +362,7 @@
     },
     "actionResolution": {
       "oneOf": [
+        { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "recall-knowledge" } } },
         {
           "type": "object",
           "additionalProperties": false,
@@ -741,6 +743,7 @@
               "additionalProperties": false,
               "required": ["ac", "maxHp", "strike", "perception", "saves", "skills"],
               "properties": {
+                "level": { "type": "integer", "minimum": -1, "maximum": 25 },
                 "ac": { "type": "integer", "minimum": 0 },
                 "maxHp": { "type": "integer", "minimum": 1 },
                 "strike": { "$ref": "#/$defs/fixedStrikeProfile" },
@@ -944,7 +947,7 @@
       "additionalProperties": false,
       "required": ["schemaVersion", "id", "version", "rulesetId"],
       "properties": {
-        "schemaVersion": {"const": 12},
+        "schemaVersion": {"const": 13},
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "version": { "$ref": "#/$defs/nonEmptyString" },
         "rulesetId": { "$ref": "#/$defs/nonEmptyString" }

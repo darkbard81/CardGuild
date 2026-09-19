@@ -11,3 +11,5 @@ test-results/
 docs/temp_plan/
 art/processed/qc/
 art/local/cards/
+
+sanitized-test-results/

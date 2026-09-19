@@ -26,7 +26,7 @@ import type {
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 12;
+  readonly schemaVersion: 13;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;

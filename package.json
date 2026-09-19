@@ -1,7 +1,7 @@
 {
   "name": "card-guild",
   "private": true,
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "engines": {
     "node": ">=24.0.0",
@@ -11,12 +11,17 @@
     "assets:cards": "tsx tools/assets/build-card-art.ts",
     "assets:build": "tsx tools/assets/build-assets.ts",
     "dev": "CARDGUILD_ADVENTURE_SEED=1 CARDGUILD_DB_PATH=.data/cardguild.dev.sqlite tsx tools/dev-coop.ts",
-    "check": "tsx tools/content/check-content.ts && tsx tools/content/check-production-content.ts && tsx tools/assets/check-assets.ts && tsc --noEmit && tsc --project tsconfig.game.json && tsc --project tsconfig.tools.json && tsc --project tsconfig.server.json && tsc --project tsconfig.tests.json && eslint .",
+    "check": "tsx tools/content/check-content.ts && tsx tools/content/check-production-content.ts && tsx tools/assets/check-assets.ts && tsc --noEmit && tsc --project tsconfig.game.json && tsc --project tsconfig.tools.json && tsc --project tsconfig.server.json && tsc --project tsconfig.tests.json && eslint . && npm run build",
     "build": "vite build && esbuild src/server/main.ts --bundle --platform=node --format=esm --target=node24 --outfile=dist-server/main.js --external:ws",
-    "test": "vitest run && playwright test --config playwright.browser-unit.config.ts && vitest run --config vitest.integration.config.ts && playwright test && playwright test --config playwright.recovery.config.ts",
+    "test": "npm run test:domain && npm run test:integration",
     "start": "node --env-file=deploy/cardguild.production.env dist-server/main.js",
     "playtest": "tsx tools/playtest/run-playtest.ts",
-    "account:create": "tsx tools/accounts/create-account.ts"
+    "account:create": "tsx tools/accounts/create-account.ts",
+    "test:domain": "vitest run --config vitest.domain.config.ts",
+    "test:integration": "vitest run --config vitest.boundaries.config.ts",
+    "test:interaction": "node --import tsx node_modules/@playwright/test/cli.js test --config playwright.interaction.config.ts",
+    "test:journey": "node --import tsx node_modules/@playwright/test/cli.js test --config playwright.journey.config.ts",
+    "test:all": "npm run test:domain && npm run test:integration && npm run test:interaction && npm run test:journey"
   },
   "dependencies": {
     "ajv": "^8.20.0",

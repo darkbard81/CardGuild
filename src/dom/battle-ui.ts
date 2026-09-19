@@ -1,17 +1,12 @@
-import { createCardFace, formatActionCost } from "./card-face";
+import { updateCharacterPicker } from "./character-picker";
+import { CombatActorSummary } from "./combat-actor-summary";
+import { canInspectActor } from "../game/knowledge";
+import { formatActionCost } from "./card-face";
 import { requirementText } from "./card-level-view";
-import { bindPressGesture, type PressGestureBinding } from "./detail-popover";
-import {
-  SAVE_IDS,
-  equippedArmor,
-  listLegalActions,
-  resolveArmorClass,
-  resolveClassDC,
-  resolveInitiative,
-  resolveStatisticDC,
-  resolveStatisticModifier,
-  resolveStrike,
-} from "../game";
+import { listLegalActions, listLegalTargets, resolveStrike } from "../game";
+import { CharacterDetailPanel } from "./character-detail-ui";
+import { CombatHandUi } from "./combat-hand-ui";
+import type { LoadoutPartyMember } from "../loadout";
 import type {
   ActionPreview,
   ActorState,
@@ -19,8 +14,6 @@ import type {
   CombatEvent,
   CombatState,
   LegalAction,
-  ResolvedStrikeProfile,
-  SaveId,
   ScenarioDefinition,
 } from "../game";
 import { buildCombatLog, type CombatLogEntry } from "./combat-log";
@@ -34,7 +27,7 @@ export interface BattleUiHandlers {
   readonly onEndTurn: () => void;
   readonly onUseReaction: () => void;
   readonly onPassReaction: () => void;
-  readonly onRestart: () => void;
+  readonly onEscape?: () => boolean;
 }
 
 export interface BattleUiPresentation {
@@ -42,9 +35,13 @@ export interface BattleUiPresentation {
   /** Which move bands the board is showing, so the legend can name their colours. */
   readonly moveBands: readonly MoveBand[];
   readonly prompt: string;
-  readonly stateHash: string;
   readonly controlledActorId: string;
   readonly canControl: boolean;
+  readonly interactionActive?: boolean;
+  readonly status?: string;
+  readonly members?: readonly LoadoutPartyMember[];
+  readonly inputBlocked?: boolean;
+  readonly ownsReaction?: boolean;
 }
 
 const DETAIL_HINT = "보드에서 대상을 클릭하면 사용할 수 있는 행동이 링 메뉴로 열립니다.";
@@ -70,16 +67,6 @@ export function actionCost(action: LegalAction): string {
   return formatActionCost(action.timing);
 }
 
-function signed(value: number): string {
-  return `${value >= 0 ? "+" : ""}${value}`;
-}
-
-/** Reads the resolved Strike rather than raw weapon data, so the panel cannot drift from combat. */
-function strikeLabel(strike: ResolvedStrikeProfile): string {
-  const { count, sides, flatModifier } = strike.damage;
-  return `${strike.weaponName} ${signed(strike.attackModifier)} · ${count}d${sides}${signed(flatModifier)}`;
-}
-
 /** Rule terms, so they match the action names in the ring menu and the hand. */
 const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
   step: "Step",
@@ -91,56 +78,8 @@ const MOVE_BAND_LABELS: Readonly<Record<MoveBand, string>> = {
  * Portrait window sizes in pixels. The crop itself comes from the measured ink box in the
  * asset manifest, so it lands on the drawing whatever shape the creature is.
  */
-const HERO_PORTRAIT_SIZE = 50;
 
-/** Past this a name needs the smaller type to stay on one line beside its cost. */
-
-/** Long enough not to fire on a tap that means "pick this card". */
-const LONG_PRESS_MS = 380;
 const INITIATIVE_PORTRAIT_SIZE = 34;
-
-/** The grid has room for three columns, the sheet has room for the whole word. */
-const SAVE_LABELS: Readonly<Record<SaveId, string>> = {
-  fortitude: "Fort",
-  reflex: "Ref",
-  will: "Will",
-};
-
-const SAVE_SHEET_LABELS: Readonly<Record<SaveId, string>> = {
-  fortitude: "Fortitude DC",
-  reflex: "Reflex DC",
-  will: "Will DC",
-};
-
-function hpBlock(actor: ActorState): readonly HTMLElement[] {
-  const hpRow = element("div", "hp-row");
-  hpRow.append(element("span", undefined, "HP"), element("strong", undefined, `${actor.hp}/${actor.maxHp}`));
-  const bar = element("div", "hp-bar");
-  const fill = element("span", "hp-fill");
-  fill.style.width = `${Math.max(0, Math.min(100, (actor.hp / actor.maxHp) * 100))}%`;
-  bar.append(fill);
-  return [hpRow, bar];
-}
-
-/** Two or three labelled numbers on one line, for the values read at a glance. */
-function statPair(entries: readonly (readonly [string, string])[]): HTMLElement {
-  const row = element("div", "stat-pair");
-  for (const [label, value] of entries) {
-    const cell = element("div", "stat-cell");
-    cell.append(element("span", "stat-label", label), element("strong", undefined, value));
-    row.append(cell);
-  }
-  return row;
-}
-
-function conditionLine(actor: ActorState): HTMLElement {
-  const conditions = actor.conditions.map((condition) => condition.id);
-  return element(
-    "p",
-    conditions.length ? "condition-line" : "condition-line empty",
-    conditions.length ? conditions.join(" · ") : "상태 이상 없음",
-  );
-}
 
 function percentage(value: number | undefined): string {
   return value === undefined ? "—" : `${Math.round(value * 100)}%`;
@@ -151,16 +90,22 @@ function actorName(state: CombatState, actorId: string): string {
 }
 
 export class BattleUi {
+  private endConfirmation: HTMLDialogElement | null = null;
   private readonly abortController = new AbortController();
-  private readonly app = required<HTMLElement>("#app");
   private readonly objective = required<HTMLElement>("#objective-text");
   private readonly round = required<HTMLElement>("#round-value");
   private readonly initiative = required<HTMLOListElement>("#initiative-list");
   private readonly heroHeading = required<HTMLElement>("#hero-heading");
-  private readonly heroStats = required<HTMLElement>("#hero-stats");
-  private readonly heroPortrait = required<HTMLElement>("#hero-portrait");
-  private readonly heroDetails = required<HTMLElement>("#hero-details");
-  private readonly heroDetailsToggle = required<HTMLButtonElement>("#hero-details-toggle");
+  private readonly status = required<HTMLElement>("#combat-status");
+  private readonly inspectSelect = element("div");
+  private detailDialog: HTMLDialogElement | null = null;
+  private readonly inspectActive = required<HTMLButtonElement>("#inspect-active");
+  private readonly sheet: CharacterDetailPanel;
+  private readonly actorSummary: CombatActorSummary;
+  private readonly hand: CombatHandUi;
+  private state: CombatState | null = null;
+  private members: readonly LoadoutPartyMember[] = [];
+  private inspectedActorId: string | null = null;
   private readonly actionPips = required<HTMLElement>("#action-pips");
   private readonly endTurn = required<HTMLButtonElement>("#end-turn");
   private readonly selectedDetail = required<HTMLElement>("#selected-detail");
@@ -174,7 +119,6 @@ export class BattleUi {
   private readonly cardDetail = required<HTMLElement>("#card-detail");
   /** The last history array rendered, so an unrelated re-render leaves the log alone. */
   private lastHistory: readonly CombatEvent[] | null = null;
-  private readonly cardBindings: Array<{ press: PressGestureBinding; abort: AbortController }> = [];
   private readonly reactionModal = required<HTMLElement>("#reaction-modal");
   private readonly reactionDescription = required<HTMLElement>("#reaction-description");
   private readonly reactionUse = required<HTMLButtonElement>("#reaction-use");
@@ -182,28 +126,33 @@ export class BattleUi {
   private readonly resultModal = required<HTMLElement>("#result-modal");
   private readonly resultTitle = required<HTMLElement>("#result-title");
   private readonly resultDescription = required<HTMLElement>("#result-description");
-  private readonly resultAction = required<HTMLButtonElement>("#restart-battle");
 
   /** The character sheet stays where the player left it across snapshots. */
-  private heroDetailsOpen = false;
-  private portraitDefinitionId: string | null = null;
   /** One registry view for every Trait the battle shows, and one chip list per surface. */
   private readonly traits: TraitView;
   private readonly actionTraits: TraitChipList;
   private readonly cardTraits: TraitChipList;
-  private readonly strikeTraits: TraitChipList;
 
   public constructor(
     private readonly content: CombatContent,
     private readonly scenario: ScenarioDefinition,
     private readonly catalog: AssetCatalog,
-    private readonly handlers: BattleUiHandlers,
+    handlers: BattleUiHandlers,
   ) {
-    this.resultAction.textContent = "Return to Adventure";
+    required<HTMLElement>(".log-panel").removeAttribute("open");
     this.traits = new TraitView(content.traits);
     this.actionTraits = this.traits.createList();
     this.cardTraits = this.traits.createList();
-    this.strikeTraits = this.traits.createList();
+    this.sheet = new CharacterDetailPanel(content, catalog, "combat", "dialog");
+    this.actorSummary = new CombatActorSummary(content);
+    this.inspectActive.before(this.actorSummary.root);
+    this.inspectSelect.setAttribute("aria-label", "상세 대상");
+    this.hand = new CombatHandUi(this.handCards, catalog, {
+      onCard: handlers.onCard, onHover: handlers.onCardHover,
+      onDetail: (button, action, card) => this.showCardDetail(button, action, card),
+      onHideDetail: () => this.hideCardDetail(false), detailOpen: () => !this.cardDetail.hidden,
+    });
+    this.inspectActive.addEventListener("click", () => { this.openActorDetail(this.state?.turn.activeActorId); }, { signal: this.abortController.signal });
     const listenerOptions = { signal: this.abortController.signal };
     // Anything that is not the card being pressed, or the detail it opened, puts the
     // detail away again; a Trait chip inside the detail is part of it.
@@ -211,21 +160,38 @@ export class BattleUi {
       const target = event.target;
       if (!(target instanceof Node) || (!this.handCards.contains(target) && !this.cardDetail.contains(target))) this.hideCardDetail();
     }, listenerOptions);
-    document.addEventListener("keydown", (event) => {
-      if (event.key === "Escape") this.hideCardDetail();
-    }, listenerOptions);
-    this.heroDetailsToggle.addEventListener("click", () => {
-      this.heroDetailsOpen = !this.heroDetailsOpen;
-      this.applyHeroDetailsState();
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Escape" || event.defaultPrevented || this.endConfirmation?.open || this.detailDialog?.open) return;
+      if (!this.cardDetail.hidden) { this.hideCardDetail(); event.preventDefault(); event.stopPropagation(); return; }
+      if (handlers.onEscape?.()) { event.preventDefault(); event.stopPropagation(); return; }
+      this.hand.collapse();
     }, listenerOptions);
     this.endTurn.addEventListener("click", handlers.onEndTurn, listenerOptions);
     this.reactionUse.addEventListener("click", handlers.onUseReaction, listenerOptions);
     this.reactionPass.addEventListener("click", handlers.onPassReaction, listenerOptions);
-    required<HTMLButtonElement>("#restart-battle").addEventListener("click", handlers.onRestart, listenerOptions);
+  }
+
+  public confirmEndTurn(actions: number, proceed: () => void): void {
+    this.endConfirmation?.remove();
+    const dialog = element("dialog", "ui-panel ui-panel--dialog ui-end-turn-confirm");
+    dialog.setAttribute("aria-label", "남은 행동 포기 확인");
+    dialog.append(element("h2", undefined, `아직 ${actions} Actions가 남아 있습니다.`), element("p", undefined, "지금 턴을 종료할까요?"));
+    const cancel = element("button", "ui-button ui-button--secondary", "계속 행동");
+    const confirm = element("button", "ui-button ui-button--primary", "턴 종료");
+    cancel.type = confirm.type = "button";
+    cancel.addEventListener("click", () => dialog.close());
+    confirm.addEventListener("click", () => { dialog.close(); proceed(); });
+    dialog.addEventListener("close", () => { dialog.remove(); if (this.endConfirmation === dialog) this.endConfirmation = null; });
+    dialog.append(cancel, confirm); document.body.append(dialog); this.endConfirmation = dialog;
+    dialog.showModal(); cancel.focus();
   }
 
   public destroy(): void {
-    this.clearCardBindings();
+    this.endConfirmation?.remove();
+    this.hand.destroy();
+    this.closeActorDetail();
+    this.sheet.destroy();
+    this.actorSummary.destroy();
     this.hideCardDetail();
     this.traits.destroy();
     this.abortController.abort();
@@ -238,40 +204,50 @@ export class BattleUi {
     history: readonly CombatEvent[],
     presentation: BattleUiPresentation,
   ): void {
+    if (this.endConfirmation && (this.state !== state || !presentation.canControl || state.pendingReaction || state.outcome)) this.endConfirmation.close();
     const hero = state.actors[presentation.controlledActorId];
     if (!hero) return;
     const actions = listLegalActions(state, hero.id, this.content);
     const zones = state.cardZones[hero.id];
     const activeActor = state.actors[state.turn.activeActorId];
 
-    this.app.dataset.ready = "true";
-    this.app.dataset.outcome = state.outcome ?? "ongoing";
-    this.app.dataset.stateHash = presentation.stateHash;
-    this.app.dataset.controlledActorId = presentation.controlledActorId;
     this.objective.textContent = this.scenario.objective.description;
     this.round.textContent = String(state.round);
-    this.heroHeading.textContent = hero.name;
+    this.state = state;
+    this.members = presentation.members ?? [];
+    this.heroHeading.textContent = activeActor?.name ?? hero.name;
+    this.actorSummary.update(activeActor && canInspectActor(state, activeActor.id) ? activeActor : null);
+    this.status.textContent = presentation.status ?? (presentation.canControl ? "내 턴" : "다른 행동자 대기 중");
+    if (state.outcome || (state.pendingReaction && presentation.ownsReaction)) this.closeActorDetail();
+    this.renderInspector();
     this.boardPrompt.textContent = presentation.prompt;
     this.renderMoveLegend(presentation.moveBands);
 
     this.renderInitiative(state);
-    this.renderHeroCard(hero);
-    this.renderPips(presentation.canControl ? state.turn.actionsRemaining : 0);
-    this.renderCards(
+    this.renderPips(state.turn.actionsRemaining);
+    this.hand.update(
       actions.filter((action) => action.source.kind === "card"),
       presentation.selectedAction,
-      state,
-      hero.id,
+      zones?.hand ?? [],
+      presentation.canControl,
+      new Set(actions.filter(action => {
+        const targets = listLegalTargets(state, hero.id, action.source, this.content);
+        return targets.length === 1 && (targets[0]?.kind === "none" || targets[0]?.kind === "effect");
+      }).map(action => action.source.id)),
     );
+    const historyChanged = history !== this.lastHistory;
     this.renderLog(state, history);
+    const knowledgeResult = history.at(-1);
+    if (historyChanged && knowledgeResult?.type === "KNOWLEDGE_RECALLED") this.status.textContent = knowledgeResult.success ? "Recall Knowledge 성공 · 적 상세 해금" : "Recall Knowledge 실패 · 같은 대상 재시도 불가";
 
+    required<HTMLElement>("#hand-owner").textContent = `${hero.name}의 손패`;
     this.handCount.textContent = String(zones?.hand.length ?? 0);
     this.deckCount.textContent = String(zones?.drawPile.length ?? 0);
     this.discardCount.textContent = String(zones?.discardPile.length ?? 0);
     this.endTurn.disabled = !presentation.canControl ||
       activeActor?.id !== hero.id || Boolean(state.pendingReaction) || Boolean(state.outcome);
 
-    this.renderReaction(state, presentation.controlledActorId);
+    this.renderReaction(state, presentation.ownsReaction ?? false, presentation.inputBlocked ?? false, presentation.status);
     this.renderResult(state);
   }
 
@@ -294,40 +270,50 @@ export class BattleUi {
       const portrait = element("span", "initiative-portrait");
       portrait.setAttribute("aria-hidden", "true");
       this.paintPortrait(portrait, actor, INITIATIVE_PORTRAIT_SIZE);
-      item.append(portrait, element("span", "sr-only", actor.name));
+      const button = element("button", "ui-button ui-button--initiative"); button.type = "button";
+      button.setAttribute("aria-label", `${actor.name} 상세`);
+      if (!canInspectActor(state, actor.id)) button.setAttribute("aria-label", `${actor.name} 상세 잠김 · Recall Knowledge 필요`);
+      button.append(portrait, element("span", "sr-only", actor.name));
+      button.addEventListener("click", () => { this.openActorDetail(actor.id); });
+      item.append(button);
       this.initiative.append(item);
     }
   }
 
-  /**
-   * The card answers "can I act, and am I in trouble" at a glance: portrait, HP,
-   * the two numbers every attack is read against, and the three saves. Everything
-   * a player only consults deliberately lives behind the toggle instead.
-   */
-  private renderHeroCard(hero: ActorState): void {
-    this.renderPortrait(hero);
-    const context = { content: this.content };
-    const savesRow = element("div", "save-grid");
-    for (const id of SAVE_IDS) {
-      const cell = element("div", "save-cell");
-      cell.dataset.saveId = id;
-      cell.append(
-        element("span", "stat-label", SAVE_LABELS[id]),
-        element("strong", undefined, signed(resolveStatisticModifier(hero, { kind: "save", id }, context).value)),
-      );
-      savesRow.append(cell);
+  public closeActorDetail(): void { this.sheet.dismissDetails(); this.detailDialog?.close(); }
+
+  public openActorDetail(actorId?: string): void {
+    if (!actorId || !this.state?.actors[actorId]) return;
+    if (!canInspectActor(this.state, actorId)) {
+      this.boardPrompt.textContent = "적 상세는 Recall Knowledge 성공 후 열람할 수 있습니다.";
+      return;
     }
-    this.heroStats.replaceChildren(
-      ...hpBlock(hero),
-      statPair([
-        ["AC", String(resolveArmorClass(hero, context).value)],
-        ["Speed", `${hero.speedFeet}ft`],
-      ]),
-      savesRow,
-      conditionLine(hero),
-    );
-    this.renderHeroDetails(hero);
-    this.applyHeroDetailsState();
+    this.inspectedActorId = actorId;
+    if (this.detailDialog?.open) { this.renderInspector(); return; }
+    const opener = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const dialog = element("dialog", "ui-panel ui-panel--dialog ui-character-detail-dialog ui-character-detail-dialog--fullscreen");
+    dialog.setAttribute("aria-label", "캐릭터 상세");
+    const close = element("button", "ui-button ui-button--secondary", "닫기"); close.type = "button";
+    close.addEventListener("click", () => dialog.close());
+    const header = element("header", "ui-character-detail-dialog__header"); header.append(this.inspectSelect, close);
+    dialog.append(header, this.sheet.root);
+    dialog.addEventListener("cancel", event => { if (this.sheet.workspace.escape()) event.preventDefault(); });
+    dialog.addEventListener("close", () => {
+      this.sheet.dismissDetails();
+      if (this.detailDialog === dialog) this.detailDialog = null;
+      dialog.remove(); (opener?.isConnected ? opener : this.inspectActive).focus();
+    }, { once: true });
+    this.detailDialog = dialog; this.renderInspector(); document.body.append(dialog); dialog.showModal(); close.focus();
+  }
+
+  private renderInspector(): void {
+    if (!this.state || !this.detailDialog) return;
+    if (this.inspectedActorId && !this.state.actors[this.inspectedActorId]) { this.closeActorDetail(); return; }
+    const actor = this.state.actors[this.inspectedActorId ?? this.state.turn.activeActorId];
+    if (!actor || !canInspectActor(this.state, actor.id)) { this.closeActorDetail(); return; }
+    const actors = this.state.turn.initiativeOrder.map(id => this.state!.actors[id]).filter((actor): actor is ActorState => !!actor && canInspectActor(this.state!, actor.id));
+    updateCharacterPicker(this.inspectSelect, actors, actor.id, this.catalog, id => { this.inspectedActorId = id; this.renderInspector(); });
+    this.sheet.update(actor, this.members.find(member => member.id === actor.id));
   }
 
   /** A bust crop of the same standee the board draws, so a panel can name a face. */
@@ -341,61 +327,6 @@ export class BattleUi {
     }
     window.classList.remove("missing");
     Object.assign(window.style, this.catalog.domPortraitStyle(visual.front, size));
-  }
-
-  private renderPortrait(hero: ActorState): void {
-    if (this.portraitDefinitionId === hero.definitionId) return;
-    this.portraitDefinitionId = hero.definitionId;
-    this.paintPortrait(this.heroPortrait, hero, HERO_PORTRAIT_SIZE);
-  }
-
-  private renderHeroDetails(hero: ActorState): void {
-    const context = { content: this.content };
-    const strike = resolveStrike(hero, context);
-    const armor = equippedArmor(hero, context);
-    // `null` marks where the Strike's Trait chips go; the list is placed while the sheet is
-    // assembled so the chip being read is never detached before its focus is noted.
-    const rows: readonly (readonly [string, string | null])[] = [
-      ["Perception", signed(resolveStatisticModifier(hero, { kind: "perception" }, context).value)],
-      ["Initiative", signed(resolveInitiative(hero, context).value)],
-      ["Class DC", String(resolveClassDC(hero, context).value)],
-      ...SAVE_IDS.map((id) => [
-        SAVE_SHEET_LABELS[id],
-        String(resolveStatisticDC(hero, { kind: "save", id }, context).value),
-      ] as const),
-      ["Facing", hero.facing],
-      ["Strike", strikeLabel(strike)],
-      ["Damage", `${strike.damage.damageType}`],
-      ["Reach", `${strike.rangeFeet}ft`],
-      ["Traits", strike.traits.length ? null : "—"],
-      ["Armor", armor?.name ?? "Unarmored"],
-    ];
-    this.strikeTraits.render(strike.traits, (chips) => {
-      const sheet = element("dl", "stats-grid");
-      for (const [label, value] of rows) {
-        const cell = element("dd");
-        if (value === null) cell.append(chips); else cell.textContent = value;
-        sheet.append(element("dt", undefined, label), cell);
-      }
-      this.heroDetails.replaceChildren(sheet);
-    });
-  }
-
-  private applyHeroDetailsState(): void {
-    this.heroDetails.hidden = !this.heroDetailsOpen;
-    this.heroDetailsToggle.setAttribute("aria-expanded", String(this.heroDetailsOpen));
-    this.heroDetailsToggle.textContent = this.heroDetailsOpen ? "닫기" : "상세";
-  }
-
-  private statBlock(
-    actor: ActorState,
-    rows: readonly (readonly [string, string | number])[],
-  ): readonly HTMLElement[] {
-    const stats = element("dl", "stats-grid");
-    for (const [label, value] of rows) {
-      stats.append(element("dt", undefined, label), element("dd", undefined, String(value)));
-    }
-    return [...hpBlock(actor), stats, conditionLine(actor)];
   }
 
   /** Colour alone does not say what a band means, so it is named while it is on screen. */
@@ -416,82 +347,6 @@ export class BattleUi {
       const pip = element("span", index < remaining ? "action-pip available" : "action-pip spent");
       pip.setAttribute("aria-label", index < remaining ? "Action available" : "Action spent");
       this.actionPips.append(pip);
-    }
-  }
-
-  private renderCards(
-    actions: readonly LegalAction[],
-    selected: LegalAction | null,
-    state: CombatState,
-    actorId: string,
-  ): void {
-    this.clearCardBindings();
-    this.hideCardDetail();
-    this.handCards.replaceChildren();
-    if (actions.length === 0) {
-      this.handCards.append(element("p", "empty-message", "손패가 비었습니다."));
-      return;
-    }
-    for (const action of actions) {
-      const card = action.source.kind === "card"
-        ? state.cardZones[actorId]?.hand.find((candidate) => candidate.id === action.source.id)
-        : undefined;
-      this.handCards.append(this.cardButton(action, selected, card));
-    }
-  }
-
-  private cardButton(
-    action: LegalAction,
-    selected: LegalAction | null,
-    card: CombatState["cardZones"][string]["hand"][number] | undefined,
-  ): HTMLButtonElement {
-    const button = element("button", "tactical-card");
-    button.type = "button";
-    button.setAttribute("aria-disabled", String(!action.enabled));
-    button.dataset.actionId = action.actionId;
-    button.dataset.sourceId = action.source.id;
-    button.dataset.sourceKind = action.source.kind;
-    if (card) {
-      button.dataset.cardDefinitionId = card.definitionId;
-      button.dataset.cardSourceKind = card.source.kind;
-    }
-    button.setAttribute("aria-pressed", String(selected?.source.id === action.source.id));
-    if (selected?.source.id === action.source.id) button.classList.add("selected");
-    button.title = [action.cardRequirement && requirementText(action.cardRequirement), action.reason ?? action.description].filter(Boolean).join(" · ");
-
-    button.append(createCardFace({
-      catalog: this.catalog, cardId: card?.definitionId, name: action.name, timing: action.timing,
-      badges: action.cardRequirement ? [`Lv. ${action.cardRequirement.requiredLevel}`] : [],
-    }));
-    const abort = new AbortController();
-    const listenerOptions = { signal: abort.signal };
-    const press = bindPressGesture(button, {
-      holdMs: LONG_PRESS_MS,
-      onHold: () => this.showCardDetail(button, action, card),
-      onTap: () => { if (action.enabled) this.handlers.onCard(action); },
-    });
-    this.cardBindings.push({ press, abort });
-    button.addEventListener("pointerenter", event => {
-      if (event.pointerType === "mouse") this.handlers.onCardHover(action);
-    }, listenerOptions);
-    button.addEventListener("focus", () => {
-      if (button.matches(":focus-visible")) this.showCardDetail(button, action, card);
-    }, listenerOptions);
-    button.addEventListener("blur", () => {
-      // Focusing another card must not cancel that new card's pointerdown.
-      press.cancel();
-      this.hideCardDetail(false);
-    }, listenerOptions);
-    button.addEventListener("pointerleave", event => {
-      if (event.pointerType === "mouse") this.handlers.onCardHover(null);
-    }, listenerOptions);
-    return button;
-  }
-
-  private clearCardBindings(): void {
-    for (const { press, abort } of this.cardBindings.splice(0)) {
-      press();
-      abort.abort();
     }
   }
 
@@ -522,7 +377,7 @@ export class BattleUi {
   }
 
   public hideCardDetail(cancelPresses = true): void {
-    if (cancelPresses) for (const { press } of this.cardBindings) press.cancel();
+    if (cancelPresses) this.hand.cancelPresses();
     this.cardTraits.clear();
     this.cardDetail.hidden = true;
   }
@@ -530,10 +385,12 @@ export class BattleUi {
   /** Replaces the inspector with one line, for a phase that has nothing to inspect. */
   public renderHint(text: string): void {
     this.actionTraits.clear();
+    required<HTMLElement>("#action-preview-summary").textContent = "행동 상세";
     this.selectedDetail.replaceChildren(element("p", "detail-hint", text));
   }
 
   public renderActionDetail(action: LegalAction | null, preview: ActionPreview | null, state?: CombatState): void {
+    required<HTMLElement>("#action-preview-summary").textContent = action ? `${action.name} · ${actionCost(action)} · 행동 상세` : "행동 상세";
     if (!action) {
       this.actionTraits.clear();
       this.selectedDetail.replaceChildren(element("p", "detail-hint", DETAIL_HINT));
@@ -546,6 +403,7 @@ export class BattleUi {
       element("p", undefined, action.description),
       chips,
     ));
+    if (this.content.actions[action.actionId]?.resolution.kind === "recall-knowledge" && preview) this.selectedDetail.append(element("p", undefined, preview.notes[0] ?? ""));
     if (action.sourceLabel) this.selectedDetail.append(element("p", "detail-source", `Source: ${action.sourceLabel}`));
     if (action.reason) this.selectedDetail.append(element("p", "detail-warning", action.reason));
     if (!preview) return;
@@ -594,21 +452,9 @@ export class BattleUi {
     }
   }
 
-  /** Inspector view for an actor the pointer is hovering on the board. */
+  /** Board hover remains a preview; it never changes the explicitly pinned sheet. */
   public renderActorDetail(actor: ActorState): void {
-    this.actionTraits.clear();
-    this.selectedDetail.replaceChildren();
-    const heading = element("div", "detail-heading");
-    heading.append(
-      element("strong", undefined, actor.name),
-      element("span", "cost-badge", actor.team === "heroes" ? "Ally" : "Enemy"),
-    );
-    this.selectedDetail.append(heading, ...this.statBlock(actor, [
-      ["AC", resolveArmorClass(actor, { content: this.content }).value],
-      ["Speed", `${actor.speedFeet}ft`],
-      ["Facing", actor.facing],
-    ]));
-    if (actor.defeated) this.selectedDetail.append(element("p", "detail-warning", "Defeated"));
+    this.renderHint(`${actor.name} · ${actor.team === "heroes" ? "Ally" : "Enemy"} · HP ${actor.hp}/${actor.maxHp}`);
   }
 
   /**
@@ -645,18 +491,24 @@ export class BattleUi {
     return item;
   }
 
-  private renderReaction(state: CombatState, controlledActorId: string): void {
+  private renderReaction(state: CombatState, ownsReaction: boolean, blocked: boolean, status?: string): void {
     const pending = state.pendingReaction;
-    this.reactionModal.hidden = !pending;
-    if (!pending) return;
+    this.reactionModal.hidden = !pending || !ownsReaction;
+    if (!pending || !ownsReaction) return;
     const mover = state.actors[pending.sourceActorId];
-    const owner = pending.candidates[0]?.actorId;
-    const actionable = owner === controlledActorId;
-    this.reactionUse.disabled = !actionable;
-    this.reactionPass.disabled = !actionable;
-    this.reactionDescription.textContent = actionable
-      ? `${mover?.name ?? "Enemy"} is starting a Move action inside your front/side reach. Resolve Reactive Strike before movement continues.`
-      : `Waiting for ${actorName(state, owner ?? "another player")} to resolve the head Reaction candidate.`;
+    const candidate = pending.candidates[0];
+    const owner = candidate ? state.actors[candidate.actorId] : undefined;
+    const card = candidate && state.cardZones[candidate.actorId]?.hand.find(card => card.id === candidate.cardInstanceId);
+    const name = card ? this.content.cards[card.definitionId]?.name ?? "Reaction" : "Reaction";
+    required<HTMLElement>("#reaction-title").textContent = `${name}?`;
+    this.reactionUse.disabled = this.reactionPass.disabled = blocked;
+    const strike = owner ? resolveStrike(owner, { content: this.content }) : null;
+    const signed = (value: number) => value >= 0 ? `+${value}` : String(value);
+    const profile = strike ? `기본 Strike: ${strike.weaponName} · 명중 ${signed(strike.attackModifier)} · ${strike.damage.count}d${strike.damage.sides}${signed(strike.damage.flatModifier)} ${strike.damage.damageType}. ` : "";
+    this.reactionDescription.textContent =
+      `${owner?.name ?? "캐릭터"}의 ${name} · ${mover?.name ?? "Enemy"}가 전방/측면 사거리에서 이동을 시작했습니다. ` +
+      "사용하면 반응 1회와 해당 카드를 소비해 이동 전에 공격합니다. Pass는 반응을 쓰지 않고 이동을 계속합니다. " +
+      profile + (blocked ? status ?? "서버 응답을 기다리고 있습니다." : "");
   }
 
   private renderResult(state: CombatState): void {
@@ -665,7 +517,7 @@ export class BattleUi {
     this.resultTitle.textContent = state.outcome === "victory" ? "Victory" : "Defeat";
     this.resultDescription.textContent =
       state.outcome === "victory"
-        ? "The gatehouse is secure. The same seed and command log reproduce this result."
-        : "Aerin fell in the gatehouse. Replay the same seed and try a different action sequence.";
+        ? "전투에서 승리했습니다. 보상과 다음 준비 화면으로 이동하고 있습니다."
+        : "파티가 패배했습니다. 모험 결과 화면으로 이동하고 있습니다.";
   }
 }

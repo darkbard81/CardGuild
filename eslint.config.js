@@ -3,14 +3,7 @@ import { defineConfig } from "eslint/config";
 import globals from "globals";
 import tseslint from "typescript-eslint";
 
-/**
- * Test fixtures live under `tests/`, and shipping code may not reach into them.
- *
- * The fixtures are whole content packs. Before this, one of them was re-exported from
- * `src/content/index.ts`, which quietly pulled two regression packs into the client and
- * server bundles — the kind of thing that is invisible in a diff and obvious in a build
- * size. A path rule catches it at the import instead.
- */
+// Production code cannot import builders, harnesses or browser reporters.
 const NO_TEST_FIXTURES = {
   group: ["**/tests/**", "tests/**"],
   message: "Production code must not import test fixtures. Move the data into src/, or keep the code in a test.",
@@ -47,22 +40,19 @@ export default defineConfig(
     },
   },
   {
-    files: ["src/**/*.ts"],
-    ignores: ["src/**/*.test.ts"],
+    files: ["src/**/*.ts", "tools/**/*.ts"],
     rules: {
       "no-restricted-imports": ["error", { patterns: [NO_TEST_FIXTURES] }],
     },
   },
   {
     files: ["src/game/**/*.ts", "src/adventure/**/*.ts", "src/loadout/**/*.ts", "src/session/**/*.ts"],
-    ignores: ["src/**/*.test.ts"],
     rules: {
       "no-restricted-imports": ["error", { patterns: [NO_TEST_FIXTURES, NO_PRESENTATION, NO_HOST] }],
     },
   },
   {
     files: ["src/game/**/*.ts"],
-    ignores: ["src/game/**/*.test.ts"],
     rules: {
       "no-restricted-imports": [
         "error",

@@ -21,11 +21,9 @@ content/m7   authoritative production pack (cardguild.m7)  ← 신규 콘텐츠�
 `content/m7/manifest.json`이 소유하며 `check-content`가 identity와 fingerprint를
 출력합니다. 이 문서는 그 값을 복제하지 않습니다.
 
-**규칙 회귀 fixture는 여기에 없습니다.** `tests/fixtures/content`의 TypeScript factory가
-그 역할을 합니다(`cardguild.test.*`). 이미 검증된 규칙을 고정하는 것이 목적이므로 content
-volume을 늘리려고 수정하지 않고, M7 release 정책(volume/reachability)도 적용되지 않습니다.
-자세한 내용은 [`tests/fixtures/content/README.md`](../tests/fixtures/content/README.md)에
-있습니다.
+**규칙 테스트의 최소 입력은 `tests/support`에 있습니다.** 테스트는 작은 typed builder와
+공개 도메인 명령을 사용하며, 실제 여정은 production content를 사용합니다. 기존 회귀 pack은
+제거했습니다. 계약과 assertion 소유권은 [위험 지도](../docs/test-risk-map.md)에 있습니다.
 
 Production client와 authoritative server는 pack을 직접 import하지 않고
 `src/content/production-content.ts`의 `PRODUCTION_CONTENT` 한 지점만 봅니다.
@@ -50,7 +48,7 @@ import합니다. barrel에는 이제 fixture가 없지만, 이 한 지점을 통
 각 pack directory는 다음 파일을 모두 가집니다.
 
 ```text
-manifest.json    schemaVersion(현재 11), pack ID/version, ruleset ID
+manifest.json    schemaVersion(현재 13), pack ID/version, ruleset ID
 traits.json      모든 authored Trait(source/category/description 포함)과 Card/Action provider
 conditions.json  Condition과 recovery provider Trait
 actions.json     GameCore가 이해하는 effect primitive 조합
@@ -89,7 +87,7 @@ UNKNOWN_TRAIT: Trait "tirp" is not defined.
 
 ## Version과 fingerprint
 
-- `schemaVersion`은 JSON shape migration에 씁니다. 현재 값은 **11**이며, 호환되지 않는 shape
+- `schemaVersion`은 JSON shape migration에 씁니다. 현재 값은 **13**이며, 호환되지 않는 shape
   변경은 버전을 올리고 호환 정책을 명시합니다. M11-2는 Save v1 자동 migration을 등록하지 않습니다.
 - `version`은 authored content revision입니다. 배포할 gameplay data가 바뀌면 올립니다.
 - fingerprint는 canonical content 전체의 `fnv1a64` 값입니다. object key, definition 배열, tile
