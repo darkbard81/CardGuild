@@ -85,5 +85,40 @@
       { "afterEncounterId": "encounter.archer-perch", "amount": 350 },
       { "afterEncounterId": "encounter.cult-sanctum", "amount": 500 }
     ]
+  },
+  {
+    "id": "adventure.recruitment-tutorial",
+    "name": "동료 합류 Tutorial 연결",
+    "description": "혼자 전투를 마친 뒤 Aerin을 모집하고 함께 다음 전투를 준비합니다. #67 Chapter 제작을 위한 연결 콘텐츠입니다.",
+    "partySize": {
+      "min": 1,
+      "max": 3
+    },
+    "encounterIds": [
+      "encounter.road-ambush",
+      "encounter.spear-line"
+    ],
+    "rewards": [
+      {
+        "id": "reward.recruit-aerin",
+        "afterEncounterId": "encounter.road-ambush",
+        "choices": [
+          {
+            "kind": "companion",
+            "definitionId": "companion.aerin"
+          }
+        ]
+      }
+    ],
+    "experienceAwards": [
+      {
+        "afterEncounterId": "encounter.road-ambush",
+        "amount": 200
+      },
+      {
+        "afterEncounterId": "encounter.spear-line",
+        "amount": 250
+      }
+    ]
   }
 ]

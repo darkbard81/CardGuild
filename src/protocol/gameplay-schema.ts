@@ -115,6 +115,8 @@ const rewardGrant = {
       required: ["kind", "definitionId"],
       properties: { kind: { const: "card" }, definitionId: nonEmptyString },
     },
+    { type: "object", additionalProperties: false, required: ["kind", "definitionId"],
+      properties: { kind: { const: "companion" }, definitionId: nonEmptyString } },
   ],
 } as const;
 
@@ -505,7 +507,7 @@ export function validateCampaignSaveShape(value: unknown):
 /** Same persistent shape check at live constructor and wire ingress. */
 export function validateGameplayShape(state: import("../session/types").SessionGameplayHashInput): boolean {
   return !state.adventure || validateCampaignSaveShape({
-    saveSchemaVersion: 4, contentIdentity: state.contentIdentity, partySlots: state.partySlots,
+    saveSchemaVersion: 5, contentIdentity: state.contentIdentity, partySlots: state.partySlots,
     adventure: state.adventure, combat: state.combat,
   }).ok;
 }

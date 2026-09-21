@@ -30,7 +30,7 @@ export interface MemberReference {
   readonly progression?: CharacterProgressionState;
 }
 
-export type MemberContent = Pick<CompiledContentPack, "actorDefinitions" | "characterRules" | "creationPresets">;
+export type MemberContent = Pick<CompiledContentPack, "actorDefinitions" | "characterRules" | "creationPresets" | "companions">;
 export interface ResolvedPartyMemberDefinition extends ActorDefinition {
   readonly appearanceKey: string;
   readonly rulesInput: CharacterRulesInput | null;
@@ -101,6 +101,10 @@ export function resolvePartyMemberDefinition(member: MemberReference, content: M
       name = member.identity.name;
       appearanceKey = preset.appearance[member.identity.gender];
     }
+  }
+  if (member.identity?.origin === "companion") {
+    const npc = Object.values(content.companions ?? {}).find(entry => entry.actorDefinitionId === actor.id);
+    if (npc) appearanceKey = npc.appearanceKey;
   }
   const progression = member.progression ?? (actor.character ? {
     level: actor.character.level, experience: 0, advancements: actor.character.advancements,

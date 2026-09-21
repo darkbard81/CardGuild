@@ -50,6 +50,8 @@ export const M7_PRODUCTION_POLICY = {
   packId: "cardguild.m7",
   /** The single authoritative Adventure. */
   adventureId: "adventure.goblin-trouble",
+  /** Authored recruitment integration slice; not a selectable production start. Cutover is #67. */
+  stagedAdventureIds: ["adventure.recruitment-tutorial"],
 
   /**
    * The onboarding run, in order. These have to be the first encounters of the
@@ -179,6 +181,7 @@ export const M7_PRODUCTION_POLICY = {
   readonly creationClasses: readonly string[];
   readonly packId: string;
   readonly adventureId: string;
+  readonly stagedAdventureIds: readonly string[];
   readonly tutorialEncounterIds: readonly string[];
   readonly levelMilestones: Readonly<Record<string, number>>;
   readonly volume: Readonly<Record<string, VolumeRange>>;

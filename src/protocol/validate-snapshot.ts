@@ -1,6 +1,6 @@
 import { assertSessionInvariants } from "../session/authority";
 import { validateGameplayShape } from "./gameplay-schema";
-import type { ServerSnapshot } from "./v11-types";
+import type { ServerSnapshot } from "./v12-types";
 
 /** Reject malformed persistent identity before any UI consumes a server snapshot. */
 export function validateSnapshotState(snapshot: ServerSnapshot): boolean {

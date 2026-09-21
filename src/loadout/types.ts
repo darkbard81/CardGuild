@@ -37,6 +37,7 @@ export interface LoadoutCollection {
 }
 
 export interface LoadoutContent {
+  readonly companions?: CompiledContentPack["companions"];
   readonly creationPresets?: CompiledContentPack["creationPresets"];
   readonly characterRules: CompiledContentPack["characterRules"];
   readonly actorDefinitions: CompiledContentPack["actorDefinitions"];

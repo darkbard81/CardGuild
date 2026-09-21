@@ -1,3 +1,4 @@
+import { recruitCompanion } from "./recruitment";
 import { resolvePartyMemberDefinition } from "../character/member";
 import type { RewardGrant } from "../content/content-types";
 import { applyCharacterAdvancement, pendingCharacterAdvancements } from "../character";
@@ -30,13 +31,14 @@ function rewardAfter(definition: AdventureRuntimeContext["definition"], encounte
     : null;
 }
 
-function grantReward(collection: CollectionState, grant: RewardGrant): CollectionState {
+function grantReward(collection: CollectionState, grant: Exclude<RewardGrant, { kind: "companion" }>): CollectionState {
   if (grant.kind === "equipment") {
     return {
       ...collection,
       equipment: { ...collection.equipment, [grant.definitionId]: (collection.equipment[grant.definitionId] ?? 0) + 1 },
     };
   }
+  if (grant.kind !== "card") throw new Error("Unknown inventory reward kind.");
   return {
     ...collection,
     cards: { ...collection.cards, [grant.definitionId]: (collection.cards[grant.definitionId] ?? 0) + 1 },
@@ -108,6 +110,10 @@ export function createAdventureSession(
   if (roster.length < min || roster.length > max) {
     throw new Error(`Adventure requires ${min}-${max} party members, received ${roster.length}.`);
   }
+  if (context.definition.rewards.some(reward => reward.choices.some(choice => choice.kind === "companion"))
+    && (roster.length !== 1 || roster[0]?.identity?.origin !== "player-created")) {
+    throw new Error("Recruitment adventures must start with one created protagonist.");
+  }
   const seats = new Set(roster.map((member) => member.seat));
   if (seats.size !== roster.length) throw new Error("Party member seats must be unique.");
   const clonedParty: PartyState = {
@@ -124,7 +130,7 @@ export function createAdventureSession(
   const validation = validatePartyLoadout(clonedParty, collection, context);
   if (!validation.valid) throw new Error(`Invalid starting loadout: ${validation.issues[0]?.message ?? "unknown error"}`);
   const state: AdventureState = {
-    version: 5,
+    version: 6,
     partyOrigin: roster.some(member => member.identity?.origin === "player-created") ? "player-created" : "authored",
     adventureId: context.definition.id,
     phase: "ready",
@@ -245,22 +251,42 @@ export function dispatchAdventureCommand(
       if (state.phase !== "reward" || !offer || offer.rewardId !== command.rewardId) {
         return reject(state, "Reward choice does not match the pending offer.");
       }
+      const authored = definition.rewards.find(reward => reward.id === offer.rewardId);
+      if (!authored || authored.afterEncounterId !== offer.encounterId || state.currentEncounterId !== offer.encounterId
+        || !state.completedEncounterIds.includes(offer.encounterId)
+        || JSON.stringify(authored.choices) !== JSON.stringify(offer.choices)) return reject(state, "Pending reward does not match a completed authored encounter.");
+      if (!Number.isSafeInteger(command.choiceIndex)) return reject(state, "Reward choice index must be an integer.");
       const grant = offer.choices[command.choiceIndex];
       if (!grant) return reject(state, "Reward choice index is out of range.");
-      const collection = grantReward(state.collection, grant);
+      let party = state.party;
+      let collection: CollectionState;
+      const recruitmentEvents: AdventureEvent[] = [];
+      try {
+        switch (grant.kind) {
+          case "companion": {
+            const recruited = recruitCompanion(state, grant.definitionId, offer.rewardId, context);
+            party = recruited.party; collection = recruited.collection;
+            recruitmentEvents.push({ type: "COMPANION_RECRUITED", memberId: recruited.member.id, definitionId: grant.definitionId, rewardId: offer.rewardId });
+            break;
+          }
+          case "card":
+          case "equipment": collection = grantReward(state.collection, grant); break;
+          default: { const unknown: never = grant; throw new Error(`Unknown reward: ${JSON.stringify(unknown)}`); }
+        }
+      } catch (error) { return reject(state, error instanceof Error ? error.message : String(error)); }
       const currentEncounterId = nextEncounterId(definition, state);
       const event: AdventureEvent = { type: "REWARD_GRANTED", rewardId: offer.rewardId, grant };
       if (!currentEncounterId) {
         return {
           accepted: true,
-          state: { ...state, phase: "complete", currentEncounterId: null, pendingReward: null, collection },
-          events: [event, { type: "ADVENTURE_COMPLETED", adventureId: definition.id }],
+          state: { ...state, phase: "complete", currentEncounterId: null, pendingReward: null, collection, party },
+          events: [event, ...recruitmentEvents, { type: "ADVENTURE_COMPLETED", adventureId: definition.id }],
         };
       }
       return {
         accepted: true,
-        state: { ...state, phase: "between-encounters", currentEncounterId, pendingReward: null, collection },
-        events: [event],
+        state: { ...state, phase: "between-encounters", currentEncounterId, pendingReward: null, collection, party },
+        events: [event, ...recruitmentEvents],
       };
     }
     case "set-member-loadout": {

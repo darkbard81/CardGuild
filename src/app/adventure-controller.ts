@@ -87,6 +87,7 @@ export class AdventureController {
       onStart: () => this.sendIntent({ type: "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
       onChooseReward: (rewardId, choiceIndex, settled) => this.client?.sendIntent({ type: "choose-reward", rewardId, choiceIndex }, settled) ?? false,
+      onPreviewCompanion: (definition, member) => this.characterDetail.openPrepared(definition, member),
       onOpenCharacter: destination => this.openCharacter(destination),
       onExit: () => {
         if (this.client) SessionClient.clearCredential(this.client.credential);

@@ -1,11 +1,12 @@
-import { resolvePartyMemberDefinition } from "../character/member";
+import { createCompanionMember } from "../adventure/recruitment";
+import { resolvePartyMemberDefinition, type ResolvedPartyMemberDefinition } from "../character/member";
 import type { CharacterSheetDestination } from "./character-workspace";
 import { createCardFace } from "./card-face";
 import { cardLevelSummary } from "./card-level-view";
 import { equipmentTraits } from "../game/rules";
 import { CharacterAdvancementUi } from "./character-advancement-ui";
 import { pendingCharacterAdvancements, type CharacterAdvancementChoice } from "../character";
-import type { AdventureState } from "../adventure";
+import type { AdventureState, PartyMemberState } from "../adventure";
 import type { CompiledContentPack } from "../content";
 import { placementAppliesToPartySize } from "../content";
 import type { AdventureDefinition, RewardGrant } from "../content";
@@ -35,6 +36,7 @@ export interface AdventureUiHandlers {
   readonly onStart: () => void;
   readonly onContinue: () => void;
   readonly onChooseReward: (rewardId: string, choiceIndex: number, settled: (accepted: boolean) => void) => boolean;
+  readonly onPreviewCompanion: (definition: ResolvedPartyMemberDefinition, member: PartyMemberState) => void;
   readonly onOpenCharacter: (destination?: CharacterSheetDestination) => void;
   readonly onExit: () => void;
 }
@@ -52,9 +54,11 @@ export interface AdventureUiAccess {
 }
 
 function rewardName(grant: RewardGrant, pack: CompiledContentPack): string {
-  return grant.kind === "equipment"
-    ? pack.combatContent.equipment[grant.definitionId]?.name ?? grant.definitionId
-    : pack.combatContent.cards[grant.definitionId]?.name ?? grant.definitionId;
+  switch (grant.kind) {
+    case "equipment": return pack.combatContent.equipment[grant.definitionId]?.name ?? grant.definitionId;
+    case "card": return pack.combatContent.cards[grant.definitionId]?.name ?? grant.definitionId;
+    case "companion": return pack.actorDefinitions[pack.companions?.[grant.definitionId]?.actorDefinitionId ?? ""]?.name ?? grant.definitionId;
+  }
 }
 
 function signed(value: number): string {
@@ -67,6 +71,7 @@ function signed(value: number): string {
  */
 function rewardDetail(grant: RewardGrant, pack: CompiledContentPack): string {
   const content = pack.combatContent;
+  if (grant.kind === "companion") return pack.companions?.[grant.definitionId]?.description ?? "동료 합류";
   if (grant.kind === "card") {
     const card = content.cards[grant.definitionId];
     const action = card ? content.actions[card.actionId] : undefined;
@@ -111,7 +116,7 @@ export class AdventureUi {
   private lastRender: { state: AdventureState; access: AdventureUiAccess } | null = null;
 
   public constructor(
-    private readonly definition: AdventureDefinition,
+    private readonly initialDefinition: AdventureDefinition,
     private readonly pack: CompiledContentPack,
     private readonly handlers: AdventureUiHandlers,
     private readonly catalog?: AssetCatalog,
@@ -123,6 +128,10 @@ export class AdventureUi {
       target.before(section); section.append(target);
     }
     this.screen.append(this.content, rail);
+  }
+
+  private get definition(): AdventureDefinition {
+    return this.pack.adventures[this.lastRender?.state.adventureId ?? ""] ?? this.initialDefinition;
   }
 
   /** The enemies this party will actually face, which party size decides (#16). */
@@ -172,7 +181,8 @@ export class AdventureUi {
       this.rewardDraft = null;
       const added = previous && (["cards", "equipment"] as const).some(kind =>
         Object.entries(state.collection[kind]).some(([id, count]) => count > (previous.collection[kind][id] ?? 0)));
-      this.rewardMessage = added ? "Collection에 추가되었습니다 · 장비·카드 준비에서 Loadout에 반영하세요." : "";
+      const recruited = previous && Object.keys(state.party.members).length > Object.keys(previous.party.members).length;
+      this.rewardMessage = recruited ? "동료가 합류했습니다. 호스트가 조작하며 다음 전투에 함께 참여합니다. 캐릭터 상세에서 장비·카드를 준비하세요." : added ? "Collection에 추가되었습니다 · 장비·카드 준비에서 Loadout에 반영하세요." : "";
     }
     const hasPending = Object.values(state.party.members).some(member =>
       pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length > 0);
@@ -270,10 +280,11 @@ export class AdventureUi {
       return;
     }
     if (state.phase === "reward" && state.pendingReward) {
+      const recruitment = state.pendingReward.choices.some(choice => choice.kind === "companion");
       this.content.append(
         element("p", "eyebrow", "Encounter Reward"),
-        element("h1", undefined, "Choose one reward"),
-        element("p", "adventure-description", "획득한 보상은 Collection에 남고 현재 Loadout은 바뀌지 않습니다."),
+        element("h1", undefined, recruitment ? "새 동료" : "Choose one reward"),
+        element("p", "adventure-description", recruitment ? "합류를 확정하면 동료의 시작 장비·카드와 함께 파티에 추가됩니다. 다음 전투부터 호스트가 조작합니다." : "획득한 보상은 Collection에 남고 현재 Loadout은 바뀌지 않습니다."),
       );
       const growth = this.growth(access);
       if (growth) this.content.append(growth);
@@ -288,6 +299,22 @@ export class AdventureUi {
         }, !this.rewardPending);
         button.setAttribute("aria-pressed", String(this.rewardDraft?.index === index));
         button.classList.add("reward-choice");
+        if (grant.kind === "companion") {
+          const npc = this.pack.companions![grant.definitionId]!;
+          const member = createCompanionMember(npc, state.pendingReward!.rewardId, 2, this.pack);
+          const definition = resolvePartyMemberDefinition(member, this.pack);
+          button.classList.add("reward-companion-choice");
+          button.setAttribute("aria-label", `${name} 선택`);
+          const standee = element("span", "reward-companion-standee");
+          standee.setAttribute("role", "img"); standee.setAttribute("aria-label", `${name} 앞모습`);
+          if (this.catalog) Object.assign(standee.style, this.catalog.domStandeeStyle(this.catalog.actorVisual(definition.appearanceKey).front, 170));
+          button.prepend(standee);
+          button.append(element("span", "reward-detail", npc.description),
+            element("span", "reward-detail", `Lv${member.progression.level} · 경험치 ${member.progression.experience}`),
+            element("span", "reward-detail", `시작 장비: ${Object.values(member.loadout.equipment).map(id => this.pack.combatContent.equipment[id]!.name).join(" · ")}`));
+          choices.append(button, this.secondaryActionButton(`${name} 합류 전 상세`, () => this.handlers.onPreviewCompanion(definition, member)));
+          return;
+        }
         const assetId = grant.kind === "card"
           ? this.catalog?.cardVisual(grant.definitionId) ?? null
           : this.catalog?.equipmentVisual(grant.definitionId) ?? null;
@@ -309,7 +336,7 @@ export class AdventureUi {
       });
       this.content.append(choices);
       const draft = this.rewardDraft;
-      if (draft) {
+      if (draft && state.pendingReward.choices[draft.index]?.kind !== "companion") {
         const selected = state.pendingReward.choices[draft.index]!;
         this.content.append(element("p", "ui-status", `선택: ${rewardName(selected, this.pack)} · ${rewardDetail(selected, this.pack)}`));
         const comparison = element("ul", "ui-reward-comparison");
@@ -328,9 +355,9 @@ export class AdventureUi {
         this.content.append(comparison);
       }
       this.content.append(element("p", "ui-status", this.rewardMessage || (access.isHost
-        ? "보상을 눌러 비교한 뒤 획득을 확정하세요. 하나를 획득하면 다른 선택지는 포기합니다."
+        ? recruitment ? "동료 정보와 상세를 확인한 뒤 동료 합류를 눌러 확정하세요." : "보상을 눌러 비교한 뒤 획득을 확정하세요. 하나를 획득하면 다른 선택지는 포기합니다."
         : "호스트가 보상을 선택하고 있습니다. 보상 상세는 자유롭게 확인할 수 있습니다.")));
-      this.content.append(this.actionButton(this.rewardPending ? "보상 적용 중…" : "이 보상 획득", () => {
+      this.content.append(this.actionButton(this.rewardPending ? recruitment ? "동료 합류 중…" : "보상 적용 중…" : recruitment ? "동료 합류" : "이 보상 획득", () => {
         if (!draft || this.rewardPending) return;
         this.rewardPending = true;
         this.render(state, access);

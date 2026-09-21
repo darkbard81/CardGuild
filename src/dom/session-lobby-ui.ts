@@ -533,15 +533,16 @@ export class SessionLobbyUi {
       ? document.activeElement.id : "";
     const host = state.hostPlayerId === viewerPlayerId;
     const adventure = state.adventure!;
+    const companionCoop = adventure.partyOrigin !== "player-created";
     const terminal = adventure.phase === "complete" || adventure.phase === "failed";
-    const card = this.card(terminal ? "저장된 결과 확인 준비" : "모험 이어가기 준비", "저장된 파티로 이어갑니다. 친구는 새 초대 코드로 다시 참가해 캐릭터를 선택하세요.", !previousFocus);
+    const card = this.card(terminal ? "저장된 결과 확인 준비" : "모험 이어가기 준비", companionCoop ? "저장된 파티로 이어갑니다. 친구는 새 초대 코드로 다시 참가해 캐릭터를 선택하세요." : "저장된 주인공과 동료로 이어갑니다. 호스트가 파티 전원을 조작합니다.", !previousFocus);
     card.classList.add("resume-card");
     this.screen.dataset.lobbyKind = "resume";
     const definition = this.pack.adventures[adventure.adventureId]!;
     const encounter = adventure.currentEncounterId ? this.pack.scenarioSources[adventure.currentEncounterId]?.name : null;
     card.append(element("p", "resume-progress", `${phaseLabels[adventure.phase]} · 전투 ${String(adventure.completedEncounterIds.length)} / ${String(definition.encounterIds.length)} 완료${encounter ? " · " + encounter : ""}`),
       element("p", "session-description", `준비를 마치면 ${destination(adventure.phase)}으로 돌아갑니다.`));
-    if (host) {
+    if (host && companionCoop) {
       const invite = element("div", "resume-invite");
       const label = element("label", undefined, "새 초대 코드");
       label.htmlFor = "invite-session-id";
@@ -574,7 +575,7 @@ export class SessionLobbyUi {
       const row = element("li", seat ? "occupied" : "open");
       row.dataset.seat = String(seatNumber);
       row.dataset.connected = String(Boolean(seat && connected.has(seat.playerId)));
-      if (!seat) row.append(element("span", undefined, "참가 가능"));
+      if (!seat) row.append(element("span", undefined, companionCoop ? "참가 가능" : "초대 비공개"));
       else {
         const isHost = seat.playerId === state.hostPlayerId;
         const memberId = isHost ? state.partySlots[0]?.memberId : claimedMemberForPlayer(state, seat.playerId);
@@ -616,7 +617,7 @@ export class SessionLobbyUi {
       const actor = resolveSessionPartyDefinition(state, slot, this.pack);
       const claimant = state.guestClaims.byMemberId[slot.memberId];
       const mine = claimant === viewerPlayerId;
-      const available = slot.slot !== 1 && !claimant;
+      const available = state.adventure?.partyOrigin !== "player-created" && slot.slot !== 1 && !claimant;
       const entry = element("article", "ui-panel ui-panel--workspace resume-character");
       entry.id = "resume-member-" + slot.memberId;
       entry.tabIndex = -1;
@@ -636,7 +637,7 @@ export class SessionLobbyUi {
       const details = element("div", "resume-character-details");
       details.append(element("strong", undefined, actor?.name ?? slot.actorDefinitionId),
         element("small", undefined, "Lv " + String(member?.progression.level ?? 1)),
-        element("small", undefined, slot.slot === 1 ? "호스트 캐릭터" : mine ? "내 캐릭터" : claimant ? `${claimantName ?? "다른 참가자"} 선택함` : "선택 가능"),
+        element("small", undefined, slot.slot === 1 ? "호스트 캐릭터" : mine ? "내 캐릭터" : claimant ? `${claimantName ?? "다른 참가자"} 선택함` : state.adventure?.partyOrigin === "player-created" ? "호스트 조작 동료" : "선택 가능"),
         element("small", undefined, `현재 조작: ${controller?.displayName ?? "호스트"}${controllerId === state.hostPlayerId ? " (호스트)" : ""}`));
       entry.append(details);
       if (mine) {

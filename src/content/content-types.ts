@@ -27,7 +27,7 @@ import type {
 } from "../game/types";
 
 export interface ContentPackManifest {
-  readonly schemaVersion: 13;
+  readonly schemaVersion: 14;
   readonly id: string;
   readonly version: string;
   readonly rulesetId: string;
@@ -125,9 +125,19 @@ export interface ScenarioSource {
   readonly map: BattleMapSource;
 }
 
+/** A unique authored NPC; Build, history and starter stay on its Character definition. */
+export interface CompanionDefinition {
+  readonly id: string;
+  readonly actorDefinitionId: ActorDefinitionId;
+  readonly description: string;
+  readonly appearanceKey: string;
+  readonly startingExperience: number;
+}
+
 export type RewardGrant =
   | { readonly kind: "equipment"; readonly definitionId: EquipmentId }
-  | { readonly kind: "card"; readonly definitionId: CardDefinitionId };
+  | { readonly kind: "card"; readonly definitionId: CardDefinitionId }
+  | { readonly kind: "companion"; readonly definitionId: string };
 
 export interface AdventureRewardDefinition {
   readonly id: string;
@@ -159,6 +169,7 @@ export interface AdventureDefinition {
 }
 
 export interface ContentPackSource {
+  readonly companions?: readonly CompanionDefinition[];
   readonly creationPresets?: readonly CharacterCreationPreset[];
   readonly manifest: ContentPackManifest;
   readonly traits: readonly TraitDefinition[];
@@ -174,6 +185,7 @@ export interface ContentPackSource {
 }
 
 export interface CompiledContentPack {
+  readonly companions?: Readonly<Record<string, CompanionDefinition>>;
   readonly creationPresets?: Readonly<Record<string, CharacterCreationPreset>>;
   readonly manifest: ContentPackManifest;
   readonly fingerprint: string;
@@ -186,6 +198,7 @@ export interface CompiledContentPack {
 }
 
 export type ContentSourceCategory =
+  | "companions"
   | "creationPresets"
   | "manifest"
   | "traits"
@@ -211,6 +224,7 @@ export interface ContentValidationIssue {
 }
 
 export interface ContentPackFiles {
+  readonly companions?: unknown;
   readonly creationPresets?: unknown;
   readonly manifest: unknown;
   readonly traits: unknown;
@@ -227,6 +241,7 @@ export interface ContentPackFiles {
 
 export function assembleContentPackSource(files: ContentPackFiles): unknown {
   return {
+    ...(files.companions ? { companions: files.companions } : {}),
     ...(files.creationPresets ? { creationPresets: files.creationPresets } : {}),
     manifest: files.manifest,
     traits: files.traits,

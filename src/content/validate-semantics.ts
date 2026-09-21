@@ -693,6 +693,20 @@ export function validateContentPackSemantics(
     }
   });
 
+  const companions = new Map((source.companions ?? []).map(npc => [npc.id, npc]));
+  const companionActors = new Set<string>();
+  for (const [index, npc] of (source.companions ?? []).entries()) {
+    const actor = source.actors.find(actor => actor.id === npc.actorDefinitionId);
+    if (!npc.id || companions.size !== (source.companions ?? []).length || companionActors.has(npc.actorDefinitionId)) {
+      addIssue(context, "companions", `[${index}]`, "DUPLICATE_COMPANION", "Companion IDs and Character definitions must be unique.", npc.id);
+    }
+    if (!actor || actor.statProfile.kind !== "character" || !actor.traits.some(t => t.id === "playable")
+      || source.creationPresets?.some(preset => preset.actorDefinitionId === npc.actorDefinitionId)) {
+      addIssue(context, "companions", `[${index}]`, "INVALID_COMPANION", "Companion must reference an authored playable Character, not a creation preset or Creature.", npc.id);
+    }
+    companionActors.add(npc.actorDefinitionId);
+  }
+
   const knownScenarios = new Set(source.scenarios.map((scenario) => scenario.id));
   const scenariosById = new Map(source.scenarios.map((scenario) => [scenario.id, scenario]));
   source.adventures.forEach((adventure, adventureIndex) => {
@@ -727,12 +741,24 @@ export function validateContentPackSemantics(
       if (!adventure.encounterIds.includes(reward.afterEncounterId)) addIssue(context, "adventures", `${path}.afterEncounterId`, "REWARD_OUTSIDE_ADVENTURE", `Reward references encounter "${reward.afterEncounterId}" outside its adventure.`, reward.id);
       if (rewardedEncounters.has(reward.afterEncounterId)) addIssue(context, "adventures", `${path}.afterEncounterId`, "DUPLICATE_ENCOUNTER_REWARD", `Encounter "${reward.afterEncounterId}" has more than one reward offer.`, reward.id);
       reward.choices.forEach((choice, choiceIndex) => {
-        const known = choice.kind === "equipment" ? knownEquipment : knownCards;
-        if (!known.has(choice.definitionId)) addIssue(context, "adventures", `${path}.choices[${choiceIndex}].definitionId`, choice.kind === "equipment" ? "UNKNOWN_EQUIPMENT" : "UNKNOWN_CARD", `${choice.kind} "${choice.definitionId}" is not defined.`, reward.id);
+        const tables = { equipment: knownEquipment, card: knownCards, companion: new Set(companions.keys()) };
+        const codes = { equipment: "UNKNOWN_EQUIPMENT", card: "UNKNOWN_CARD", companion: "UNKNOWN_COMPANION" };
+        if (!tables[choice.kind]?.has(choice.definitionId)) addIssue(context, "adventures", `${path}.choices[${choiceIndex}].definitionId`, codes[choice.kind] ?? "UNKNOWN_REWARD", `${choice.kind} "${choice.definitionId}" is not defined.`, reward.id);
+        if (choice.kind === "companion" && (reward.choices.length !== 1 || adventure.encounterIds.at(-1) === reward.afterEncounterId)) {
+          addIssue(context, "adventures", path, "INVALID_RECRUITMENT_OFFER", "Recruitment must be a mandatory single choice before the final encounter.", reward.id);
+        }
       });
       rewardIds.add(reward.id);
       rewardedEncounters.add(reward.afterEncounterId);
     });
+
+    const recruitments = adventure.rewards.flatMap(reward => reward.choices.filter(choice => choice.kind === "companion"));
+    if (recruitments.length && (adventure.partySize.min !== 1 || 1 + recruitments.length > adventure.partySize.max)) {
+      addIssue(context, "adventures", `[${adventureIndex}].rewards`, "RECRUITMENT_CAPACITY", "Recruitment starts solo and must fit every mandatory companion within party capacity.", adventure.id);
+    }
+    if (new Set(recruitments.map(choice => choice.definitionId)).size !== recruitments.length) {
+      addIssue(context, "adventures", `[${adventureIndex}].rewards`, "DUPLICATE_RECRUITMENT", "An NPC may only be offered once per adventure.", adventure.id);
+    }
 
     // EXP is authored per Encounter and is deliberately independent of `rewards`: a battle
     // with no reward still awards EXP, and a missing entry is an authoring error rather

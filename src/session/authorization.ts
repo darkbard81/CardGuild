@@ -82,6 +82,7 @@ export function authorizeSessionIntent(
       return undefined;
     case "release-character":
     case "select-character":
+      if (state.adventure?.partyOrigin === "player-created") return "Companion Co-op has not been enabled by the Host.";
       if (isHost || !isLobbyLifecycle(state)) return "Only a guest can select a lobby character.";
       if (!state.partyPrepared) return "The host must prepare the party before guests select characters.";
       return undefined;

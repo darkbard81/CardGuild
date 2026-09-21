@@ -1,3 +1,4 @@
+import companions from "../../content/m7/companions.json";
 import creationPresets from "../../content/m7/creationPresets.json";
 import actions from "../../content/m7/actions.json";
 import actors from "../../content/m7/actors.json";
@@ -20,6 +21,7 @@ export const M7_RUINED_GATE_ID = "encounter.ruined-gate";
 export const M7_GOBLIN_CHIEF_ID = "encounter.goblin-chief";
 
 export const M7_CONTENT_SOURCE = {
+  companions,
   creationPresets,
   manifest,
   traits,

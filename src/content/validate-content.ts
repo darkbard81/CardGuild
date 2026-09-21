@@ -7,6 +7,7 @@ import type {
 } from "./content-types";
 
 const CATEGORIES = new Set<ContentSourceCategory>([
+  "companions",
   "creationPresets",
   "manifest",
   "traits",

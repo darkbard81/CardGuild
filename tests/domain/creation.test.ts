@@ -1,5 +1,5 @@
 import { expect, it } from "vitest";
-import { assertAdventureCharacterInvariants, applyExperience, buildAdventureEncounter, createAdventureSession } from "../../src/adventure";
+import { assertAdventureCharacterInvariants, applyExperience, buildAdventureEncounter, dispatchAdventureCommand, deriveCombatSeed } from "../../src/adventure";
 import { resolvePartyMemberDefinition } from "../../src/character/member";
 import { compileContentPack } from "../../src/content/compile-content";
 import { deriveLoadoutSnapshot, resolveLoadoutStatProfile } from "../../src/loadout";
@@ -65,17 +65,15 @@ it("G-IDENTITY presets validate Human, complete Build, appearance and starter el
 
 function withCompanion(): SessionCoreState {
   const state = creationAct(creationLobby(), creationIntent);
-  const hero = state.adventure!.party.members[HERO]!;
-  // Recruitment transition belongs to #65; this is an authored party precondition.
-  const ready = createAdventureSession({ ...context.pack, definition: context.pack.adventures[context.adventureId]! }, {
-    members: { [HERO]: hero, [SECOND]: { id: SECOND, seat: 2, actorDefinitionId: hero.actorDefinitionId,
-      identity: { origin: "companion", recruitmentSource: "test.reward-rescue" }, loadout: hero.loadout } },
-  }, 63);
-  return { ...state, adventure: { ...ready, phase: "between-encounters", currentEncounterId: state.adventure!.currentEncounterId },
-    partySlots: [...state.partySlots, { slot: 2, memberId: SECOND, actorDefinitionId: hero.actorDefinitionId }] };
+  const runtime = { ...context.pack, definition: context.pack.adventures[context.adventureId]! };
+  const encounterId = state.adventure!.currentEncounterId!;
+  const victory = dispatchAdventureCommand({ ...state.adventure!, phase: "combat" }, { type: "accept-combat-result",
+    result: { encounterId, outcome: "victory", combatSeed: deriveCombatSeed(state.adventureSeed, encounterId), finalCombatHash: "fixture" } }, runtime);
+  const reward = { ...state, adventure: victory.state };
+  return creationAct(reward, { type: "choose-reward", rewardId: victory.state.pendingReward!.rewardId, choiceIndex: 0 });
 }
 
-it("G-IDENTITY same-template companion keeps its own name, growth, Loadout and HP through save and next combat", () => {
+it("G-IDENTITY same-Class companion keeps its own name, growth, Loadout and HP through save and next combat", () => {
   const initial = withCompanion();
   const hero = initial.adventure!.party.members[HERO]!;
   const grown: SessionCoreState = { ...initial, adventure: { ...initial.adventure!, party: { members: {
@@ -92,7 +90,7 @@ it("G-IDENTITY same-template companion keeps its own name, growth, Loadout and H
   expect(player.statProfile.stats.level).toBe(3); expect(companion.statProfile.stats.level).toBe(1);
   expect(player.equipmentIds).toEqual([]); expect(companion.equipmentIds.length).toBeGreaterThan(0);
   expect(player.maxHp).toBeGreaterThan(companion.maxHp);
-  expect(restored.adventure.party.members[HERO]!.progression).toEqual({ level: 3, experience: 100, advancements: [{ level: 3, skillIncrease: "athletics" }] });
+  expect(restored.adventure.party.members[HERO]!.progression).toEqual({ level: 3, experience: 300, advancements: [{ level: 3, skillIncrease: "athletics" }] });
   const member = restored.adventure.party.members[HERO]!;
   const preview = deriveLoadoutSnapshot(resolvePartyMemberDefinition(member, context.pack), member.loadout, context.pack.combatContent, member.id, resolveLoadoutStatProfile(member, context.pack));
   expect(player.maxHp).toBe(preview.statistics.maxHp);

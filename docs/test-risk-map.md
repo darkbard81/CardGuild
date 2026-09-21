@@ -96,3 +96,14 @@ Creation UI/visual interaction belongs to #64, recruitment atomicity to #65, pre
 | A-CREATION | Missing/duplicate/miswired gender/Class variant or missing runtime image fails validation; source-cell edge contact is reported for user art review | production policy, assets build/check, `creation-visual-contract.ts` |
 
 Bounded first-encounter solo playtest: `npx tsx tools/playtest/creation-readiness.ts`. This reports actual outcomes without treating the greedy policy as a balance oracle. See `m12-2-character-creation.md`.
+
+## M12-3 Companion Recruitment
+
+| Risk | Player contract | Owner / evidence |
+| --- | --- | --- |
+| G-RECRUIT (G-ADVENTURE/G-LOADOUT/G-GROWTH) | Mandatory reward appends a unique NPC and only its owned starter; preserves current protagonist kit/growth and inventory; duplicate/full/invalid choices leave everything untouched; authored EXP is not retroactive; next encounter uses expanded party | Domain `recruitment.test.ts`, seed 65 |
+| G-RECRUIT-SAVE (G-SAVE) | Pending and settled recruitment survive restore with current kit; wrong NPC/source/origin/duplicate/missing recruit/slot mapping is rejected; old Save 4 remains untouched | Domain `recruitment.test.ts` |
+| B-RECRUIT (B-COMMIT) | No NPC/slot/starter/event is visible before durable commit; failed storage preserves pending reward; same-envelope retry commits once and survives real SQLite reopen | Integration `contracts/recruitment.test.ts`, seed 65, request `recruit-once-65` |
+| U-RECRUIT | NPC standee/role/kit and read-only detail precede explicit confirmation; retry preserves selection; both ACK/snapshot orders gate completion; recruited member opens shared editable sheet; Continue does not automatically publish a Guest invitation | Interaction `recruitment.spec.ts`, 1024×768 |
+
+The staged recruitment Tutorial and `--recruitment` playtest exercise actual authored Aerin recruitment. #67 owns the default-start cutover and the production J-PROGRESS conversion. See [M12-3](m12-3-companion-recruitment.md).

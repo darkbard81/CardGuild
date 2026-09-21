@@ -1,0 +1,9 @@
+[
+  {
+    "id": "companion.aerin",
+    "actorDefinitionId": "hero.aerin",
+    "description": "Fighter. Halberd의 긴 사거리와 Reactive Strike로 전열을 지킵니다.",
+    "appearanceKey": "hero.aerin",
+    "startingExperience": 0
+  }
+]

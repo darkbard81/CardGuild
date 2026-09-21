@@ -1,3 +1,4 @@
+import { createCompanionMember } from "../adventure/recruitment";
 import { positionKey } from "../game/grid";
 import { assertCreationPreset } from "../character/member";
 import { validatePartyLoadout, createStartingCollection } from "../loadout";
@@ -114,7 +115,9 @@ export function compileContentPack(
   };
   const creationPresets = recordById(normalized.creationPresets ?? []);
   if (Object.keys(creationPresets).length !== (normalized.creationPresets ?? []).length) throw new Error("Creation preset IDs must be unique.");
-  const memberContent = { actorDefinitions, characterRules, combatContent, creationPresets };
+  const companions = recordById(normalized.companions ?? []);
+  const memberContent = { actorDefinitions, characterRules, combatContent, creationPresets, companions };
+  for (const companion of Object.values(companions)) createCompanionMember(companion, "authoring-preview", 2, memberContent);
   for (const preset of Object.values(creationPresets)) {
     const actor = assertCreationPreset(preset, memberContent);
     const party = { members: { starter: { id: "starter", actorDefinitionId: actor.id, loadout: actor.starterLoadout } } };
@@ -130,6 +133,7 @@ export function compileContentPack(
     characterRules,
     actorDefinitions,
     creationPresets,
+    companions,
     scenarioSources: recordById(normalized.scenarios),
     scenarios,
     adventures: recordById(normalized.adventures),

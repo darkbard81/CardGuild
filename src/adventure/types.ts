@@ -39,6 +39,7 @@ export interface CollectionState extends LoadoutCollection {
 }
 
 export interface AdventureRuntimeContext {
+  readonly companions?: CompiledContentPack["companions"];
   readonly creationPresets?: CompiledContentPack["creationPresets"];
   readonly characterRules: CharacterRulesContext;
   readonly definition: AdventureDefinition;
@@ -53,7 +54,7 @@ export interface RewardOffer {
 }
 
 export interface AdventureState {
-  readonly version: 5;
+  readonly version: 6;
   readonly partyOrigin: "authored" | "player-created";
   readonly adventureId: string;
   readonly phase: AdventurePhase;
@@ -86,6 +87,7 @@ export type AdventureCommand =
     };
 
 export type AdventureEvent =
+  | { readonly type: "COMPANION_RECRUITED"; readonly memberId: string; readonly definitionId: string; readonly rewardId: string }
   | { readonly type: "CHARACTER_ADVANCED"; readonly memberId: string; readonly choice: CharacterAdvancementChoice }
   | { readonly type: "ADVENTURE_STARTED"; readonly adventureId: string }
   | { readonly type: "ENCOUNTER_STARTED"; readonly encounterId: ScenarioId; readonly combatSeed: number }

@@ -356,6 +356,10 @@ async function main(): Promise<void> {
   // character's processed PNG and ship it under the other's name.
   assertDistinctActorPaths(Object.keys(manifest.actorVisuals));
   assertCreationVisualCoverage(PRODUCTION_CONTENT.pack.creationPresets ?? {}, manifest.actorVisuals);
+  for (const npc of Object.values(PRODUCTION_CONTENT.pack.companions ?? {})) {
+    const visual = manifest.actorVisuals[npc.appearanceKey];
+    if (!visual?.front || !visual.back) throw new Error(`Companion ${npc.id} requires front/back standees.`);
+  }
   for (const [definitionId, visual] of Object.entries(manifest.actorVisuals)) {
     const segments = actorPathSegments(definitionId).join("/");
     for (const side of ACTOR_SIDES) {

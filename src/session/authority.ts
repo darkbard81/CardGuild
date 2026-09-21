@@ -53,6 +53,7 @@ function adventureContext(context: SessionAuthorityContext): AdventureRuntimeCon
     combatContent: context.pack.combatContent,
     characterRules: context.pack.characterRules,
     creationPresets: context.pack.creationPresets,
+    companions: context.pack.companions,
   };
 }
 
@@ -141,6 +142,7 @@ export function joinSessionCore(
   player: SessionPlayerIdentity,
   context: SessionAuthorityContext,
 ): SessionTransitionResult {
+  if (state.adventure?.partyOrigin === "player-created") return reject(state, "FORBIDDEN", "Companion Co-op has not been enabled by the Host.");
   if (state.lifecycle === "active") return reject(state, "ROSTER_LOCKED", "Adventure roster is already locked.");
   if (seatForPlayer(state, player.playerId)) return reject(state, "FORBIDDEN", "Player already owns a seat.");
   const adventureMaximum = adventureContext(context).definition.partySize.max;
@@ -226,7 +228,11 @@ function setPartyComposition(
   actorDefinitionIds: readonly string[],
   context: SessionAuthorityContext,
 ): SessionTransitionResult {
-  const maximum = adventureContext(context).definition.partySize.max;
+  const definition = adventureContext(context).definition;
+  if (definition.rewards.some(reward => reward.choices.some(choice => choice.kind === "companion"))) {
+    return reject(state, "DOMAIN_REJECTED", "Recruitment adventures require one created protagonist.");
+  }
+  const maximum = definition.partySize.max;
   if (actorDefinitionIds.length < 1 || actorDefinitionIds.length > maximum) {
     return reject(state, "DOMAIN_REJECTED", "Party must contain between 1 and " + String(maximum) + " characters.");
   }
@@ -376,7 +382,9 @@ export function dispatchSessionIntent(
         choiceIndex: intent.choiceIndex,
       }, runtime);
       if (!result.accepted) return reject(state, "DOMAIN_REJECTED", result.error ?? "Adventure rejected reward choice.");
-      return commit(state, { ...state, adventure: result.state }, result.events);
+      const partySlots = Object.values(result.state.party.members).sort((a, b) => a.seat - b.seat)
+        .map(member => ({ slot: member.seat, memberId: member.id, actorDefinitionId: member.actorDefinitionId }));
+      return commit(state, { ...state, adventure: result.state, partySlots }, result.events);
     }
     case "set-loadout": {
       const result = dispatchAdventureCommand(state.adventure as AdventureState, {

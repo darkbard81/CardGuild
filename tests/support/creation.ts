@@ -3,7 +3,12 @@ import { M7_CONTENT_SOURCE, M7_ADVENTURE_ID } from "../../src/content/load-m7-co
 import { createSessionCoreState, dispatchSessionIntent, type SessionCoreState, type SessionIntent } from "../../src/session";
 
 /** Representative authoring fixtures, not a production launch roster (#64). */
-export const creationSource = { ...M7_CONTENT_SOURCE, creationPresets: [
+export const creationSource = { ...M7_CONTENT_SOURCE,
+  actors: [...M7_CONTENT_SOURCE.actors, { ...M7_CONTENT_SOURCE.actors.find(actor => actor.id === "hero.aerin")!, id: "test.npc-aerin" }],
+  companions: [{ id: "test.companion-aerin", actorDefinitionId: "test.npc-aerin", description: "Fighter", appearanceKey: "hero.aerin", startingExperience: 0 }],
+  adventures: M7_CONTENT_SOURCE.adventures.filter(adventure => adventure.id === M7_ADVENTURE_ID).map(adventure => ({ ...adventure,
+    rewards: adventure.rewards.map((reward, index) => index ? reward : { ...reward, choices: [{ kind: "companion" as const, definitionId: "test.companion-aerin" }] }),
+  })), creationPresets: [
   { id: "test.human-fighter", actorDefinitionId: "hero.aerin", appearance: { male: "hero.aerin", female: "hero.nera" } },
   { id: "test.human-cleric", actorDefinitionId: "hero.nera", appearance: { male: "hero.aerin", female: "hero.nera" } },
 ] };

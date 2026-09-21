@@ -4,7 +4,7 @@ import type { CompiledContentPack } from "../content/content-types";
 import { computeCombatSetupFingerprint } from "../game";
 import type { CombatState, ContentIdentity } from "../game";
 import type { SessionAuthorityContext } from "../session";
-import type { CampaignSaveV4 } from "./campaign-save";
+import type { CampaignSaveV5 } from "./campaign-save";
 
 /**
  * One explicitly registered previous content identity and the identity it becomes.
@@ -52,7 +52,7 @@ export function findContentMigration(
  * same definition re-fingerprinted under the target identity.
  */
 export function migrateCombatSetupFingerprint(
-  save: CampaignSaveV4,
+  save: CampaignSaveV5,
   combat: CombatState,
   migration: ContentMigration,
   context: SessionAuthorityContext,
@@ -89,10 +89,10 @@ export function migrateCombatSetupFingerprint(
  * that embeds it. No EXP is granted retroactively for battles already won.
  */
 export function migrateCampaignSave(
-  save: CampaignSaveV4,
+  save: CampaignSaveV5,
   migration: ContentMigration,
   setupFingerprint: string | null,
-): CampaignSaveV4 {
+): CampaignSaveV5 {
   return {
     ...save,
     contentIdentity: { ...migration.to },

@@ -47,6 +47,7 @@ interface RunSpec {
   readonly id: string;
   readonly label: string;
   readonly starterIds: readonly string[];
+  readonly creationPresetId?: string;
   readonly rewardRoute: RewardRoute;
   readonly loadoutPolicy: LoadoutPolicy;
 }
@@ -427,13 +428,20 @@ function rewardChoiceIndex(route: RewardRoute, choices: number, rewardIndex: num
   return rewardIndex % choices;
 }
 
-function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, tally: Tally): RunReport {
+function playAdventure(pack: CompiledContentPack, spec: RunSpec, seed: number, tally: Tally, adventureId: string): RunReport {
   const context = {
-    definition: PRODUCTION_CONTENT.adventure,
+    ...pack,
+    definition: pack.adventures[adventureId]!,
     actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules,
     combatContent: pack.combatContent,
   };
-  let state: AdventureState = createAdventureSession(context, party(pack, spec.starterIds), seed);
+  const preset = spec.creationPresetId ? pack.creationPresets?.[spec.creationPresetId] : undefined;
+  const initialParty: PartySetup = preset ? { members: { "party.hero-1": {
+    id: "party.hero-1", seat: 1, actorDefinitionId: preset.actorDefinitionId,
+    identity: { origin: "player-created", name: "Playtest", gender: "male", creationPresetId: preset.id },
+    loadout: pack.actorDefinitions[preset.actorDefinitionId]!.starterLoadout,
+  } } } : party(pack, spec.starterIds);
+  let state: AdventureState = createAdventureSession(context, initialParty, seed);
   const encounters: EncounterReport[] = [];
   const rewardPicks: string[] = [];
   const grantedCards: string[] = [];
@@ -665,12 +673,17 @@ async function main(): Promise<void> {
   const jsonIndex = argv.indexOf("--json");
   const pack = PRODUCTION_CONTENT.pack;
   const tally = createTally();
-  const specs = buildMatrix(pack);
+  const recruitment = argv.includes("--recruitment");
+  const adventureId = recruitment ? "adventure.recruitment-tutorial" : PRODUCTION_CONTENT.adventureId;
+  const specs: readonly RunSpec[] = recruitment ? Object.values(pack.creationPresets ?? {}).map(preset => ({
+    id: `${preset.id}-recruitment`, label: `${preset.id} / Aerin recruitment`, starterIds: [preset.actorDefinitionId],
+    creationPresetId: preset.id, rewardRoute: "first", loadoutPolicy: "adapt",
+  })) : buildMatrix(pack);
   const runs: RunReport[] = [];
 
   for (const spec of specs) {
     for (let seed = 1; seed <= seedCount; seed += 1) {
-      runs.push(playAdventure(pack, spec, seed, tally));
+      runs.push(playAdventure(pack, spec, seed, tally, adventureId));
     }
   }
 
@@ -688,7 +701,8 @@ async function main(): Promise<void> {
       packId: pack.manifest.id,
       packVersion: pack.manifest.version,
       fingerprint: pack.fingerprint,
-      adventureId: PRODUCTION_CONTENT.adventureId,
+      adventureId,
+      dirty: execFileSync("git", ["status", "--porcelain"], { encoding: "utf8" }).trim().length > 0,
     },
     matrix: { specs: specs.length, seeds: seedCount, runs: runs.length },
     completion: { completed, total: runs.length },

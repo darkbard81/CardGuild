@@ -2421,3 +2421,9 @@
   .creation-figures { justify-content: flex-start; }
 }
 }
+
+@layer screens {
+  .reward-companion-choice { display: flex; flex-direction: column; align-items: center; gap: 0.5rem; }
+  .ui-reward-workspace .reward-companion-choice .reward-detail { display: block; }
+  .reward-companion-standee { display: block; flex-shrink: 0; background-repeat: no-repeat; }
+}

@@ -170,6 +170,15 @@ function collectReachable(pack: CompiledContentPack, reporter: Reporter): Reacha
         }
         continue;
       }
+      if (choice.kind === "companion") {
+        const npc = pack.companions?.[choice.definitionId];
+        const actor = npc && pack.actorDefinitions[npc.actorDefinitionId];
+        if (actor) {
+          for (const id of Object.values(actor.starterLoadout.equipment)) { usedEquipmentIds.add(id); playerEquipmentIds.add(id); }
+          for (const id of deckCardIds(actor, actor.starterLoadout, pack)) { usedCardIds.add(id); playerCardIds.add(id); }
+        }
+        continue;
+      }
       usedEquipmentIds.add(choice.definitionId);
       playerEquipmentIds.add(choice.definitionId);
       const wearers = starters.filter((_starter, index) => availability[index]!.eventual[choiceIndex]);
@@ -243,12 +252,12 @@ function checkIdentity(pack: CompiledContentPack, reporter: Reporter): void {
     );
   }
   const adventureIds = Object.keys(pack.adventures);
-  if (adventureIds.length !== 1 || adventureIds[0] !== PRODUCTION_CONTENT.adventureId) {
+  if (JSON.stringify(adventureIds.sort()) !== JSON.stringify([PRODUCTION_CONTENT.adventureId, ...policy.stagedAdventureIds].sort())) {
     reporter.issue(
       PACK_SOURCE,
       "adventures",
       "PRODUCTION_ADVENTURE_NOT_SINGULAR",
-      `The release ships exactly one authoritative Adventure, but the pack holds [${adventureIds.join(", ")}].`,
+      `The release must contain the selected Adventure and explicitly staged integration slices; the pack holds [${adventureIds.join(", ")}].`,
     );
   }
   if (pack.adventures[PRODUCTION_CONTENT.adventureId] !== PRODUCTION_CONTENT.adventure) {

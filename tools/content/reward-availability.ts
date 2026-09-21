@@ -23,6 +23,7 @@ export function rewardAvailability(
     offered ||= encounterId === reward.afterEncounterId;
     if (!offered) continue;
     reward.choices.forEach((choice, index) => {
+      if (choice.kind === "companion") { immediate[index] = eventual[index] = Boolean(pack.companions?.[choice.definitionId]); return; }
       const bucket = choice.kind === "card" ? "cards" : "equipment";
       const collection = { ...initial, [bucket]: { ...initial[bucket], [choice.definitionId]: (initial[bucket][choice.definitionId] ?? 0) + 1 } };
       const loadout = choice.kind === "card"

@@ -9,6 +9,7 @@ function byId<T extends { readonly id: string }>(values: readonly T[]): readonly
 export function normalizeContentPack(source: ContentPackSource): ContentPackSource {
   return {
     ...(source.creationPresets?.length ? { creationPresets: byId(source.creationPresets) } : {}),
+    ...(source.companions?.length ? { companions: byId(source.companions) } : {}),
     manifest: source.manifest,
     traits: byId(source.traits),
     ancestries: byId(source.ancestries).map(ancestry => ({ ...ancestry, fixedBoosts: [...ancestry.fixedBoosts].sort() as unknown as typeof ancestry.fixedBoosts })),
