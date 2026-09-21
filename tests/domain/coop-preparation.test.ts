@@ -1,6 +1,7 @@
+import { restoredCoopCheckpoint } from "../support/coop-checkpoints";
 import { expect, it } from "vitest";
 import { createCampaignSave } from "../../src/server/campaign-save";
-import { createResumedSessionCoreState, dispatchSessionIntent, hashSessionGameplayState, joinSessionCore, type SessionCoreState, type SessionIntent } from "../../src/session";
+import { assertSessionInvariants, createResumedSessionCoreState, dispatchSessionIntent, hashSessionGameplayState, isCoopPreparation, joinSessionCore, type SessionCoreState, type SessionIntent } from "../../src/session";
 import { recruitmentAct, recruitmentContext as context, recruitmentReward, recruitmentStart, recruitIntent } from "../support/recruitment";
 import { HERO, SECOND } from "../support/session";
 
@@ -100,4 +101,39 @@ it.each(["reward", "complete", "failed"] as const)("G-COOP active %s locks admis
   denied(state, { type: "set-coop-allowed", memberIds: [], revokeGuests: true });
   denied(state, { type: "select-character", memberId: SECOND }, "guest");
   denied(state, { type: "proceed-solo" });
+});
+
+it.each(["reward", "complete", "failed"] as const)("G-COOP restored %s rejects delegation/admission/selection but permits unchanged Host Resume", phase => {
+  const { state, context: authority, saved } = restoredCoopCheckpoint(phase);
+  const control = { connectedPlayerIds: ["host"], effectiveControllerByMemberId: { [HERO]: "host", [SECOND]: "host" } };
+  const send = (intent: SessionIntent) => dispatchSessionIntent(state, "host", intent, authority, control);
+  const shared = send({ type: "set-coop-allowed", memberIds: [SECOND], revokeGuests: false });
+  expect(shared.accepted).toBe(false); expect(shared.state).toBe(state);
+  expect(joinSessionCore(state, { playerId: "guest", displayName: "Guest" }, authority).accepted).toBe(false);
+  expect(joinSessionCore({ ...state, coopAllowedMemberIds: [SECOND] },
+    { playerId: "guest", displayName: "Guest" }, authority).errorCode).toBe("ROSTER_LOCKED");
+  // Also reject stale live delegation produced by the previous overly broad Resume rule.
+  const stale = { ...state, coopAllowedMemberIds: [SECOND], seats: [...state.seats, { seat: 2 as const, playerId: "guest", displayName: "Guest" }] };
+  assertSessionInvariants(stale);
+  const selected = dispatchSessionIntent(stale, "guest", { type: "select-character", memberId: SECOND }, authority, control);
+  expect(selected.accepted).toBe(false); expect(selected.state).toBe(stale);
+  const resumed = send({ type: "resume-adventure" });
+  expect(resumed.accepted).toBe(true);
+  expect(createCampaignSave(resumed.state)).toEqual(saved);
+});
+
+it("G-COOP unfinished saved Combat alone is a Resume delegation boundary", () => {
+  const combat = act(recruited(), { type: "start-encounter" });
+  const restored = createResumedSessionCoreState({ sessionId: "resume-combat", playerId: "host", displayName: "Host" }, createCampaignSave(combat), context);
+  expect(isCoopPreparation(restored)).toBe(true);
+  expect(isCoopPreparation({ ...restored, combat: null })).toBe(false);
+  expect(isCoopPreparation({ ...restored, combat: { ...restored.combat!, outcome: "victory" } })).toBe(false);
+});
+
+it("G-COOP a protagonist without companions retains normal and explicit solo departure", () => {
+  const state = recruitmentStart();
+  const normal = act(state, { type: "start-encounter" });
+  const solo = act(state, { type: "proceed-solo" });
+  expect(solo.combat).not.toBeNull();
+  expect(hashSessionGameplayState(solo)).toBe(hashSessionGameplayState(normal));
 });

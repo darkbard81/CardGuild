@@ -1,6 +1,7 @@
+import { restoredCoopCheckpoint } from "../support/coop-checkpoints";
 import { expect, test } from "@playwright/test";
 import { controlledSession } from "../support/browser-backend";
-import { recruitmentAct, recruitmentContext, recruitmentReward, recruitIntent } from "../support/recruitment";
+import { recruitmentAct, recruitmentContext, recruitmentReward, recruitmentStart, recruitIntent } from "../support/recruitment";
 import { createResumedSessionCoreState, joinSessionCore } from "../../src/session";
 import { createCampaignSave } from "../../src/server/campaign-save";
 import { HERO, SECOND } from "../support/session";
@@ -115,3 +116,30 @@ test("U-COOP occupied companion reclaim requires confirmation; cancel and failed
   expect(backend.state.guestClaims.byMemberId[SECOND]).toBe("guest");
   await expect(panel.getByText(/Guest · 접속 중/)).toBeVisible();
 });
+
+test("U-COOP initial Solo hides delegation controls while normal departure remains available", async ({ page }) => {
+  const backend = await controlledSession(page, recruitmentStart());
+  await expect(page.getByRole("region", { name: "Co-op 준비", exact: true })).toBeHidden();
+  await expect(page.getByRole("button", { name: "단독으로 진행", exact: true })).toHaveCount(0);
+  const depart = page.getByRole("button", { name: "전투 시작", exact: true });
+  await expect(depart).toBeEnabled();
+  await depart.click();
+  await expect.poll(() => backend.requests.length).toBe(1);
+  expect(backend.requests[0]!.intent).toEqual({ type: "start-encounter" });
+});
+
+for (const phase of ["reward", "complete", "failed"] as const) {
+  test(`U-COOP restored ${phase} hides invitations and returns to the saved screen without Guest selection`, async ({ page }) => {
+    const { state } = restoredCoopCheckpoint(phase);
+    const backend = await controlledSession(page, state);
+    await expect(page.getByRole("region", { name: "Co-op 준비", exact: true })).toBeHidden();
+    await expect(page.getByRole("button", { name: /Co-op 허용|선택 확정|초대 코드 복사/ })).toHaveCount(0);
+    const resume = page.getByRole("button", { name: phase === "reward" ? "모험 이어가기" : "저장된 결과 보기", exact: true });
+    await expect(resume).toBeEnabled();
+    await resume.click(); await expect.poll(() => backend.requests.length).toBe(1);
+    const next = backend.candidate(); backend.ack(true, next.revision); backend.publish(next);
+    await expect(page.getByRole("heading", { name: phase === "reward" ? "Choose one reward" : phase === "failed" ? "The party was defeated" : /resolved$/ })).toBeVisible();
+    await expect(page.getByRole("region", { name: "Co-op 준비", exact: true })).toBeHidden();
+    expect(next.adventure).toEqual(state.adventure);
+  });
+}

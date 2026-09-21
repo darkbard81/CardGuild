@@ -1,9 +1,12 @@
 import type { SessionControlContext, SessionCoreState } from "./types";
 
-/** Resume is an explicit safe boundary even when it holds a saved Combat. */
+/** Resume permits delegation only in preparation or an unfinished saved Combat. */
 export function isCoopPreparation(state: SessionCoreState): boolean {
-  return Boolean(state.adventure) && (state.lifecycle === "resume-lobby"
-    || state.lifecycle === "active" && !state.combat && (state.adventure?.phase === "ready" || state.adventure?.phase === "between-encounters"));
+  const phase = state.adventure?.phase;
+  if (phase === "ready" || phase === "between-encounters") {
+    return (state.lifecycle === "active" || state.lifecycle === "resume-lobby") && !state.combat;
+  }
+  return state.lifecycle === "resume-lobby" && phase === "combat" && state.combat?.outcome === null;
 }
 
 export function isCoopCompanion(state: SessionCoreState, memberId: string): boolean {

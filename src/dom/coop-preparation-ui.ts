@@ -3,7 +3,7 @@ import type { PartyMemberState } from "../adventure";
 import { resolvePartyMemberDefinition, type ResolvedPartyMemberDefinition } from "../character/member";
 import type { AssetCatalog } from "../presentation";
 import type { ServerControlView } from "../protocol";
-import { coopAdmissionRemaining, coopRemovedPlayers, isCoopPreparation, waitingGuests, type SessionCoreState, type SessionIntent } from "../session";
+import { coopAdmissionRemaining, coopRemovedPlayers, isCoopCompanion, isCoopPreparation, waitingGuests, type SessionCoreState, type SessionIntent } from "../session";
 
 function node<K extends keyof HTMLElementTagNameMap>(tag: K, text?: string): HTMLElementTagNameMap[K] {
   const result = document.createElement(tag);
@@ -54,7 +54,8 @@ export class CoopPreparationUi {
     if (this.current?.state.sessionId !== state.sessionId) { this.draft = undefined; this.confirmation = undefined; this.message = ""; }
     const focus = this.root.contains(document.activeElement) ? (document.activeElement as HTMLElement).dataset.coopAction : undefined;
     this.current = { state, viewer, control };
-    this.root.replaceChildren(); this.root.hidden = !isCoopPreparation(state);
+    this.root.replaceChildren();
+    this.root.hidden = !isCoopPreparation(state) || !state.partySlots.some(slot => isCoopCompanion(state, slot.memberId));
     if (this.root.hidden) { this.confirmation = undefined; return this.root; }
     this.root.setAttribute("aria-busy", String(this.pending));
     const host = viewer === state.hostPlayerId;
@@ -97,7 +98,6 @@ export class CoopPreparationUi {
     }
     this.root.append(list);
     if (host) {
-      if (members.length < 2) this.root.append(node("p", "동료가 합류하면 Co-op을 허용할 수 있습니다."));
       if (state.coopAllowedMemberIds.length && coopAdmissionRemaining(state) > 0) {
         const label = node("label", "초대 코드"); label.htmlFor = "coop-session-key";
         const code = node("input"); code.className = "ui-input"; code.id = "coop-session-key"; code.value = state.sessionId; code.readOnly = true;
