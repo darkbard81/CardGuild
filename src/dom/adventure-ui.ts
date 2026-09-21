@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import type { CharacterSheetDestination } from "./character-workspace";
 import { createCardFace } from "./card-face";
 import { cardLevelSummary } from "./card-level-view";
@@ -187,7 +188,7 @@ export class AdventureUi {
       .map((member) => {
         const row = element("li", "character-progression");
         row.dataset.memberId = member.id;
-        const name = this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id;
+        const name = resolvePartyMemberDefinition(member, this.pack)?.name ?? member.id;
         row.append(
           element("strong", undefined, name),
           element("span", undefined, progressionText(member.progression)),
@@ -319,7 +320,7 @@ export class AdventureUi {
           const candidate = equipment ? { ...member.loadout, equipment: { ...member.loadout.equipment, [equipment.slot]: equipment.id } }
             : { ...member.loadout, preparedCards: [...member.loadout.preparedCards, selected.definitionId] };
           const preview = previewLoadoutChange(state.party, collection, this.pack, member.id, candidate);
-          const name = this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id;
+          const name = resolvePartyMemberDefinition(member, this.pack)?.name ?? member.id;
           comparison.append(element("li", undefined, preview.after
             ? `${name} · 준비 가능 · HP ${preview.before.statistics.maxHp} → ${preview.after.statistics.maxHp} · AC ${preview.before.statistics.ac} → ${preview.after.statistics.ac} · Strike ${preview.before.strike.attackModifier} → ${preview.after.strike.attackModifier} · 카드 ${preview.before.deck.totalCards} → ${preview.after.deck.totalCards}`
             : `${name} · 현재 준비 불가: ${preview.validation.issues.map(issue => issue.message).join(" · ")}`));
@@ -444,7 +445,7 @@ export class AdventureUi {
     const pending = Object.values(state.party.members).filter(member => pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length);
     if (!pending.length) panel.append(element("p", undefined, "필수 성장 선택이 완료되었습니다. 장비와 카드는 원하는 경우 변경하세요."));
     for (const member of pending) {
-      const name = this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id;
+      const name = resolvePartyMemberDefinition(member, this.pack)?.name ?? member.id;
       const editable = access.editableMemberIds?.has(member.id) ?? false;
       const owner = access.controllerNames?.[member.id] ?? "담당 참가자";
       const button = this.secondaryActionButton(editable ? `${name} 성장 선택` : `${name} · ${owner}님의 성장 선택을 기다리는 중`, () => {

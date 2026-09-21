@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import type { CampaignSummary } from "../campaign/types";
 import { createCampaignDurability, type SessionDurability } from "./campaign-durability";
 import { CampaignSaveError, restoreCampaignSave, type CampaignRestoreResult } from "./campaign-save";
@@ -217,7 +218,8 @@ export function createCampaignService(
             totalEncounters: definition.encounterIds.length, encounterId: adventure.currentEncounterId,
             encounterName: adventure.currentEncounterId ? pack.scenarioSources[adventure.currentEncounterId]!.name : null,
             party: projection.partySlots.map(slot => ({ memberId: slot.memberId,
-              actorDefinitionId: slot.actorDefinitionId, name: pack.actorDefinitions[slot.actorDefinitionId]!.name,
+              actorDefinitionId: slot.actorDefinitionId, name: resolvePartyMemberDefinition(adventure.party.members[slot.memberId]!, pack).name,
+              appearanceKey: resolvePartyMemberDefinition(adventure.party.members[slot.memberId]!, pack).appearanceKey,
               level: adventure.party.members[slot.memberId]!.progression.level })),
           } };
         } catch (error) {

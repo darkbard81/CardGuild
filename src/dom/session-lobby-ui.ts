@@ -1,3 +1,4 @@
+import { resolveSessionPartyDefinition } from "../session/member-view";
 import type { AdventurePhase } from "../adventure/types";
 import type { AccountIdentity, CampaignSummary } from "../client";
 import type { CompiledContentPack } from "../content";
@@ -285,7 +286,7 @@ export class SessionLobbyUi {
         const party = element("ul", "campaign-party");
         for (const member of progress.party) {
           const item = element("li", "campaign-member");
-          const visual = this.catalog.actorVisual(member.actorDefinitionId);
+          const visual = this.catalog.actorVisual(member.appearanceKey ?? member.actorDefinitionId);
           if (visual) {
             const portrait = element("span", "campaign-portrait");
             portrait.setAttribute("aria-hidden", "true");
@@ -451,9 +452,9 @@ export class SessionLobbyUi {
         "small",
         undefined,
         owner?.playerId === state.hostPlayerId
-          ? `호스트 · ${connected.has(owner.playerId) ? "접속 중" : "오프라인"} · ${this.pack.actorDefinitions[state.partySlots[0]?.actorDefinitionId ?? ""]?.name ?? "파티 준비 중"} · ${state.partyPrepared ? "준비됨" : "파티 적용 필요"}`
+          ? `호스트 · ${connected.has(owner.playerId) ? "접속 중" : "오프라인"} · ${resolveSessionPartyDefinition(state, state.partySlots[0], this.pack)?.name ?? "파티 준비 중"} · ${state.partyPrepared ? "준비됨" : "파티 적용 필요"}`
           : owner
-            ? (claim ? (this.pack.actorDefinitions[state.partySlots.find(slot => slot.memberId === claim)?.actorDefinitionId ?? ""]?.name ?? claim) + " · 준비됨" : "캐릭터 선택 중") + (connected.has(owner.playerId) ? " · 접속 중" : " · 오프라인")
+            ? (claim ? (resolveSessionPartyDefinition(state, state.partySlots.find(slot => slot.memberId === claim), this.pack)?.name ?? claim) + " · 준비됨" : "캐릭터 선택 중") + (connected.has(owner.playerId) ? " · 접속 중" : " · 오프라인")
             : "참가 가능",
       ));
       const removable = Boolean(
@@ -570,7 +571,7 @@ export class SessionLobbyUi {
         const isHost = seat.playerId === state.hostPlayerId;
         const memberId = isHost ? state.partySlots[0]?.memberId : claimedMemberForPlayer(state, seat.playerId);
         const slot = state.partySlots.find(candidate => candidate.memberId === memberId);
-        const name = slot ? this.pack.actorDefinitions[slot.actorDefinitionId]?.name : undefined;
+        const name = slot ? resolveSessionPartyDefinition(state, slot, this.pack)?.name : undefined;
         row.append(element("strong", undefined, seat.displayName + (seat.playerId === viewerPlayerId ? " (나)" : "")),
           element("small", undefined, `${isHost ? "호스트" : "게스트"} · ${connected.has(seat.playerId) ? "접속 중" : "오프라인"} · ${name ?? "캐릭터 선택 중"}`));
         if (host && !isHost && !connected.has(seat.playerId) && !memberId) {
@@ -604,7 +605,7 @@ export class SessionLobbyUi {
     const list = element("div", "resume-characters");
     for (const slot of state.partySlots) {
       const member = state.adventure?.party.members[slot.memberId];
-      const actor = this.pack.actorDefinitions[slot.actorDefinitionId];
+      const actor = resolveSessionPartyDefinition(state, slot, this.pack);
       const claimant = state.guestClaims.byMemberId[slot.memberId];
       const mine = claimant === viewerPlayerId;
       const available = slot.slot !== 1 && !claimant;
@@ -614,7 +615,7 @@ export class SessionLobbyUi {
       entry.dataset.memberId = slot.memberId;
       entry.dataset.partySlot = String(slot.slot);
       entry.dataset.claimState = slot.slot === 1 ? "host" : mine ? "mine" : claimant ? "taken" : "available";
-      const visual = actor ? this.catalog.actorVisual(actor.id) : null;
+      const visual = actor ? this.catalog.actorVisual(actor.appearanceKey) : null;
       if (visual) {
         const portrait = element("span", "guest-character-art");
         portrait.setAttribute("aria-hidden", "true");

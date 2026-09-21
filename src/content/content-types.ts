@@ -1,3 +1,4 @@
+import type { CharacterCreationPreset } from "../character/member";
 import type { AncestryDefinition, CharacterBuildSource, CharacterRulesContext, ClassDefinition } from "../character";
 import type {
   ActionDefinition,
@@ -158,6 +159,7 @@ export interface AdventureDefinition {
 }
 
 export interface ContentPackSource {
+  readonly creationPresets?: readonly CharacterCreationPreset[];
   readonly manifest: ContentPackManifest;
   readonly traits: readonly TraitDefinition[];
   readonly ancestries: readonly AncestryDefinition[];
@@ -172,6 +174,7 @@ export interface ContentPackSource {
 }
 
 export interface CompiledContentPack {
+  readonly creationPresets?: Readonly<Record<string, CharacterCreationPreset>>;
   readonly manifest: ContentPackManifest;
   readonly fingerprint: string;
   readonly combatContent: CombatContent;
@@ -183,6 +186,7 @@ export interface CompiledContentPack {
 }
 
 export type ContentSourceCategory =
+  | "creationPresets"
   | "manifest"
   | "traits"
   | "ancestries"
@@ -207,6 +211,7 @@ export interface ContentValidationIssue {
 }
 
 export interface ContentPackFiles {
+  readonly creationPresets?: unknown;
   readonly manifest: unknown;
   readonly traits: unknown;
   readonly ancestries: unknown;
@@ -222,6 +227,7 @@ export interface ContentPackFiles {
 
 export function assembleContentPackSource(files: ContentPackFiles): unknown {
   return {
+    ...(files.creationPresets ? { creationPresets: files.creationPresets } : {}),
     manifest: files.manifest,
     traits: files.traits,
     ancestries: files.ancestries,

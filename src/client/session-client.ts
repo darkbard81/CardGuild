@@ -1,3 +1,4 @@
+import { validateSnapshotState } from "../protocol/validate-snapshot";
 import { PRODUCTION_CONTENT } from "../content/production-content";
 import {
   PROTOCOL_VERSION,
@@ -311,6 +312,11 @@ export class SessionClient {
         this.outstanding = { ...this.outstanding, committedRevision: message.committedRevision };
         if ((this.snapshotValue?.revision ?? -1) >= message.committedRevision) this.settleOutstanding(true);
       }
+      return;
+    }
+    if (!validateSnapshotState(message)) {
+      this.stopTerminal({ v: PROTOCOL_VERSION, type: "error", code: "INVALID_MESSAGE", message: "Server snapshot has invalid gameplay identity." }, true);
+      socket.close(1000, "invalid snapshot");
       return;
     }
     const shouldApply = !this.snapshotValue ||

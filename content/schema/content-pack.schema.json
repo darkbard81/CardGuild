@@ -5,6 +5,46 @@
   "additionalProperties": false,
   "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures", "ancestries", "classes"],
   "properties": {
+    "creationPresets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "actorDefinitionId",
+          "appearance"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "actorDefinitionId": {
+            "type": "string",
+            "minLength": 1
+          },
+          "appearance": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "male",
+              "female"
+            ],
+            "properties": {
+              "male": {
+                "type": "string",
+                "minLength": 1
+              },
+              "female": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    },
     "manifest": { "$ref": "#/$defs/manifest" },
     "traits": { "type": "array", "items": { "$ref": "#/$defs/traitDefinition" } },
     "conditions": { "type": "array", "items": { "$ref": "#/$defs/conditionDefinition" } },

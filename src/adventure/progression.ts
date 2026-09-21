@@ -1,3 +1,4 @@
+import { assertMemberIdentity, resolvePartyMemberDefinition } from "../character/member";
 import type { ActorDefinition } from "../content/content-types";
 import { assertCharacterProgression, pendingCharacterAdvancements, resolveCharacterRules } from "../character";
 import type { CharacterRulesContext } from "../character";
@@ -49,19 +50,36 @@ export function applyExperience(
 
 /** Validate runtime progression without repairing old or malformed state. */
 export function assertAdventureInvariants(state: AdventureState): void {
-  if (state.version !== 4) throw new Error("AdventureState must use version 4.");
-  for (const member of Object.values(state.party.members)) assertCharacterProgression(member.progression);
+  if (state.version !== 5) throw new Error("AdventureState must use version 5.");
+  const members = Object.values(state.party.members);
+  if (members.length < 1 || members.length > 3) throw new Error("Party must contain 1–3 members.");
+  const players = members.filter(member => member.identity?.origin === "player-created");
+  if (state.partyOrigin === "player-created" ? players.length !== 1 || players[0]?.seat !== 1 : state.partyOrigin !== "authored" || players.length !== 0) {
+    throw new Error("Player-created Campaign requires exactly one protagonist in slot 1.");
+  }
+  const npcs = new Set<string>();
+  const seats = new Set<number>();
+  for (const [id, member] of Object.entries(state.party.members)) {
+    if (member.id !== id || ![1, 2, 3].includes(member.seat) || seats.has(member.seat)) throw new Error("Invalid member identity/seat.");
+    seats.add(member.seat);
+    assertMemberIdentity(member.identity);
+    assertCharacterProgression(member.progression);
+    if (member.identity.origin === "companion") {
+      if (npcs.has(member.actorDefinitionId)) throw new Error("Companion NPC may only be recruited once.");
+      npcs.add(member.actorDefinitionId);
+    }
+  }
 }
 
 /** Content-aware ingress validation shared by live SessionHost and durable save restore. */
 export function assertAdventureCharacterInvariants(
   state: AdventureState,
-  context: Pick<AdventureRuntimeContext, "actorDefinitions" | "characterRules">,
+  context: Pick<AdventureRuntimeContext, "actorDefinitions" | "characterRules" | "creationPresets">,
 ): void {
   assertAdventureInvariants(state);
   for (const member of Object.values(state.party.members)) {
-    const actor = context.actorDefinitions[member.actorDefinitionId];
-    if (!actor) throw new Error(`Party member "${member.id}" references an unknown Character.`);
+    const actor = resolvePartyMemberDefinition(member, context);
+    if (!actor.character || !actor.traits.some(t => t.id === "playable")) throw new Error("Party member must be a playable Character.");
     resolveEffectiveCharacterStatProfile(actor, member.progression, context.characterRules);
     if (state.phase === "combat"
       && pendingCharacterAdvancements(member.progression.level, member.progression.advancements).length) {

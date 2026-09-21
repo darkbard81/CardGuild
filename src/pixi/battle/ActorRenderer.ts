@@ -29,7 +29,7 @@ function standeeBase(style: StandeeBaseStyle): Graphics {
  * under it and the badge above it are screen furniture and stay as they are.
  */
 function standeeBody(catalog: AssetCatalog, actor: ActorState): { body: Sprite; height: number } {
-  const facing = facingStandee(catalog.actorVisual(actor.definitionId), actor.facing);
+  const facing = facingStandee(catalog.actorVisual(actor.appearanceKey ?? actor.definitionId), actor.facing);
   const asset = catalog.asset(facing.assetId);
   const height = asset.displayHeight ?? DEFAULT_STANDEE_HEIGHT;
   const body = new Sprite(catalog.texture(facing.assetId));

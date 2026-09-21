@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import type { RewardGrant } from "../content/content-types";
 import { applyCharacterAdvancement, pendingCharacterAdvancements } from "../character";
 import { clonePartyLoadout, createStartingCollection, validatePartyLoadout } from "../loadout";
@@ -114,9 +115,8 @@ export function createAdventureSession(
       roster
         .sort((left, right) => left.seat - right.seat || left.id.localeCompare(right.id))
         .map((member) => {
-          const definition = context.actorDefinitions[member.actorDefinitionId];
-          if (!definition) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
-          return [member.id, { ...member, loadout: clonePartyLoadout(definition.starterLoadout), progression: createCharacterProgression(definition) }];
+          const definition = resolvePartyMemberDefinition(member, context);
+          return [member.id, { ...member, identity: structuredClone(member.identity ?? { origin: "companion", recruitmentSource: "authored-starter" }), loadout: clonePartyLoadout(definition.starterLoadout), progression: createCharacterProgression(definition) }];
         }),
     ),
   };
@@ -124,7 +124,8 @@ export function createAdventureSession(
   const validation = validatePartyLoadout(clonedParty, collection, context);
   if (!validation.valid) throw new Error(`Invalid starting loadout: ${validation.issues[0]?.message ?? "unknown error"}`);
   const state: AdventureState = {
-    version: 4,
+    version: 5,
+    partyOrigin: roster.some(member => member.identity?.origin === "player-created") ? "player-created" : "authored",
     adventureId: context.definition.id,
     phase: "ready",
     currentEncounterId: null,
@@ -169,7 +170,7 @@ export function dispatchAdventureCommand(
       }
       const member = state.party.members[command.memberId];
       if (!member) return reject(state, `Party member "${command.memberId}" is missing.`);
-      const actor = context.actorDefinitions[member.actorDefinitionId];
+      const actor = resolvePartyMemberDefinition(member, context);
       if (!actor?.character) return reject(state, "Character Build is missing.");
       try {
         const progression = applyCharacterAdvancement(member.progression, command.choice,

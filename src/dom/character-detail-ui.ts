@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import { updateCharacterPicker } from "./character-picker";
 import type { AdventureState } from "../adventure";
 import { CharacterWorkspace, sheetNode, type CharacterSheetDestination, type CharacterSheetEditor, type CharacterSheetHandlers } from "./character-workspace";
@@ -18,6 +19,7 @@ const signed = (value: number): string => value >= 0 ? `+${value}` : String(valu
 
 /** Preparation adapters use the same equipment/progression pipeline as encounter creation. */
 export function preparationDetailActor(definition: ActorDefinition, pack: CompiledContentPack, member?: LoadoutPartyMember): ActorState {
+  if (member) definition = resolvePartyMemberDefinition(member, pack);
   const setup = deriveActorSetup(definition, { instanceId: member?.id ?? definition.id, actorDefinitionId: definition.id,
     team: "heroes", position: { x: 0, y: 0 }, facing: "north" }, member?.loadout ?? definition.starterLoadout,
   pack.combatContent, member?.id ?? definition.id, member ? resolveLoadoutStatProfile(member, pack) : definition.statProfile);
@@ -256,8 +258,8 @@ export class CharacterDetailUi {
     const members = Object.values(state.party.members);
     const member = members.find(m => m.id === this.selectedMemberId);
     if (!member) { this.close(); return; }
-    const definition = this.pack.actorDefinitions[member.actorDefinitionId]; if (!definition) { this.close(); return; }
-    updateCharacterPicker(this.select, members.map(m => ({ id: m.id, definitionId: m.actorDefinitionId, name: this.pack.actorDefinitions[m.actorDefinitionId]?.name ?? m.id })), member.id, this.catalog, id => {
+    const definition = resolvePartyMemberDefinition(member, this.pack); if (!definition) { this.close(); return; }
+    updateCharacterPicker(this.select, members.map(m => ({ id: m.id, definitionId: m.actorDefinitionId, appearanceKey: resolvePartyMemberDefinition(m, this.pack).appearanceKey, name: resolvePartyMemberDefinition(m, this.pack)?.name ?? m.id })), member.id, this.catalog, id => {
       this.selectedMemberId = id; this.renderAdventure();
     }, this.panel.workspace.busy);
     const editable = (state.phase === "ready" || state.phase === "between-encounters") && this.editableMemberIds.has(member.id);

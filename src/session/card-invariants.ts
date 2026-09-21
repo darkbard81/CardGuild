@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import type { AdventureState } from "../adventure/types";
 import type { CompiledContentPack } from "../content/content-types";
 import { resolveCardEligibility } from "../game/capabilities";
@@ -17,10 +18,14 @@ export function assertSessionCardInvariants(
   const identities = (traits: readonly { readonly id: string }[]): string => traits
     .filter(trait => Object.hasOwn(pack.combatContent.classes, trait.id)).map(trait => trait.id).sort().join("|");
   for (const actor of Object.values(state.combat.actors)) {
-    const definition = pack.actorDefinitions[actor.definitionId];
-    if (!definition || definition.statProfile.kind !== actor.statProfile.kind) throw new Error(`Invalid combat actor "${actor.id}".`);
     const member = state.adventure?.party.members[actor.id];
+    const definition = member ? resolvePartyMemberDefinition(member, pack) : pack.actorDefinitions[actor.definitionId];
+    if (!definition || definition.statProfile.kind !== actor.statProfile.kind) throw new Error(`Invalid combat actor "${actor.id}".`);
     if (member && member.actorDefinitionId !== actor.definitionId) throw new Error(`Combat Character "${actor.id}" does not match its party member.`);
+    if (member) {
+      const resolved = resolvePartyMemberDefinition(member, pack);
+      if (actor.name !== resolved.name || actor.appearanceKey !== resolved.appearanceKey) throw new Error("Combat identity differs from its party member.");
+    }
     const profile = member ? resolveLoadoutStatProfile(member, pack) : definition.statProfile;
     if (actor.statProfile.kind === "character" && (profile.kind !== "character"
       || actor.statProfile.stats.level !== profile.stats.level || identities(actor.traits) !== identities(definition.traits))) {

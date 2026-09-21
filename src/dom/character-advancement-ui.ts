@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import { preparationDetailActor } from "./character-detail-ui";
 import { resolveStatisticModifier, resolveStatisticDC, resolveArmorClass, resolveClassDC, resolveStrike } from "../game";
 import {
@@ -45,7 +46,7 @@ export class CharacterAdvancementUi {
     if (level === undefined) { this.drafts.delete(member.id); return null; }
     const panel = element("section"); panel.className = "ui-panel ui-panel--workspace character-advancement";
     panel.dataset.advancementMember = member.id; panel.dataset.advancementLevel = String(level);
-    panel.setAttribute("aria-label", `${this.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id} Level-Up`);
+    panel.setAttribute("aria-label", `${resolvePartyMemberDefinition(member, this.pack)?.name ?? member.id} Level-Up`);
     panel.append(element("h3", `Lv. ${level} · Level-Up`));
     if (!phaseAllows) {
       panel.append(element("p", "보상을 선택한 뒤 성장 선택을 완료하세요.")); return panel;
@@ -54,7 +55,7 @@ export class CharacterAdvancementUi {
       this.drafts.delete(member.id);
       panel.append(element("p", `${controllerName ?? "담당 플레이어"}님이 캐릭터 성장을 선택하고 있습니다.`)); return panel;
     }
-    const actor = this.pack.actorDefinitions[member.actorDefinitionId];
+    const actor = resolvePartyMemberDefinition(member, this.pack);
     if (!actor?.character) throw new Error("Character Build is missing.");
     const character = { traits: actor.traits, build: actor.character.build };
     const before = resolveCharacterRules({ ...character, progression: member.progression }, this.pack.characterRules);

@@ -1,4 +1,6 @@
 import { positionKey } from "../game/grid";
+import { assertCreationPreset } from "../character/member";
+import { validatePartyLoadout, createStartingCollection } from "../loadout";
 import { resolveCharacterRules } from "../character";
 import type { CharacterRulesContext } from "../character";
 import type { ActorSetup, CombatDefinition, ContentIdentity, ScenarioDefinition } from "../game/types";
@@ -110,6 +112,15 @@ export function compileContentPack(
     traits: recordById(normalized.traits),
     conditions: recordById(normalized.conditions),
   };
+  const creationPresets = recordById(normalized.creationPresets ?? []);
+  if (Object.keys(creationPresets).length !== (normalized.creationPresets ?? []).length) throw new Error("Creation preset IDs must be unique.");
+  const memberContent = { actorDefinitions, characterRules, combatContent, creationPresets };
+  for (const preset of Object.values(creationPresets)) {
+    const actor = assertCreationPreset(preset, memberContent);
+    const party = { members: { starter: { id: "starter", actorDefinitionId: actor.id, loadout: actor.starterLoadout } } };
+    const validation = validatePartyLoadout(party, createStartingCollection(party, memberContent), memberContent);
+    if (!validation.valid) throw new Error(`Invalid creation preset ${preset.id}: ${validation.issues[0]?.message}`);
+  }
   const scenarios = recordById(normalized.scenarios.map((scenario) => compileScenario(scenario, actorDefinitions, combatContent)));
 
   return {
@@ -118,6 +129,7 @@ export function compileContentPack(
     combatContent,
     characterRules,
     actorDefinitions,
+    creationPresets,
     scenarioSources: recordById(normalized.scenarios),
     scenarios,
     adventures: recordById(normalized.adventures),

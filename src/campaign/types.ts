@@ -6,7 +6,7 @@ export interface CampaignProgressSummary {
   readonly totalEncounters: number;
   readonly encounterId: string | null;
   readonly encounterName: string | null;
-  readonly party: readonly { readonly memberId: string; readonly actorDefinitionId: string; readonly name: string; readonly level: number }[];
+  readonly party: readonly { readonly memberId: string; readonly actorDefinitionId: string; readonly name: string; readonly appearanceKey?: string; readonly level: number }[];
 }
 export interface CampaignSummary {
   readonly campaignId: string;

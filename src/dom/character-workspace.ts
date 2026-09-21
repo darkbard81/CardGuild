@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import { statisticButton, statisticPresentation } from "./actor-effect-view";
 import type { AdventureState } from "../adventure";
 import type { CompiledContentPack } from "../content";
@@ -234,7 +235,7 @@ export class CharacterWorkspace {
     if (!this.editor) return "";
     const users = Object.values(this.editor.state.party.members).flatMap(member => {
       const count = (kind === "equipment" ? Object.values(member.loadout.equipment) : member.loadout.preparedCards).filter(value => value === id).length;
-      return count ? [{ name: this.editor!.pack.actorDefinitions[member.actorDefinitionId]?.name ?? member.id, count }] : [];
+      return count ? [{ name: resolvePartyMemberDefinition(member, this.editor!.pack)?.name ?? member.id, count }] : [];
     });
     const owned = this.editor.state.collection[kind][id] ?? 0;
     return `보유 ${owned} · 사용 가능 ${owned - users.reduce((sum, user) => sum + user.count, 0)}${users.length ? ` · 사용 중: ${users.map(user => `${user.name} ×${user.count}`).join(", ")}` : ""}`;
@@ -260,7 +261,7 @@ export class CharacterWorkspace {
     } else {
       content.classList.add("ui-character-workspace__card-content--prepared");
       const prepared = this.member?.loadout.preparedCards ?? this.actor!.deckContributions.filter(c => c.source.kind === "prepared").flatMap(c => Array<string>(c.count).fill(c.cardDefinitionId));
-      const capacity = this.editor && this.member ? this.editor.pack.actorDefinitions[this.member.actorDefinitionId]?.loadoutProfile.preparedCardCapacity : prepared.length;
+      const capacity = this.editor && this.member ? resolvePartyMemberDefinition(this.member, this.editor.pack)?.loadoutProfile.preparedCardCapacity : prepared.length;
       content.append(el("h3", `준비 카드 ${prepared.length}/${capacity ?? prepared.length}`));
       const row = el("div", "", "ui-character-workspace__prepared");
       for (let index = 0; index < (capacity ?? prepared.length); index++) {

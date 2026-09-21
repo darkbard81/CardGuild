@@ -319,7 +319,7 @@ export class BattleUi {
   /** A bust crop of the same standee the board draws, so a panel can name a face. */
   private paintPortrait(window: HTMLElement, actor: ActorState, size: number): void {
     window.replaceChildren();
-    const visual = this.catalog.manifest.actorVisuals[actor.definitionId];
+    const visual = this.catalog.manifest.actorVisuals[actor.appearanceKey ?? actor.definitionId];
     if (!visual) {
       window.classList.add("missing");
       window.textContent = actor.name.slice(0, 1);

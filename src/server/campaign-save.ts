@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import {
   assertAdventureCharacterInvariants,
   assertAdventureInvariants,
@@ -27,15 +28,15 @@ import {
 import { validateCampaignSaveShape } from "./campaign-save-schema";
 import type { CampaignSaveRecord } from "./persistence";
 
-export const CURRENT_SAVE_SCHEMA_VERSION = 3;
+export const CURRENT_SAVE_SCHEMA_VERSION = 4;
 
 /**
  * The durable Campaign payload. It holds gameplay only: no session id, no player id, no
  * guest claim, no reconnect credential, no presence and no request journal. Restoring it
  * therefore cannot resurrect a dead live session's identity.
  */
-export interface CampaignSaveV3 {
-  readonly saveSchemaVersion: 3;
+export interface CampaignSaveV4 {
+  readonly saveSchemaVersion: 4;
   readonly contentIdentity: ContentIdentity;
   readonly partySlots: readonly SessionPartySlot[];
   readonly adventure: AdventureState;
@@ -64,24 +65,24 @@ function corrupt(message: string): never {
 }
 
 /** Serialize the durable projection of a live session. The input is never mutated. */
-export function createCampaignSave(state: SessionCoreState): CampaignSaveV3 {
+export function createCampaignSave(state: SessionCoreState): CampaignSaveV4 {
   const adventure = state.adventure;
   if (!adventure) throw new Error("Campaign save requires an active AdventureState.");
   return {
-    saveSchemaVersion: 3,
+    saveSchemaVersion: 4,
     contentIdentity: { ...state.contentIdentity },
     partySlots: [...state.partySlots]
       .sort((left, right) => left.slot - right.slot)
       .map((slot) => ({ ...slot })),
-    adventure,
-    combat: state.combat,
+    adventure: structuredClone(adventure),
+    combat: structuredClone(state.combat),
   };
 }
 
 /**
- * Schema gate: v2 only. Final-stat Save v1 cannot be reinterpreted as legal Character Builds.
+ * Schema gate: v4 only. Older saves are preserved and rejected without guessed identity.
  */
-function migrateSaveSchema(version: number, payload: unknown): CampaignSaveV3 {
+function migrateSaveSchema(version: number, payload: unknown): CampaignSaveV4 {
   if (version !== CURRENT_SAVE_SCHEMA_VERSION) {
     throw new CampaignSaveError(
       "SAVE_SCHEMA_UNSUPPORTED",
@@ -90,11 +91,11 @@ function migrateSaveSchema(version: number, payload: unknown): CampaignSaveV3 {
   }
   const shape = validateCampaignSaveShape(payload);
   if (!shape.ok) corrupt("Stored save payload does not match the save schema: " + shape.error);
-  return payload as CampaignSaveV3;
+  return payload as CampaignSaveV4;
 }
 
 /** Nothing else in this module may guess at a pack it does not serve. */
-function contentMismatch(save: CampaignSaveV3, current: ContentIdentity): never {
+function contentMismatch(save: CampaignSaveV4, current: ContentIdentity): never {
   throw new CampaignSaveError(
     "SAVE_CONTENT_MISMATCH",
     `Save was written for content pack ${save.contentIdentity.packId}@${save.contentIdentity.packVersion} ` +
@@ -112,10 +113,10 @@ function contentMismatch(save: CampaignSaveV3, current: ContentIdentity): never 
  * granted retroactively — an already-completed Encounter stays completed and unpaid.
  */
 function applyContentMigration(
-  save: CampaignSaveV3,
+  save: CampaignSaveV4,
   migration: ContentMigration,
   context: SessionAuthorityContext,
-): CampaignSaveV3 {
+): CampaignSaveV4 {
   let setupFingerprint: string | null = null;
   if (save.combat) {
     const rebuilt = migrateCombatSetupFingerprint(save, save.combat, migration, context);
@@ -131,7 +132,7 @@ function adventureDefinition(context: SessionAuthorityContext): AdventureDefinit
   return definition;
 }
 
-function validatePartySlots(save: CampaignSaveV3, context: SessionAuthorityContext): void {
+function validatePartySlots(save: CampaignSaveV4, context: SessionAuthorityContext): void {
   const slots = [...save.partySlots].sort((left, right) => left.slot - right.slot);
   if (slots.some((slot, index) => slot.slot !== index + 1)) {
     corrupt("Saved party slots must be consecutive and start at slot 1.");
@@ -139,14 +140,15 @@ function validatePartySlots(save: CampaignSaveV3, context: SessionAuthorityConte
   if (new Set(slots.map((slot) => slot.memberId)).size !== slots.length) {
     corrupt("Saved party member identities must be unique.");
   }
-  if (new Set(slots.map((slot) => slot.actorDefinitionId)).size !== slots.length) {
-    corrupt("Saved party characters must be unique.");
-  }
   for (const slot of slots) {
     if (slot.memberId !== memberIdForPartySlot(slot.slot)) {
       corrupt(`Saved party slot ${String(slot.slot)} does not use its deterministic member id.`);
     }
-    const actor = context.pack.actorDefinitions[slot.actorDefinitionId];
+    const member = save.adventure.party.members[slot.memberId];
+    if (!member) corrupt("Saved slot has no member.");
+    let actor;
+    try { actor = resolvePartyMemberDefinition(member, context.pack); }
+    catch (error) { corrupt(error instanceof Error ? error.message : String(error)); }
     if (!actor) corrupt(`Saved character "${slot.actorDefinitionId}" is not in the current content pack.`);
     if (actor.statProfile.kind !== "character") {
       corrupt(`Saved character "${slot.actorDefinitionId}" is not a Character stat profile.`);
@@ -157,7 +159,7 @@ function validatePartySlots(save: CampaignSaveV3, context: SessionAuthorityConte
   }
 }
 
-function validateAdventure(save: CampaignSaveV3, context: SessionAuthorityContext): void {
+function validateAdventure(save: CampaignSaveV4, context: SessionAuthorityContext): void {
   const adventure = save.adventure;
   try {
     // Progression shape and Adventure version only; content validity is checked below.
@@ -220,7 +222,7 @@ function validateAdventure(save: CampaignSaveV3, context: SessionAuthorityContex
   }
 }
 
-function validateCombat(save: CampaignSaveV3, context: SessionAuthorityContext): void {
+function validateCombat(save: CampaignSaveV4, context: SessionAuthorityContext): void {
   const combat = save.combat;
   const adventure = save.adventure;
   if (!combat) {
@@ -228,7 +230,7 @@ function validateCombat(save: CampaignSaveV3, context: SessionAuthorityContext):
     return;
   }
   if (adventure.phase !== "combat") corrupt("Saved CombatState requires the combat Adventure phase.");
-  if (combat.version !== 5) corrupt("Saved CombatState must use version 5.");
+  if (combat.version !== 6) corrupt("Saved CombatState must use version 6.");
   if (!sameContentIdentity(combat.contentIdentity, save.contentIdentity)) {
     corrupt("Saved CombatState content identity does not match the save.");
   }
@@ -349,12 +351,12 @@ function validateCombat(save: CampaignSaveV3, context: SessionAuthorityContext):
 export interface CampaignRestoreResult {
   readonly projection: SessionGameplayProjection;
   readonly migration: {
-    readonly save: CampaignSaveV3;
+    readonly save: CampaignSaveV4;
     readonly snapshotHash: string;
   } | null;
 }
 
-function projectionOf(save: CampaignSaveV3): SessionGameplayProjection {
+function projectionOf(save: CampaignSaveV4): SessionGameplayProjection {
   return {
     contentIdentity: save.contentIdentity,
     partySlots: [...save.partySlots].sort((left, right) => left.slot - right.slot),

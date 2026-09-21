@@ -1,3 +1,4 @@
+import { resolveSessionPartyDefinition } from "../session/member-view";
 import { CharacterDetailUi } from "./character-detail-ui";
 import type { CompiledContentPack } from "../content";
 import type { ActorDefinition } from "../content/content-types";
@@ -201,7 +202,7 @@ export class PartyBuilderUi {
         ? state.seats.filter(seat => Object.values(state.guestClaims.byMemberId).includes(seat.playerId)).map(seat => {
           const memberId = Object.entries(state.guestClaims.byMemberId).find(([, playerId]) => playerId === seat.playerId)?.[0];
           const slot = state.partySlots.find(candidate => candidate.memberId === memberId);
-          return `${seat.displayName}: ${this.pack.actorDefinitions[slot?.actorDefinitionId ?? ""]?.name ?? "캐릭터"}`;
+          return `${seat.displayName}: ${resolveSessionPartyDefinition(state, slot, this.pack)?.name ?? "캐릭터"}`;
         }).join(" · ") + " 선택 중. 모든 게스트가 선택을 해제하면 파티를 변경할 수 있습니다. 오프라인 참가자는 다시 접속해 해제하세요."
         : unchanged
           ? "현재 파티가 적용되어 있습니다."
@@ -227,10 +228,10 @@ export class PartyBuilderUi {
     root.replaceWith(replacement);
   }
 
-  private characterCard(actor: ActorDefinition): HTMLElement {
+  private characterCard(actor: ActorDefinition & { readonly appearanceKey?: string }): HTMLElement {
     const card = element("article", "party-character-card");
     card.dataset.actorDefinitionId = actor.id;
-    const visual = this.catalog.actorVisual(actor.id);
+    const visual = this.catalog.actorVisual(actor.appearanceKey ?? actor.id);
     const portrait = element("span", "party-character-art");
     portrait.setAttribute("role", "img");
     portrait.setAttribute("aria-label", actor.name + " front standee");
@@ -265,7 +266,7 @@ export class PartyBuilderUi {
     }
     const choices = element("div", "party-character-cards");
     for (const partySlot of state.partySlots) {
-      const actor = this.pack.actorDefinitions[partySlot.actorDefinitionId];
+      const actor = resolveSessionPartyDefinition(state, partySlot, this.pack);
       if (!actor) continue;
       const claimant = state.guestClaims.byMemberId[partySlot.memberId];
       const mine = claimant === viewerPlayerId;

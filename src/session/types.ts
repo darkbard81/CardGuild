@@ -1,3 +1,4 @@
+import type { CreateCharacterInput } from "../character/member";
 import type { AdventureEvent, AdventureState } from "../adventure";
 import type { CharacterAdvancementChoice } from "../character";
 import type { CompiledContentPack } from "../content";
@@ -60,7 +61,7 @@ export interface SessionGameplayHashInput {
 export type SessionLifecycle = "lobby" | "resume-lobby" | "active";
 
 export interface SessionCoreState {
-  readonly version: 3;
+  readonly version: 4;
   readonly sessionId: string;
   readonly revision: number;
   readonly contentIdentity: ContentIdentity;
@@ -102,6 +103,7 @@ export interface ResumeSessionOptions extends SessionPlayerIdentity {
 }
 
 export type SessionIntent =
+  | ({ readonly type: "create-character" } & CreateCharacterInput)
   | { readonly type: "advance-character"; readonly memberId: string; readonly choice: CharacterAdvancementChoice }
   | { readonly type: "set-party-composition"; readonly actorDefinitionIds: readonly string[] }
   | { readonly type: "release-character" }

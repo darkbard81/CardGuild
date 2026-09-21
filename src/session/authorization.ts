@@ -70,6 +70,10 @@ export function authorizeSessionIntent(
   }
 
   switch (intent.type) {
+    case "create-character":
+      if (!isHost || state.lifecycle !== "lobby" || state.adventure) return "Only the host of an uncreated Campaign can create its protagonist.";
+      if (state.seats.length !== 1) return "Character creation requires a solo host.";
+      return undefined;
     case "set-party-composition":
       if (!isHost || state.lifecycle !== "lobby") return "Only the host can prepare the lobby party.";
       if (Object.keys(state.guestClaims.byMemberId).length > 0) {

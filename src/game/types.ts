@@ -283,6 +283,8 @@ export interface ResolvedStrikeProfile {
 }
 
 export interface ActorState {
+  /** Logical authored visual key; never a URL or renderer resource. */
+  readonly appearanceKey?: string;
   readonly id: EntityId;
   readonly definitionId: ActorDefinitionId;
   readonly name: string;
@@ -459,7 +461,7 @@ export interface KnowledgeAttempt { readonly actorId: EntityId; readonly targetI
 export interface CombatState {
   /** Absent in older v5 snapshots: no knowledge has been earned. */
   readonly knowledge?: readonly KnowledgeAttempt[];
-  readonly version: 5;
+  readonly version: 6;
   readonly scenarioId: string;
   readonly seed: number;
   readonly contentIdentity: ContentIdentity;

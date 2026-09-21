@@ -14,6 +14,7 @@ import { validateContentPackStructure } from "../../src/content/validate-content
 import { formatContentValidationIssue } from "../../src/content/validate-semantics";
 
 const CATEGORIES: readonly ContentSourceCategory[] = [
+  "creationPresets",
   "manifest",
   "traits",
   "ancestries",
@@ -59,6 +60,7 @@ async function checkPack(
       try {
         values[category] = await readJson(filePath);
       } catch (error) {
+        if (category === "creationPresets" && (error as NodeJS.ErrnoException).code === "ENOENT") return;
         parseIssues.push(parseIssue(locations[category] ?? filePath, error));
       }
     }),

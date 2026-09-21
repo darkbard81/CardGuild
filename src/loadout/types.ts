@@ -1,3 +1,4 @@
+import type { PartyMemberIdentity } from "../character/member";
 import type { ActorDefinition, CompiledContentPack } from "../content/content-types";
 import type { CharacterProgressionState } from "../character";
 import type {
@@ -18,6 +19,7 @@ export interface PartyMemberLoadout {
 }
 
 export interface LoadoutPartyMember {
+  readonly identity?: PartyMemberIdentity;
   readonly id: string;
   readonly actorDefinitionId: ActorDefinitionId;
   readonly loadout: PartyMemberLoadout;
@@ -35,6 +37,7 @@ export interface LoadoutCollection {
 }
 
 export interface LoadoutContent {
+  readonly creationPresets?: CompiledContentPack["creationPresets"];
   readonly characterRules: CompiledContentPack["characterRules"];
   readonly actorDefinitions: CompiledContentPack["actorDefinitions"];
   readonly combatContent: CompiledContentPack["combatContent"];

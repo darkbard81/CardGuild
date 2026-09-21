@@ -1,7 +1,8 @@
+import { CREATE_CHARACTER_PROPERTIES } from "../character/member-schema";
 import { CHARACTER_ADVANCEMENT_CHOICE_SCHEMA } from "../character/schema";
 import Ajv, { type ErrorObject } from "ajv";
 
-import { PROTOCOL_VERSION, type ClientMessage } from "./v10-types";
+import { PROTOCOL_VERSION, type ClientMessage } from "./v11-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {
@@ -79,6 +80,8 @@ const loadout = {
 } as const;
 const intent = {
   oneOf: [
+    { type: "object", additionalProperties: false, required: ["type", "name", "gender", "creationPresetId"],
+      properties: { type: { const: "create-character" }, ...CREATE_CHARACTER_PROPERTIES } },
     { type: "object", additionalProperties: false, required: ["type", "memberId", "choice"],
       properties: { type: { const: "advance-character" }, memberId: nonEmptyString, choice: CHARACTER_ADVANCEMENT_CHOICE_SCHEMA } },
     {

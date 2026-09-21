@@ -1,3 +1,4 @@
+import { validateGameplayShape } from "../protocol/gameplay-schema";
 import { assertAdventureCharacterInvariants } from "../adventure";
 import { assertSessionCardInvariants } from "../session/card-invariants";
 import { fingerprintValue } from "../game/determinism";
@@ -77,6 +78,7 @@ export class SessionHost {
   ) {
     // attach() publishes this state as a snapshot before any commit runs, so the
     // constructor is the only place left to reject a restored state.
+    if (!validateGameplayShape(state)) throw new Error("Session gameplay has an invalid persistent shape.");
     assertSessionInvariants(state);
     if (state.adventure) assertAdventureCharacterInvariants(state.adventure, context.pack);
     assertSessionCardInvariants(state, context.pack);

@@ -1,3 +1,4 @@
+import { assertCharacterName, assertCreationPreset } from "../character/member";
 import {
   buildAdventureEncounter,
   assertAdventureInvariants,
@@ -50,6 +51,7 @@ function adventureContext(context: SessionAuthorityContext): AdventureRuntimeCon
     actorDefinitions: context.pack.actorDefinitions,
     combatContent: context.pack.combatContent,
     characterRules: context.pack.characterRules,
+    creationPresets: context.pack.creationPresets,
   };
 }
 
@@ -84,7 +86,7 @@ export function createSessionCoreState(
   if (!Number.isInteger(options.adventureSeed)) throw new Error("Adventure seed must be an integer.");
   adventureContext(context);
   const state: SessionCoreState = {
-    version: 3,
+    version: 4,
     sessionId: options.sessionId,
     revision: 0,
     contentIdentity: getContentIdentity(context.pack),
@@ -115,7 +117,7 @@ export function createResumedSessionCoreState(
 ): SessionCoreState {
   adventureContext(context);
   const state: SessionCoreState = {
-    version: 3,
+    version: 4,
     sessionId: options.sessionId,
     revision: 0,
     contentIdentity: projection.contentIdentity,
@@ -127,8 +129,8 @@ export function createResumedSessionCoreState(
     partyPrepared: true,
     partySlots: projection.partySlots.map((slot) => ({ ...slot })),
     guestClaims: { byMemberId: {} },
-    adventure: projection.adventure,
-    combat: projection.combat,
+    adventure: structuredClone(projection.adventure),
+    combat: structuredClone(projection.combat),
   };
   assertSessionInvariants(state);
   return state;
@@ -305,6 +307,27 @@ export function dispatchSessionIntent(
   const runtime = adventureContext(context);
 
   switch (intent.type) {
+    case "create-character": {
+      try {
+        if (Object.keys(intent).sort().join() !== "creationPresetId,gender,name,type") throw new Error("Only name, gender and preset may be submitted.");
+        assertCharacterName(intent.name);
+        if (intent.gender !== "male" && intent.gender !== "female") throw new Error("Unsupported Character gender.");
+        const preset = context.pack.creationPresets?.[intent.creationPresetId];
+        if (!preset || preset.id !== intent.creationPresetId) throw new Error("Unknown creation preset.");
+        const actor = assertCreationPreset(preset, context.pack);
+        const id = memberIdForPartySlot(1);
+        const ready = createAdventureSession(runtime, { members: { [id]: {
+          id, seat: 1, actorDefinitionId: actor.id,
+          identity: { origin: "player-created", name: intent.name, gender: intent.gender, creationPresetId: preset.id },
+          loadout: actor.starterLoadout,
+        } } }, state.adventureSeed);
+        const started = dispatchAdventureCommand(ready, { type: "start-adventure" }, runtime);
+        if (!started.accepted) throw new Error(started.error);
+        return commit(state, { ...state, lifecycle: "active", partyPrepared: true,
+          partySlots: [{ slot: 1, memberId: id, actorDefinitionId: actor.id }],
+          guestClaims: { byMemberId: {} }, adventure: started.state }, started.events);
+      } catch (error) { return reject(state, "DOMAIN_REJECTED", error instanceof Error ? error.message : String(error)); }
+    }
     case "advance-character": {
       const result = dispatchAdventureCommand(state.adventure as AdventureState, intent, runtime);
       if (!result.accepted) return reject(state, "DOMAIN_REJECTED", result.error ?? "Character advancement rejected.");
@@ -397,7 +420,7 @@ export function dispatchServerCombatCommand(
 }
 
 export function assertSessionInvariants(state: SessionCoreState): void {
-  if (state.version !== 3) throw new Error("SessionCoreState must use version 3.");
+  if (state.version !== 4) throw new Error("SessionCoreState must use version 4.");
   const seatNumbers = state.seats.map((seat) => seat.seat);
   const playerIds = state.seats.map((seat) => seat.playerId);
   if (new Set(seatNumbers).size !== seatNumbers.length || new Set(playerIds).size !== playerIds.length) {
@@ -417,9 +440,8 @@ export function assertSessionInvariants(state: SessionCoreState): void {
   }
   const slots = state.partySlots.map((slot) => slot.slot);
   const members = state.partySlots.map((slot) => slot.memberId);
-  const actors = state.partySlots.map((slot) => slot.actorDefinitionId);
-  if (new Set(slots).size !== slots.length || new Set(members).size !== members.length || new Set(actors).size !== actors.length) {
-    throw new Error("Party slot, member, and character identities must be unique.");
+  if (new Set(slots).size !== slots.length || new Set(members).size !== members.length) {
+    throw new Error("Party slots and member identities must be unique.");
   }
   for (const [index, slot] of state.partySlots.entries()) {
     if (slot.slot !== index + 1 || slot.memberId !== memberIdForPartySlot(slot.slot)) {
@@ -469,7 +491,7 @@ export function assertSessionInvariants(state: SessionCoreState): void {
       if (!actor || !target || actor.team === target.team || typeof entry.success !== "boolean" || attempts.has(key)) throw new Error("Invalid combat knowledge attempt.");
       attempts.add(key);
     }
-    if (state.combat.version !== 5) throw new Error("CombatState must use version 5.");
+    if (state.combat.version !== 6) throw new Error("CombatState must use version 6.");
     for (const [actorId, traits] of Object.entries(state.combat.turn.usedTraitsByActor)) {
       if (!state.combat.actors[actorId] || new Set(traits).size !== traits.length || traits.some(id => !id)) {
         throw new Error("Turn Trait use requires known actors and unique nonempty Trait IDs.");

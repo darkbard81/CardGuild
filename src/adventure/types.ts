@@ -1,3 +1,5 @@
+import type { PartyMemberIdentity } from "../character/member";
+import type { CompiledContentPack } from "../content/content-types";
 import type { ActorDefinition, AdventureDefinition, RewardGrant } from "../content/content-types";
 import type { CharacterAdvancementChoice, CharacterProgressionState, CharacterRulesContext } from "../character";
 export type { CharacterAdvancementChoice, CharacterProgressionState } from "../character";
@@ -13,6 +15,7 @@ export type AdventurePhase =
   | "failed";
 
 export interface PartyMemberState extends LoadoutPartyMember {
+  readonly identity: PartyMemberIdentity;
   readonly id: string;
   readonly seat: 1 | 2 | 3;
   readonly actorDefinitionId: ActorDefinitionId;
@@ -20,7 +23,7 @@ export interface PartyMemberState extends LoadoutPartyMember {
   readonly progression: CharacterProgressionState;
 }
 
-export type PartyMemberSetup = Omit<PartyMemberState, "progression">;
+export type PartyMemberSetup = Omit<PartyMemberState, "progression" | "identity"> & { readonly identity?: PartyMemberIdentity };
 
 export interface PartySetup extends LoadoutParty {
   readonly members: Readonly<Record<string, PartyMemberSetup>>;
@@ -36,6 +39,7 @@ export interface CollectionState extends LoadoutCollection {
 }
 
 export interface AdventureRuntimeContext {
+  readonly creationPresets?: CompiledContentPack["creationPresets"];
   readonly characterRules: CharacterRulesContext;
   readonly definition: AdventureDefinition;
   readonly actorDefinitions: Readonly<Record<ActorDefinitionId, ActorDefinition>>;
@@ -49,7 +53,8 @@ export interface RewardOffer {
 }
 
 export interface AdventureState {
-  readonly version: 4;
+  readonly version: 5;
+  readonly partyOrigin: "authored" | "player-created";
   readonly adventureId: string;
   readonly phase: AdventurePhase;
   readonly currentEncounterId: ScenarioId | null;

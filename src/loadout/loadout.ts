@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import { resolveCardEligibility } from "../game/capabilities";
 import { resolveCharacterRules } from "../character";
 import type { ActorDefinition, EncounterActorPlacement } from "../content/content-types";
@@ -70,8 +71,7 @@ export function createStartingCollection(
   const equipment: Record<string, number> = {};
   const cards: Record<string, number> = {};
   for (const member of Object.values(party.members).sort((left, right) => left.id.localeCompare(right.id))) {
-    const definition = content.actorDefinitions[member.actorDefinitionId];
-    if (!definition) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
+    const definition = resolvePartyMemberDefinition(member, content);
     for (const id of equipmentIds(definition.starterLoadout)) increment(equipment, id);
     for (const id of definition.starterLoadout.preparedCards) increment(cards, id);
   }
@@ -88,9 +88,11 @@ export function validatePartyLoadout(
   const usedCards: Record<string, number> = {};
 
   for (const member of Object.values(party.members).sort((left, right) => left.id.localeCompare(right.id))) {
-    const actor = content.actorDefinitions[member.actorDefinitionId];
-    if (!actor) {
-      issues.push({ code: "UNKNOWN_ACTOR", memberId: member.id, definitionId: member.actorDefinitionId, message: `Actor definition "${member.actorDefinitionId}" is missing.` });
+    let actor;
+    try { actor = resolvePartyMemberDefinition(member, content); }
+    catch (error) {
+      issues.push({ code: "UNKNOWN_ACTOR", memberId: member.id, definitionId: member.actorDefinitionId,
+        message: error instanceof Error ? error.message : String(error) });
       continue;
     }
     for (const slot of EQUIPMENT_SLOT_ORDER) {
@@ -149,11 +151,10 @@ export function validatePartyLoadout(
 
 /** One runtime profile for preparation eligibility and the derived statistics preview. */
 export function resolveLoadoutStatProfile(member: LoadoutPartyMember, content: LoadoutContent): ActorStatProfile {
-  const actor = content.actorDefinitions[member.actorDefinitionId];
-  if (!actor) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
+  const actor = resolvePartyMemberDefinition(member, content);
   if (!member.progression) return actor.statProfile;
-  if (actor.statProfile.kind !== "character" || !actor.character) throw new Error("Runtime progression requires a Character Build.");
-  return resolveCharacterRules({ traits: actor.traits, build: actor.character.build, progression: member.progression }, content.characterRules).statProfile;
+  if (actor.statProfile.kind !== "character" || !actor.rulesInput) throw new Error("Runtime progression requires a Character Build.");
+  return resolveCharacterRules(actor.rulesInput, content.characterRules).statProfile;
 }
 
 function sameSource(left: DeckContributionSource, right: DeckContributionSource): boolean {
@@ -221,7 +222,7 @@ export function deriveTacticalDeck(
 }
 
 export function deriveActorSetup(
-  actor: ActorDefinition,
+  actor: ActorDefinition & { readonly appearanceKey?: string },
   placement: EncounterActorPlacement,
   loadout: PartyMemberLoadout,
   content: CombatContent,
@@ -235,6 +236,7 @@ export function deriveActorSetup(
     id: placement.instanceId,
     definitionId: actor.id,
     name: actor.name,
+    ...(actor.appearanceKey ? { appearanceKey: actor.appearanceKey } : {}),
     team: placement.team,
     position: { ...placement.position },
     facing: placement.facing,
@@ -326,8 +328,7 @@ export function previewLoadoutChange(
 ): LoadoutPreview {
   const member = party.members[memberId];
   if (!member) throw new Error(`Party member "${memberId}" is missing.`);
-  const actor = content.actorDefinitions[member.actorDefinitionId];
-  if (!actor) throw new Error(`Actor definition "${member.actorDefinitionId}" is missing.`);
+  const actor = resolvePartyMemberDefinition(member, content);
   const nextParty: LoadoutParty = {
     members: { ...party.members, [memberId]: { ...member, loadout: cloneLoadout(candidate) } },
   };

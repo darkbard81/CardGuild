@@ -60,7 +60,7 @@ import type {
 
 interface CombatDraft {
   knowledge?: CombatState["knowledge"];
-  version: 5;
+  version: 6;
   scenarioId: string;
   seed: number;
   contentIdentity: CombatState["contentIdentity"];
@@ -238,7 +238,7 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
   if (activeActor) actors[activeActorId] = { ...activeActor, reactionAvailable: true };
 
   const state: CombatState = {
-    version: 5,
+    version: 6,
     scenarioId: scenario.id,
     seed,
     contentIdentity: { ...contentIdentity },

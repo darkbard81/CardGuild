@@ -8,7 +8,7 @@ import { chooseAdvancement } from "../playtest/advancement-policy";
 export function rewardAvailability(
   pack: CompiledContentPack, adventure: AdventureDefinition, starter: ActorDefinition, reward: AdventureRewardDefinition,
 ): { readonly immediate: readonly boolean[]; readonly eventual: readonly boolean[] } {
-  let member: PartyMemberState = { id: "audit.hero", seat: 1, actorDefinitionId: starter.id,
+  let member: PartyMemberState = { identity: { origin: "companion", recruitmentSource: "authoring-preview" }, id: "audit.hero", seat: 1, actorDefinitionId: starter.id,
     loadout: starter.starterLoadout, progression: createCharacterProgression(starter) };
   const initial = createStartingCollection({ members: { [member.id]: member } }, pack);
   const immediate = reward.choices.map(() => false);

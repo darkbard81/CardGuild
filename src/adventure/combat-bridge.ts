@@ -1,3 +1,4 @@
+import { resolvePartyMemberDefinition } from "../character/member";
 import { getContentIdentity } from "../content/compile-content";
 import { placementAppliesToPartySize } from "../content/content-types";
 import type { CompiledContentPack } from "../content/content-types";
@@ -38,8 +39,7 @@ export function buildAdventureEncounter(
   const partyActors = Object.values(state.party.members)
     .sort((left, right) => left.seat - right.seat || left.id.localeCompare(right.id))
     .map((partyMember) => {
-      const actorDefinition = pack.actorDefinitions[partyMember.actorDefinitionId];
-      if (!actorDefinition) throw new Error(`Actor definition "${partyMember.actorDefinitionId}" is missing.`);
+      const actorDefinition = resolvePartyMemberDefinition(partyMember, pack);
       const spawn = spawnSlots.get(partyMember.seat);
       if (!spawn) throw new Error(`Scenario "${source.id}" has no spawn slot for seat ${partyMember.seat}.`);
       return deriveActorSetup(actorDefinition, {

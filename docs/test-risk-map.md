@@ -74,3 +74,14 @@ Existing U-BOARD owns changed board hit testing, pan/zoom/resize and touch direc
 | G-CONDITION: parent removed but effects persist, repeated Off-guard penalties, preview/execution divergence | Domain | `condition-effects.test.ts`: parent effects, strongest circumstance penalty, movement refusal, attack preview and command/replay |
 | U-EFFECTS: misleading condition hierarchy or stale colored numbers | Interaction | `combat-sheet.spec.ts`: derived children, decrease/increase/neutral snapshots, tap explanation, no gameplay command |
 | U-HUD-EFFECTS: compact summary diverges from sheet or reveals locked enemy saves | Interaction | `combat-sheet.spec.ts`: empty condition row, three saves, live penalty snapshot, read-only chip/stat explanations, enemy disclosure gate |
+
+## #63 persistent Player/Companion foundation
+
+| Risk | Player loss → expected result | Assertion owner |
+| --- | --- | --- |
+| G-IDENTITY | Creation trusts client stats or mutates another character → Host-only validated Human preset, one protagonist/starter, cosmetic gender, independent same-template members and current growth/Loadout in next Combat | Domain `creation.test.ts`, seed 63 |
+| G-IDENTITY-SAVE | Continue loses identity or admits corrupt roles → initial and grown Player/Companion round-trip, spent HP retained, illegal union/preset/Build/history/slot/name/appearance refused at restore and live ingress, Save 3 preserved and rejected | Domain `creation.test.ts` |
+| G-IDENTITY-WIRE | Malformed identity reaches rendering → snapshot union/role/shape rejection before application | Domain `creation.test.ts`, protocol validator |
+| B-CREATION | Unsaved creation appears complete or retry duplicates starter → delay/failure retains empty checkpoint, same request retry commits once; actual file close/reopen + owned Continue retains protagonist, summary and next legal command | Integration `contracts/creation.test.ts`, seed 63, request `create-once-63` / `file-create-63` |
+
+Creation UI/visual interaction belongs to #64, recruitment atomicity to #65, preparation Co-op to #66, and Tutorial J-START/J-CONTINUE conversion to #67. Contract and version table: [M12-1 member foundation](m12-1-member-foundation.md).
