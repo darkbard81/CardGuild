@@ -64,10 +64,19 @@ the wall runs the other way, turns it.
 
 ## Character rendering
 
-- Character style: 2D high detailed Japanese anime style.
-- Silhouette: crisp, thick dark outer line with a narrow light paper border.
-- Keep identity, anatomy, costume, equipment scale, pose energy, body root, and feet line consistent between front and back.
+- Character style: 2D hyper detailed Japanese anime style.
+- Silhouette: crisp dark interior linework with a thick pure white outer cutout outline around the whole character and equipment. New Human creation standees use this white border on real transparent alpha.
+- Keep identity, anatomy, costume, equipment scale, pose energy, body root, and feet line consistent between front and back. Leave a clear transparent gutter at the exact sheet midpoint; no boots, weapons, capes or borders may cross the front/back cell boundary.
 - North facing uses the back standee. East, south, and west use the front standee; the projected facing arrow communicates exact direction.
+
+### Standee generation order
+
+1. Generate a single full-body **front** view first, with a transparent background and the thick pure white cutout outline. Inspect the complete character and equipment before using it as the identity reference.
+2. Generate a single full-body **back** view in a separate image-generation call, attaching that finished front image as the actual image reference. Preserve the same character, hairstyle, costume, equipment, proportions, and anatomical left/right equipment placement. Show the true rear view, not a mirrored front.
+3. Inspect both views together for identity, equipment, scale, feet line, alpha, and unclipped outlines. If the front design changes, regenerate the back from the updated front reference.
+4. Retain the separate front/back originals and both prompts, including the exact front reference path used for the back. Assemble the build input sheet in front-left/back-right order with equal cells and a transparent gutter; this sheet is packaging of the two finished views, not a request to invent both views at once.
+
+This sequence applies to future standee generation and regeneration. Existing source prompts remain records of how their images were actually produced.
 
 ## Light and materials
 
@@ -98,7 +107,7 @@ the wall runs the other way, turns it.
 - Terrain, overlays, props, actors, and effects remain separate production assets and runtime layers.
 - Terrain types share the same exact square canvas and edge alignment, gate states included.
 - Props are generated one per image with a clear bottom-center contact point.
-- Each actor source contains exactly two non-overlapping views in this order: front, back.
+- Each actor build input sheet contains exactly two non-overlapping views in this order: front, back. Generate the views sequentially as described above.
 - Actor and prop sprites remain upright and must never be children of the board plane. They share only the contact point the projection gives them; the turn and the squash stop at the floor.
 
 ## References
