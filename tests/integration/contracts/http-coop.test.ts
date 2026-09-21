@@ -66,6 +66,8 @@ it("B-COOP actual guest disconnect/reconnect transfers control without changing 
     const host = await Wire.open(running.origin, created); wires.push(host);
     await host.snapshot();
     await host.intent({ type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.lyra"] });
+    await host.intent({ type: "begin-adventure" });
+    await host.intent({ type: "set-coop-allowed", memberIds: [SECOND], revokeGuests: false });
     const joined = await api(running.origin, `/api/sessions/${created.sessionId}/join`, { displayName: "Guest" });
     const credential = await joined.json() as SessionCredentialResponse;
     const guest = await Wire.open(running.origin, credential); wires.push(guest);
@@ -103,12 +105,13 @@ it("B-ACCOUNT campaign deletion requires ownership, retires connected guests and
     const host = await Wire.open(running.origin, created); wires.push(host);
     await host.snapshot();
     await host.intent({ type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.lyra"] });
+    await host.intent({ type: "begin-adventure" });
+    await host.intent({ type: "set-coop-allowed", memberIds: [SECOND], revokeGuests: false });
     const joined = await api(running.origin, `/api/sessions/${created.sessionId}/join`, { displayName: "Guest" });
     const guest = await Wire.open(running.origin, await joined.json() as SessionCredentialResponse); wires.push(guest);
     await guest.snapshot();
     const claimed = await guest.intent({ type: "select-character", memberId: SECOND });
     await host.snapshot(message => message.revision >= claimed.revision);
-    await host.intent({ type: "begin-adventure" });
     expect(running.disk.persistence.campaigns.loadOwnedSave(id, account.account.accountId).status).toBe("loaded");
     expect((await remove()).status).toBe(401);
     expect((await remove(stranger.cookie)).status).toBe(404);

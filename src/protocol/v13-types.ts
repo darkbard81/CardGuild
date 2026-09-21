@@ -1,12 +1,12 @@
 import type { ContentIdentity } from "../game";
 import type { SessionCoreState, SessionEvent, SessionIntent } from "../session";
 
-/** v11 adds persistent member identity and authoritative character creation. */
-export const PROTOCOL_VERSION = 12 as const;
+/** v13 adds live companion delegation and atomic solo departure. */
+export const PROTOCOL_VERSION = 13 as const;
 export const MAX_WS_PAYLOAD_BYTES = 64 * 1024;
 
 export interface ClientHello {
-  readonly v: 12;
+  readonly v: 13;
   readonly type: "hello";
   readonly sessionId: string;
   readonly playerId: string;
@@ -15,7 +15,7 @@ export interface ClientHello {
 }
 
 export interface ClientIntentEnvelope {
-  readonly v: 12;
+  readonly v: 13;
   readonly type: "intent";
   readonly requestId: string;
   readonly expectedRevision: number;
@@ -41,7 +41,8 @@ export type ProtocolErrorCode =
   /** The durable Campaign write failed. Transient: the same request may be retried. */
   | "PERSISTENCE_FAILED"
   /** Terminal. This live session was replaced or lost its durable authority. */
-  | "SESSION_RETIRED";
+  | "SESSION_RETIRED"
+  | "COOP_ENDED";
 
 export interface ServerControlView {
   readonly connectedPlayerIds: readonly string[];
@@ -49,7 +50,7 @@ export interface ServerControlView {
 }
 
 export interface ServerSnapshot {
-  readonly v: 12;
+  readonly v: 13;
   readonly type: "snapshot";
   readonly revision: number;
   readonly controlRevision: number;
@@ -64,7 +65,7 @@ export interface ServerSnapshot {
 }
 
 export interface ServerAck {
-  readonly v: 12;
+  readonly v: 13;
   readonly type: "ack";
   readonly requestId: string;
   readonly accepted: boolean;
@@ -72,7 +73,7 @@ export interface ServerAck {
 }
 
 export interface ServerError {
-  readonly v: 12;
+  readonly v: 13;
   readonly type: "error";
   readonly code: ProtocolErrorCode;
   readonly message: string;

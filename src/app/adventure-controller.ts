@@ -1,3 +1,5 @@
+import { CoopPreparationUi } from "../dom/coop-preparation-ui";
+import { waitingGuests } from "../session";
 import type { CharacterSheetDestination } from "../dom/character-workspace";
 import type { CharacterAdvancementChoice } from "../character";
 import type { CreateCharacterInput } from "../character/member";
@@ -77,6 +79,8 @@ export class AdventureController {
    */
   private growth: GrowthNotice | null = null;
 
+  private readonly coopUi: CoopPreparationUi;
+
   public constructor(
     private readonly app: Application,
     private readonly catalog: AssetCatalog,
@@ -84,7 +88,7 @@ export class AdventureController {
   ) {
     this.ui = new AdventureUi(PRODUCTION_CONTENT.adventure, PRODUCTION_CONTENT.pack, {
       onAdvanceCharacter: (memberId, choice) => this.advanceCharacter(memberId, choice),
-      onStart: () => this.sendIntent({ type: "begin-adventure" }),
+      onStart: () => this.sendIntent({ type: this.snapshot?.state.lifecycle === "active" ? "start-encounter" : "begin-adventure" }),
       onContinue: () => this.sendIntent({ type: "start-encounter" }),
       onChooseReward: (rewardId, choiceIndex, settled) => this.client?.sendIntent({ type: "choose-reward", rewardId, choiceIndex }, settled) ?? false,
       onPreviewCompanion: (definition, member) => this.characterDetail.openPrepared(definition, member),
@@ -99,7 +103,11 @@ export class AdventureController {
     this.characterDetail = new CharacterDetailUi(PRODUCTION_CONTENT.pack, this.catalog, {
       onSetLoadout: (memberId, loadout, settled) => this.setMemberLoadout(memberId, loadout, settled),
     });
+    this.coopUi = new CoopPreparationUi(PRODUCTION_CONTENT.pack, this.catalog,
+      (intent, settled) => this.client?.sendIntent(intent, settled) ?? false,
+      (definition, member) => this.characterDetail.openPrepared(definition, member));
     this.lobbyUi = new SessionLobbyUi(PRODUCTION_CONTENT.pack, this.catalog, {
+      coopPanel: (state, viewer, control) => this.coopUi.render(state, viewer, control),
       onNewAdventure: () => this.openNewAdventure(),
       onShowJoin: () => this.navigateEntry("join"),
       onShowCampaigns: () => void this.showCampaigns(),
@@ -375,9 +383,11 @@ export class AdventureController {
         this.characterDetail.reportError(error.message);
         this.ui.reportError(error.message);
         this.battle?.reportError(error.message);
+        this.coopUi.reportError(error.message);
         if (isTerminalHandshakeFailure(error.code)) {
           const message = error.code === "CONTENT_MISMATCH" || error.code === "PROTOCOL_MISMATCH"
             ? "게임 버전이 맞지 않습니다. 페이지를 새로고침한 뒤 다시 참가하세요."
+            : error.code === "COOP_ENDED" ? "Co-op 참가가 종료되었습니다. 다시 참가하려면 Host에게 초대 코드를 받으세요."
             : "이전 모험에 연결할 수 없습니다. 친구에게 새 초대 코드를 받거나 이어하기를 선택하세요.";
           this.returnToLanding(message);
           return;
@@ -494,7 +504,6 @@ export class AdventureController {
     this.root.dataset.screen = "session";
     this.lobbyUi.renderLobby(state, viewerPlayerId, control);
     this.ui.setVisible(false);
-    this.characterDetail.close();
   }
 
   private renderCombat(snapshot: ServerSnapshot, viewer: SessionSeat, combat: CombatState): void {
@@ -546,7 +555,11 @@ export class AdventureController {
     const isHost = session.hostPlayerId === viewer.playerId;
     this.root.dataset.screen = "adventure";
     const editableMemberIds = this.snapshot ? this.controlledMemberIds(this.snapshot, viewer.playerId) : new Set<string>();
-    this.ui.render(state, { isHost, growth: this.growth?.summary ?? null,
+    const waiting = waitingGuests(session, this.snapshot!.control);
+    this.ui.render(state, { isHost,
+      coopPanel: this.coopUi.render(session, viewer.playerId, this.snapshot!.control),
+      departureBlockedReason: waiting.length ? `${waiting.map(seat => seat.displayName).join(", ")} 동료 선택 대기 중` : undefined,
+      growth: this.growth?.summary ?? null,
       editableMemberIds,
       controllerNames: Object.fromEntries(Object.entries(this.snapshot?.control.effectiveControllerByMemberId ?? {}).map(([memberId, playerId]) => [memberId,
         this.snapshot?.state.seats.find(seat => seat.playerId === playerId)?.displayName ?? "호스트"])),

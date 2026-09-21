@@ -16,3 +16,5 @@ export {
 } from "./authorization";
 export { hashSessionGameplayState, sameContentIdentity } from "./session-hash";
 export type * from "./types";
+
+export { isCoopPreparation, isCoopCompanion, hasValidGuestClaim, waitingGuests, coopAdmissionRemaining, coopRemovedPlayers } from "./coop";

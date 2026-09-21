@@ -42,6 +42,8 @@ export interface AdventureUiHandlers {
 }
 
 export interface AdventureUiAccess {
+  readonly coopPanel?: HTMLElement;
+  readonly departureBlockedReason?: string;
   readonly isHost: boolean;
   readonly editableMemberIds?: ReadonlySet<string>;
   readonly controllerNames?: Readonly<Record<string, string>>;
@@ -223,7 +225,7 @@ export class AdventureUi {
     if (state.phase === "ready") {
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "모험 시작" : "호스트를 기다리는 중", this.handlers.onStart, access.isHost && !hasPending && !this.rewardPending),
+        this.actionButton(access.isHost ? "모험 시작" : "호스트를 기다리는 중", this.handlers.onStart, access.isHost && !hasPending && !this.rewardPending && !access.departureBlockedReason),
         this.secondaryActionButton("캐릭터 상세", () => this.handlers.onOpenCharacter()),
       );
       const partySize = Object.keys(state.party.members).length;
@@ -231,7 +233,9 @@ export class AdventureUi {
         element("p", "eyebrow", `${String(this.definition.encounterIds.length)} Encounters · ${String(partySize)}P`),
         element("h1", undefined, this.definition.name),
         element("p", "adventure-description", this.definition.description),
-        this.preparation(state, access), actions, this.party,
+        this.preparation(state, access), actions,
+        ...(access.departureBlockedReason ? [element("p", "ui-status", access.departureBlockedReason)] : []),
+        ...(access.coopPanel ? [access.coopPanel] : []), this.party,
       );
       return;
     }
@@ -239,7 +243,7 @@ export class AdventureUi {
       const scenario = state.currentEncounterId ? this.pack.scenarios[state.currentEncounterId] : undefined;
       const actions = element("div", "adventure-actions");
       actions.append(
-        this.actionButton(access.isHost ? "전투 시작" : "호스트를 기다리는 중", this.handlers.onContinue, access.isHost && !hasPending && !this.rewardPending),
+        this.actionButton(access.isHost ? "전투 시작" : "호스트를 기다리는 중", this.handlers.onContinue, access.isHost && !hasPending && !this.rewardPending && !access.departureBlockedReason),
         this.secondaryActionButton("캐릭터 상세", () => this.handlers.onOpenCharacter()),
       );
       const step = state.currentEncounterId
@@ -276,7 +280,9 @@ export class AdventureUi {
         );
         this.content.append(note);
       }
-      this.content.append(this.preparation(state, access), actions, this.party);
+      this.content.append(this.preparation(state, access), actions,
+        ...(access.departureBlockedReason ? [element("p", "ui-status", access.departureBlockedReason)] : []),
+        ...(access.coopPanel ? [access.coopPanel] : []), this.party);
       return;
     }
     if (state.phase === "reward" && state.pendingReward) {

@@ -1,3 +1,4 @@
+import { coopAdmissionRemaining, coopRemovedPlayers, departureState, isCoopCompanion, isCoopPreparation, withoutGuests } from "./coop";
 import { isAuthoredPlayable } from "../character/member";
 import { assertCharacterName, assertCreationPreset } from "../character/member";
 import {
@@ -17,7 +18,7 @@ import {
   type CombatCommand,
   type CombatEvent,
 } from "../game";
-import { clonePartyLoadout } from "../loadout";
+import { clonePartyLoadout, validatePartyLoadout } from "../loadout";
 import { authorizeSessionIntent, seatForPlayer } from "./authorization";
 import { sameContentIdentity } from "./session-hash";
 import type {
@@ -87,7 +88,7 @@ export function createSessionCoreState(
   if (!Number.isInteger(options.adventureSeed)) throw new Error("Adventure seed must be an integer.");
   adventureContext(context);
   const state: SessionCoreState = {
-    version: 4,
+    version: 5,
     sessionId: options.sessionId,
     revision: 0,
     contentIdentity: getContentIdentity(context.pack),
@@ -98,6 +99,7 @@ export function createSessionCoreState(
     partyPrepared: false,
     partySlots: [],
     guestClaims: { byMemberId: {} },
+    coopAllowedMemberIds: [],
     adventure: null,
     combat: null,
   };
@@ -118,7 +120,7 @@ export function createResumedSessionCoreState(
 ): SessionCoreState {
   adventureContext(context);
   const state: SessionCoreState = {
-    version: 4,
+    version: 5,
     sessionId: options.sessionId,
     revision: 0,
     contentIdentity: projection.contentIdentity,
@@ -130,6 +132,7 @@ export function createResumedSessionCoreState(
     partyPrepared: true,
     partySlots: projection.partySlots.map((slot) => ({ ...slot })),
     guestClaims: { byMemberId: {} },
+    coopAllowedMemberIds: [],
     adventure: structuredClone(projection.adventure),
     combat: structuredClone(projection.combat),
   };
@@ -142,14 +145,11 @@ export function joinSessionCore(
   player: SessionPlayerIdentity,
   context: SessionAuthorityContext,
 ): SessionTransitionResult {
-  if (state.adventure?.partyOrigin === "player-created") return reject(state, "FORBIDDEN", "Companion Co-op has not been enabled by the Host.");
-  if (state.lifecycle === "active") return reject(state, "ROSTER_LOCKED", "Adventure roster is already locked.");
+  if (!isCoopPreparation(state)) return reject(state, "ROSTER_LOCKED", "New guests may join only during preparation.");
   if (seatForPlayer(state, player.playerId)) return reject(state, "FORBIDDEN", "Player already owns a seat.");
+  if (!state.coopAllowedMemberIds.length) return reject(state, "FORBIDDEN", "The host has not shared any companions.");
   const adventureMaximum = adventureContext(context).definition.partySize.max;
-  const maximum = state.partyPrepared ? Math.min(adventureMaximum, state.partySlots.length) : adventureMaximum;
-  if (state.seats.length >= maximum) {
-    return reject(state, "SESSION_FULL", "Session has no player seat within the prepared party capacity.");
-  }
+  if (coopAdmissionRemaining(state) < 1) return reject(state, "SESSION_FULL", "All shared companion admissions are reserved.");
   const occupied = new Set(state.seats.map((seat) => seat.seat));
   const seat = ([1, 2, 3] as const).find((candidate) => candidate <= adventureMaximum && !occupied.has(candidate));
   if (!seat) return reject(state, "SESSION_FULL", "Session has no player seat within the prepared party capacity.");
@@ -267,6 +267,7 @@ function setPartyComposition(
     partyPrepared: true,
     partySlots,
     guestClaims: { byMemberId: {} },
+    coopAllowedMemberIds: [],
   }, [{ type: "PARTY_COMPOSITION_SET", memberIds: partySlots.map((slot) => slot.memberId) }]);
 }
 
@@ -277,7 +278,7 @@ function selectCharacter(
 ): SessionTransitionResult {
   const slot = state.partySlots.find((candidate) => candidate.memberId === memberId);
   if (!slot) return reject(state, "DOMAIN_REJECTED", "Selected character is not in the prepared party.");
-  if (slot.slot === 1) return reject(state, "FORBIDDEN", "Party Slot 1 is the Host Character.");
+  if (!isCoopCompanion(state, memberId) || !state.coopAllowedMemberIds.includes(memberId)) return reject(state, "FORBIDDEN", "Only a currently shared companion may be selected.");
   const currentClaimant = state.guestClaims.byMemberId[memberId];
   if (currentClaimant === playerId) {
     return reject(state, "DOMAIN_REJECTED", "Character is already selected by this guest.");
@@ -313,6 +314,24 @@ export function dispatchSessionIntent(
   const runtime = adventureContext(context);
 
   switch (intent.type) {
+    case "set-coop-allowed": {
+      if (new Set(intent.memberIds).size !== intent.memberIds.length || intent.memberIds.some(id => !isCoopCompanion(state, id))) {
+        return reject(state, "DOMAIN_REJECTED", "Only existing companion member IDs may be shared.");
+      }
+      const removed = coopRemovedPlayers(state, intent.memberIds);
+      if (removed.length && !intent.revokeGuests) return reject(state, "DOMAIN_REJECTED", "Confirm reclaiming control and disconnecting affected guests first.");
+      return commit(state, { ...withoutGuests(state, removed), coopAllowedMemberIds: [...intent.memberIds].sort() },
+        [{ type: "COOP_ALLOWED_CHANGED", memberIds: [...intent.memberIds] }]);
+    }
+    case "leave-preparation":
+      return commit(state, withoutGuests(state, [playerId]), [{ type: "SEAT_REMOVED", playerId, seat: seatForPlayer(state, playerId)!.seat }]);
+    case "proceed-solo": {
+      const solo = { ...withoutGuests(state, state.seats.filter(seat => seat.playerId !== state.hostPlayerId).map(seat => seat.playerId)), coopAllowedMemberIds: [] };
+      const result = dispatchSessionIntent(solo, playerId, { type: state.lifecycle === "resume-lobby" ? "resume-adventure" : "start-encounter" }, context,
+        { connectedPlayerIds: [playerId], effectiveControllerByMemberId: Object.fromEntries(state.partySlots.map(slot => [slot.memberId, playerId])) });
+      if (!result.accepted) return reject(state, result.errorCode ?? "DOMAIN_REJECTED", result.error ?? "Solo departure failed.");
+      return { ...result, events: [...result.events, { type: "SOLO_PROCEEDED" }] };
+    }
     case "create-character": {
       try {
         if (Object.keys(intent).sort().join() !== "creationPresetId,gender,name,type") throw new Error("Only name, gender and preset may be submitted.");
@@ -331,7 +350,7 @@ export function dispatchSessionIntent(
         if (!started.accepted) throw new Error(started.error);
         return commit(state, { ...state, lifecycle: "active", partyPrepared: true,
           partySlots: [{ slot: 1, memberId: id, actorDefinitionId: actor.id }],
-          guestClaims: { byMemberId: {} }, adventure: started.state }, started.events);
+          guestClaims: { byMemberId: {} }, coopAllowedMemberIds: [], adventure: started.state }, started.events);
       } catch (error) { return reject(state, "DOMAIN_REJECTED", error instanceof Error ? error.message : String(error)); }
     }
     case "advance-character": {
@@ -362,18 +381,26 @@ export function dispatchSessionIntent(
       const ready = createAdventureSession(runtime, partyFromSlots(state, context), state.adventureSeed);
       const started = dispatchAdventureCommand(ready, { type: "start-adventure" }, runtime);
       if (!started.accepted) return reject(state, "DOMAIN_REJECTED", started.error ?? "Adventure rejected begin.");
-      return commit(state, { ...state, lifecycle: "active", adventure: started.state }, started.events);
+      return commit(state, { ...departureState(state, control), lifecycle: "active", adventure: started.state }, started.events);
     }
     case "resume-adventure":
       // Resume only unlocks the session. Party, Adventure and Combat are untouched, so the
       // gameplay hash is identical and the durable save does not need rewriting.
-      return commit(state, { ...state, lifecycle: "active" }, []);
+      return commit(state, { ...departureState(state, control), lifecycle: "active" }, []);
     case "start-encounter": {
-      const started = dispatchAdventureCommand(state.adventure as AdventureState, { type: "start-encounter" }, runtime);
+      let adventure = state.adventure as AdventureState;
+      if (adventure.phase === "ready") {
+        const startedAdventure = dispatchAdventureCommand(adventure, { type: "start-adventure" }, runtime);
+        if (!startedAdventure.accepted) return reject(state, "DOMAIN_REJECTED", startedAdventure.error ?? "Adventure could not start.");
+        adventure = startedAdventure.state;
+      }
+      const loadout = validatePartyLoadout(adventure.party, adventure.collection, context.pack);
+      if (!loadout.valid) return reject(state, "DOMAIN_REJECTED", loadout.issues[0]?.message ?? "Invalid party Loadout.");
+      const started = dispatchAdventureCommand(adventure, { type: "start-encounter" }, runtime);
       if (!started.accepted) return reject(state, "DOMAIN_REJECTED", started.error ?? "Adventure rejected encounter start.");
       const encounter = buildAdventureEncounter(context.pack, started.state);
       const setup = createCombat(encounter.definition, encounter.seed);
-      return commit(state, { ...state, adventure: started.state, combat: setup.state }, [...started.events, ...setup.events]);
+      return commit(state, { ...departureState(state, control), adventure: started.state, combat: setup.state }, [...started.events, ...setup.events]);
     }
     case "choose-reward": {
       const result = dispatchAdventureCommand(state.adventure as AdventureState, {
@@ -428,7 +455,7 @@ export function dispatchServerCombatCommand(
 }
 
 export function assertSessionInvariants(state: SessionCoreState): void {
-  if (state.version !== 4) throw new Error("SessionCoreState must use version 4.");
+  if (state.version !== 5) throw new Error("SessionCoreState must use version 5.");
   const seatNumbers = state.seats.map((seat) => seat.seat);
   const playerIds = state.seats.map((seat) => seat.playerId);
   if (new Set(seatNumbers).size !== seatNumbers.length || new Set(playerIds).size !== playerIds.length) {
@@ -456,10 +483,13 @@ export function assertSessionInvariants(state: SessionCoreState): void {
       throw new Error("Party slots must be ordered and use deterministic member IDs.");
     }
   }
+  if (!Array.isArray(state.coopAllowedMemberIds) || new Set(state.coopAllowedMemberIds).size !== state.coopAllowedMemberIds.length
+    || state.coopAllowedMemberIds.some(id => !isCoopCompanion(state, id))) throw new Error("Invalid live Co-op allowlist.");
+  if (state.seats.length - 1 > state.coopAllowedMemberIds.length) throw new Error("Guest admissions exceed shared companion capacity.");
   const claimedPlayers = new Set<string>();
   for (const [memberId, playerId] of Object.entries(state.guestClaims.byMemberId)) {
     const slot = state.partySlots.find((candidate) => candidate.memberId === memberId);
-    if (!slot || slot.slot === 1) throw new Error("Guest claims may only target Party Slot 2 or 3.");
+    if (!slot || slot.slot === 1 || !state.coopAllowedMemberIds.includes(memberId)) throw new Error("Guest claims may only target Party Slot 2 or 3.");
     if (playerId === state.hostPlayerId || !state.seats.some((seat) => seat.playerId === playerId)) {
       throw new Error("Guest claims must reference a current non-host player.");
     }

@@ -36,8 +36,7 @@ export async function newAdventure(page: Page, origin: string, two = false) {
   await page.getByRole("button", { name: "계정 만들기", exact: true }).click();
   await expect(page.getByRole("heading", { name: "캐릭터 생성", exact: true })).toBeVisible();
   if (two) {
-    // Recruitment/preparation co-op belongs to #65/#66. Preserve the authored 2P
-    // precondition for J-COOP while exercising its real guest join/control UI.
+    // Keep the authored 2P precondition until #67 switches the Chapter journey to recruitment.
     const response = await page.request.post(`${origin}/api/campaigns`, { data: { name: "Journey campaign", displayName: "Host" } });
     expect(response.ok()).toBe(true);
     const credential = await response.json() as SessionCredentialResponse;
@@ -45,10 +44,11 @@ export async function newAdventure(page: Page, origin: string, two = false) {
     try {
       await wire.snapshot();
       await wire.intent({ type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.lyra"] });
+      await wire.intent({ type: "begin-adventure" });
     } finally { await wire.close(); }
     await page.evaluate(value => sessionStorage.setItem("cardguild.session.v2", JSON.stringify(value)), credential);
     await page.reload();
-    await expect(page.locator("#invite-session-id")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Lyra Co-op 허용", exact: true })).toBeVisible();
     return;
   }
   await page.getByLabel("캐릭터 이름", { exact: true }).fill("Aerin");

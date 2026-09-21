@@ -39,7 +39,8 @@ test("J-PROGRESS victory flows through reward, required growth and preparation i
 
 test("J-COOP two browsers join, claim, play and restore guest control after leaving", async ({ page: host, browser, server }) => {
   await newAdventure(host, server.origin, true);
-  const invite = await host.locator("#invite-session-id").textContent();
+  await host.getByRole("button", { name: "Lyra Co-op 허용", exact: true }).click();
+  const invite = await host.getByLabel("초대 코드", { exact: true }).inputValue();
   const guestContext = await browser.newContext({ viewport: { width: 1024, height: 768 } });
   try {
     const guest = await guestContext.newPage();
@@ -48,9 +49,9 @@ test("J-COOP two browsers join, claim, play and restore guest control after leav
     await guest.getByLabel("초대 코드", { exact: true }).fill(invite!);
     await guest.getByLabel("표시 이름 (선택)", { exact: true }).fill("Guest");
     await guest.getByRole("button", { name: "참가하기", exact: true }).click();
-    await guest.getByRole("button", { name: "이 캐릭터로 참가", exact: true }).click();
-    await expect(guest.getByRole("button", { name: "내 캐릭터 · 선택 해제", exact: true })).toBeVisible();
-    await host.getByRole("button", { name: "모험 시작", exact: true }).click();
+    await guest.getByRole("button", { name: "Lyra 선택", exact: true }).click();
+    await guest.getByRole("button", { name: "Lyra 선택 확정", exact: true }).click();
+    await expect(guest.getByRole("button", { name: "선택 해제", exact: true })).toBeEnabled();
     await host.getByRole("button", { name: "전투 시작", exact: true }).click();
     const guestEnd = guest.getByRole("button", { name: "End Turn", exact: true });
     const hostEnd = host.getByRole("button", { name: "End Turn", exact: true });

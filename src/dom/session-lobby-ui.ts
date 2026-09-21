@@ -4,7 +4,7 @@ import type { AccountIdentity, CampaignSummary } from "../client";
 import type { CompiledContentPack } from "../content";
 import type { AssetCatalog } from "../presentation";
 import type { ServerControlView } from "../protocol";
-import { claimedMemberForPlayer, type SessionCoreState } from "../session";
+import { claimedMemberForPlayer, waitingGuests, type SessionCoreState } from "../session";
 import { PartyBuilderUi } from "./party-builder-ui";
 import { CharacterCreationUi, type CreationDraft } from "./character-creation-ui";
 import type { CreateCharacterInput, ResolvedPartyMemberDefinition } from "../character/member";
@@ -58,6 +58,7 @@ export interface SessionLobbyHandlers {
   readonly onRemoveOfflineGuest: (playerId: string) => void;
   readonly onBegin: () => void;
   readonly onResume: () => void;
+  readonly coopPanel: (state: SessionCoreState, viewer: string, control: ServerControlView) => HTMLElement;
 }
 
 export class SessionLobbyUi {
@@ -416,33 +417,9 @@ export class SessionLobbyUi {
       element("p", "eyebrow", host ? "파티를 준비하세요" : "초대로 참가했습니다"),
       element("h1", undefined, "모험 시작 준비"),
       element("p", "session-description", host
-          ? "파티를 적용하고 초대 코드를 공유하세요. 참가자가 캐릭터를 선택하면 시작할 수 있습니다."
+          ? "파티를 적용하고 모험을 시작하세요. 다음 준비 화면에서 동료의 Co-op을 허용할 수 있습니다."
           : "호스트가 준비한 잔여 캐릭터 중 하나를 선택하세요."),
     );
-
-    const invite = element("div", "invite-code");
-    const code = element("code", undefined, state.sessionId);
-    code.id = "invite-session-id";
-    const copy = element("button", "ui-button ui-button--secondary session-secondary", "초대 코드 복사");
-    copy.id = "copy-session-id";
-    copy.type = "button";
-    copy.hidden = !host;
-    copy.addEventListener("click", () => {
-      void (async () => {
-        try {
-          if (!navigator.clipboard) throw new Error("Clipboard unavailable");
-          await navigator.clipboard.writeText(state.sessionId);
-          if (code.isConnected) this.setStatus("초대 코드를 복사했습니다.");
-        } catch {
-          if (!code.isConnected) return;
-          code.tabIndex = 0; code.focus();
-          const range = document.createRange(); range.selectNodeContents(code);
-          const selection = window.getSelection(); selection?.removeAllRanges(); selection?.addRange(range);
-          this.setStatus("자동 복사에 실패했습니다. 선택된 초대 코드를 직접 복사하세요.", "error");
-        }
-      })();
-    });
-    invite.append(code, copy);
 
     const playersPanel = element("section", "ui-panel ui-panel--workspace lobby-players");
     playersPanel.append(element("p", "party-builder-label", "참가자"));
@@ -463,7 +440,7 @@ export class SessionLobbyUi {
           ? `호스트 · ${connected.has(owner.playerId) ? "접속 중" : "오프라인"} · ${resolveSessionPartyDefinition(state, state.partySlots[0], this.pack)?.name ?? "파티 준비 중"} · ${state.partyPrepared ? "준비됨" : "파티 적용 필요"}`
           : owner
             ? (claim ? (resolveSessionPartyDefinition(state, state.partySlots.find(slot => slot.memberId === claim), this.pack)?.name ?? claim) + " · 준비됨" : "캐릭터 선택 중") + (connected.has(owner.playerId) ? " · 접속 중" : " · 오프라인")
-            : "참가 가능",
+            : "모험 시작 후 초대 가능",
       ));
       const removable = Boolean(
         host &&
@@ -517,7 +494,6 @@ export class SessionLobbyUi {
                 : "호스트가 시작하기를 기다리고 있습니다.",
     );
     card.append(
-      invite,
       playersPanel,
       this.partyBuilder.render(state, viewerPlayerId),
       begin,
@@ -533,125 +509,20 @@ export class SessionLobbyUi {
       ? document.activeElement.id : "";
     const host = state.hostPlayerId === viewerPlayerId;
     const adventure = state.adventure!;
-    const companionCoop = adventure.partyOrigin !== "player-created";
     const terminal = adventure.phase === "complete" || adventure.phase === "failed";
-    const card = this.card(terminal ? "저장된 결과 확인 준비" : "모험 이어가기 준비", companionCoop ? "저장된 파티로 이어갑니다. 친구는 새 초대 코드로 다시 참가해 캐릭터를 선택하세요." : "저장된 주인공과 동료로 이어갑니다. 호스트가 파티 전원을 조작합니다.", !previousFocus);
-    card.classList.add("resume-card");
+    const card = this.card("모험 이어가기 준비", "저장된 파티를 확인하고 동료의 조작권을 지정하세요.", false);
     this.screen.dataset.lobbyKind = "resume";
-    const definition = this.pack.adventures[adventure.adventureId]!;
-    const encounter = adventure.currentEncounterId ? this.pack.scenarioSources[adventure.currentEncounterId]?.name : null;
-    card.append(element("p", "resume-progress", `${phaseLabels[adventure.phase]} · 전투 ${String(adventure.completedEncounterIds.length)} / ${String(definition.encounterIds.length)} 완료${encounter ? " · " + encounter : ""}`),
-      element("p", "session-description", `준비를 마치면 ${destination(adventure.phase)}으로 돌아갑니다.`));
-    if (host && companionCoop) {
-      const invite = element("div", "resume-invite");
-      const label = element("label", undefined, "새 초대 코드");
-      label.htmlFor = "invite-session-id";
-      const code = element("input", "ui-input");
-      code.id = "invite-session-id";
-      code.value = state.sessionId;
-      code.readOnly = true;
-      code.addEventListener("focus", () => code.select());
-      const copy = this.button("새 초대 코드 복사", "copy-session-id", () => {
-        void (async () => {
-          try {
-            if (!navigator.clipboard) throw new Error("Clipboard unavailable");
-            await navigator.clipboard.writeText(state.sessionId);
-            if (code.isConnected) this.setStatus("새 초대 코드를 복사했습니다. 친구에게 공유하세요.");
-          } catch {
-            if (code.isConnected) { code.focus(); code.select(); this.setStatus("자동 복사에 실패했습니다. 선택된 초대 코드를 직접 복사하세요.", "error"); }
-          }
-        })();
-      });
-      invite.append(label, code, copy);
-      card.append(invite);
-    }
-    const body = element("div", "resume-body");
-    const players = element("section", "ui-panel ui-panel--workspace resume-players");
-    players.append(element("h2", undefined, "참가자"));
-    const connected = new Set(control.connectedPlayerIds);
-    const seats = element("ol", "session-seats");
-    for (const seatNumber of [1, 2, 3] as const) {
-      const seat = state.seats.find(candidate => candidate.seat === seatNumber);
-      const row = element("li", seat ? "occupied" : "open");
-      row.dataset.seat = String(seatNumber);
-      row.dataset.connected = String(Boolean(seat && connected.has(seat.playerId)));
-      if (!seat) row.append(element("span", undefined, companionCoop ? "참가 가능" : "초대 비공개"));
-      else {
-        const isHost = seat.playerId === state.hostPlayerId;
-        const memberId = isHost ? state.partySlots[0]?.memberId : claimedMemberForPlayer(state, seat.playerId);
-        const slot = state.partySlots.find(candidate => candidate.memberId === memberId);
-        const name = slot ? resolveSessionPartyDefinition(state, slot, this.pack)?.name : undefined;
-        row.append(element("strong", undefined, seat.displayName + (seat.playerId === viewerPlayerId ? " (나)" : "")),
-          element("small", undefined, `${isHost ? "호스트" : "게스트"} · ${connected.has(seat.playerId) ? "접속 중" : "오프라인"} · ${name ?? "캐릭터 선택 중"}`));
-        if (host && !isHost && !connected.has(seat.playerId) && !memberId) {
-          const remove = this.button("참가자 제거", "remove-" + seat.playerId, () => this.handlers.onRemoveOfflineGuest(seat.playerId));
-          remove.classList.add("ui-button--danger", "session-seat-remove");
-          remove.dataset.playerId = seat.playerId;
-          remove.setAttribute("aria-label", seat.displayName + " 참가자 제거");
-          row.append(remove);
-        }
-      }
-      seats.append(row);
-    }
-    players.append(seats);
-    body.append(players, this.savedPartyPanel(state, control, viewerPlayerId));
-    card.append(body, element("p", "session-description", "선택되지 않은 캐릭터와 오프라인 참가자의 캐릭터는 호스트가 조작합니다. 호스트는 혼자서도 시작할 수 있습니다."));
+    card.append(element("p", "resume-progress", `${phaseLabels[adventure.phase]} · 전투 ${String(adventure.completedEncounterIds.length)} 완료`),
+      element("p", "session-description", `준비를 마치면 ${destination(adventure.phase)}으로 돌아갑니다.`),
+      this.handlers.coopPanel(state, viewerPlayerId, control));
     const resume = this.button(host ? terminal ? "저장된 결과 보기" : "모험 이어가기" : "호스트가 시작하기를 기다리는 중", "resume-adventure", this.handlers.onResume, true);
-    resume.disabled = !host || !state.partyPrepared;
+    resume.disabled = !host || !state.partyPrepared || waitingGuests(state, control).length > 0;
     card.append(resume, this.statusLine());
     if (previousFocus) {
       const focusTarget = this.screen.querySelector<HTMLElement>(`#${CSS.escape(previousFocus)}`)
         ?? (previousFocus.startsWith("claim-") ? this.screen.querySelector<HTMLElement>(`#${CSS.escape("resume-member-" + previousFocus.slice(6))}`) : null);
       focusTarget?.focus({ preventScroll: true });
     }
-  }
-
-  /** The saved composition is fixed; guests may only claim an available character. */
-  private savedPartyPanel(state: SessionCoreState, control: ServerControlView, viewerPlayerId = state.hostPlayerId): HTMLElement {
-    const root = element("section", "ui-panel ui-panel--workspace party-builder resume-party");
-    root.dataset.partyFixed = "true";
-    root.append(element("h2", undefined, "저장된 파티"));
-    const list = element("div", "resume-characters");
-    for (const slot of state.partySlots) {
-      const member = state.adventure?.party.members[slot.memberId];
-      const actor = resolveSessionPartyDefinition(state, slot, this.pack);
-      const claimant = state.guestClaims.byMemberId[slot.memberId];
-      const mine = claimant === viewerPlayerId;
-      const available = state.adventure?.partyOrigin !== "player-created" && slot.slot !== 1 && !claimant;
-      const entry = element("article", "ui-panel ui-panel--workspace resume-character");
-      entry.id = "resume-member-" + slot.memberId;
-      entry.tabIndex = -1;
-      entry.dataset.memberId = slot.memberId;
-      entry.dataset.partySlot = String(slot.slot);
-      entry.dataset.claimState = slot.slot === 1 ? "host" : mine ? "mine" : claimant ? "taken" : "available";
-      const visual = actor ? this.catalog.actorVisual(actor.appearanceKey) : null;
-      if (visual) {
-        const portrait = element("span", "guest-character-art");
-        portrait.setAttribute("aria-hidden", "true");
-        Object.assign(portrait.style, this.catalog.domStandeeStyle(visual.front, 72));
-        entry.append(portrait);
-      }
-      const controllerId = control.effectiveControllerByMemberId[slot.memberId];
-      const controller = state.seats.find(seat => seat.playerId === controllerId);
-      const claimantName = state.seats.find(seat => seat.playerId === claimant)?.displayName;
-      const details = element("div", "resume-character-details");
-      details.append(element("strong", undefined, actor?.name ?? slot.actorDefinitionId),
-        element("small", undefined, "Lv " + String(member?.progression.level ?? 1)),
-        element("small", undefined, slot.slot === 1 ? "호스트 캐릭터" : mine ? "내 캐릭터" : claimant ? `${claimantName ?? "다른 참가자"} 선택함` : state.adventure?.partyOrigin === "player-created" ? "호스트 조작 동료" : "선택 가능"),
-        element("small", undefined, `현재 조작: ${controller?.displayName ?? "호스트"}${controllerId === state.hostPlayerId ? " (호스트)" : ""}`));
-      entry.append(details);
-      if (mine) {
-        entry.append(this.button("선택 해제", "release-" + slot.memberId, this.handlers.onReleaseCharacter));
-      }
-      if (viewerPlayerId !== state.hostPlayerId && available) {
-        const select = this.button("선택", "claim-" + slot.memberId, () => this.handlers.onSelectCharacter(slot.memberId));
-        select.setAttribute("aria-label", (actor?.name ?? slot.actorDefinitionId) + " 선택");
-        entry.append(select);
-      }
-      list.append(entry);
-    }
-    root.append(list);
-    return root;
   }
 
   public setStatus(status: string, kind: "info" | "error" = "info"): void {

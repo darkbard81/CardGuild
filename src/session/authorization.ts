@@ -1,3 +1,4 @@
+import { isCoopPreparation, waitingGuests } from "./coop";
 import type {
   SessionControlContext,
   SessionCoreState,
@@ -49,12 +50,10 @@ const RESUME_LOBBY_INTENTS = new Set<SessionIntent["type"]>([
   "release-character",
   "remove-offline-guest",
   "resume-adventure",
+  "set-coop-allowed",
+  "proceed-solo",
+  "leave-preparation",
 ]);
-
-/** A pre-Resume lobby is the one place where seats change without gameplay being live. */
-function isLobbyLifecycle(state: SessionCoreState): boolean {
-  return state.lifecycle === "lobby" || state.lifecycle === "resume-lobby";
-}
 
 export function authorizeSessionIntent(
   state: SessionCoreState,
@@ -70,6 +69,13 @@ export function authorizeSessionIntent(
   }
 
   switch (intent.type) {
+    case "set-coop-allowed":
+    case "proceed-solo":
+      if (!isHost || !isCoopPreparation(state)) return "Only the host can change Co-op at a preparation boundary.";
+      return undefined;
+    case "leave-preparation":
+      if (isHost || !isCoopPreparation(state)) return "Only a guest can leave preparation.";
+      return undefined;
     case "create-character":
       if (!isHost || state.lifecycle !== "lobby" || state.adventure) return "Only the host of an uncreated Campaign can create its protagonist.";
       if (state.seats.length !== 1) return "Character creation requires a solo host.";
@@ -82,12 +88,11 @@ export function authorizeSessionIntent(
       return undefined;
     case "release-character":
     case "select-character":
-      if (state.adventure?.partyOrigin === "player-created") return "Companion Co-op has not been enabled by the Host.";
-      if (isHost || !isLobbyLifecycle(state)) return "Only a guest can select a lobby character.";
+      if (isHost || !isCoopPreparation(state)) return "Only a guest can select a companion during preparation.";
       if (!state.partyPrepared) return "The host must prepare the party before guests select characters.";
       return undefined;
     case "remove-offline-guest": {
-      if (!isHost || !isLobbyLifecycle(state)) return "Only the lobby host can remove an abandoned guest seat.";
+      if (!isHost || !isCoopPreparation(state)) return "Only the lobby host can remove an abandoned guest seat.";
       const guestSeat = seatForPlayer(state, intent.playerId);
       if (!guestSeat || intent.playerId === state.hostPlayerId) return "Only a current guest seat can be removed.";
       if (control.connectedPlayerIds.includes(intent.playerId)) return "A connected guest cannot be removed.";
@@ -98,21 +103,19 @@ export function authorizeSessionIntent(
       if (!isHost || state.lifecycle !== "lobby") return "Only the host can begin the lobby adventure.";
       if (!state.partyPrepared) return "The host must prepare a party before beginning the adventure.";
       if (state.partySlots.length < state.seats.length) return "The prepared party is smaller than the player roster.";
-      const unclaimedGuest = state.seats
-        .filter((candidate) => candidate.playerId !== state.hostPlayerId)
-        .find((candidate) => !claimedMemberForPlayer(state, candidate.playerId));
-      if (unclaimedGuest) return unclaimedGuest.displayName + " must select a character before the adventure begins.";
+      const waiting = waitingGuests(state, control);
+      if (waiting.length) return `${waiting.map(seat => seat.displayName).join(", ")} must select a companion.`;
       return undefined;
     }
     case "resume-adventure":
-      // A host may resume alone, and a guest who joined without claiming anyone does not
-      // block it: unclaimed characters simply fall back to the host.
       if (!isHost || state.lifecycle !== "resume-lobby") return "Only the host can resume a restored campaign.";
+      if (waitingGuests(state, control).length) return `${waitingGuests(state, control).map(seat => seat.displayName).join(", ")} must select a companion.`;
       return undefined;
     case "start-encounter":
-      if (!isHost || state.lifecycle !== "active" || state.adventure?.phase !== "between-encounters") {
+      if (!isHost || state.lifecycle !== "active" || !["ready", "between-encounters"].includes(state.adventure?.phase ?? "")) {
         return "Only the host can start the pending encounter.";
       }
+      if (waitingGuests(state, control).length) return `${waitingGuests(state, control).map(seat => seat.displayName).join(", ")} must select a companion.`;
       return undefined;
     case "choose-reward":
       if (!isHost || state.lifecycle !== "active" || state.adventure?.phase !== "reward") {
@@ -122,10 +125,10 @@ export function authorizeSessionIntent(
     case "advance-character":
     case "set-loadout":
       if (state.lifecycle !== "active") return "Loadout is not editable outside an active adventure.";
-      if (state.adventure?.phase !== "ready" && state.adventure?.phase !== "between-encounters") {
+      if (state.combat || !["ready", "between-encounters"].includes(state.adventure?.phase ?? "")) {
         return "Loadout is not editable in the current phase.";
       }
-      if (!state.adventure.party.members[intent.memberId]) return "Party member does not exist in this adventure.";
+      if (!state.adventure?.party.members[intent.memberId]) return "Party member does not exist in this adventure.";
       if (!controlledBy(intent.memberId, playerId, control)) return "Player does not control this party member.";
       return undefined;
     case "use-action":

@@ -61,7 +61,7 @@ export interface SessionGameplayHashInput {
 export type SessionLifecycle = "lobby" | "resume-lobby" | "active";
 
 export interface SessionCoreState {
-  readonly version: 4;
+  readonly version: 5;
   readonly sessionId: string;
   readonly revision: number;
   readonly contentIdentity: ContentIdentity;
@@ -72,6 +72,8 @@ export interface SessionCoreState {
   readonly partyPrepared: boolean;
   readonly partySlots: readonly SessionPartySlot[];
   readonly guestClaims: SessionGuestClaims;
+  /** Live delegation only; never part of CampaignSave or the gameplay hash. */
+  readonly coopAllowedMemberIds: readonly string[];
   readonly adventure: AdventureState | null;
   readonly combat: CombatState | null;
 }
@@ -103,6 +105,9 @@ export interface ResumeSessionOptions extends SessionPlayerIdentity {
 }
 
 export type SessionIntent =
+  | { readonly type: "set-coop-allowed"; readonly memberIds: readonly string[]; readonly revokeGuests: boolean }
+  | { readonly type: "proceed-solo" }
+  | { readonly type: "leave-preparation" }
   | ({ readonly type: "create-character" } & CreateCharacterInput)
   | { readonly type: "advance-character"; readonly memberId: string; readonly choice: CharacterAdvancementChoice }
   | { readonly type: "set-party-composition"; readonly actorDefinitionIds: readonly string[] }
@@ -132,6 +137,8 @@ export type SessionErrorCode =
 
 
 export type SessionEvent =
+  | { readonly type: "COOP_ALLOWED_CHANGED"; readonly memberIds: readonly string[] }
+  | { readonly type: "SOLO_PROCEEDED" }
   | AdventureEvent
   | CombatEvent
   | { readonly type: "SEAT_JOINED"; readonly seat: SessionSeatNumber }

@@ -12,7 +12,7 @@ function dispatch(state: SessionCoreState, player: string, intent: SessionIntent
   });
 }
 function coopLobby() {
-  const joined = joinSessionCore(prepared(true), { playerId: "guest", displayName: "Guest" }, context);
+  const joined = joinSessionCore(act(act(prepared(true), { type: "begin-adventure" }), { type: "set-coop-allowed", memberIds: [SECOND], revokeGuests: false }), { playerId: "guest", displayName: "Guest" }, context);
   if (!joined.accepted) throw new Error(joined.error);
   return joined.state;
 }
@@ -25,16 +25,16 @@ function refuses(state: SessionCoreState, player: string, intent: SessionIntent)
 it("G-AUTHORITY guests must claim their own character before host departure and cannot prepare the shared party", () => {
   const lobby = coopLobby();
   refuses(lobby, "guest", { type: "set-party-composition", actorDefinitionIds: ["hero.aerin"] });
-  refuses(lobby, "host", { type: "begin-adventure" });
+  refuses(lobby, "host", { type: "start-encounter" });
   refuses(lobby, "guest", { type: "select-character", memberId: HERO });
   const claimed = act(lobby, { type: "select-character", memberId: SECOND }, "guest");
   refuses(claimed, "guest", { type: "begin-adventure" });
-  expect(dispatch(claimed, "host", { type: "begin-adventure" }).accepted).toBe(true);
+  expect(dispatch(claimed, "host", { type: "start-encounter" }).accepted).toBe(true);
 });
 
 it("G-AUTHORITY active preparation permits only the character's controller and only host departure", () => {
   const claimed = act(coopLobby(), { type: "select-character", memberId: SECOND }, "guest");
-  const state = act(claimed, { type: "begin-adventure" });
+  const state = claimed;
   const loadout = state.adventure!.party.members[SECOND]!.loadout;
   refuses(state, "guest", { type: "start-encounter" });
   refuses(state, "host", { type: "set-loadout", memberId: SECOND, loadout });
@@ -44,7 +44,7 @@ it("G-AUTHORITY active preparation permits only the character's controller and o
 
 it("G-AUTHORITY only the active actor's controller may end its turn; combat locks preparation", () => {
   const claimed = act(coopLobby(), { type: "select-character", memberId: SECOND }, "guest");
-  let state = act(act(claimed, { type: "begin-adventure" }), { type: "start-encounter" });
+  let state = act(claimed, { type: "start-encounter" });
   // A legal initiative checkpoint isolates the permission table from the initiative RNG.
   const combat = state.combat!;
   state = { ...state, combat: { ...combat, turn: { ...combat.turn, activeIndex: combat.turn.initiativeOrder.indexOf(SECOND), activeActorId: SECOND } } };
@@ -71,4 +71,15 @@ it("G-AUTHORITY only the head reactor's controller can answer the current trigge
   refuses(state, "host", { type: "pass-reaction", triggerId: "previous-trigger" });
   refuses(state, "guest", { type: "use-reaction", triggerId: pending.triggerId, cardInstanceId: pending.candidates[0]!.cardInstanceId });
   expect(dispatch(state, "host", { type: "pass-reaction", triggerId: pending.triggerId }).accepted).toBe(true);
+});
+
+it("G-COOP one Guest may claim only one of two shared companions without waiting for the other target", () => {
+  const preparedThree = act(prepared(), { type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.lyra", "hero.nera"] });
+  const shared = act(act(preparedThree, { type: "begin-adventure" }), { type: "set-coop-allowed", memberIds: [SECOND, "party.hero-3"], revokeGuests: false });
+  const joined = joinSessionCore(shared, { playerId: "guest", displayName: "Guest" }, context);
+  expect(joined.accepted).toBe(true);
+  const first = act(joined.state, { type: "select-character", memberId: SECOND }, "guest");
+  const changed = act(first, { type: "select-character", memberId: "party.hero-3" }, "guest");
+  expect(changed.guestClaims.byMemberId).toEqual({ "party.hero-3": "guest" });
+  expect(act(changed, { type: "start-encounter" }).combat).not.toBeNull();
 });

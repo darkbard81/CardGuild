@@ -107,3 +107,14 @@ Bounded first-encounter solo playtest: `npx tsx tools/playtest/creation-readines
 | U-RECRUIT | NPC standee/role/kit and read-only detail precede explicit confirmation; retry preserves selection; both ACK/snapshot orders gate completion; recruited member opens shared editable sheet; Continue does not automatically publish a Guest invitation | Interaction `recruitment.spec.ts`, 1024×768 |
 
 The staged recruitment Tutorial and `--recruitment` playtest exercise actual authored Aerin recruitment. #67 owns the default-start cutover and the production J-PROGRESS conversion. See [M12-3](m12-3-companion-recruitment.md).
+
+
+## M12-4 preparation Co-op (#66)
+
+| Risk | Player contract | Lowest owning verification |
+| --- | --- | --- |
+| G-COOP / G-AUTHORITY | Existing companion allowlist only; unique claims; connected unselected Guest gates departure; offline unclaimed admission cannot block forever; preparation/Combat/Resume phase matrix; solo cannot bypass growth/Loadout; restore clears delegation and preserves gameplay | Domain `coop-preparation.test.ts`, `authority.test.ts` |
+| B-COOP / B-WIRE | Real HTTP reservations and simultaneous claims; latest-state resync; late attach refusal; claimed Combat reconnect; revoked credential refusal; serialized allow/join, attach/departure, Loadout/departure and solo/reconnect; failed or delayed solo commit cannot evict | Integration `contracts/coop-preparation.test.ts`, `contracts/http-coop.test.ts` |
+| U-COOP / U-PREPARE | Host explicit share; secret-free invitation; inert Guest detail and explicit ACK+snapshot claim/retry; waiting Guest explanation; solo confirm/cancel/failure; Resume gate; open Loadout becomes read-only on control loss | Interaction `coop-preparation.spec.ts`, `preparation.spec.ts` |
+
+The existing J-COOP uses the explicit preparation allowance and selection UI. #67 owns replacing its authored party precondition with the new Chapter's actual recruitment journey; it does not duplicate the authority matrix in a browser.

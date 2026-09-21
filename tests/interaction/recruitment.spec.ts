@@ -60,6 +60,6 @@ test("U-RECRUIT restored created party remains host-controlled without automatic
   const restored = createResumedSessionCoreState({ sessionId: "resume-recruitment", playerId: "host", displayName: "Host" }, projection, recruitmentContext);
   await controlledSession(page, restored);
   await expect(page.getByRole("button", { name: "모험 이어가기", exact: true })).toBeEnabled();
-  await expect(page.getByText("호스트 조작 동료", { exact: true })).toBeVisible();
+  await expect(page.getByText("Host 조작", { exact: true })).toBeVisible();
   await expect(page.getByLabel("새 초대 코드", { exact: true })).toHaveCount(0);
 });

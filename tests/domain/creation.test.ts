@@ -37,7 +37,7 @@ it("G-IDENTITY seed=63 creates one Human with one starter, keeps gender cosmetic
   expect(joinSessionCore(female, { playerId: "guest", displayName: "Guest" }, context).accepted).toBe(false);
   const guestLobby = joinSessionCore(creationLobby(), { playerId: "guest", displayName: "Guest" }, context).state;
   expect(creationDispatch(guestLobby, creationIntent, "guest").accepted).toBe(false);
-  expect(creationDispatch(guestLobby, creationIntent).accepted).toBe(false);
+  expect(joinSessionCore(guestLobby, { playerId: "guest", displayName: "Guest" }, context).accepted).toBe(false);
 });
 
 it.each([

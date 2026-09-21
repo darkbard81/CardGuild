@@ -19,6 +19,7 @@ const TERMINAL_HANDSHAKE_FAILURES = new Set<ProtocolErrorCode>([
   "CONTENT_MISMATCH",
   "PROTOCOL_MISMATCH",
   "SESSION_RETIRED",
+  "COOP_ENDED",
 ]);
 /** The server retired this live session: reconnecting would only fail again. */
 const SESSION_RETIRED_CLOSE_CODE = 4005;
@@ -239,11 +240,11 @@ export class SessionClient {
         }, false);
         return;
       }
-      if (event.code === SESSION_RETIRED_CLOSE_CODE) {
+      if (event.code === SESSION_RETIRED_CLOSE_CODE || event.code === 4006) {
         this.stopTerminal({
           v: PROTOCOL_VERSION,
           type: "error",
-          code: "SESSION_RETIRED",
+          code: event.code === 4006 ? "COOP_ENDED" : "SESSION_RETIRED",
           message: event.reason || "This live session was retired. Continue the campaign again.",
         }, true);
         return;

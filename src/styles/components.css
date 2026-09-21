@@ -79,3 +79,10 @@
 .ui-save-tile__value { font-size: 22px; line-height: 1.1; font-weight: 800; font-variant-numeric: tabular-nums; }
 .ui-save-tile .ui-stat-change__direction { font-size: 12px; margin-left: 3px; }
 .ui-save-tile:hover { border-color: var(--ui-color-accent-bright); }
+
+.coop-preparation { display: grid; gap: 0.6rem; margin-bottom: 1rem; }
+.coop-members { display: grid; gap: 0.5rem; }
+.coop-member { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; padding: 0.6rem; border: 1px solid #ffffff26; border-radius: 0.5rem; }
+.coop-member > div { flex: 1; min-width: 160px; }
+.coop-member p { margin: 0.2rem 0; font-size: 0.85rem; }
+.coop-preparation input { min-width: 0; max-width: 100%; }

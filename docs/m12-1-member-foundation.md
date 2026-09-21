@@ -55,18 +55,18 @@ SessionHost's existing serialized request journal and Campaign durability bounda
 
 Save/Resume clone the persistent projection. Save restore and SessionHost construction share structural identity checks and Character/role/slot/Card invariants. The snapshot receiver checks persistent shape and role/slot invariants before rendering. Illegal unions, unknown presets, non-Human player templates, illegal Build/history, missing/duplicate protagonists and slot/member mismatch are rejected. Combat member name/appearance/template/level/Class must agree with the persistent member. In-progress Combat HP, RNG and zones are preserved, never rebuilt during Resume.
 
-`Session.partySlots` remains the lobby draft and fixed projection of `Adventure.party` after creation; the creation transition updates both together and ingress enforces equality. #65 recruitment now updates both in the same transition. The protagonist stays in Host-only slot 1; claims and presence remain live-only. Continue creates a fresh session with empty Guest claims and the same persistent party.
+`Session.partySlots` remains the lobby draft and fixed projection of `Adventure.party` after creation; the creation transition updates both together and ingress enforces equality. #65 recruitment now updates both in the same transition. The protagonist stays in Host-only slot 1; claims and presence remain live-only. Continue creates a fresh session with an empty Co-op allowlist and Guest claims and the same persistent party.
 
-| Contract | Baseline | #63 | #64 | #65 | Current reason |
-| --- | --- | --- | --- | --- | --- |
-| Campaign Save | 3 | 4 | 4 | 5 | Companion reward union and settled recruitment provenance |
-| AdventureState | 4 | 5 | 5 | 6 | Companion reward/append contract |
-| SessionCoreState | 3 | 4 | 4 | 4 | Same envelope; party projection grows atomically with Adventure |
-| Wire protocol | 10 | 11 | 11 | 12 | Companion rewards/events in snapshots; `v12-types.ts` |
-| CombatState | 5 | 6 | 6 | 6 | No shape change; next encounter uses expanded party |
-| Combat setup fingerprint | Full setup hash | Same algorithm | Same | Same | Resolved member name/appearance/kit remain inputs |
-| Content schema / pack | 13 / 0.9.0 | Unchanged | 13 / 0.10.0 | 14 / 0.11.0 | Companion definitions and mandatory recruitment integration slice |
-| Presentation manifest | 5 | 5 | 5 | 5 | Existing Aerin visuals reused |
+| Contract | Baseline | #63 | #64 | #65 | #66 | Current reason |
+| --- | --- | --- | --- | --- | --- | --- |
+| Campaign Save | 3 | 4 | 4 | 5 | 5 | Co-op allowlist, claims, credentials and presence remain live-only |
+| AdventureState | 4 | 5 | 5 | 6 | 6 | Party membership and recruitment unchanged |
+| SessionCoreState | 3 | 4 | 4 | 4 | 5 | Required live `coopAllowedMemberIds` and delegation intents |
+| Wire protocol | 10 | 11 | 11 | 12 | 13 | Allow/revoke/solo/leave intents, events and terminal `COOP_ENDED`; `v13-types.ts` |
+| CombatState | 5 | 6 | 6 | 6 | 6 | Resume preserves saved Combat; live player count never rebuilds it |
+| Combat setup fingerprint | Full setup hash | Same algorithm | Same | Same | Same | Live Co-op state is excluded |
+| Content schema / pack | 13 / 0.9.0 | Unchanged | 13 / 0.10.0 | 14 / 0.11.0 | Unchanged | Existing recruitment content reused |
+| Presentation manifest | 5 | 5 | 5 | 5 | 5 | Existing Aerin visuals reused |
 
 There is no registered Save 3→4 or 4→5 migration. Unsupported saves remain untouched and return `SAVE_SCHEMA_UNSUPPORTED`. No DB reset or fingerprint rewrite is introduced. Recruitment details and the #67 production cutover boundary are recorded in [M12-3](m12-3-companion-recruitment.md).
 

@@ -2,7 +2,7 @@ import { CREATE_CHARACTER_PROPERTIES } from "../character/member-schema";
 import { CHARACTER_ADVANCEMENT_CHOICE_SCHEMA } from "../character/schema";
 import Ajv, { type ErrorObject } from "ajv";
 
-import { PROTOCOL_VERSION, type ClientMessage } from "./v12-types";
+import { PROTOCOL_VERSION, type ClientMessage } from "./v13-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {
@@ -80,6 +80,10 @@ const loadout = {
 } as const;
 const intent = {
   oneOf: [
+    { type: "object", additionalProperties: false, required: ["type", "memberIds", "revokeGuests"],
+      properties: { type: { const: "set-coop-allowed" }, memberIds: { type: "array", maxItems: 2, uniqueItems: true, items: nonEmptyString }, revokeGuests: { type: "boolean" } } },
+    ...["proceed-solo", "leave-preparation"].map(type => ({ type: "object", additionalProperties: false,
+      required: ["type"], properties: { type: { const: type } } })),
     { type: "object", additionalProperties: false, required: ["type", "name", "gender", "creationPresetId"],
       properties: { type: { const: "create-character" }, ...CREATE_CHARACTER_PROPERTIES } },
     { type: "object", additionalProperties: false, required: ["type", "memberId", "choice"],

@@ -14,6 +14,8 @@ import {
   type ServerSnapshot,
 } from "../protocol";
 import {
+  isCoopPreparation,
+  hasValidGuestClaim,
   assertSessionInvariants,
   dispatchServerCombatCommand,
   dispatchSessionIntent,
@@ -141,6 +143,10 @@ export class SessionHost {
       if (!digest || !reconnectTokenMatches(reconnectToken, digest)) {
         return { ok: false, code: "UNAUTHENTICATED", message: "Reconnect credential is invalid." };
       }
+      if (!this.stateValue.seats.some(seat => seat.playerId === playerId)
+        || playerId !== this.stateValue.hostPlayerId && !isCoopPreparation(this.stateValue) && !hasValidGuestClaim(this.stateValue, playerId)) {
+        return { ok: false, code: "UNAUTHENTICATED", message: "This admission is no longer available." };
+      }
       const previous = this.connections.get(playerId);
       const presenceChanged = !previous;
       if (previous && previous.id !== connection.id) previous.close(4001, "A newer connection replaced this client.");
@@ -197,6 +203,7 @@ export class SessionHost {
         playerJournal.set(envelope.requestId, { payloadHash, ack, error });
         this.send(playerId, ack);
         this.send(playerId, error);
+        this.send(playerId, this.snapshot(this.combatEventHistory, { kind: "resync", requestId: envelope.requestId }));
         return;
       }
 
@@ -215,6 +222,7 @@ export class SessionHost {
         playerJournal.set(envelope.requestId, { payloadHash, ack, error });
         this.send(playerId, ack);
         this.send(playerId, error);
+        this.send(playerId, this.snapshot(this.combatEventHistory, { kind: "resync", requestId: envelope.requestId }));
         return;
       }
 
@@ -236,15 +244,24 @@ export class SessionHost {
         return;
       }
 
+      const removed = this.stateValue.seats.filter(seat => !result.state.seats.some(next => next.playerId === seat.playerId));
       this.stateValue = result.state;
-      if (envelope.intent.type === "remove-offline-guest") {
-        this.reconnectDigests.delete(envelope.intent.playerId);
-        this.journal.delete(envelope.intent.playerId);
-      }
       this.updateCombatHistory(beforeCombat, result.events);
       const ack = this.ack(envelope.requestId, true, result.state.revision);
       playerJournal.set(envelope.requestId, { payloadHash, ack });
       this.send(playerId, ack);
+      // Credential/presence revocation is part of publication, strictly after durable success.
+      for (const seat of removed) {
+        this.reconnectDigests.delete(seat.playerId);
+        this.journal.delete(seat.playerId);
+        const connection = this.connections.get(seat.playerId);
+        if (connection) {
+          this.connections.delete(seat.playerId);
+          this.controlRevisionValue++;
+          connection.send(this.errorMessage("COOP_ENDED", "동료 조작권이 회수되어 Co-op 참가가 종료되었습니다."));
+          connection.close(4006, "Co-op participation ended.");
+        }
+      }
       this.broadcastSnapshot(result.events, { kind: "intent", requestId: envelope.requestId });
       await this.pumpServerAuthority();
     });
