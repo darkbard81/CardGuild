@@ -341,5 +341,28 @@
       { "selector": { "kind": "save", "id": "fortitude" }, "type": "item", "value": 1, "label": "Bloodied Talisman" },
       { "selector": { "kind": "save", "id": "will" }, "type": "circumstance", "value": -1, "label": "Bloodied Talisman curse" }
     ]
+  },
+  {
+    "id": "staff",
+    "name": "Staff",
+    "slot": "weapon",
+    "traits": [
+      {
+        "id": "weapon"
+      }
+    ],
+    "statModifiers": [],
+    "weaponProfile": {
+      "name": "Staff",
+      "category": "simple",
+      "attackMode": "melee",
+      "rangeFeet": 5,
+      "damage": {
+        "count": 1,
+        "sides": 6,
+        "damageType": "bludgeoning"
+      },
+      "traits": []
+    }
   }
 ]

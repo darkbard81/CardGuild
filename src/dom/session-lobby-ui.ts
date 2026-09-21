@@ -6,6 +6,8 @@ import type { AssetCatalog } from "../presentation";
 import type { ServerControlView } from "../protocol";
 import { claimedMemberForPlayer, type SessionCoreState } from "../session";
 import { PartyBuilderUi } from "./party-builder-ui";
+import { CharacterCreationUi, type CreationDraft } from "./character-creation-ui";
+import type { CreateCharacterInput, ResolvedPartyMemberDefinition } from "../character/member";
 
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -45,7 +47,8 @@ export interface SessionLobbyHandlers {
   readonly onLogin: (username: string, password: string) => void;
   readonly onRegister: (username: string, password: string) => void;
   readonly onLogout: () => void;
-  readonly onCreateCampaign: (name: string, displayName: string) => void;
+  readonly onCreateCampaign: (input: CreateCharacterInput) => void;
+  readonly onPreviewCharacter: (definition: ResolvedPartyMemberDefinition) => void;
   readonly onDeleteCampaign: (campaignId: string) => void;
   readonly onContinueCampaign: (campaignId: string) => void;
   readonly onJoin: (sessionId: string, displayName: string) => void;
@@ -62,6 +65,7 @@ export class SessionLobbyUi {
   private readonly partyBuilder: PartyBuilderUi;
   private status = "";
   private drafts = new Map<string, string>();
+  private creationDraft: CreationDraft;
   /** Every Continue button on the current campaign list, so one attempt can disable them all. */
   private continueButtons: HTMLButtonElement[] = [];
   private continueInFlight = false;
@@ -74,6 +78,7 @@ export class SessionLobbyUi {
     const screen = document.querySelector<HTMLElement>("#session-screen");
     if (!screen) throw new Error("Session screen is missing.");
     this.screen = screen;
+    this.creationDraft = { name: "", gender: "male", creationPresetId: Object.keys(pack.creationPresets ?? {})[0] ?? "" };
     this.partyBuilder = new PartyBuilderUi(pack, catalog, {
       onSetParty: handlers.onSetParty,
       onSelectCharacter: handlers.onSelectCharacter,
@@ -160,12 +165,14 @@ export class SessionLobbyUi {
 
   public clearDrafts(): void {
     this.drafts.clear();
+    this.creationDraft = { name: "", gender: "male", creationPresetId: Object.keys(this.pack.creationPresets ?? {})[0] ?? "" };
     for (const input of this.screen.querySelectorAll<HTMLInputElement>("input")) input.value = "";
   }
 
   public setBusy(busy: boolean): void {
+    if (this.screen.getAttribute("aria-busy") === String(busy)) return;
     this.screen.setAttribute("aria-busy", String(busy));
-    for (const control of this.screen.querySelectorAll<HTMLInputElement | HTMLButtonElement>("input, button")) {
+    for (const control of this.screen.querySelectorAll<HTMLInputElement | HTMLButtonElement | HTMLSelectElement>("input, button, select")) {
       if (busy) {
         control.dataset.entryDisabled = String(control.disabled);
         control.disabled = true;
@@ -251,13 +258,14 @@ export class SessionLobbyUi {
   }
 
   public renderNewAdventure(): void {
-    const card = this.card("새 모험 시작", "모험 이름을 정하세요. 진행은 로그인한 계정에 저장됩니다.");
-    const form = this.form(card, "모험 만들기", "new-campaign", () => {
-      if (!this.nonblank(name, "모험 이름을 입력하세요.")) return;
-      this.handlers.onCreateCampaign(name.value.trim(), displayName.value);
+    const card = this.card("캐릭터 생성", "Human 주인공 한 명으로 시작합니다. 생성하고 시작을 누르면 로그인한 계정에 저장됩니다.");
+    card.classList.add("creation-card");
+    const form = this.form(card, "생성하고 시작", "new-campaign", () => {
+      const input = creator.input();
+      if (input) this.handlers.onCreateCampaign(input);
     });
-    const name = this.field(form, "new-campaign-name", "모험 이름", { maxLength: 60 });
-    const displayName = this.field(form, "campaign-display-name", "표시 이름 (선택)", { required: false, maxLength: 40, autocomplete: "name", hint: "비워 두면 자동 이름을 사용합니다." });
+    const creator = new CharacterCreationUi(this.pack, this.catalog, this.creationDraft, this.handlers.onPreviewCharacter);
+    form.append(creator.element);
     this.finishForm(card, form, this.handlers.onShowLanding, "new-adventure-back");
   }
 

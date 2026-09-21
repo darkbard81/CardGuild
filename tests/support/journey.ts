@@ -1,6 +1,7 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { productProcess } from "./process";
-import { PASSWORD } from "./network";
+import { PASSWORD, Wire } from "./network";
+import type { SessionCredentialResponse } from "../../src/server/session-store";
 
 export const test = base.extend<{ server: Awaited<ReturnType<typeof productProcess>> }>({
   // Playwright requires destructuring even when there are no fixture dependencies.
@@ -33,23 +34,30 @@ export async function newAdventure(page: Page, origin: string, two = false) {
   await page.getByLabel("비밀번호", { exact: true }).fill(PASSWORD);
   await page.getByLabel("비밀번호 확인", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "계정 만들기", exact: true }).click();
-  await page.getByLabel("모험 이름", { exact: true }).fill("Journey campaign");
-  await page.getByLabel("표시 이름 (선택)", { exact: true }).fill("Host");
-  await page.getByRole("button", { name: "모험 만들기", exact: true }).click();
-  await page.getByRole("button", { name: "동료 2 비우기", exact: true }).click();
-  await page.getByRole("button", { name: "동료 1 비우기", exact: true }).click();
-  const aerin = page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Aerin", exact: true }) });
-  await aerin.getByRole("button", { name: /파티에 선택됨|이 슬롯에 선택/ }).click();
+  await expect(page.getByRole("heading", { name: "캐릭터 생성", exact: true })).toBeVisible();
   if (two) {
-    await page.getByRole("button", { name: "동료 1 · 비어 있음", exact: true }).click();
-    await page.getByRole("article").filter({ has: page.getByRole("heading", { name: "Lyra", exact: true }) }).getByRole("button", { name: "이 슬롯에 선택", exact: true }).click();
+    // Recruitment/preparation co-op belongs to #65/#66. Preserve the authored 2P
+    // precondition for J-COOP while exercising its real guest join/control UI.
+    const response = await page.request.post(`${origin}/api/campaigns`, { data: { name: "Journey campaign", displayName: "Host" } });
+    expect(response.ok()).toBe(true);
+    const credential = await response.json() as SessionCredentialResponse;
+    const wire = await Wire.open(origin, credential);
+    try {
+      await wire.snapshot();
+      await wire.intent({ type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.lyra"] });
+    } finally { await wire.close(); }
+    await page.evaluate(value => sessionStorage.setItem("cardguild.session.v2", JSON.stringify(value)), credential);
+    await page.reload();
+    await expect(page.locator("#invite-session-id")).toBeVisible();
+    return;
   }
-  await page.getByRole("button", { name: "파티 적용", exact: true }).click();
-  await expect(page.getByRole("button", { name: "파티 적용됨", exact: true })).toBeVisible();
+  await page.getByLabel("캐릭터 이름", { exact: true }).fill("Aerin");
+  await page.getByLabel("클래스", { exact: true }).selectOption("human.fighter");
+  await page.getByRole("button", { name: "생성하고 시작", exact: true }).click();
+  await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeVisible();
 }
 
 export async function beginBattle(page: Page) {
-  await page.getByRole("button", { name: "모험 시작", exact: true }).click();
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   await expect(page.getByRole("region", { name: "Tactical combat", exact: true })).toBeVisible();
 }

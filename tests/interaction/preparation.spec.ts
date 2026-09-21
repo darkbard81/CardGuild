@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { controlledSession } from "../support/browser-backend";
-import { act, adventure, HERO, lobby, SECOND } from "../support/session";
+import { act, adventure, HERO, prepared, SECOND } from "../support/session";
 
 for (const order of ["ack-first", "snapshot-first"] as const) {
   test(`U-PREPARE ${order}: comparison/cancel are inert and saving requires ACK plus applied state`, async ({ page }) => {
@@ -210,7 +210,7 @@ test("U-PREPARE latest control and inventory govern comparisons; leaving prepara
 });
 
 test("U-PREPARE lobby inspection shares the sheet but cannot edit", async ({ page }) => {
-  const backend = await controlledSession(page, lobby());
+  const backend = await controlledSession(page, prepared());
   await page.getByRole("button", { name: "Aerin 상세", exact: true }).click();
   const sheet = page.getByRole("dialog", { name: "캐릭터 상세", exact: true });
   await expect(sheet.getByRole("button", { name: "주손 · Halberd", exact: true })).toBeVisible();

@@ -2,7 +2,7 @@ import { expect, it } from "vitest";
 import { startCardGuildServer } from "../../../src/server/server";
 import { createOpaqueId, createReconnectCredential, digestToken } from "../../../src/server/credentials";
 import type { SessionCredentialResponse } from "../../../src/server/session-store";
-import { context, SECOND } from "../../support/session";
+import { context, HERO, SECOND } from "../../support/session";
 import { diskStore } from "../../support/storage";
 import { api, register, TEST_ORIGIN, Wire } from "../../support/network";
 
@@ -15,6 +15,26 @@ async function server() {
     return { ...running, disk, async dispose() { try { await running.close(); } finally { await disk.close(true); } } };
   } catch (error) { await disk.close(); throw error; }
 }
+
+it("B-CREATION-NAME seed=60 a 40-codepoint character name survives HTTP campaign creation and saved summaries", async () => {
+  const running = await server();
+  let wire: Wire | undefined;
+  try {
+    const account = await register(running.origin, "unicode-creator");
+    const name = "🌟".repeat(40);
+    const title = `${name}의 모험`;
+    const response = await api(running.origin, "/api/campaigns", { name: title, displayName: name }, account.cookie);
+    expect(response.status).toBe(201);
+    wire = await Wire.open(running.origin, await response.json() as SessionCredentialResponse);
+    await wire.snapshot();
+    const saved = await wire.intent({ type: "create-character", name, gender: "female", creationPresetId: "human.wizard" });
+    expect(saved.state.adventure!.party.members[HERO]!.identity).toMatchObject({ name, gender: "female" });
+    const summaries = await api(running.origin, "/api/campaigns", undefined, account.cookie);
+    expect(await summaries.json()).toMatchObject({ campaigns: [{ name: title, saveStatus: "ready",
+      progress: { party: [{ name, appearanceKey: "human.wizard.female" }] } }] });
+    expect((await api(running.origin, "/api/campaigns", { name: "🌟".repeat(61) }, account.cookie)).status).toBe(400);
+  } finally { await wire?.close(); await running.dispose(); }
+});
 
 it("B-ACCOUNT HTTP ownership and logout/expiry prevent another account from reading or continuing a campaign", async () => {
   const running = await server();

@@ -178,10 +178,10 @@ export class AssetCatalog {
   public domPortraitStyle(id: PresentationAssetId, size: number): DomAssetStyle {
     if (!Number.isFinite(size) || size <= 0) throw new Error("DOM portrait size must be positive.");
     const frame = this.domFrame(id);
-    const ink = this.asset(id).ink;
+    const { ink, portraitFocus } = this.asset(id);
     const side = Math.min(frame.w, ink ? frame.h * ink.height * PORTRAIT_INK_FRACTION : frame.h);
-    const top = ink ? frame.h * ink.top : 0;
-    const centerX = ink ? frame.w * (ink.left + ink.width / 2) : frame.w / 2;
+    const top = ink ? Math.max(0, frame.h * (ink.top + (portraitFocus?.y ?? 0) * ink.height) - (portraitFocus ? side / 2 : 0)) : 0;
+    const centerX = ink ? frame.w * (ink.left + ink.width * (portraitFocus?.x ?? 0.5)) : frame.w / 2;
     const scale = size / side;
     return {
       backgroundImage: `url("${frame.imagePath}")`,

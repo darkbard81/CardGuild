@@ -4,12 +4,13 @@ import { hashSessionGameplayState, type SessionCoreState } from "../../src/sessi
 import { adventure, act } from "./session";
 
 /** Only the backend is controlled: the page loads the real bootstrap, controller, UI and SessionClient. */
-export async function controlledSession(page: Page, initial = adventure()) {
+export async function controlledSession(page: Page, initial = adventure(), entry: "join" | "create" = "join") {
   const testInfo = test.info();
   testInfo.annotations.push({ type: "session", description: `seed=${initial.adventure?.adventureSeed ?? 60}; revision=${initial.revision}` });
   let state = initial;
   let socket: WebSocketRoute | undefined;
   const requests: ClientIntentEnvelope[] = [];
+  const campaigns: unknown[] = [];
   let controlRevision = 0;
   let controllers = Object.fromEntries(state.partySlots.map(slot => [slot.memberId, "host"]));
   const snapshot = (cause: ServerSnapshot["cause"] = { kind: "resync" }): ServerSnapshot => ({
@@ -21,7 +22,11 @@ export async function controlledSession(page: Page, initial = adventure()) {
     if (!socket) throw new Error("Browser WebSocket has not connected");
     socket.send(JSON.stringify(message));
   };
-  await page.route("**/api/auth/me", route => route.fulfill({ json: { account: null } }));
+  await page.route("**/api/auth/me", route => route.fulfill({ json: { account: entry === "create" ? { accountId: "account", username: "Player" } : null } }));
+  await page.route("**/api/campaigns", route => {
+    campaigns.push(route.request().postDataJSON());
+    return route.fulfill({ json: { sessionId: state.sessionId, playerId: "host", reconnectToken: "browser-backend-token", seat: 1 } });
+  });
   await page.route("**/api/sessions/*/join", route => route.fulfill({ json: { sessionId: state.sessionId, playerId: "host", reconnectToken: "browser-backend-token", seat: 1 } }));
   await page.routeWebSocket("**/ws", route => {
     socket = route;
@@ -36,12 +41,17 @@ export async function controlledSession(page: Page, initial = adventure()) {
     });
   });
   await page.goto("/");
-  await page.getByRole("button", { name: "초대 코드로 참가", exact: true }).click();
-  await page.getByLabel("초대 코드", { exact: true }).fill("controlled-session");
-  await page.getByRole("button", { name: "참가하기", exact: true }).click();
-  await expect.poll(() => Boolean(socket)).toBe(true);
+  if (entry === "create") {
+    await page.getByRole("button", { name: "새 모험 시작", exact: true }).click();
+  } else {
+    await page.getByRole("button", { name: "초대 코드로 참가", exact: true }).click();
+    await page.getByLabel("초대 코드", { exact: true }).fill("controlled-session");
+    await page.getByRole("button", { name: "참가하기", exact: true }).click();
+    await expect.poll(() => Boolean(socket)).toBe(true);
+  }
   return {
     requests,
+    campaigns,
     get state() { return state; },
     send,
     publish(next: SessionCoreState = state, events: ServerSnapshot["events"] = []) { state = next; send({ ...snapshot(), events }); },

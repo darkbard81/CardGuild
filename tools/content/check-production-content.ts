@@ -1,3 +1,5 @@
+import { isAuthoredPlayable } from "../../src/character/member";
+import { deriveLoadoutSnapshot } from "../../src/loadout";
 import { rewardAvailability } from "./reward-availability";
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
@@ -339,7 +341,8 @@ function checkVolume(pack: CompiledContentPack, reachable: ReachableContent, rep
   const policy = M7_PRODUCTION_POLICY;
   const actors = Object.values(pack.actorDefinitions);
   const counts: readonly (readonly [string, number, VolumeRange])[] = [
-    ["playable starters", actors.filter(isPlayable).length, policy.volume.starters],
+    ["authored starters", actors.filter(actor => isAuthoredPlayable(actor, pack)).length, policy.volume.starters],
+    ["creation templates", new Set(Object.values(pack.creationPresets ?? {}).map(preset => preset.actorDefinitionId)).size, policy.volume.creationTemplates],
     ["player cards", Object.keys(pack.combatContent.cards).length, policy.volume.playerCards],
     ["enemies", actors.filter((actor) => actor.statProfile.kind === "creature").length, policy.volume.enemies],
     ["scenario sources", Object.keys(pack.scenarioSources).length, policy.volume.scenarios],
@@ -396,7 +399,30 @@ function checkTutorialPrefix(reporter: Reporter): void {
   }
 }
 
-/** The four starters have to be able to walk in wearing exactly what they were authored with. */
+/** Every launch Class needs an honest role, canonical appearances and a proficient starter kit. */
+function checkCreationStarters(pack: CompiledContentPack, reporter: Reporter): void {
+  const classIds: string[] = [];
+  for (const preset of Object.values(pack.creationPresets ?? {})) {
+    const actor = pack.actorDefinitions[preset.actorDefinitionId]!;
+    const snapshot = deriveLoadoutSnapshot(actor, actor.starterLoadout, pack.combatContent, "starter-check");
+    const classes = actor.traits.filter(trait => Object.hasOwn(pack.characterRules.classes, trait.id)).map(trait => trait.id);
+    classIds.push(...classes);
+    for (const gender of ["male", "female"] as const) {
+      if (preset.appearance[gender] !== `human.${classes[0]}.${gender}`) {
+        reporter.issue(PACK_SOURCE, "creationPresets.appearance", "CREATION_VARIANT_MISMATCH", "Gender/Class must map to its own canonical Human visual.", preset.id);
+      }
+    }
+    if (!preset.description?.trim()) reporter.issue(PACK_SOURCE, "creationPresets", "CREATION_DESCRIPTION_MISSING", "Every selectable Class needs a supported-action description.", preset.id);
+    if (snapshot.strike.proficiencyRank === "untrained" || (actor.statProfile.kind === "character"
+      && actor.statProfile.stats.defense.armorProficiencies[snapshot.armor.category] === "untrained")) {
+      reporter.issue(PACK_SOURCE, "creationPresets", "CREATION_UNTRAINED_KIT", "Starter equipment must be proficient at Lv1.", preset.id);
+    }
+  }
+  if (classIds.sort().join() !== [...M7_PRODUCTION_POLICY.creationClasses].sort().join()) {
+    reporter.issue(PACK_SOURCE, "creationPresets", "CREATION_ROSTER_MISMATCH", "Selectable Classes must match the explicit launch policy exactly once.");
+  }
+}
+
 function checkStarterLoadouts(
   pack: CompiledContentPack,
   reachable: ReachableContent,
@@ -413,7 +439,7 @@ function checkStarterLoadouts(
       if (pack.combatContent.cards[grant.cardDefinitionId]) continue;
       reporter.issue(PACK_SOURCE, "actors.baseCardGrants", "STARTER_UNKNOWN_CARD", `${starter.name} is granted missing card "${grant.cardDefinitionId}".`, starter.id);
     }
-    for (const slot of ["weapon", "armor"] as const) {
+    for (const slot of (isAuthoredPlayable(starter, pack) ? ["weapon", "armor"] : ["weapon"]) as readonly ("weapon" | "armor")[]) {
       if (starter.starterLoadout.equipment[slot]) continue;
       reporter.issue(PACK_SOURCE, "actors.starterLoadout", "STARTER_EMPTY_SLOT", `${starter.name} starts with no ${slot}.`, starter.id);
     }
@@ -468,7 +494,7 @@ function checkPartySizeCoverage(
       continue;
     }
     if (reachable.starters.length < partySize) continue;
-    const party = coverageParty(reachable.starters, partySize);
+    const party = coverageParty(reachable.starters.filter(actor => isAuthoredPlayable(actor, pack)), partySize);
     let session: AdventureState;
     try {
       session = createAdventureSession({
@@ -560,10 +586,11 @@ interface AssetVisuals {
  * there is which *Actors* the release has to be able to draw, which is a release question and
  * so is asked here.
  */
-async function checkVisualCoverage(reachable: ReachableContent, reporter: Reporter): Promise<void> {
+async function checkVisualCoverage(pack: CompiledContentPack, reachable: ReachableContent, reporter: Reporter): Promise<void> {
   const manifestPath = path.join(process.cwd(), "presentation", "m3", "asset-manifest.json");
   const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as AssetVisuals;
   for (const actorId of [...reachable.actorIds].sort()) {
+    if (Object.values(pack.creationPresets ?? {}).some(preset => preset.actorDefinitionId === actorId)) continue;
     const visual = manifest.actorVisuals[actorId];
     if (visual?.["front"] && visual["back"]) continue;
     reporter.issue(ASSET_MANIFEST_SOURCE, "actorVisuals", "PRODUCTION_MISSING_ACTOR_VISUAL", `Actor "${actorId}" is reachable in the shipped Adventure but has no two-sided visual.`, actorId);
@@ -686,7 +713,8 @@ async function main(): Promise<void> {
   checkPartySizeCoverage(pack, reachable, reporter);
   checkAiCoverage(pack, reachable, reporter);
   checkExperienceAwards(pack, reporter);
-  await checkVisualCoverage(reachable, reporter);
+  checkCreationStarters(pack, reporter);
+  await checkVisualCoverage(pack, reachable, reporter);
   await checkPolicyIsolation(reporter);
 
   if (issues.length > 0) {

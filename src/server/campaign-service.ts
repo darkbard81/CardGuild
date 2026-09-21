@@ -157,7 +157,7 @@ export function createCampaignService(
 
     create(accountId, name, displayName) {
       const trimmed = name.trim();
-      if (!trimmed || trimmed.length > MAX_CAMPAIGN_NAME_LENGTH) throw new Error(INVALID_CAMPAIGN_NAME);
+      if (!trimmed || [...trimmed].length > MAX_CAMPAIGN_NAME_LENGTH) throw new Error(INVALID_CAMPAIGN_NAME);
 
       // The durable row goes first: a persistence failure then leaves no orphan live session.
       // The opposite order leaks a session on every failed write.

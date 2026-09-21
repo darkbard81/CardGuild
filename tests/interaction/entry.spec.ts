@@ -42,7 +42,7 @@ test("U-ENTRY failed login can be corrected and retried; pending submission is u
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect.poll(() => attempts).toBe(2);
   await finish();
-  await expect(page.getByLabel("모험 이름", { exact: true })).toBeVisible();
+  await expect(page.getByLabel("캐릭터 이름", { exact: true })).toBeVisible();
 });
 
 test("U-ENTRY expired campaign access returns to login and preserves the Continue destination", async ({ page }) => {

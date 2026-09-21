@@ -8,6 +8,8 @@ export type CharacterGender = "male" | "female";
 export interface CharacterCreationPreset {
   readonly id: string;
   readonly actorDefinitionId: string;
+  /** Only currently implemented starter actions; optional for authored test packs. */
+  readonly description?: string;
   readonly appearance: Readonly<Record<CharacterGender, string>>;
 }
 
@@ -34,6 +36,12 @@ export interface ResolvedPartyMemberDefinition extends ActorDefinition {
   readonly rulesInput: CharacterRulesInput | null;
 }
 
+/** Creation templates require a persistent identity; never offer them as authored companions. */
+export function isAuthoredPlayable(actor: ActorDefinition, content: MemberContent): boolean {
+  return actor.traits.some(trait => trait.id === "playable")
+    && !Object.values(content.creationPresets ?? {}).some(preset => preset.actorDefinitionId === actor.id);
+}
+
 export function assertCharacterName(name: unknown): asserts name is string {
   if (typeof name !== "string" || name !== name.trim() || [...name].length < 1 || [...name].length > 40
     || /[\p{Cc}\p{Cf}\p{Zl}\p{Zp}]/u.test(name)) {
@@ -56,7 +64,8 @@ export function assertMemberIdentity(identity: PartyMemberIdentity): void {
 
 export function assertCreationPreset(preset: CharacterCreationPreset, content: MemberContent): ActorDefinition {
   if (!preset || typeof preset.id !== "string" || !preset.id || typeof preset.actorDefinitionId !== "string"
-    || Object.keys(preset).sort().join() !== "actorDefinitionId,appearance,id"
+    || Object.keys(preset).filter(key => key !== "description").sort().join() !== "actorDefinitionId,appearance,id"
+    || (preset.description !== undefined && (typeof preset.description !== "string" || !preset.description.trim()))
     || !preset.appearance || Object.keys(preset.appearance).sort().join() !== "female,male"
     || [preset.appearance.male, preset.appearance.female].some(key => typeof key !== "string" || !key.trim())) {
     throw new Error("Creation preset requires a template and both appearance keys.");

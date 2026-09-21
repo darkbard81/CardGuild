@@ -71,9 +71,13 @@ export const M7_PRODUCTION_POLICY = {
    */
   levelMilestones: { "4": 2, "7": 3 },
 
+  /** Explicit launch roster; rules-registry additions do not automatically become selectable. */
+  creationClasses: ["bard", "champion", "cleric", "druid", "fighter", "ranger", "rogue", "witch", "wizard"],
+
   /** How much content the M7 release authors. */
   volume: {
-    starters: { min: 4, max: 4 },
+    starters: { min: 4, max: 4 }, // Existing authored companions, independent of gender visuals.
+    creationTemplates: { min: 9, max: 9 },
     playerCards: { min: 24, max: 32 },
     enemies: { min: 15, max: 20 },
     scenarios: { min: 8, max: 12 },
@@ -90,8 +94,8 @@ export const M7_PRODUCTION_POLICY = {
    * reward offer opened the last two #17 build directions.
    */
   reachableMinimum: {
-    playerCards: 24,
-    equipment: 21,
+    playerCards: 28,
+    equipment: 22,
     enemies: 14,
     scenarios: 8,
   },
@@ -99,28 +103,6 @@ export const M7_PRODUCTION_POLICY = {
   reserveCards: [
     { id: "card.intimidating-strike", reason: "Level 2 capability removed from the level 1 starter; no current reward offers it.", followUp: "#21" },
     { id: "card.knockdown", reason: "Level 4 Slam Down capability removed from the level 1 starter; outside this Adventure progression.", followUp: "#21" },
-    {
-      id: "card.aimed-shot",
-      reason:
-        "#13 ranged Strike. Nera can take it with her starter shortbow and has a free prepared slot, " +
-        "but no starter prepares it and no reward offers it.",
-      followUp: "#21",
-    },
-    {
-      id: "card.harm",
-      reason: "#13 spell library. The four starters prepare none of it.",
-      followUp: "#21",
-    },
-    {
-      id: "card.daze",
-      reason: "#13 cantrip library. The four starters prepare none of it.",
-      followUp: "#21",
-    },
-    {
-      id: "card.telekinetic-projectile",
-      reason: "#13 cantrip library. The four starters prepare none of it.",
-      followUp: "#21",
-    },
     {
       id: "card.ember-lash",
       reason: "#13 cantrip library. The four starters prepare none of it.",
@@ -194,6 +176,7 @@ export const M7_PRODUCTION_POLICY = {
     },
   ],
 } as const satisfies {
+  readonly creationClasses: readonly string[];
   readonly packId: string;
   readonly adventureId: string;
   readonly tutorialEncounterIds: readonly string[];

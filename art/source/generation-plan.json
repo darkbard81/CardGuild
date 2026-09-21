@@ -39,7 +39,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square dungeon stone floor Board Tile. 1:1ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square dungeon stone floor Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/rubble.png",
@@ -70,7 +70,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square cracked rubble floor Board Tile. 1:1ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square cracked rubble floor Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/chasm.png",
@@ -101,7 +101,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square dungeon chasm Board Tile. 1:1ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square dungeon chasm Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/terrain/wall-block.png",
@@ -132,7 +132,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square dungeon stone wall block Board Tile: the solid mass of a wall seen from directly above, in the same square terrain format as the floor tiles. 1:1ratio full bleed, \ud0c0\uc77c \uc804\uccb4\ub97c \ub3cc\ubcbd\uba74\uc73c\ub85c \ucc44\uc6b0\uace0 \uc678\uacfd\uc120\uc740 \uadf8\ub9ac\uc9c0 \uc54a\ub294\ub2e4. \ubc29\ud5a5\uc131 \uc5c6\ub294 \uc11d\uc7ac \ud328\ud134\ub9cc, \ubaa8\uc11c\ub9ac \uc5f0\uacb0 \ud615\ud0dc \uc5c6\uc74c."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square dungeon stone wall block Board Tile: the solid mass of a wall seen from directly above, in the same square terrain format as the floor tiles. 1:1ratio full bleed, 타일 전체를 돌벽면으로 채우고 외곽선은 그리지 않는다. 방향성 없는 석재 패턴만, 모서리 연결 형태 없음."
     },
     {
       "input": "art/source/terrain/gate-closed.png",
@@ -163,7 +163,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/processed/terrain/wall-block.png. 2d top-down square dungeon gateway Board Tile, wall-block\uc640 \uac19\uc740 1:1 full bleed \uaddc\uaca9. \ubcbd\uc740 \uc774\ubbf8\uc9c0 \uc548\uc5d0\uc11c \uc138\ub85c\ub85c \ub2ec\ub9ac\ubbc0\ub85c \uc0c1\ud558 \ubaa8\uc11c\ub9ac\ub9cc \uc11d\uc7ac jamb\uc774\uace0 \uc88c\uc6b0 \ubaa8\uc11c\ub9ac\ub294 \ud1b5\ub85c\ub85c \uc5f4\ub824 \uc788\ub2e4. \ud22c\uc0ac\u00b7\uc678\uacfd\uc120\u00b7\ud22c\uba85 \uc5ec\ubc31 \uc5c6\uc74c. Closed state: \ubb34\uac70\uc6b4 \ubaa9\uc7ac \uc30d\ubb38\uc774 \ud1b5\ub85c\ub97c \uc644\uc804\ud788 \ub9c9\uace0 \uc788\ub2e4."
+      "prompt": "Reference art/STYLE.md and art/processed/terrain/wall-block.png. 2d top-down square dungeon gateway Board Tile, wall-block와 같은 1:1 full bleed 규격. 벽은 이미지 안에서 세로로 달리므로 상하 모서리만 석재 jamb이고 좌우 모서리는 통로로 열려 있다. 투사·외곽선·투명 여백 없음. Closed state: 무거운 목재 쌍문이 통로를 완전히 막고 있다."
     },
     {
       "input": "art/source/terrain/gate-open.png",
@@ -194,7 +194,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/processed/terrain/wall-block.png. 2d top-down square dungeon gateway Board Tile, wall-block\uc640 \uac19\uc740 1:1 full bleed \uaddc\uaca9. \ubcbd\uc740 \uc774\ubbf8\uc9c0 \uc548\uc5d0\uc11c \uc138\ub85c\ub85c \ub2ec\ub9ac\ubbc0\ub85c \uc0c1\ud558 \ubaa8\uc11c\ub9ac\ub9cc \uc11d\uc7ac jamb\uc774\uace0 \uc88c\uc6b0 \ubaa8\uc11c\ub9ac\ub294 \ud1b5\ub85c\ub85c \uc5f4\ub824 \uc788\ub2e4. \ud22c\uc0ac\u00b7\uc678\uacfd\uc120\u00b7\ud22c\uba85 \uc5ec\ubc31 \uc5c6\uc74c. Open state: closed\uc640 \ub3d9\uc77c\ud55c jamb \uc704\uce58\u00b7\ud06c\uae30, \uac00\uc6b4\ub370\ub294 \ubc14\ub2e5\uc774 \ub4dc\ub7ec\ub098\uace0 \ubb38\uc9dd\uc740 jamb \uc548\ucabd\uc5d0 \uc811\ud600 \uc788\ub2e4."
+      "prompt": "Reference art/STYLE.md and art/processed/terrain/wall-block.png. 2d top-down square dungeon gateway Board Tile, wall-block와 같은 1:1 full bleed 규격. 벽은 이미지 안에서 세로로 달리므로 상하 모서리만 석재 jamb이고 좌우 모서리는 통로로 열려 있다. 투사·외곽선·투명 여백 없음. Open state: closed와 동일한 jamb 위치·크기, 가운데는 바닥이 드러나고 문짝은 jamb 안쪽에 접혀 있다."
     },
     {
       "input": "art/source/terrain/web-overlay.png",
@@ -225,7 +225,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square spider web floor overlay Board Tile. 1:1ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2d top-down square spider web floor overlay Board Tile. 1:1ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/objects/chest.png",
@@ -317,7 +317,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md, art/reference/character-standee.png, and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style elf maid Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md, art/reference/character-standee.png, and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style elf maid Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/lyra-front-back.png",
@@ -357,7 +357,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female mobile adventurer Lyra with Boots of Fly Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female mobile adventurer Lyra with Boots of Fly Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/brom-front-back.png",
@@ -397,7 +397,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female durable guardian Brom with heavy armor and shield Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and hero.aerin. 2D high detailed Japanese anime style female durable guardian Brom with heavy armor and shield Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/nera-front-back.png",
@@ -437,7 +437,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style field tactician and battlefield medic Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style field tactician and battlefield medic Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/goblin-skirmisher-front-back.png",
@@ -477,7 +477,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style goblin skirmisher Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style goblin skirmisher Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/goblin-brute-front-back.png",
@@ -517,7 +517,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style goblin brute Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style goblin brute Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/goblin-chief-front-back.png",
@@ -557,7 +557,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style goblin chief Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style goblin chief Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/ui/equipment-icons.png",
@@ -711,7 +711,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style skeleton rabble undead minion Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style skeleton rabble undead minion Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/skeleton-guard-front-back.png",
@@ -751,7 +751,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style armored skeleton guard with a halberd Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style armored skeleton guard with a halberd Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/skeleton-archer-front-back.png",
@@ -791,7 +791,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style hooded skeleton archer with a bone longbow Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style hooded skeleton archer with a bone longbow Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/bone-hulk-front-back.png",
@@ -831,7 +831,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style massive fused bone hulk brute with a bone maul Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style massive fused bone hulk brute with a bone maul Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/bone-priest-front-back.png",
@@ -871,7 +871,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style robed undead bone priest caster Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style robed undead bone priest caster Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/wolf-yearling-front-back.png",
@@ -911,7 +911,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style young grey dungeon wolf Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style young grey dungeon wolf Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/dire-wolf-front-back.png",
@@ -951,7 +951,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style large scarred alpha dire wolf Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style large scarred alpha dire wolf Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/cave-spider-front-back.png",
@@ -991,7 +991,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style small quick cave spider Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style small quick cave spider Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/giant-spider-front-back.png",
@@ -1031,7 +1031,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style large armoured hunting giant spider Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style large armoured hunting giant spider Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/cult-initiate-front-back.png",
@@ -1071,7 +1071,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style hooded cult initiate with a ritual knife Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style hooded cult initiate with a ritual knife Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/cult-firebrand-front-back.png",
@@ -1111,7 +1111,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style robed cult firebrand fire caster Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style robed cult firebrand fire caster Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/cult-hierophant-front-back.png",
@@ -1151,7 +1151,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style ornate cult hierophant leader with a ritual staff Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style ornate cult hierophant leader with a ritual staff Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/goblin-lackey-front-back.png",
@@ -1191,7 +1191,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style small cowering goblin lackey with a rusty dagger Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style small cowering goblin lackey with a rusty dagger Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/goblin-spearman-front-back.png",
@@ -1231,7 +1231,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style goblin spearman in patched leather with a long spear Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style goblin spearman in patched leather with a long spear Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/actors/goblin-slinger-front-back.png",
@@ -1271,7 +1271,7 @@
           }
         }
       ],
-      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style lean goblin slinger whirling a leather sling Character Standee, front and back. 2:3ratio \uad75\uc740 \uc678\uacfd\uc120\uacfc \ud22c\uba85\ubc30\uacbd."
+      "prompt": "Reference art/STYLE.md and art/reference/board-standee-layout.png. 2D high detailed Japanese anime style lean goblin slinger whirling a leather sling Character Standee, front and back. 2:3ratio 굵은 외곽선과 투명배경."
     },
     {
       "input": "art/source/ui/equipment-icons-2.png",
@@ -1902,6 +1902,761 @@
         }
       ],
       "prompt": "Reference art/STYLE.md. CardGuild tactical card icons: the remaining 28 production cards, in one 4x7 transparent sprite sheet."
+    },
+    {
+      "input": "art/source/actors/human-bard-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.bard.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.bard.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.bard.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL: wide visible PURE WHITE 8px cutout border around every silhouette. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment MUST fit inside its own half. No props cross center. Full boots visible. Adult male Human Bard, medium wavy dark auburn hair, charming composed expression. Burgundy travel doublet over light leather armor, cream shirt, dark trousers, sturdy ankle boots. A small lute slung on his back and short light blade sheathed at hip. No magic effects. EDIT: Reference art/STYLE.md. Edit this sprite sheet to prevent clipping at the image edges. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick WHITE cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450,y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Full hair, arms, equipment, boots and white outline visible, with at least 50px transparent margins all around. No drawing crosses center. Feet on same baseline. Real TRANSPARENT alpha background with no shadows or gradient backdrop."
+    },
+    {
+      "input": "art/source/actors/human-bard-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.bard.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.bard.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.bard.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL: wide visible PURE WHITE 8px cutout border around every silhouette. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment MUST fit inside its own half. No props cross center. Full boots visible. Adult female Human Bard, medium wavy dark auburn hair, charming composed expression. Burgundy travel doublet over light leather armor, cream shirt, dark trousers, sturdy ankle boots. A small lute slung on her back and short light blade sheathed at hip. No magic effects. EDIT: Reference art/STYLE.md. Edit this sprite sheet to fix cropping. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick white cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450, y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Absolutely no boot, cape, shield, weapon or white outline may extend into center x=451..573. Keep feet close together on same baseline. Leave actual TRANSPARENT empty alpha background all around and between the figures; no gradients or shadows."
+    },
+    {
+      "input": "art/source/actors/human-champion-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.champion.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.champion.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.champion.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL crop requirement: leave a CLEAR EMPTY VERTICAL GUTTER 80 pixels wide at exact center. Each entire silhouette including equipment MUST fit inside its own half. Reduce figure size as needed; full boots visible. Do not crop. Adult male Human Champion, short golden brown hair, calm protective expression, sturdy build. Silver scale-mail armor over ivory/navy cloth, sturdy boots, guardian mace held low beside body and plain round steel shield. No holy magic effects, no helmet. EDIT: Reference art/STYLE.md. Preserve exactly this character design, front-left/back-right views, costume, equipment, anime painting and poses. Add a clearly visible thick PURE WHITE 8-pixel cutout outline around BOTH complete silhouettes including weapons and shield. Shrink and reposition the two entire figures to leave an 80px-wide empty vertical gutter at the exact center and 40px outer margins. All equipment including shield must fit wholly in its own half. Actual TRANSPARENT alpha background; no shadows, no backdrop. Feet on same baseline. EDIT: Reference art/STYLE.md. Edit this sprite sheet to fix cropping. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick WHITE cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450, y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Absolutely no boot, cape, shield, weapon or white outline may extend into center x=451..573. Keep feet close together on same baseline. Leave actual TRANSPARENT empty alpha background all around and between the figures; no gradients or shadows."
+    },
+    {
+      "input": "art/source/actors/human-champion-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.champion.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.champion.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.champion.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL crop requirement: leave a CLEAR EMPTY VERTICAL GUTTER 80 pixels wide at exact center. Each entire silhouette including equipment MUST fit inside its own half. Reduce figure size as needed; full boots visible. Do not crop. Adult female Human Champion, blonde braided crown hairstyle, calm protective expression, athletic build. Silver scale-mail armor over ivory/navy cloth, sturdy boots, guardian mace held low beside body and plain round steel shield. No holy magic effects, no helmet. EDIT: Reference art/STYLE.md. Preserve exactly this character design, front-left/back-right views, costume, equipment, anime painting and poses. Add a clearly visible thick PURE WHITE 8-pixel cutout outline around BOTH complete silhouettes including weapons and shield. Shrink and reposition the two entire figures to leave an 80px-wide empty vertical gutter at the exact center and 40px outer margins. All equipment including shield must fit wholly in its own half. Actual TRANSPARENT alpha background; no shadows, no backdrop. Feet on same baseline."
+    },
+    {
+      "input": "art/source/actors/human-cleric-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.cleric.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.cleric.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.cleric.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL crop requirement: leave a CLEAR EMPTY VERTICAL GUTTER 80 pixels wide at exact center. Each entire silhouette including equipment MUST fit inside its own half. Reduce figure size as needed; full boots visible. Do not crop. Adult male Human Cleric, short dark brown hair, gentle focused expression. Cream and gold modest clerical tabard over silver scale mail, dark trousers and sturdy boots. Plain wooden staff upright close beside body and small round steel shield. No halo or magic effects."
+    },
+    {
+      "input": "art/source/actors/human-cleric-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.cleric.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.cleric.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.cleric.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL crop requirement: leave a CLEAR EMPTY VERTICAL GUTTER 80 pixels wide at exact center. Each entire silhouette including equipment MUST fit inside its own half. Reduce figure size as needed; full boots visible. Do not crop. Adult female Human Cleric, dark brown hair in neat bun with a short braid, gentle focused expression. Cream and gold modest clerical tabard over silver scale mail, dark trousers and sturdy boots. Plain wooden staff upright close beside body and small round steel shield. No halo or magic effects."
+    },
+    {
+      "input": "art/source/actors/human-druid-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.druid.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.druid.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.druid.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL: wide visible PURE WHITE 8px cutout border around every silhouette. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment MUST fit inside its own half. No props cross center. Full boots visible. Adult male Human Druid with shoulder length dark green-black hair tied low. Earth brown leather armor under moss green layered travel robe, leaf embroidery, boots. Holds a plain gnarled wooden staff upright close beside him and a small round wood-faced shield. No antlers, no animals, no magic effects. EDIT: Reference art/STYLE.md. Edit this sprite sheet to fix cropping. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick white cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450, y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Absolutely no boot, cape, shield, weapon or white outline may extend into center x=451..573. Keep feet close together on same baseline. Leave actual TRANSPARENT empty alpha background all around and between the figures; no gradients or shadows."
+    },
+    {
+      "input": "art/source/actors/human-druid-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.druid.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.druid.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.druid.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL: wide visible PURE WHITE 8px cutout border around every silhouette. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment MUST fit inside its own half. No props cross center. Full boots visible. Adult female Human Druid with dark green-black braided hair. Earth brown leather armor under moss green layered travel robe, leaf embroidery, boots. Holds a plain gnarled wooden staff upright close beside her and a small round wood-faced shield. No antlers, no animals, no magic effects. EDIT: Reference art/STYLE.md. Edit this sprite sheet to fix cropping. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick white cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450, y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Absolutely no boot, cape, shield, weapon or white outline may extend into center x=451..573. Keep feet close together on same baseline. Leave actual TRANSPARENT empty alpha background all around and between the figures; no gradients or shadows."
+    },
+    {
+      "input": "art/source/actors/human-fighter-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.fighter.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.fighter.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          },
+          "portraitFocus": {
+            "x": 0.6,
+            "y": 0.22
+          }
+        },
+        {
+          "assetId": "actor.human.fighter.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light. Adult male Human Fighter, short tousled chestnut hair, confident focused face, athletic build. Practical silver scale-mail armor over navy padded clothing, brown leather straps and sturdy boots. Wields a long halberd upright beside his body, no shield, no wings. Clearly readable novice warrior silhouette. EDIT: Reference art/STYLE.md. Edit this sprite sheet to fix cropping. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick white cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450, y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Absolutely no boot, cape, shield, weapon or white outline may extend into center x=451..573. Keep feet close together on same baseline. Leave actual TRANSPARENT empty alpha background all around and between the figures; no gradients or shadows."
+    },
+    {
+      "input": "art/source/actors/human-fighter-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.fighter.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.fighter.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          },
+          "portraitFocus": {
+            "x": 0.58,
+            "y": 0.23
+          }
+        },
+        {
+          "assetId": "actor.human.fighter.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL crop requirement: leave a CLEAR EMPTY VERTICAL GUTTER 80 pixels wide at the exact center. Each entire silhouette including hands, books, and weapons MUST fit inside its own half with 40px margins. Reduce figure size as needed, do not crop anything. Adult female Human Fighter, chestnut ponytail, focused face, athletic build. Practical silver scale-mail armor over navy padded clothing, brown leather straps and sturdy boots. Wields a long halberd upright beside her body, no shield. Confident novice warrior."
+    },
+    {
+      "input": "art/source/actors/human-ranger-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.ranger.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.ranger.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.ranger.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL crop requirement: leave a CLEAR EMPTY VERTICAL GUTTER 80 pixels wide at the exact center. Each entire silhouette including hands, books, and weapons MUST fit inside its own half with 40px margins. Reduce figure size as needed, do not crop anything. Adult male Human Ranger with short reddish brown hair. Green hooded cloak lowered behind shoulders, practical brown leather armor, dark green trousers and boots, quiver on back. Holds a compact shortbow upright close beside his body. Readable scout and archer silhouette."
+    },
+    {
+      "input": "art/source/actors/human-ranger-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.ranger.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.ranger.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.ranger.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  CRITICAL crop requirement: leave a CLEAR EMPTY VERTICAL GUTTER 80 pixels wide at the exact center. Each entire silhouette including hands, books, and weapons MUST fit inside its own half with 40px margins. Reduce figure size as needed, do not crop anything. Adult female Human Ranger with auburn braid. Green hooded cloak lowered behind shoulders, practical brown leather armor, dark green trousers and boots, quiver on back. Holds a compact shortbow upright close beside her body. Readable scout and archer silhouette."
+    },
+    {
+      "input": "art/source/actors/human-rogue-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.rogue.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.rogue.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.rogue.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  Wide PURE WHITE 8px outer cutout border. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment fits within its own half. Full boots visible, ample margin. Adult male Human Rogue with short black hair and a confident alert expression. Fitted charcoal leather armor over muted plum tunic, leather bracers, dark trousers, soft boots. Short light blade held low close to hip, small belt pouches. Hood folded down, face clearly visible. No cape spread, no magic. EDIT: Reference art/STYLE.md. Edit this sprite sheet to prevent clipping at the image edges. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick WHITE cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450,y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Full hair, arms, equipment, boots and white outline visible, with at least 50px transparent margins all around. No drawing crosses center. Feet on same baseline. Real TRANSPARENT alpha background with no shadows or gradient backdrop."
+    },
+    {
+      "input": "art/source/actors/human-rogue-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.rogue.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.rogue.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.rogue.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  Wide PURE WHITE 8px outer cutout border. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment fits within its own half. Full boots visible, ample margin. Adult female Human Rogue with short black bobbed hair and a confident alert expression. Fitted charcoal leather armor over muted plum tunic, leather bracers, dark trousers, soft boots. Short light blade held low close to hip, small belt pouches. Hood folded down, face clearly visible. No cape spread, no magic."
+    },
+    {
+      "input": "art/source/actors/human-witch-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.witch.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.witch.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.witch.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  Wide PURE WHITE 8px outer cutout border. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment fits within its own half. Full boots visible, ample margin. Adult male Human Witch with long silver hair loosely tied back, thoughtful expression. Dark plum layered traveling robes with modest embroidered runes, small leather belt pouches and boots. Plain wooden staff upright beside body, a small closed grimoire held close at waist. No familiar, no floating effects, no pointed hat. EDIT: Reference art/STYLE.md. Edit this sprite sheet to fix cropping. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick WHITE cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450, y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Absolutely no boot, cape, shield, weapon or white outline may extend into center x=451..573. Keep feet close together on same baseline. Leave actual TRANSPARENT empty alpha background all around and between the figures; no gradients or shadows."
+    },
+    {
+      "input": "art/source/actors/human-witch-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.witch.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.witch.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.witch.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  Wide PURE WHITE 8px outer cutout border. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment fits within its own half. Full boots visible, ample margin. Adult female Human Witch with long silver hair loosely braided, thoughtful expression. Dark plum layered traveling robes with modest embroidered runes, small leather belt pouches and boots. Plain wooden staff upright beside body, a small closed grimoire held close at waist. No familiar, no floating effects, no pointed hat."
+    },
+    {
+      "input": "art/source/actors/human-wizard-male-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.wizard.male",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.wizard.male.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.wizard.male.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light.  Wide PURE WHITE 8px outer cutout border. Leave a CLEAR EMPTY vertical gutter at center. Each entire silhouette including equipment fits within its own half. Full boots visible, ample margin. Adult male Human Wizard with shoulder length midnight blue hair loosely tied back, intelligent composed face. Layered deep indigo scholar robes with restrained brass embroidery, leather belt and lace-up boots. Holds a small open spellbook close against his waist and a plain wooden staff upright beside his body. No floating effects. EDIT: Reference art/STYLE.md. Edit this sprite sheet to fix cropping. Keep exactly this same character, costume, equipment, detailed 2D anime painting and thick WHITE cutout outlines. Both figures must be SMALLER on this same 1024x1536 canvas. Front view entirely contained inside rectangle x=50..450, y=150..1380. Back view entirely contained inside x=574..974,y=150..1380. Absolutely no boot, cape, shield, weapon or white outline may extend into center x=451..573. Keep feet close together on same baseline. Leave actual TRANSPARENT empty alpha background all around and between the figures; no gradients or shadows."
+    },
+    {
+      "input": "art/source/actors/human-wizard-female-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "human.wizard.female",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.human.wizard.female.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        },
+        {
+          "assetId": "actor.human.wizard.female.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 152
+          }
+        }
+      ],
+      "prompt": "Project asset for CardGuild. Reference art/STYLE.md conventions: upright paper character standee, 2D hyper detailed Japanese anime illustration, detailed cel painting, elegant readable anatomy, sharp dark interior linework, a CLEAR THICK PURE WHITE OUTER CUTOUT OUTLINE around the complete silhouette including equipment. Truly TRANSPARENT background with alpha, no solid background, no checkerboard, no environment, no cast ground shadow, no text or labels, no platform. One PORTRAIT 2:3 PNG sheet with exactly TWO full-body views side by side: FRONT view on the LEFT half, BACK view on the RIGHT half of the SAME adult human character. Both views exactly same costume/equipment/hair/body proportions and foot baseline, full head-to-boots with generous empty margin and separated silhouettes, no overlapping center. Human rounded ears, no elf ears. High quality anime game character art, upper-left light. Adult female Human Wizard, long midnight blue hair, intelligent composed expression. Layered deep indigo scholar robes with restrained brass embroidery, leather belt, lace-up boots. Holds an open spellbook near her waist and a plain wooden staff in the other hand; matching closed-back view of same outfit. No floating effects or extra characters. EDIT: Keep the same adult Human female Wizard design, outfit, white cutout outline and 2D hyper detailed anime painting. Change only layout: shrink and reposition both full-body views so the left FRONT figure and her ENTIRE book/staff fit within the left half, and the right BACK figure/staff fit within the right half. Leave 80px transparent empty vertical gutter at center and 40px outer margins. Feet on same baseline. Preserve truly TRANSPARENT alpha background, no backdrop or ground shadow."
+    },
+    {
+      "input": "art/source/ui/staff-icon.png",
+      "mode": "ui-icon",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "ui.equipment.staff",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 64,
+            "height": 64
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. CardGuild inventory equipment icon, one simple wooden adventurer staff with gnarled top and wrapped leather grip, diagonal composition, isolated full item centered inside a SQUARE image. 2D detailed anime game illustration, dark inner linework, thick white outer cutout border, upper-left soft light. Truly transparent alpha background, no floor, no shadow, no text, no border frame. Equipment only, no person. Generous transparent margins."
     }
   ],
   "presentation": {
@@ -1943,7 +2698,8 @@
       "medics-kit": "ui.equipment.medics-kit",
       "warding-charm": "ui.equipment.warding-charm",
       "hexers-focus": "ui.equipment.hexers-focus",
-      "bloodied-talisman": "ui.equipment.bloodied-talisman"
+      "bloodied-talisman": "ui.equipment.bloodied-talisman",
+      "staff": "ui.equipment.staff"
     },
     "cardVisuals": {
       "card.trip": "ui.card.trip",

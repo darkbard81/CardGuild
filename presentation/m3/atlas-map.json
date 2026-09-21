@@ -720,7 +720,7 @@
         "y": 0.5
       }
     },
-    "ui.equipment.striders-boots": {
+    "ui.equipment.staff": {
       "frame": {
         "x": 2,
         "y": 522,
@@ -744,7 +744,7 @@
         "y": 0.5
       }
     },
-    "ui.equipment.throwing-axes": {
+    "ui.equipment.striders-boots": {
       "frame": {
         "x": 262,
         "y": 522,
@@ -768,7 +768,7 @@
         "y": 0.5
       }
     },
-    "ui.equipment.tower-shield": {
+    "ui.equipment.throwing-axes": {
       "frame": {
         "x": 522,
         "y": 522,
@@ -792,9 +792,33 @@
         "y": 0.5
       }
     },
-    "ui.equipment.warding-charm": {
+    "ui.equipment.tower-shield": {
       "frame": {
         "x": 782,
+        "y": 522,
+        "w": 256,
+        "h": 256
+      },
+      "rotated": false,
+      "trimmed": false,
+      "spriteSourceSize": {
+        "x": 0,
+        "y": 0,
+        "w": 256,
+        "h": 256
+      },
+      "sourceSize": {
+        "w": 256,
+        "h": 256
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.warding-charm": {
+      "frame": {
+        "x": 1042,
         "y": 522,
         "w": 256,
         "h": 256

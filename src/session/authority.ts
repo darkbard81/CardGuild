@@ -1,3 +1,4 @@
+import { isAuthoredPlayable } from "../character/member";
 import { assertCharacterName, assertCreationPreset } from "../character/member";
 import {
   buildAdventureEncounter,
@@ -74,9 +75,8 @@ function makeSeat(seat: SessionSeatNumber, player: SessionPlayerIdentity): Sessi
 }
 
 function playableCharacter(context: SessionAuthorityContext, actorDefinitionId: string): boolean {
-  return Boolean(
-    context.pack.actorDefinitions[actorDefinitionId]?.traits.some((trait) => trait.id === "playable"),
-  );
+  const actor = context.pack.actorDefinitions[actorDefinitionId];
+  return Boolean(actor && isAuthoredPlayable(actor, context.pack));
 }
 
 export function createSessionCoreState(

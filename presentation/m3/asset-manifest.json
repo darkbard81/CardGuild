@@ -1356,6 +1356,747 @@
       "displayWidth": 64,
       "displayHeight": 64
     },
+    "actor.human.bard.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/bard/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2617,
+        "width": 0.4766,
+        "height": 0.9401
+      }
+    },
+    "actor.human.bard.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/bard/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0755,
+        "left": 0.2617,
+        "width": 0.4766,
+        "height": 0.9245
+      }
+    },
+    "actor.human.bard.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/bard/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2656,
+        "width": 0.4688,
+        "height": 0.9401
+      }
+    },
+    "actor.human.bard.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/bard/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2695,
+        "width": 0.4609,
+        "height": 0.9401
+      }
+    },
+    "actor.human.champion.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/champion/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0625,
+        "left": 0.1992,
+        "width": 0.6016,
+        "height": 0.9375
+      }
+    },
+    "actor.human.champion.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/champion/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2031,
+        "width": 0.5977,
+        "height": 0.9401
+      }
+    },
+    "actor.human.champion.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/champion/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2461,
+        "width": 0.5117,
+        "height": 0.9401
+      }
+    },
+    "actor.human.champion.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/champion/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0703,
+        "left": 0.2578,
+        "width": 0.4844,
+        "height": 0.9297
+      }
+    },
+    "actor.human.cleric.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/cleric/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2461,
+        "width": 0.5078,
+        "height": 0.9401
+      }
+    },
+    "actor.human.cleric.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/cleric/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0885,
+        "left": 0.2578,
+        "width": 0.4844,
+        "height": 0.9115
+      }
+    },
+    "actor.human.cleric.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/cleric/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2617,
+        "width": 0.4766,
+        "height": 0.9401
+      }
+    },
+    "actor.human.cleric.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/cleric/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0729,
+        "left": 0.2695,
+        "width": 0.4648,
+        "height": 0.9271
+      }
+    },
+    "actor.human.druid.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/druid/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2266,
+        "width": 0.5469,
+        "height": 0.9401
+      }
+    },
+    "actor.human.druid.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/druid/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2422,
+        "width": 0.5195,
+        "height": 0.9401
+      }
+    },
+    "actor.human.druid.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/druid/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.25,
+        "width": 0.5039,
+        "height": 0.9401
+      }
+    },
+    "actor.human.druid.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/druid/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0703,
+        "left": 0.2695,
+        "width": 0.4648,
+        "height": 0.9297
+      }
+    },
+    "actor.human.fighter.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/fighter/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "portraitFocus": {
+        "x": 0.6,
+        "y": 0.22
+      },
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2617,
+        "width": 0.4805,
+        "height": 0.9401
+      }
+    },
+    "actor.human.fighter.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/fighter/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2617,
+        "width": 0.4805,
+        "height": 0.9401
+      }
+    },
+    "actor.human.fighter.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/fighter/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "portraitFocus": {
+        "x": 0.58,
+        "y": 0.23
+      },
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2617,
+        "width": 0.4766,
+        "height": 0.9401
+      }
+    },
+    "actor.human.fighter.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/fighter/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0651,
+        "left": 0.2813,
+        "width": 0.4414,
+        "height": 0.9349
+      }
+    },
+    "actor.human.ranger.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/ranger/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2266,
+        "width": 0.5508,
+        "height": 0.9401
+      }
+    },
+    "actor.human.ranger.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/ranger/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0677,
+        "left": 0.2422,
+        "width": 0.5195,
+        "height": 0.9323
+      }
+    },
+    "actor.human.ranger.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/ranger/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2578,
+        "width": 0.4883,
+        "height": 0.9401
+      }
+    },
+    "actor.human.ranger.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/ranger/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0677,
+        "left": 0.2578,
+        "width": 0.4844,
+        "height": 0.9323
+      }
+    },
+    "actor.human.rogue.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/rogue/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2539,
+        "width": 0.4922,
+        "height": 0.9401
+      }
+    },
+    "actor.human.rogue.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/rogue/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0729,
+        "left": 0.2656,
+        "width": 0.4688,
+        "height": 0.9271
+      }
+    },
+    "actor.human.rogue.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/rogue/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2734,
+        "width": 0.4531,
+        "height": 0.9401
+      }
+    },
+    "actor.human.rogue.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/rogue/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0833,
+        "left": 0.2773,
+        "width": 0.4492,
+        "height": 0.9167
+      }
+    },
+    "actor.human.witch.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/witch/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2422,
+        "width": 0.5195,
+        "height": 0.9401
+      }
+    },
+    "actor.human.witch.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/witch/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0703,
+        "left": 0.2344,
+        "width": 0.5313,
+        "height": 0.9297
+      }
+    },
+    "actor.human.witch.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/witch/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2656,
+        "width": 0.4688,
+        "height": 0.9401
+      }
+    },
+    "actor.human.witch.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/witch/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.1068,
+        "left": 0.2734,
+        "width": 0.4531,
+        "height": 0.8932
+      }
+    },
+    "actor.human.wizard.male.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/wizard/male/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2461,
+        "width": 0.5117,
+        "height": 0.9401
+      }
+    },
+    "actor.human.wizard.male.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/wizard/male/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.25,
+        "width": 0.5,
+        "height": 0.9401
+      }
+    },
+    "actor.human.wizard.female.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/wizard/female/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2578,
+        "width": 0.4883,
+        "height": 0.9401
+      }
+    },
+    "actor.human.wizard.female.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/human/wizard/female/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 152,
+      "ink": {
+        "top": 0.1042,
+        "left": 0.2695,
+        "width": 0.4648,
+        "height": 0.8958
+      }
+    },
+    "ui.equipment.staff": {
+      "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.staff"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 64,
+      "displayHeight": 64
+    },
     "ui.card.vicious-swing": {
       "kind": "ui",
       "source": {
@@ -1925,6 +2666,78 @@
     "enemy.goblin-slinger": {
       "front": "actor.goblin-slinger.front",
       "back": "actor.goblin-slinger.back"
+    },
+    "human.bard.male": {
+      "front": "actor.human.bard.male.front",
+      "back": "actor.human.bard.male.back"
+    },
+    "human.bard.female": {
+      "front": "actor.human.bard.female.front",
+      "back": "actor.human.bard.female.back"
+    },
+    "human.champion.male": {
+      "front": "actor.human.champion.male.front",
+      "back": "actor.human.champion.male.back"
+    },
+    "human.champion.female": {
+      "front": "actor.human.champion.female.front",
+      "back": "actor.human.champion.female.back"
+    },
+    "human.cleric.male": {
+      "front": "actor.human.cleric.male.front",
+      "back": "actor.human.cleric.male.back"
+    },
+    "human.cleric.female": {
+      "front": "actor.human.cleric.female.front",
+      "back": "actor.human.cleric.female.back"
+    },
+    "human.druid.male": {
+      "front": "actor.human.druid.male.front",
+      "back": "actor.human.druid.male.back"
+    },
+    "human.druid.female": {
+      "front": "actor.human.druid.female.front",
+      "back": "actor.human.druid.female.back"
+    },
+    "human.fighter.male": {
+      "front": "actor.human.fighter.male.front",
+      "back": "actor.human.fighter.male.back"
+    },
+    "human.fighter.female": {
+      "front": "actor.human.fighter.female.front",
+      "back": "actor.human.fighter.female.back"
+    },
+    "human.ranger.male": {
+      "front": "actor.human.ranger.male.front",
+      "back": "actor.human.ranger.male.back"
+    },
+    "human.ranger.female": {
+      "front": "actor.human.ranger.female.front",
+      "back": "actor.human.ranger.female.back"
+    },
+    "human.rogue.male": {
+      "front": "actor.human.rogue.male.front",
+      "back": "actor.human.rogue.male.back"
+    },
+    "human.rogue.female": {
+      "front": "actor.human.rogue.female.front",
+      "back": "actor.human.rogue.female.back"
+    },
+    "human.witch.male": {
+      "front": "actor.human.witch.male.front",
+      "back": "actor.human.witch.male.back"
+    },
+    "human.witch.female": {
+      "front": "actor.human.witch.female.front",
+      "back": "actor.human.witch.female.back"
+    },
+    "human.wizard.male": {
+      "front": "actor.human.wizard.male.front",
+      "back": "actor.human.wizard.male.back"
+    },
+    "human.wizard.female": {
+      "front": "actor.human.wizard.female.front",
+      "back": "actor.human.wizard.female.back"
     }
   },
   "terrainVisuals": {
@@ -1965,7 +2778,8 @@
     "medics-kit": "ui.equipment.medics-kit",
     "warding-charm": "ui.equipment.warding-charm",
     "hexers-focus": "ui.equipment.hexers-focus",
-    "bloodied-talisman": "ui.equipment.bloodied-talisman"
+    "bloodied-talisman": "ui.equipment.bloodied-talisman",
+    "staff": "ui.equipment.staff"
   },
   "cardVisuals": {
     "card.trip": "ui.card.trip",

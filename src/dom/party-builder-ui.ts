@@ -1,3 +1,4 @@
+import { isAuthoredPlayable } from "../character/member";
 import { resolveSessionPartyDefinition } from "../session/member-view";
 import { CharacterDetailUi } from "./character-detail-ui";
 import type { CompiledContentPack } from "../content";
@@ -25,7 +26,7 @@ export interface PartyBuilderHandlers {
 
 function playableActors(pack: CompiledContentPack): readonly ActorDefinition[] {
   return Object.values(pack.actorDefinitions)
-    .filter((actor) => actor.traits.some((trait) => trait.id === "playable"))
+    .filter((actor) => isAuthoredPlayable(actor, pack))
     .sort((left, right) =>
       archetypeRank(left, actorStatistics(left, pack), pack) -
         archetypeRank(right, actorStatistics(right, pack), pack) ||

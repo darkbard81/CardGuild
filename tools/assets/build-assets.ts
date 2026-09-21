@@ -6,6 +6,7 @@ import sharp, { type OverlayOptions } from "sharp";
 import { assertCardArtOutput, cardArtHref, readCardArtPlan, type CardArtPlan } from "./card-art";
 
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
+import { assertCreationVisualCoverage } from "../../src/presentation/creation-visual-contract";
 import {
   ACTOR_SIDES,
   actorPathSegments,
@@ -49,6 +50,7 @@ interface FramePlan {
   readonly anchor: Point;
   readonly displaySize: { readonly width?: number; readonly height?: number };
   readonly footprint?: Size;
+  readonly portraitFocus?: Point;
 }
 
 interface SourcePlan {
@@ -177,6 +179,9 @@ async function writeJson(filePath: string, value: unknown): Promise<void> {
 }
 
 function validatePlan(plan: GenerationPlan): void {
+  assertCreationVisualCoverage(PRODUCTION_CONTENT.pack.creationPresets ?? {}, Object.fromEntries(
+    plan.sources.filter(source => source.mode === "two-sided-actor").map(source => [source.definitionId!,
+      Object.fromEntries(source.frames.map(frame => [frame.side!, frame.assetId]))])));
   if (plan.version !== 3) throw new Error("Generation plan version must be 3.");
   if (plan.background !== "transparent") throw new Error("Generated sources must use the transparent background contract.");
   if (!isPowerOfTwo(plan.atlas.size)) throw new Error("Atlas size must be a power of two.");
@@ -193,6 +198,10 @@ function validatePlan(plan: GenerationPlan): void {
       if (ids.has(frame.assetId)) throw new Error(`Duplicate asset ID ${frame.assetId}.`);
       ids.add(frame.assetId);
       assertUnitPoint(frame.anchor, `${frame.assetId} anchor`);
+      if (frame.portraitFocus) {
+        if (frame.kind !== "actor" || frame.side !== "front") throw new Error(`${frame.assetId}: portrait focus requires a front actor frame.`);
+        assertUnitPoint(frame.portraitFocus, `${frame.assetId} portrait focus`);
+      }
       if (frame.sourceIndex !== undefined && (!Number.isInteger(frame.sourceIndex) || frame.sourceIndex < 0 || frame.sourceIndex >= source.frames.length)) {
         throw new Error(`${frame.assetId} sourceIndex is outside its source grid.`);
       }
@@ -351,6 +360,14 @@ async function extractCleanFrames(root: string, source: SourcePlan): Promise<rea
       const pixels = cleanGeneratedBackground(raw, width, height);
       const box = visibleBox(pixels, width, height);
       if (!box) throw new Error(`${frame.assetId} became empty during background cleanup.`);
+      const creationVariant = Object.values(PRODUCTION_CONTENT.pack.creationPresets ?? {})
+        .some(preset => Object.values(preset.appearance).includes(source.definitionId ?? ""));
+      if (creationVariant && (box.left === 0 || box.top === 0
+        || box.left + box.width === width || box.top + box.height === height)) {
+        // Source art review is separate from runtime canvas validation. Keep existing
+        // artwork usable while surfacing cells that may need a later artist revision.
+        process.stderr.write(`Art review: ${frame.assetId} touches its source cell edge. Check the outline in the source sheet.\n`);
+      }
       frames.push({ plan: frame, pixels, width, height, box });
     }
   }
@@ -643,6 +660,7 @@ async function buildManifest(
     ...(asset.frame.displaySize.width === undefined ? {} : { displayWidth: asset.frame.displaySize.width }),
     ...(asset.frame.displaySize.height === undefined ? {} : { displayHeight: asset.frame.displaySize.height }),
     ...(asset.frame.footprint === undefined ? {} : { footprint: asset.frame.footprint }),
+    ...(asset.frame.portraitFocus === undefined ? {} : { portraitFocus: asset.frame.portraitFocus }),
     ...(ink.get(asset.frame.assetId) ? { ink: ink.get(asset.frame.assetId) } : {}),
   }]));
   const actorVisuals: Record<string, Record<string, string>> = {};

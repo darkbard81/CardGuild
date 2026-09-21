@@ -2393,3 +2393,31 @@
   .ui-character-workspace__prepared .ui-character-workspace__card-entry > small { display: none; }
   .ui-character-workspace__owned { overflow-y: auto; min-height: 0; align-content: start; }
 }
+
+@layer screens {
+
+/* Character creation shares the entry form and character sheet; only the draft preview lives here. */
+.session-screen:has(.creation-card) { padding: 16px; }
+.session-card.creation-card { width: min(100%, 880px); max-width: 880px; padding: 24px; gap: 10px; }
+.creation-card h1 { font-size: 2rem; }
+.creation-card .session-entry-form { grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.creation-card .session-description { font-size: 0.9rem; }
+.creation-fields p { margin: 0; }
+.character-creation { display: grid; grid-template-columns: minmax(240px, 0.8fr) minmax(0, 1.4fr); gap: 24px; text-align: left; }
+.creation-fields { display: flex; flex-direction: column; gap: 10px; }
+.creation-fields fieldset { display: flex; gap: 24px; border: 1px solid var(--ui-border-control); border-radius: 8px; padding: 10px; }
+.creation-fields fieldset label { display: flex; align-items: center; gap: 8px; }
+.creation-preview { min-width: 0; }
+.creation-preview h2 { margin: 0 0 8px; overflow-wrap: anywhere; }
+.creation-preview p { margin: 8px 0; }
+.creation-figures { display: flex; align-items: flex-end; justify-content: center; gap: 8px; }
+.creation-standee, .creation-portrait { background-repeat: no-repeat; flex-shrink: 0; }
+.creation-portrait { border: 1px solid var(--ui-border-control); border-radius: 12px; }
+.creation-statistics { font-weight: 700; }
+.creation-preview details { font-size: 0.9rem; }
+.creation-preview summary { cursor: pointer; }
+@media (max-width: 650px) {
+  .character-creation { grid-template-columns: 1fr; }
+  .creation-figures { justify-content: flex-start; }
+}
+}

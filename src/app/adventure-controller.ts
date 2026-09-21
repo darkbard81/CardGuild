@@ -1,5 +1,6 @@
 import type { CharacterSheetDestination } from "../dom/character-workspace";
 import type { CharacterAdvancementChoice } from "../character";
+import type { CreateCharacterInput } from "../character/member";
 import type { AdventureEvent, AdventureState } from "../adventure";
 import { ApiError, isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
 import { PRODUCTION_CONTENT } from "../content/production-content";
@@ -66,6 +67,8 @@ export class AdventureController {
   private authDestination: "landing" | "new-adventure" | "campaigns" = "landing";
   private entryBusy = false;
   private entryVersion = 0;
+  private pendingCreation: CreateCharacterInput | null = null;
+  private creationSent = false;
 
   /**
    * The last victory's growth, and the snapshot that published it. Built from committed
@@ -102,11 +105,19 @@ export class AdventureController {
       onRetryAuth: () => void this.restoreAccount(),
       onShowLogin: () => this.navigateEntry("login"),
       onShowRegister: () => this.navigateEntry("register"),
-      onShowLanding: () => { this.authDestination = "landing"; this.navigateEntry("landing"); },
+      onShowLanding: () => {
+        if (this.entryBusy) return;
+        if (this.client && this.snapshot?.state.lifecycle === "lobby" && !this.snapshot.state.partySlots.length) {
+          SessionClient.clearCredential(this.client.credential);
+          this.client.destroy(); this.client = null; this.snapshot = null;
+        }
+        this.authDestination = "landing"; this.navigateEntry("landing");
+      },
       onLogin: (username, password) => void this.signIn(username, password),
       onRegister: (username, password) => void this.signUp(username, password),
       onLogout: () => void this.signOut(),
-      onCreateCampaign: (name, displayName) => void this.createCampaign(name, displayName),
+      onCreateCampaign: input => void this.createCampaign(input),
+      onPreviewCharacter: definition => this.characterDetail.openPrepared(definition),
       onDeleteCampaign: (campaignId) => void this.deleteCampaign(campaignId),
       onContinueCampaign: (campaignId) => void this.continueCampaign(campaignId),
       onJoin: (sessionId, displayName) => void this.joinSession(sessionId, displayName),
@@ -270,13 +281,38 @@ export class AdventureController {
     }
   }
 
-  private async createCampaign(name: string, displayName: string): Promise<void> {
-    if (!this.beginEntry("모험 만드는 중…")) return;
+  private async createCampaign(input: CreateCharacterInput): Promise<void> {
+    if (!this.beginEntry("캐릭터를 생성하고 저장하는 중…")) return;
+    this.pendingCreation = input;
+    this.creationSent = false;
     try {
-      this.attach(await SessionClient.createCampaign(name, displayName));
+      if (this.client && this.snapshot?.state.lifecycle === "lobby" && !this.snapshot.state.partySlots.length) {
+        this.sendCreation();
+      } else {
+        this.attach(await SessionClient.createCampaign(`${input.name}의 모험`, input.name));
+      }
     } catch (error) {
+      this.pendingCreation = null;
       this.finishEntry();
       if (!this.expired(error, "new-adventure")) this.showEntryError(error, "모험을 만들지 못했습니다.");
+    }
+  }
+
+  private sendCreation(): void {
+    if (!this.pendingCreation || this.creationSent) return;
+    this.creationSent = true;
+    const sent = this.client?.sendIntent({ type: "create-character", ...this.pendingCreation }, accepted => {
+      this.pendingCreation = null;
+      this.creationSent = false;
+      this.finishEntry();
+      if (accepted && this.snapshot?.state.adventure) void this.renderSnapshot(this.snapshot);
+      else this.lobbyUi.setStatus("캐릭터를 저장하지 못했습니다. 선택을 유지했습니다. 다시 시도하세요.", "error");
+    });
+    if (!sent) {
+      this.pendingCreation = null;
+      this.creationSent = false;
+      this.finishEntry();
+      this.lobbyUi.setStatus("서버 연결을 확인한 뒤 다시 생성하세요. 선택은 유지됩니다.", "error");
     }
   }
 
@@ -326,8 +362,12 @@ export class AdventureController {
     this.ui.clear();
     this.client = new SessionClient(credential, {
       onSnapshot: (snapshot) => {
-        this.finishEntry();
         this.snapshot = snapshot;
+        if (this.pendingCreation) {
+          this.sendCreation();
+          return; // SessionClient settles only after both the ACK and its committed snapshot.
+        }
+        this.finishEntry();
         void this.renderSnapshot(snapshot);
       },
       onError: (error) => {
@@ -358,6 +398,8 @@ export class AdventureController {
   }
 
   private returnToLanding(message: string): void {
+    this.pendingCreation = null;
+    this.creationSent = false;
     this.snapshot = null;
     this.client = null;
     this.growth = null;
@@ -407,6 +449,12 @@ export class AdventureController {
     if (!viewer) throw new Error("Authenticated player does not own a session seat.");
 
     if (state.lifecycle === "lobby") {
+      if (state.hostPlayerId === viewer.playerId && state.partySlots.length === 0) {
+        this.entryView = "new-adventure";
+        this.lobbyUi.renderNewAdventure();
+        this.ui.setVisible(false);
+        return;
+      }
       this.renderSessionLobby(state, viewer.playerId, snapshot.control);
       return;
     }

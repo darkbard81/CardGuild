@@ -1255,5 +1255,594 @@
         "sourceId": "feat.steady-voice"
       }
     ]
+  },
+  {
+    "id": "character.human-bard",
+    "name": "바드",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "cha",
+          "dex",
+          "con",
+          "wis"
+        ],
+        "trainedSkills": [
+          "performance",
+          "diplomacy"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "bard"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "light-blade",
+        "armor": "leather-armor"
+      },
+      "preparedCards": [
+        "card.soothe",
+        "card.fear",
+        "card.careful-advance"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      },
+      {
+        "cardDefinitionId": "card.daze",
+        "count": 2,
+        "sourceId": "starter.bard"
+      }
+    ]
+  },
+  {
+    "id": "character.human-champion",
+    "name": "챔피언",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "str",
+          "dex",
+          "con",
+          "wis"
+        ],
+        "trainedSkills": [
+          "athletics",
+          "religion"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "champion"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "guardian-mace",
+        "armor": "scale-mail",
+        "shield": "shield"
+      },
+      "preparedCards": [
+        "card.shield-press",
+        "card.demoralize",
+        "card.battle-medicine"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      },
+      {
+        "cardDefinitionId": "card.lay-on-hands",
+        "count": 2,
+        "sourceId": "starter.champion"
+      }
+    ]
+  },
+  {
+    "id": "character.human-cleric",
+    "name": "클레릭",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "wis",
+          "dex",
+          "con",
+          "str"
+        ],
+        "trainedSkills": [
+          "religion",
+          "medicine"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "cleric"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "staff",
+        "armor": "scale-mail",
+        "shield": "shield"
+      },
+      "preparedCards": [
+        "card.heal",
+        "card.harm",
+        "card.battle-medicine"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      },
+      {
+        "cardDefinitionId": "card.spirit-lance",
+        "count": 2,
+        "sourceId": "starter.cleric"
+      }
+    ]
+  },
+  {
+    "id": "character.human-druid",
+    "name": "드루이드",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "wis",
+          "dex",
+          "con",
+          "str"
+        ],
+        "trainedSkills": [
+          "nature",
+          "survival"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "druid"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "staff",
+        "armor": "leather-armor",
+        "shield": "shield"
+      },
+      "preparedCards": [
+        "card.heal",
+        "card.arcane-ward",
+        "card.careful-advance"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      },
+      {
+        "cardDefinitionId": "card.frostbite",
+        "count": 2,
+        "sourceId": "starter.druid"
+      }
+    ]
+  },
+  {
+    "id": "character.human-fighter",
+    "name": "파이터",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "str",
+          "dex",
+          "con",
+          "wis"
+        ],
+        "trainedSkills": [
+          "athletics",
+          "intimidation"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "fighter"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "halberd",
+        "armor": "scale-mail"
+      },
+      "preparedCards": [
+        "card.vicious-swing",
+        "card.demoralize",
+        "card.careful-advance"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      },
+      {
+        "cardDefinitionId": "card.reactive-strike",
+        "count": 2,
+        "sourceId": "starter.fighter"
+      }
+    ]
+  },
+  {
+    "id": "character.human-ranger",
+    "name": "레인저",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "dex",
+          "str",
+          "con",
+          "wis"
+        ],
+        "trainedSkills": [
+          "survival",
+          "stealth"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "ranger"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "composite-shortbow",
+        "armor": "leather-armor"
+      },
+      "preparedCards": [
+        "card.aimed-shot",
+        "card.battle-medicine",
+        "card.careful-advance"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      }
+    ]
+  },
+  {
+    "id": "character.human-rogue",
+    "name": "로그",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "dex",
+          "str",
+          "con",
+          "wis"
+        ],
+        "trainedSkills": [
+          "stealth",
+          "thievery"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "rogue"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "light-blade",
+        "armor": "leather-armor"
+      },
+      "preparedCards": [
+        "card.slip-free",
+        "card.grapple",
+        "card.battle-medicine"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      }
+    ]
+  },
+  {
+    "id": "character.human-witch",
+    "name": "위치",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "int",
+          "dex",
+          "con",
+          "wis"
+        ],
+        "trainedSkills": [
+          "arcana",
+          "occultism",
+          "medicine",
+          "stealth"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "witch"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "staff"
+      },
+      "preparedCards": [
+        "card.fear",
+        "card.soothe",
+        "card.arcane-ward"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      },
+      {
+        "cardDefinitionId": "card.daze",
+        "count": 2,
+        "sourceId": "starter.witch"
+      }
+    ]
+  },
+  {
+    "id": "character.human-wizard",
+    "name": "위저드",
+    "statProfile": {
+      "kind": "character",
+      "build": {
+        "freeBoosts": [
+          "int",
+          "dex",
+          "con",
+          "wis"
+        ],
+        "trainedSkills": [
+          "arcana",
+          "occultism",
+          "crafting",
+          "society"
+        ]
+      },
+      "level": 1,
+      "advancements": []
+    },
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "hero"
+      },
+      {
+        "id": "playable"
+      },
+      {
+        "id": "human"
+      },
+      {
+        "id": "wizard"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 4
+    },
+    "starterLoadout": {
+      "equipment": {
+        "weapon": "staff"
+      },
+      "preparedCards": [
+        "card.force-barrage",
+        "card.arcane-ward",
+        "card.battle-medicine"
+      ]
+    },
+    "innateActionIds": [],
+    "baseCardGrants": [
+      {
+        "cardDefinitionId": "card.careful-advance",
+        "count": 2,
+        "sourceId": "starter.movement"
+      },
+      {
+        "cardDefinitionId": "card.telekinetic-projectile",
+        "count": 2,
+        "sourceId": "starter.wizard"
+      }
+    ]
   }
 ]

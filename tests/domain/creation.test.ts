@@ -170,3 +170,26 @@ it("G-IDENTITY-SAVE Save v3 is unsupported and its original bytes are preserved"
   expect(() => restoreCampaignSave(old, context)).toThrow(expect.objectContaining({ code: "SAVE_SCHEMA_UNSUPPORTED" }));
   expect(old).toEqual(original);
 });
+
+it.each(["bard", "champion", "cleric", "druid", "fighter", "ranger", "rogue", "witch", "wizard"])(
+  "G-IDENTITY production Human %s starts solo with identical gameplay across gender variants", async classId => {
+    const { context: production, lobby, act } = await import("../support/session");
+    const make = (gender: "male" | "female") => act(lobby(), {
+      type: "create-character", name: "하늘", gender, creationPresetId: `human.${classId}`,
+    });
+    const male = make("male"), female = make("female");
+    const member = female.adventure!.party.members[HERO]!;
+    const definition = resolvePartyMemberDefinition(member, production.pack);
+    expect(definition.traits).toEqual(expect.arrayContaining([{ id: "human" }, { id: classId }]));
+    expect(member.progression).toEqual({ level: 1, experience: 0, advancements: [] });
+    expect(female.adventure!.collection).toEqual(male.adventure!.collection);
+    const left = act(male, { type: "start-encounter" }).combat!.actors[HERO]!;
+    const right = act(female, { type: "start-encounter" }).combat!.actors[HERO]!;
+    expect(left.appearanceKey).toBe(`human.${classId}.male`);
+    expect(right.appearanceKey).toBe(`human.${classId}.female`);
+    expect(left.statProfile).toEqual(right.statProfile);
+    expect(left.deckContributions).toEqual(right.deckContributions);
+    expect(Object.keys(female.adventure!.party.members)).toEqual([HERO]);
+    expect(act(female, { type: "start-encounter" }).combat!.actors[HERO]!.name).toBe("하늘");
+  },
+);

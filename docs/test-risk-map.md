@@ -85,3 +85,14 @@ Existing U-BOARD owns changed board hit testing, pan/zoom/resize and touch direc
 | B-CREATION | Unsaved creation appears complete or retry duplicates starter → delay/failure retains empty checkpoint, same request retry commits once; actual file close/reopen + owned Continue retains protagonist, summary and next legal command | Integration `contracts/creation.test.ts`, seed 63, request `create-once-63` / `file-create-63` |
 
 Creation UI/visual interaction belongs to #64, recruitment atomicity to #65, preparation Co-op to #66, and Tutorial J-START/J-CONTINUE conversion to #67. Contract and version table: [M12-1 member foundation](m12-1-member-foundation.md).
+
+## M12-2 Character Creation
+
+| Risk | Player contract | Owner / evidence |
+|---|---|---|
+| U-CREATE | Preview cannot award a character; name/gender survive Class changes, auth expiry and rejected save; a late old image cannot replace the current choice; one confirmation waits for both ACK and snapshot; chosen identity reaches preparation and combat | Interaction `creation.spec.ts`, seed 60, request/revision annotations |
+| B-CREATION-NAME | A valid 40-codepoint name fails at the HTTP campaign-title boundary or is truncated in the save → full name and derived title survive creation and saved summaries; the campaign's 60-codepoint limit remains enforced | Integration `contracts/http-coop.test.ts`, seed 60 |
+| G-IDENTITY | All nine production Human starters keep stats, Collection and deck independent of gender | Domain `creation.test.ts` production matrix |
+| A-CREATION | Missing/duplicate/miswired gender/Class variant or missing runtime image fails validation; source-cell edge contact is reported for user art review | production policy, assets build/check, `creation-visual-contract.ts` |
+
+Bounded first-encounter solo playtest: `npx tsx tools/playtest/creation-readiness.ts`. This reports actual outcomes without treating the greedy policy as a balance oracle. See `m12-2-character-creation.md`.

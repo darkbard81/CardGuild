@@ -18,6 +18,7 @@ import {
 } from "../../src/presentation/tile-visual-contract";
 
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
+import { assertCreationVisualCoverage } from "../../src/presentation/creation-visual-contract";
 
 interface Point {
   readonly x: number;
@@ -40,6 +41,7 @@ interface AssetEntry {
   readonly displayWidth?: number;
   readonly displayHeight?: number;
   readonly footprint?: { readonly width: number; readonly height: number };
+  readonly portraitFocus?: Point;
 }
 
 /** The 256x384 standee canvas, carried from the processed PNG to its runtime file. */
@@ -328,6 +330,10 @@ async function main(): Promise<void> {
     }
     if (asset.displayWidth !== undefined && asset.displayWidth <= 0) throw new Error(`Asset "${id}" displayWidth must be positive.`);
     if (asset.displayHeight !== undefined && asset.displayHeight <= 0) throw new Error(`Asset "${id}" displayHeight must be positive.`);
+    if (asset.portraitFocus && (asset.kind !== "actor" || !id.endsWith(".front")
+      || [asset.portraitFocus.x, asset.portraitFocus.y].some(value => !Number.isFinite(value) || value < 0 || value > 1))) {
+      throw new Error(`Asset "${id}" has an invalid portrait focus.`);
+    }
     if (asset.footprint && (asset.footprint.width !== 128 || asset.footprint.height !== 128)) {
       throw new Error(`Cell-bound asset "${id}" must declare the 128x128 square footprint.`);
     }
@@ -349,6 +355,7 @@ async function main(): Promise<void> {
   // URL. Two definitions sharing a path would make the runtime export read one
   // character's processed PNG and ship it under the other's name.
   assertDistinctActorPaths(Object.keys(manifest.actorVisuals));
+  assertCreationVisualCoverage(PRODUCTION_CONTENT.pack.creationPresets ?? {}, manifest.actorVisuals);
   for (const [definitionId, visual] of Object.entries(manifest.actorVisuals)) {
     const segments = actorPathSegments(definitionId).join("/");
     for (const side of ACTOR_SIDES) {
