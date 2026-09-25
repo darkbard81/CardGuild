@@ -42,6 +42,8 @@ test("U-ENTRY failed login can be corrected and retried; pending submission is u
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect.poll(() => attempts).toBe(2);
   await finish();
+  await expect(page.getByRole("dialog", { name: "카드길드에 오신 것을 환영합니다" })).toBeVisible();
+  await page.getByRole("button", { name: "건너뛰기", exact: true }).click();
   await expect(page.getByLabel("캐릭터 이름", { exact: true })).toBeVisible();
 });
 
@@ -59,6 +61,7 @@ test("U-ENTRY expired campaign access returns to login and preserves the Continu
   await page.getByLabel("비밀번호", { exact: true }).fill("correct-password");
   await page.getByRole("button", { name: "로그인", exact: true }).click();
   await expect(page.getByRole("heading", { name: "이어하기", exact: true })).toBeVisible();
+  await expect(page.getByRole("dialog", { name: "카드길드에 오신 것을 환영합니다" })).toHaveCount(0);
 });
 
 test("U-ENTRY campaign deletion confirms the name, cancels safely and retries after failure without duplicate requests", async ({ page }) => {

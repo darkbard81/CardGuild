@@ -59,29 +59,29 @@ test("U-KNOWLEDGE Ring commits one recall request and unlocks detail only on the
   const actor = initial.combat!.actors[HERO]!;
   if (actor.statProfile.kind !== "character") throw new Error("Expected Character fixture");
   const backend = await controlledSession(page, { ...initial, combat: { ...initial.combat!, actors: { ...initial.combat!.actors,
-    [HERO]: { ...actor, statProfile: { kind: "character", stats: { ...actor.statProfile.stats, attributes: { ...actor.statProfile.stats.attributes, dex: 80 } } } },
+    [HERO]: { ...actor, statProfile: { kind: "character", stats: { ...actor.statProfile.stats, attributes: { ...actor.statProfile.stats.attributes, str: 80 } } } },
   } } });
   await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
   await page.mouse.click(499, 504);
-  const recall = page.getByRole("menuitem", { name: /Recall Knowledge.*stealth/ });
+  const recall = page.getByRole("menuitem", { name: /Recall Knowledge.*athletics/ });
   await expect(recall).toBeVisible();
   await page.getByRole("button", { name: "행동 상세 보기", exact: true }).click();
   await recall.click();
   await page.locator("#action-preview-summary").click();
-  await expect(page.locator("#selected-detail")).toContainText("stealth");
+  await expect(page.locator("#selected-detail")).toContainText("athletics");
   await page.screenshot({ path: testInfo.outputPath("combat-action.png") });
   await page.locator("#action-preview-summary").click();
   await page.getByRole("button", { name: "상세 모드 · 실행으로 전환", exact: true }).click();
   await recall.click();
   await expect.poll(() => backend.requests.length).toBe(1);
-  expect(backend.requests[0]!.intent).toMatchObject({ type: "use-action", action: { kind: "basic", id: "recall-knowledge" }, target: { kind: "actor", actorId: "goblin-lackey" } });
+  expect(backend.requests[0]!.intent).toMatchObject({ type: "use-action", action: { kind: "basic", id: "recall-knowledge" }, target: { kind: "actor", actorId: "slime-trainee" } });
   await expect(page.getByRole("button", { name: /상세 잠김/ })).toBeVisible();
   const candidate = backend.candidate();
   backend.ack(true, candidate.revision);
   await expect(page.getByRole("button", { name: /상세 잠김/ })).toBeVisible();
-  backend.publish(candidate, [{ type: "KNOWLEDGE_RECALLED", actorId: HERO, targetId: "goblin-lackey", success: true }]);
-  await expect(page.locator("#combat-log")).toContainText("Goblin Lackey 상세를 파티에 공개했습니다.");
-  await page.getByRole("button", { name: "Goblin Lackey 상세", exact: true }).click();
+  backend.publish(candidate, [{ type: "KNOWLEDGE_RECALLED", actorId: HERO, targetId: "slime-trainee", success: true }]);
+  await expect(page.locator("#combat-log")).toContainText("길드 연습 상대 · 슬라임 상세를 파티에 공개했습니다.");
+  await page.getByRole("button", { name: "길드 연습 상대 · 슬라임 상세", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "캐릭터 상세", exact: true })).toBeVisible();
   expect(backend.requests).toHaveLength(1);
 });
@@ -136,7 +136,7 @@ test("U-HUD-EFFECTS compact conditions and saves are read-only, live and gated b
   const summary = page.getByRole("region", { name: "현재 행동자 상태와 내성" });
   await expect(summary).toBeVisible();
   await expect(summary.locator(".ui-combat-actor-summary__conditions")).toBeHidden();
-  await expect(summary.locator(".ui-save-tile__value")).toHaveText(["+6", "+7", "+5"]);
+  await expect(summary.locator(".ui-save-tile__value")).toHaveText(["+6", "+6", "+5"]);
   const hero = backend.state.combat!.actors[HERO]!;
   backend.publish({ ...backend.state, combat: { ...backend.state.combat!, actors: { ...backend.state.combat!.actors,
     [HERO]: { ...hero, conditions: [{ id: "grabbed", sourceId: "enemy" }, { id: "frightened", value: 1, sourceId: "fear" }] },

@@ -2097,6 +2097,46 @@
       "displayWidth": 64,
       "displayHeight": 64
     },
+    "actor.slime-trainee.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/slime-trainee/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.2188,
+        "width": 0.5625,
+        "height": 0.9401
+      }
+    },
+    "actor.slime-trainee.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/slime-trainee/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0703,
+        "left": 0.2383,
+        "width": 0.5273,
+        "height": 0.9297
+      }
+    },
     "ui.card.vicious-swing": {
       "kind": "ui",
       "source": {
@@ -2576,6 +2616,81 @@
       },
       "displayWidth": 120,
       "displayHeight": 180
+    },
+    "ui.card.quick-cut": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/quick-cut.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.heavy-blow": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/heavy-blow.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.guarding-blow": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/guarding-blow.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.piercing-shot": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/piercing-shot.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.hooking-cut": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/hooking-cut.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
     }
   },
   "actorVisuals": {
@@ -2738,6 +2853,10 @@
     "human.wizard.female": {
       "front": "actor.human.wizard.female.front",
       "back": "actor.human.wizard.female.back"
+    },
+    "enemy.slime-trainee": {
+      "front": "actor.slime-trainee.front",
+      "back": "actor.slime-trainee.back"
     }
   },
   "terrainVisuals": {
@@ -2813,6 +2932,11 @@
     "card.dueling-parry": "ui.card.dueling-parry",
     "card.arcane-ward": "ui.card.arcane-ward",
     "card.careful-advance": "ui.card.careful-advance",
-    "card.hover-step": "ui.card.hover-step"
+    "card.hover-step": "ui.card.hover-step",
+    "card.quick-cut": "ui.card.quick-cut",
+    "card.heavy-blow": "ui.card.heavy-blow",
+    "card.guarding-blow": "ui.card.guarding-blow",
+    "card.piercing-shot": "ui.card.piercing-shot",
+    "card.hooking-cut": "ui.card.hooking-cut"
   }
 }

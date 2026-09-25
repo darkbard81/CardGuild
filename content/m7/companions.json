@@ -2,7 +2,7 @@
   {
     "id": "companion.aerin",
     "actorDefinitionId": "hero.aerin",
-    "description": "Fighter. Halberd의 긴 사거리와 Reactive Strike로 전열을 지킵니다.",
+    "description": "Fighter. Halberd의 Hooking Cut과 준비 카드 Vicious Swing으로 전열에서 싸웁니다.",
     "appearanceKey": "hero.aerin",
     "startingExperience": 0
   }

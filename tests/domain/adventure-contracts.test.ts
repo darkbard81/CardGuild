@@ -26,7 +26,7 @@ describe("G-ADVENTURE settlement", () => {
     const input = resultInput(combat);
     const won = step(combat, input);
     expect(won.party.members[HERO]!.progression.experience).toBe(200);
-    expect(won.completedEncounterIds).toEqual(["encounter.road-ambush"]);
+    expect(won.completedEncounterIds).toEqual(["encounter.guild-practice"]);
     expect(won.phase).toBe("reward");
     for (const invalid of [input, { type: "choose-reward", rewardId: won.pendingReward!.rewardId, choiceIndex: 100 } as const]) {
       const refused = dispatchAdventureCommand(won, invalid, adventureContext);

@@ -8,10 +8,10 @@
         "id": "weapon"
       },
       {
-        "id": "trip"
+        "id": "reach"
       },
       {
-        "id": "reach"
+        "id": "hooking-cut"
       }
     ],
     "statModifiers": [],
@@ -110,6 +110,9 @@
       },
       {
         "id": "finesse"
+      },
+      {
+        "id": "quick-cut"
       }
     ],
     "statModifiers": [],
@@ -133,6 +136,9 @@
     "traits": [
       {
         "id": "weapon"
+      },
+      {
+        "id": "heavy-blow"
       }
     ],
     "statModifiers": [],
@@ -159,6 +165,9 @@
       },
       {
         "id": "propulsive"
+      },
+      {
+        "id": "piercing-shot"
       }
     ],
     "statModifiers": [],
@@ -179,14 +188,28 @@
     "id": "dueling-rapier",
     "name": "Dueling Rapier",
     "slot": "weapon",
-    "traits": [{ "id": "weapon" }, { "id": "finesse" }, { "id": "parry" }],
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "finesse"
+      },
+      {
+        "id": "parry"
+      }
+    ],
     "statModifiers": [],
     "weaponProfile": {
       "name": "Dueling Rapier",
       "category": "martial",
       "attackMode": "melee",
       "rangeFeet": 5,
-      "damage": { "count": 1, "sides": 6, "damageType": "piercing" },
+      "damage": {
+        "count": 1,
+        "sides": 6,
+        "damageType": "piercing"
+      },
       "traits": []
     }
   },
@@ -194,14 +217,28 @@
     "id": "throwing-axes",
     "name": "Throwing Axes",
     "slot": "weapon",
-    "traits": [{ "id": "weapon" }, { "id": "thrown" }, { "id": "agile" }],
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "thrown"
+      },
+      {
+        "id": "agile"
+      }
+    ],
     "statModifiers": [],
     "weaponProfile": {
       "name": "Throwing Axes",
       "category": "martial",
       "attackMode": "ranged",
       "rangeFeet": 20,
-      "damage": { "count": 1, "sides": 6, "damageType": "slashing" },
+      "damage": {
+        "count": 1,
+        "sides": 6,
+        "damageType": "slashing"
+      },
       "traits": []
     }
   },
@@ -209,14 +246,22 @@
     "id": "greatsword",
     "name": "Greatsword",
     "slot": "weapon",
-    "traits": [{ "id": "weapon" }],
+    "traits": [
+      {
+        "id": "weapon"
+      }
+    ],
     "statModifiers": [],
     "weaponProfile": {
       "name": "Greatsword",
       "category": "martial",
       "attackMode": "melee",
       "rangeFeet": 5,
-      "damage": { "count": 1, "sides": 12, "damageType": "slashing" },
+      "damage": {
+        "count": 1,
+        "sides": 12,
+        "damageType": "slashing"
+      },
       "traits": []
     }
   },
@@ -224,14 +269,25 @@
     "id": "boar-spear",
     "name": "Boar Spear",
     "slot": "weapon",
-    "traits": [{ "id": "weapon" }, { "id": "reach" }],
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "reach"
+      }
+    ],
     "statModifiers": [],
     "weaponProfile": {
       "name": "Boar Spear",
       "category": "simple",
       "attackMode": "melee",
       "rangeFeet": 10,
-      "damage": { "count": 1, "sides": 8, "damageType": "piercing" },
+      "damage": {
+        "count": 1,
+        "sides": 8,
+        "damageType": "piercing"
+      },
       "traits": []
     }
   },
@@ -239,14 +295,25 @@
     "id": "executioner-axe",
     "name": "Executioner Axe",
     "slot": "weapon",
-    "traits": [{ "id": "weapon" }, { "id": "trip" }],
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "trip"
+      }
+    ],
     "statModifiers": [],
     "weaponProfile": {
       "name": "Executioner Axe",
       "category": "advanced",
       "attackMode": "melee",
       "rangeFeet": 5,
-      "damage": { "count": 1, "sides": 12, "damageType": "slashing" },
+      "damage": {
+        "count": 1,
+        "sides": 12,
+        "damageType": "slashing"
+      },
       "traits": []
     }
   },
@@ -254,14 +321,28 @@
     "id": "flick-mace",
     "name": "Flick Mace",
     "slot": "weapon",
-    "traits": [{ "id": "weapon" }, { "id": "finesse" }, { "id": "trip" }],
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "finesse"
+      },
+      {
+        "id": "trip"
+      }
+    ],
     "statModifiers": [],
     "weaponProfile": {
       "name": "Flick Mace",
       "category": "martial",
       "attackMode": "melee",
       "rangeFeet": 5,
-      "damage": { "count": 1, "sides": 6, "damageType": "bludgeoning" },
+      "damage": {
+        "count": 1,
+        "sides": 6,
+        "damageType": "bludgeoning"
+      },
       "traits": []
     }
   },
@@ -271,10 +352,30 @@
     "slot": "armor",
     "traits": [],
     "statModifiers": [
-      { "selector": { "kind": "skill", "id": "stealth" }, "type": "item", "value": 1, "label": "Scout Leather" },
-      { "selector": { "kind": "skill", "id": "athletics" }, "type": "circumstance", "value": -1, "label": "Scout Leather bulk" }
+      {
+        "selector": {
+          "kind": "skill",
+          "id": "stealth"
+        },
+        "type": "item",
+        "value": 1,
+        "label": "Scout Leather"
+      },
+      {
+        "selector": {
+          "kind": "skill",
+          "id": "athletics"
+        },
+        "type": "circumstance",
+        "value": -1,
+        "label": "Scout Leather bulk"
+      }
     ],
-    "armorProfile": { "category": "light", "acItemBonus": 1, "dexCap": 4 }
+    "armorProfile": {
+      "category": "light",
+      "acItemBonus": 1,
+      "dexCap": 4
+    }
   },
   {
     "id": "brigandine",
@@ -282,29 +383,67 @@
     "slot": "armor",
     "traits": [],
     "statModifiers": [],
-    "armorProfile": { "category": "medium", "acItemBonus": 4, "dexCap": 0 }
+    "armorProfile": {
+      "category": "medium",
+      "acItemBonus": 4,
+      "dexCap": 0
+    }
   },
   {
     "id": "buckler",
     "name": "Buckler",
     "slot": "shield",
-    "traits": [{ "id": "shield" }],
-    "statModifiers": [{ "selector": { "kind": "save", "id": "reflex" }, "type": "item", "value": 1, "label": "Buckler" }],
+    "traits": [
+      {
+        "id": "shield"
+      }
+    ],
+    "statModifiers": [
+      {
+        "selector": {
+          "kind": "save",
+          "id": "reflex"
+        },
+        "type": "item",
+        "value": 1,
+        "label": "Buckler"
+      }
+    ],
     "shieldBonus": 1
   },
   {
     "id": "tower-shield",
     "name": "Tower Shield",
     "slot": "shield",
-    "traits": [{ "id": "shield" }],
-    "statModifiers": [{ "selector": { "kind": "attack" }, "type": "circumstance", "value": -1, "label": "Tower Shield bulk" }],
+    "traits": [
+      {
+        "id": "shield"
+      }
+    ],
+    "statModifiers": [
+      {
+        "selector": {
+          "kind": "attack"
+        },
+        "type": "circumstance",
+        "value": -1,
+        "label": "Tower Shield bulk"
+      }
+    ],
     "shieldBonus": 3
   },
   {
     "id": "spiked-shield",
     "name": "Spiked Shield",
     "slot": "shield",
-    "traits": [{ "id": "shield" }, { "id": "shield-spike" }],
+    "traits": [
+      {
+        "id": "shield"
+      },
+      {
+        "id": "shield-spike"
+      }
+    ],
     "statModifiers": [],
     "shieldBonus": 2
   },
@@ -312,25 +451,75 @@
     "id": "striders-boots",
     "name": "Strider's Boots",
     "slot": "feet",
-    "traits": [{ "id": "sure-footed" }],
+    "traits": [
+      {
+        "id": "sure-footed"
+      }
+    ],
     "statModifiers": [
-      { "selector": { "kind": "skill", "id": "athletics" }, "type": "item", "value": 1, "label": "Strider's Boots" }
+      {
+        "selector": {
+          "kind": "skill",
+          "id": "athletics"
+        },
+        "type": "item",
+        "value": 1,
+        "label": "Strider's Boots"
+      }
     ]
   },
-  { "id": "medics-kit", "name": "Medic's Kit", "slot": "feet", "traits": [{ "id": "field-medicine" }], "statModifiers": [] },
+  {
+    "id": "medics-kit",
+    "name": "Medic's Kit",
+    "slot": "feet",
+    "traits": [
+      {
+        "id": "field-medicine"
+      }
+    ],
+    "statModifiers": []
+  },
   {
     "id": "warding-charm",
     "name": "Warding Charm",
     "slot": "feet",
-    "traits": [{ "id": "warded-charm" }],
-    "statModifiers": [{ "selector": { "kind": "save", "id": "will" }, "type": "item", "value": 1, "label": "Warding Charm" }]
+    "traits": [
+      {
+        "id": "warded-charm"
+      }
+    ],
+    "statModifiers": [
+      {
+        "selector": {
+          "kind": "save",
+          "id": "will"
+        },
+        "type": "item",
+        "value": 1,
+        "label": "Warding Charm"
+      }
+    ]
   },
   {
     "id": "hexers-focus",
     "name": "Hexer's Focus",
     "slot": "feet",
-    "traits": [{ "id": "spell-focus" }],
-    "statModifiers": [{ "selector": { "kind": "skill", "id": "arcana" }, "type": "item", "value": 1, "label": "Hexer's Focus" }]
+    "traits": [
+      {
+        "id": "spell-focus"
+      }
+    ],
+    "statModifiers": [
+      {
+        "selector": {
+          "kind": "skill",
+          "id": "arcana"
+        },
+        "type": "item",
+        "value": 1,
+        "label": "Hexer's Focus"
+      }
+    ]
   },
   {
     "id": "bloodied-talisman",
@@ -338,8 +527,24 @@
     "slot": "feet",
     "traits": [],
     "statModifiers": [
-      { "selector": { "kind": "save", "id": "fortitude" }, "type": "item", "value": 1, "label": "Bloodied Talisman" },
-      { "selector": { "kind": "save", "id": "will" }, "type": "circumstance", "value": -1, "label": "Bloodied Talisman curse" }
+      {
+        "selector": {
+          "kind": "save",
+          "id": "fortitude"
+        },
+        "type": "item",
+        "value": 1,
+        "label": "Bloodied Talisman"
+      },
+      {
+        "selector": {
+          "kind": "save",
+          "id": "will"
+        },
+        "type": "circumstance",
+        "value": -1,
+        "label": "Bloodied Talisman curse"
+      }
     ]
   },
   {
@@ -349,6 +554,9 @@
     "traits": [
       {
         "id": "weapon"
+      },
+      {
+        "id": "guarding-blow"
       }
     ],
     "statModifiers": [],

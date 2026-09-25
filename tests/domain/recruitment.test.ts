@@ -27,8 +27,8 @@ it("G-RECRUIT seed=65 appends same-Class Aerin once, preserves current gear/grow
   const member = after.adventure!.party.members[SECOND]!;
   expect(after.adventure!.party.members[HERO]).toEqual(hero);
   expect(member).toMatchObject({ id: SECOND, seat: 2, actorDefinitionId: "hero.aerin", identity: { origin: "companion", recruitmentSource: recruitIntent.rewardId }, progression: { level: 1, experience: 0, advancements: [] } });
-  const starter = { equipment: { halberd: 1, "scale-mail": 1, shield: 1, "boots-of-fly": 1 },
-    cards: { "card.vicious-swing": 1, "card.demoralize": 1 } };
+  const starter = { equipment: { halberd: 1, "scale-mail": 1, shield: 1 },
+    cards: { "card.vicious-swing": 1 } };
   for (const kind of ["equipment", "cards"] as const) {
     const expected: Record<string, number> = { ...before.adventure.collection[kind] };
     for (const [id, count] of Object.entries(starter[kind])) expected[id] = (expected[id] ?? 0) + count;

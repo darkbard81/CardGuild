@@ -14,7 +14,7 @@ export function nearVictorySave(databasePath: string, accountId: string) {
   const combat = playing.combat!;
   const state = { ...playing, combat: { ...combat,
     turn: { ...combat.turn, activeActorId: HERO, activeIndex: combat.turn.initiativeOrder.indexOf(HERO) },
-    actors: { ...combat.actors, "goblin-lackey": { ...combat.actors["goblin-lackey"]!, hp: 1 } },
+    actors: { ...combat.actors, "slime-trainee": { ...combat.actors["slime-trainee"]!, hp: 1 } },
   } };
   const record = { ...saveRecord(state), campaignId: "progress-checkpoint", ownerAccountId: accountId };
   restoreCampaignSave(record, context);

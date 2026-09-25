@@ -1,3 +1,4 @@
+import { checkSceneAssets } from "./check-scene-assets";
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -387,3 +388,4 @@ async function main(): Promise<void> {
 }
 
 await main();
+await checkSceneAssets();

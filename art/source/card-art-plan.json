@@ -365,6 +365,61 @@
       "sourceSha256": "62ca5fa687f5797dfd585ec8561bb347889ab5358eb50e93c98e4726df828368",
       "outputSha256": "cfa9d46ca97cc12787ab462ad1bac4c0ccab49f6f097fee0ef40d8267109302d",
       "generatedWith": "built-in image_gen via luna-gen"
+    },
+    {
+      "cardId": "card.quick-cut",
+      "assetId": "ui.card.quick-cut",
+      "classTheme": "Rogue",
+      "source": "art/local/cards/quick-cut.png",
+      "output": "public/assets/cards/quick-cut.webp",
+      "prompt": "2:3 ratio.\n2D hyper Detailed Chibi Anime Style.\nChibi Elf Woman has Massive bust.\nClearly adult woman, age 25 or older, fully clothed in class-appropriate attire.\n\nClass theme: Rogue\nCard / Feat / Action: Careful Advance\nScene: An adult elf rogue in fully covering travel leathers advances cautiously along a stone battlefield path, watching a nearby adult enemy's weapon reach. Her low balanced step and attentive gaze show measured safe movement without attacking.\n\nSingle portrait illustration, requested size 1024x1536.\nOpaque full-bleed fantasy background.\nKeep the face and the defining action readable at small display sizes.\nKeep essential visual details away from the top corners and bottom 20 percent name area, without drawing empty strips.\n\nno text, no frame, no lettering, no numbers, no logo, no watermark.",
+      "sourceSha256": "d66b10522d3525c5e016ef2b6afccaa18d3434fa7c0d298a6e8b9e32692f8c98",
+      "outputSha256": "56de54d663fe6ff93e25a051b8cd23a1b291dc0e04c2edac19a46646b055a8f5",
+      "generatedWith": "Reused existing card.careful-advance illustration (originally built-in image_gen via luna-gen); original prompt preserved"
+    },
+    {
+      "cardId": "card.heavy-blow",
+      "assetId": "ui.card.heavy-blow",
+      "classTheme": "Fighter",
+      "source": "art/local/cards/heavy-blow.png",
+      "output": "public/assets/cards/heavy-blow.webp",
+      "prompt": "2:3 ratio.\n2D hyper Detailed Chibi Anime Style.\nChibi Elf Woman has Massive bust.\nClearly adult woman, age 25 or older, fully clothed in class-appropriate attire.\n\nClass theme: Fighter\nCard / Feat / Action: Vicious Swing\nScene: An armored adult elf fighter commits to one powerful sweeping melee weapon strike. Her planted stance, heavy blade and strong curved motion trail clearly convey an exceptionally forceful swing. A fantasy battlefield provides a restrained background. Fully covered class-appropriate armor; focus on the weapon action.\n\nSingle portrait illustration, requested size 1024x1536.\nOpaque full-bleed fantasy background.\nKeep the face and the defining action readable at small display sizes.\nKeep essential visual details away from the top corners and bottom 20 percent name area, without drawing empty strips.\n\nno text, no frame, no lettering, no numbers, no logo, no watermark.",
+      "sourceSha256": "00ea1f7e54b1bfeb201e97d096d737f35bebb48991414a609891244d1ee29130",
+      "outputSha256": "3bf091826cf3a87e4bfddc3d6f343602d983f95b521ba8c3c902a8fc26d61bb4",
+      "generatedWith": "Reused existing card.vicious-swing illustration (originally built-in image_gen via luna-gen); original prompt preserved"
+    },
+    {
+      "cardId": "card.guarding-blow",
+      "assetId": "ui.card.guarding-blow",
+      "classTheme": "Fighter",
+      "source": "art/local/cards/guarding-blow.png",
+      "output": "public/assets/cards/guarding-blow.webp",
+      "prompt": "2:3 ratio.\n2D hyper Detailed Chibi Anime Style.\nChibi Elf Woman has Massive bust.\nClearly adult woman, age 25 or older, fully clothed in class-appropriate attire.\n\nClass theme: Fighter\nCard / Feat / Action: Dueling Parry\nScene: An adult elf duelist in fully covering elegant light armor raises a single sword across an incoming adult opponent's blade, carefully controlling the attack line. Show a clean readable blade contact, balanced stance and focused eyes.\n\nSingle portrait illustration, requested size 1024x1536.\nOpaque full-bleed fantasy background.\nKeep the face and the defining action readable at small display sizes.\nKeep essential visual details away from the top corners and bottom 20 percent name area, without drawing empty strips.\n\nno text, no frame, no lettering, no numbers, no logo, no watermark.",
+      "sourceSha256": "03c1f7322f5b8c553509c0167e73d927edf75a0c01680d8f5bcbc5a5dc2bc1be",
+      "outputSha256": "17cf10cc19fe347531975ebb5a3610a5db593922c9398f521ae81f57ea7ff07a",
+      "generatedWith": "Reused existing card.dueling-parry illustration (originally built-in image_gen via luna-gen); original prompt preserved"
+    },
+    {
+      "cardId": "card.piercing-shot",
+      "assetId": "ui.card.piercing-shot",
+      "classTheme": "Ranger",
+      "source": "art/local/cards/piercing-shot.png",
+      "output": "public/assets/cards/piercing-shot.webp",
+      "prompt": "2:3 ratio.\n2D hyper Detailed Chibi Anime Style.\nChibi Elf Woman has Massive bust.\nClearly adult woman, age 25 or older, fully clothed in class-appropriate attire.\n\nClass theme: Ranger\nCard / Feat / Action: Aimed Shot\nScene: An adult elf ranger in fully covering woodland armor carefully aims a drawn longbow at a distant enemy. Show correct bow and arrow alignment, steady planted stance, focused eye and taut bowstring against a restrained forest ruin.\n\nSingle portrait illustration, requested size 1024x1536.\nOpaque full-bleed fantasy background.\nKeep the face and the defining action readable at small display sizes.\nKeep essential visual details away from the top corners and bottom 20 percent name area, without drawing empty strips.\n\nno text, no frame, no lettering, no numbers, no logo, no watermark.",
+      "sourceSha256": "78fd7abd84d5b940096de49fd3fb24ac453b60dc58d8a1fb2dfc4739385c8b17",
+      "outputSha256": "4f47636c4b99bd269761f7996df42db1b9eae0fdeedadd84275de2be0380facb",
+      "generatedWith": "Reused existing card.aimed-shot illustration (originally built-in image_gen via luna-gen); original prompt preserved"
+    },
+    {
+      "cardId": "card.hooking-cut",
+      "assetId": "ui.card.hooking-cut",
+      "classTheme": "Fighter",
+      "source": "art/local/cards/hooking-cut.png",
+      "output": "public/assets/cards/hooking-cut.webp",
+      "prompt": "2:3 ratio.\n2D hyper Detailed Chibi Anime Style.\nChibi Elf Woman has Massive bust.\nClearly adult woman, age 25 or older, fully clothed in class-appropriate attire.\n\nClass theme: Fighter\nCard / Feat / Action: Trip\nScene: An adult elf fighter hooks a halberd behind an armored adult opponent's ankle and sweeps their feet off balance. The halberd sweep and falling opponent clearly show a trip, on a restrained stone battlefield.\n\nSingle portrait illustration, requested size 1024x1536.\nOpaque full-bleed fantasy background.\nKeep the face and the defining action readable at small display sizes.\nKeep essential visual details away from the top corners and bottom 20 percent name area, without drawing empty strips.\n\nno text, no frame, no lettering, no numbers, no logo, no watermark.",
+      "sourceSha256": "e9e2a347bf3bb4fa8198b36daeca0c5a831bcd6e44f371d56a6b9085c5596e68",
+      "outputSha256": "85ccc16ca4bd8e71516fd8b56007113f26f84b81d2b5a59afa09338a2babd854",
+      "generatedWith": "Reused existing card.trip illustration (originally built-in image_gen via luna-gen); original prompt preserved"
     }
   ]
 }

@@ -78,7 +78,7 @@ it("G-SAVE reaction continuation survives restore and remains answerable after R
   const resumed = act(fresh, { type: "resume-adventure" });
   const answered = act(resumed, { type: "pass-reaction", triggerId: restored.combat!.pendingReaction!.triggerId });
   expect(answered.combat!.pendingReaction).toBeNull();
-  expect(answered.combat!.actors["goblin-lackey"]!.position).toEqual({ x: 2, y: 2 });
+  expect(answered.combat!.actors["slime-trainee"]!.position).toEqual({ x: 2, y: 2 });
 });
 
 it("G-SAVE unspent growth choices survive restore and continue to gate departure", () => {
@@ -104,4 +104,21 @@ it("G-KNOWLEDGE save and Resume preserve successful and failed identification at
     const fresh = createResumedSessionCoreState({ sessionId: "knowledge-resume", playerId: "host", displayName: "Host" }, restored, context);
     expect(act(fresh, { type: "resume-adventure" }).combat!.knowledge).toEqual(knowledge);
   }
+});
+
+it("G-OPENING saved protection survives Resume and cannot be removed or forged", () => {
+  const protectedState = act(adventure(), { type: "start-encounter" });
+  expect(protectedState.combat!.partyHpFloor).toBe(1);
+  const restored = restoreCampaignSave(saveRecord(protectedState), context).projection;
+  const resumed = act(createResumedSessionCoreState({ sessionId: "practice-resume", playerId: "host", displayName: "Host" }, restored, context), { type: "resume-adventure" });
+  expect(resumed.combat!.partyHpFloor).toBe(1);
+  const removed = { ...protectedState.combat! };
+  delete removed.partyHpFloor;
+  expect(() => restoreCampaignSave(saveRecord({ ...protectedState, combat: removed }), context)).toThrow();
+  const ready = adventure();
+  const later = act({ ...ready, adventure: { ...ready.adventure!, currentEncounterId: "encounter.spear-line",
+    completedEncounterIds: ["encounter.guild-practice"],
+  } }, { type: "start-encounter" });
+  expect(later.combat!.partyHpFloor).toBeUndefined();
+  expect(() => restoreCampaignSave(saveRecord({ ...later, combat: { ...later.combat!, partyHpFloor: 1 } }), context)).toThrow();
 });

@@ -62,6 +62,7 @@ export function buildAdventureEncounter(
         id: source.id,
         name: source.name,
         objective: { ...source.objective },
+        ...(source.partyHpFloor === undefined ? {} : { partyHpFloor: source.partyHpFloor }),
         actors,
         map: {
           width: source.map.width,

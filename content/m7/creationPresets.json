@@ -2,7 +2,7 @@
   {
     "id": "human.bard",
     "actorDefinitionId": "character.human-bard",
-    "description": "정신 주문으로 적을 압박하고 Soothe로 자신이나 아군을 회복합니다. 검으로 근접 공격도 할 수 있습니다.",
+    "description": "무기의 공격 카드 한 장과 Soothe 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.bard.male",
       "female": "human.bard.female"
@@ -11,7 +11,7 @@
   {
     "id": "human.champion",
     "actorDefinitionId": "character.human-champion",
-    "description": "방패를 들고 철퇴로 싸우며 Lay on Hands로 회복합니다. Shield Press로 적을 밀어내고 Demoralize로 위협합니다.",
+    "description": "무기의 공격 카드 한 장과 Lay on Hands 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.champion.male",
       "female": "human.champion.female"
@@ -20,7 +20,7 @@
   {
     "id": "human.cleric",
     "actorDefinitionId": "character.human-cleric",
-    "description": "Heal과 Battle Medicine으로 회복하고 Harm과 Spirit Lance로 피해를 줍니다. 지팡이와 방패로 가까운 적에 대응합니다.",
+    "description": "무기의 공격 카드 한 장과 Heal 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.cleric.male",
       "female": "human.cleric.female"
@@ -29,7 +29,7 @@
   {
     "id": "human.druid",
     "actorDefinitionId": "character.human-druid",
-    "description": "Frostbite로 원거리 피해를 주고 Heal로 회복합니다. Arcane Ward와 방패로 방어를 보완합니다.",
+    "description": "무기의 공격 카드 한 장과 Frostbite 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.druid.male",
       "female": "human.druid.female"
@@ -38,7 +38,7 @@
   {
     "id": "human.fighter",
     "actorDefinitionId": "character.human-fighter",
-    "description": "긴 할버드로 적을 공격하거나 넘어뜨립니다. Vicious Swing으로 강하게 때리고 Reactive Strike로 빈틈에 반응합니다.",
+    "description": "무기의 공격 카드 한 장과 Vicious Swing 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.fighter.male",
       "female": "human.fighter.female"
@@ -47,7 +47,7 @@
   {
     "id": "human.ranger",
     "actorDefinitionId": "character.human-ranger",
-    "description": "단궁으로 거리를 유지하며 공격합니다. Aimed Shot과 이동 카드를 사용하고 Battle Medicine으로 회복합니다.",
+    "description": "무기의 공격 카드 한 장과 Aimed Shot 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.ranger.male",
       "female": "human.ranger.female"
@@ -56,7 +56,7 @@
   {
     "id": "human.rogue",
     "actorDefinitionId": "character.human-rogue",
-    "description": "민첩한 검으로 근접 공격하고 Grapple로 적을 붙잡습니다. Slip Free로 자리를 바꾸며 Battle Medicine으로 회복합니다.",
+    "description": "무기의 공격 카드 한 장과 Careful Advance 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.rogue.male",
       "female": "human.rogue.female"
@@ -65,7 +65,7 @@
   {
     "id": "human.witch",
     "actorDefinitionId": "character.human-witch",
-    "description": "Daze와 Fear로 적을 압박하고 Soothe로 회복합니다. Arcane Ward로 방어를 보완합니다.",
+    "description": "무기의 공격 카드 한 장과 Fear 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.witch.male",
       "female": "human.witch.female"
@@ -74,7 +74,7 @@
   {
     "id": "human.wizard",
     "actorDefinitionId": "character.human-wizard",
-    "description": "Telekinetic Projectile과 Force Barrage로 원거리 피해를 줍니다. Arcane Ward와 Battle Medicine으로 생존을 보완합니다.",
+    "description": "무기의 공격 카드 한 장과 Force Barrage 한 장으로 시작합니다. 기본 공격과 이동은 카드 없이 사용할 수 있습니다.",
     "appearance": {
       "male": "human.wizard.male",
       "female": "human.wizard.female"

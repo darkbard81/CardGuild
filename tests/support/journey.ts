@@ -26,7 +26,7 @@ export async function signIn(page: Page, origin: string, username = "journey-pla
   await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeVisible();
 }
 
-export async function newAdventure(page: Page, origin: string, two = false) {
+export async function newAdventure(page: Page, origin: string, two = false, welcome = false) {
   await page.goto(origin);
   await page.getByRole("button", { name: "새 모험 시작", exact: true }).click();
   await page.getByRole("button", { name: "계정 만들기", exact: true }).click();
@@ -34,6 +34,12 @@ export async function newAdventure(page: Page, origin: string, two = false) {
   await page.getByLabel("비밀번호", { exact: true }).fill(PASSWORD);
   await page.getByLabel("비밀번호 확인", { exact: true }).fill(PASSWORD);
   await page.getByRole("button", { name: "계정 만들기", exact: true }).click();
+  if (welcome) {
+    await expect(page.getByRole("dialog")).toContainText("저는 길드 접수원 미네르바예요.");
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "다음", exact: true }).click();
+    await page.getByRole("button", { name: "캐릭터 만들기", exact: true }).click();
+  } else await page.getByRole("button", { name: "건너뛰기", exact: true }).click();
   await expect(page.getByRole("heading", { name: "캐릭터 생성", exact: true })).toBeVisible();
   if (two) {
     // Keep the authored 2P precondition until #67 switches the Chapter journey to recruitment.
@@ -59,6 +65,9 @@ export async function newAdventure(page: Page, origin: string, two = false) {
 
 export async function beginBattle(page: Page) {
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
+  const briefing = page.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true });
+  await expect(briefing.or(page.getByRole("region", { name: "Tactical combat", exact: true }))).toBeVisible();
+  if (await briefing.isVisible()) await briefing.getByRole("button", { name: "건너뛰기", exact: true }).click();
   await expect(page.getByRole("region", { name: "Tactical combat", exact: true })).toBeVisible();
 }
 

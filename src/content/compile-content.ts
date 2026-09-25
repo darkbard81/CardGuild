@@ -65,6 +65,7 @@ export function compileScenario(
     id: source.id,
     name: source.name,
     objective: { ...source.objective },
+        ...(source.partyHpFloor === undefined ? {} : { partyHpFloor: source.partyHpFloor }),
     actors: [
       ...previewActors,
       // The preview seats a single hero, so it must show the 1P composition rather than

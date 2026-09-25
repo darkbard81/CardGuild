@@ -268,6 +268,7 @@ export class SessionLobbyUi {
     const creator = new CharacterCreationUi(this.pack, this.catalog, this.creationDraft, this.handlers.onPreviewCharacter);
     form.append(creator.element);
     this.finishForm(card, form, this.handlers.onShowLanding, "new-adventure-back");
+    form.querySelector<HTMLInputElement>('input[name="character-name"]')?.focus();
   }
 
   public renderCampaigns(account: AccountIdentity, campaigns: readonly CampaignSummary[]): void {

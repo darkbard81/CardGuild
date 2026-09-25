@@ -326,7 +326,7 @@ export class BattleController {
       canControl,
       inputBlocked: this.inputBlocked(),
       interactionActive: this.interaction.kind !== "idle",
-      status: this.statusText(), members: this.session.members,
+      status: this.state.partyHpFloor === 1 ? `${this.statusText()} · 길드 연습전 보호: HP 최소 1` : this.statusText(), members: this.session.members,
       ownsReaction: this.controlledActorIds.has(this.state.pendingReaction?.candidates[0]?.actorId ?? ""),
     });
     this.renderDetail();

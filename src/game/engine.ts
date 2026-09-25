@@ -59,6 +59,7 @@ import type {
 } from "./types";
 
 interface CombatDraft {
+  partyHpFloor?: 1;
   knowledge?: CombatState["knowledge"];
   version: 6;
   scenarioId: string;
@@ -240,6 +241,7 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
   const state: CombatState = {
     version: 6,
     scenarioId: scenario.id,
+    ...(scenario.partyHpFloor === undefined ? {} : { partyHpFloor: scenario.partyHpFloor }),
     seed,
     contentIdentity: { ...contentIdentity },
     setupFingerprint: computeCombatSetupFingerprint(definition, seed),
@@ -450,10 +452,12 @@ function applyDamage(
 ): void {
   const target = draft.actors[targetActorId];
   if (!target || target.defeated) return;
-  const hp = Math.max(0, target.hp - amount);
+  const floor = target.team === "heroes" ? draft.partyHpFloor ?? 0 : 0;
+  const hp = Math.max(Math.min(target.hp, floor), target.hp - amount);
+  const applied = target.hp - hp;
   const defeated = hp === 0;
   replaceActor(draft, { ...target, hp, defeated });
-  events.push({ type: "DAMAGE_DEALT", sourceActorId, targetActorId, amount, damageType, remainingHp: hp });
+  events.push({ type: "DAMAGE_DEALT", sourceActorId, targetActorId, amount: applied, damageType, remainingHp: hp });
   if (defeated) events.push({ type: "ACTOR_DEFEATED", actorId: targetActorId });
   checkCombatOutcome(draft, events);
 }

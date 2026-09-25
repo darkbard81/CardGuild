@@ -117,6 +117,7 @@ export interface BattleMapSource {
 }
 
 export interface ScenarioSource {
+  readonly partyHpFloor?: 1;
   readonly id: ScenarioId;
   readonly name: string;
   readonly objective: ObjectiveDefinition;

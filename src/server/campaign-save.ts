@@ -237,6 +237,9 @@ function validateCombat(save: CampaignSaveV5, context: SessionAuthorityContext):
   if (!context.pack.scenarios[combat.scenarioId]) {
     corrupt(`Saved combat scenario "${combat.scenarioId}" is not in the current content pack.`);
   }
+  if (combat.partyHpFloor !== context.pack.scenarios[combat.scenarioId]?.partyHpFloor) {
+    corrupt("Saved combat protection does not match its authored scenario.");
+  }
   if (combat.scenarioId !== adventure.currentEncounterId) {
     corrupt("Saved combat scenario does not match the saved Adventure encounter.");
   }

@@ -1,0 +1,26 @@
+import minerva from "./minerva-faces.json";
+import type { SceneCatalog, SceneDefinition } from "./types";
+
+export const SCENE_CATALOG: SceneCatalog = {
+  speakers: { minerva: { name: "미네르바", faceSetId: "minerva" } },
+  faceSets: { minerva },
+};
+export const WELCOME_SCENE: SceneDefinition = {
+  id: "guild-welcome",
+  lines: [
+    { speakerId: "minerva", expressionId: "welcome", text: "카드길드에 오신 것을 환영해요! 저는 길드 접수원 미네르바예요." },
+    { speakerId: "minerva", expressionId: "explain", text: "모험을 시작하기 전에 길드 등록부터 해볼까요? 이름과 성별, 그리고 당신에게 어울리는 클래스를 정해주세요." },
+    { speakerId: "minerva", expressionId: "cheer", text: "어떤 모험가가 되실지 기대되네요. 준비되셨다면 시작해 볼까요?" },
+  ],
+};
+
+export const FIRST_BATTLE_SCENE: SceneDefinition = {
+  id: "guild-first-battle-briefing",
+  lines: [
+    { speakerId: "minerva", expressionId: "welcome", text: "첫 전투는 길드의 연습 상대인 슬라임과 함께할 거예요. 서두르지 말고, 모험가님의 힘을 하나씩 익혀보세요." },
+    { speakerId: "minerva", expressionId: "explain", text: "처음에는 무기로 사용하는 공격 카드 한 장과, 클래스에 맞는 준비 카드 한 장이 주어져요. 기본 공격과 이동은 카드 없이도 할 수 있답니다." },
+    { speakerId: "minerva", expressionId: "explain", text: "자기 턴에는 행동을 세 번 할 수 있어요. 카드마다 필요한 행동 수가 다르니 내용을 확인해보세요. 턴을 마칠 때는 바라볼 방향도 골라주세요." },
+    { speakerId: "minerva", expressionId: "firm", text: "이번 연습전에서는 길드의 보호로 HP가 1보다 낮아지지 않아요. 이 보호는 첫 연습전에만 적용된다는 점을 기억해주세요." },
+    { speakerId: "minerva", expressionId: "cheer", text: "실수해도 괜찮아요. 무기와 카드를 직접 사용해보면서 익혀보세요. 준비되셨다면 시작해볼까요?" },
+  ],
+};

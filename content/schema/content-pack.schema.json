@@ -906,6 +906,7 @@
       "additionalProperties": false,
       "required": ["id", "name", "objective", "placements", "partySpawnSlots", "map"],
       "properties": {
+        "partyHpFloor": { "const": 1 },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
         "objective": {

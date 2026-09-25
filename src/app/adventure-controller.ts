@@ -1,3 +1,5 @@
+import { SceneDialogueUi } from "../dom/scene-dialogue-ui";
+import { FIRST_BATTLE_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
 import { CoopPreparationUi } from "../dom/coop-preparation-ui";
 import { waitingGuests } from "../session";
 import type { CharacterSheetDestination } from "../dom/character-workspace";
@@ -64,13 +66,18 @@ export class AdventureController {
   private encounterBundle: Promise<void> | null = null;
   private continuing = false;
   private account: AccountIdentity | null = null;
-  private entryView: "landing" | "login" | "register" | "join" | "new-adventure" | "campaigns" = "landing";
+  private entryView: "landing" | "login" | "register" | "join" | "new-adventure" | "welcome" | "campaigns" = "landing";
   private authState: "checking" | "ready" | "failed" = "checking";
   private authDestination: "landing" | "new-adventure" | "campaigns" = "landing";
   private entryBusy = false;
   private entryVersion = 0;
   private pendingCreation: CreateCharacterInput | null = null;
   private creationSent = false;
+  private readonly sceneUi = new SceneDialogueUi();
+  private welcomePending = false;
+  private briefingKey: string | null = null;
+  private completedBriefingKey: string | null = null;
+  private departurePending = false;
 
   /**
    * The last victory's growth, and the snapshot that published it. Built from committed
@@ -88,8 +95,8 @@ export class AdventureController {
   ) {
     this.ui = new AdventureUi(PRODUCTION_CONTENT.adventure, PRODUCTION_CONTENT.pack, {
       onAdvanceCharacter: (memberId, choice) => this.advanceCharacter(memberId, choice),
-      onStart: () => this.sendIntent({ type: this.snapshot?.state.lifecycle === "active" ? "start-encounter" : "begin-adventure" }),
-      onContinue: () => this.sendIntent({ type: "start-encounter" }),
+      onStart: () => this.requestDeparture(),
+      onContinue: () => this.requestDeparture(),
       onChooseReward: (rewardId, choiceIndex, settled) => this.client?.sendIntent({ type: "choose-reward", rewardId, choiceIndex }, settled) ?? false,
       onPreviewCompanion: (definition, member) => this.characterDetail.openPrepared(definition, member),
       onOpenCharacter: destination => this.openCharacter(destination),
@@ -157,7 +164,24 @@ export class AdventureController {
       case "login": this.lobbyUi.renderLogin(); break;
       case "register": this.lobbyUi.renderRegister(); break;
       case "join": this.lobbyUi.renderJoin(); break;
-      case "new-adventure": this.lobbyUi.renderNewAdventure(); break;
+      case "new-adventure":
+        if (this.welcomePending) this.navigateEntry("welcome");
+        else this.lobbyUi.renderNewAdventure();
+        break;
+      case "welcome":
+        this.lobbyUi.setVisible(false);
+        this.sceneUi.open(WELCOME_SCENE, SCENE_CATALOG, {
+          title: "카드길드에 오신 것을 환영합니다", finishLabel: "캐릭터 만들기",
+          onFinish: result => {
+            this.welcomePending = false;
+            if (result === "cancelled") {
+              this.authDestination = "landing";
+              this.navigateEntry("landing");
+              document.getElementById("entry-new-adventure")?.focus();
+            } else this.navigateEntry("new-adventure");
+          },
+        });
+        break;
       case "campaigns": this.lobbyUi.renderCampaignLoading(); break;
     }
   }
@@ -165,6 +189,7 @@ export class AdventureController {
   private openNewAdventure(): void {
     if (this.entryBusy || this.authState !== "ready") return;
     this.authDestination = "new-adventure";
+    this.welcomePending = true;
     this.navigateEntry(this.account ? "new-adventure" : "login");
   }
 
@@ -409,6 +434,10 @@ export class AdventureController {
   }
 
   private returnToLanding(message: string): void {
+    this.sceneUi.close();
+    this.briefingKey = null;
+    this.completedBriefingKey = null;
+    this.departurePending = false;
     this.pendingCreation = null;
     this.creationSent = false;
     this.snapshot = null;
@@ -454,6 +483,10 @@ export class AdventureController {
 
   private async renderSnapshot(snapshot: ServerSnapshot): Promise<void> {
     if (this.snapshot !== snapshot) return;
+    if (this.briefingKey && this.briefingKey !== this.firstBattleKey()) {
+      this.sceneUi.close();
+      this.briefingKey = null;
+    }
     this.trackGrowth(snapshot);
     const state = snapshot.state;
     const viewer = this.viewerSeat(snapshot);
@@ -590,11 +623,49 @@ export class AdventureController {
     return this.client?.sendIntent({ type: "set-loadout", memberId, loadout }, settled) ?? false;
   }
 
+  private firstBattleKey(): string | null {
+    const state = this.snapshot?.state;
+    const adventure = state?.adventure;
+    if (!state || state.lifecycle !== "active" || state.combat ||
+        state.hostPlayerId !== this.client?.credential.playerId ||
+        adventure?.phase !== "between-encounters" || adventure.completedEncounterIds.length ||
+        !adventure.currentEncounterId ||
+        PRODUCTION_CONTENT.pack.scenarios[adventure.currentEncounterId]?.partyHpFloor !== 1) return null;
+    return `${state.sessionId}:${adventure.currentEncounterId}`;
+  }
+
+  private requestDeparture(): void {
+    if (this.departurePending || this.briefingKey) return;
+    const key = this.firstBattleKey();
+    if (key && key !== this.completedBriefingKey) {
+      this.briefingKey = key;
+      this.sceneUi.open(FIRST_BATTLE_SCENE, SCENE_CATALOG, {
+        title: "미네르바의 첫 전투 안내", finishLabel: "연습 전투 시작",
+        onFinish: result => {
+          if (this.briefingKey !== key || this.firstBattleKey() !== key) return;
+          this.briefingKey = null;
+          if (result === "cancelled") { this.ui.focusDeparture(); return; }
+          this.completedBriefingKey = key;
+          this.requestDeparture();
+        },
+      });
+      return;
+    }
+    const client = this.client;
+    if (!client) return;
+    this.departurePending = true;
+    const sent = client.sendIntent({ type: this.snapshot?.state.lifecycle === "active" ? "start-encounter" : "begin-adventure" }, () => {
+      if (this.client === client) this.departurePending = false;
+    });
+    if (!sent) this.departurePending = false;
+  }
+
   private sendIntent(intent: SessionIntent): boolean {
     return this.client?.sendIntent(intent) ?? false;
   }
 
   public destroy(): void {
+    this.sceneUi.close();
     this.characterDetail.destroy();
     this.battle?.destroy();
     this.client?.destroy();

@@ -272,6 +272,7 @@ const combat = {
     seed: integer,
     contentIdentity,
     setupFingerprint: nonEmptyString,
+    partyHpFloor: { const: 1 },
     round: nonNegativeInteger,
     turn: {
       type: "object",

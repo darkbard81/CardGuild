@@ -52,10 +52,24 @@ export function combatCheckpoint(): SessionCoreState {
 }
 
 export function reactionCheckpoint(): SessionCoreState {
-  const ended = act(combatCheckpoint(), { type: "end-turn", facing: "east" });
+  // This checkpoint tests a later acquired reaction, not the two-card starter deck.
+  const ready = adventure();
+  const member = ready.adventure!.party.members[HERO]!;
+  const equipped: SessionCoreState = { ...ready, adventure: { ...ready.adventure!,
+    collection: { ...ready.adventure!.collection, cards: { ...ready.adventure!.collection.cards, "card.reactive-strike": 1 } },
+    party: { members: { [HERO]: { ...member, loadout: { ...member.loadout,
+      preparedCards: ["card.reactive-strike"],
+    } } } },
+  } };
+  const active = act(equipped, { type: "start-encounter" });
+  const combat = active.combat!;
+  const heroTurn = { ...active, combat: { ...combat, turn: { ...combat.turn,
+    activeIndex: combat.turn.initiativeOrder.indexOf(HERO), activeActorId: HERO,
+  } } };
+  const ended = act(heroTurn, { type: "end-turn", facing: "east" });
   const result = dispatchServerCombatCommand(ended, {
     type: "use-action", id: "fixture-enemy-move", sequence: 0,
-    actorId: "goblin-lackey", action: { kind: "basic", id: "stride" },
+    actorId: "slime-trainee", action: { kind: "basic", id: "stride" },
     target: { kind: "tile", position: { x: 2, y: 2 } },
   }, context);
   if (!result.accepted || !result.state.combat?.pendingReaction) throw new Error("Reaction checkpoint did not open");

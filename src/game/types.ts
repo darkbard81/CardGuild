@@ -459,6 +459,8 @@ export interface PendingReaction {
 export interface KnowledgeAttempt { readonly actorId: EntityId; readonly targetId: EntityId; readonly success: boolean }
 
 export interface CombatState {
+  /** Authored practice protection; absent in ordinary encounters. */
+  readonly partyHpFloor?: 1;
   /** Absent in older v5 snapshots: no knowledge has been earned. */
   readonly knowledge?: readonly KnowledgeAttempt[];
   readonly version: 6;
@@ -765,6 +767,7 @@ export interface ObjectiveDefinition {
 }
 
 export interface ScenarioDefinition {
+  readonly partyHpFloor?: 1;
   readonly id: ScenarioId;
   readonly name: string;
   readonly objective: ObjectiveDefinition;

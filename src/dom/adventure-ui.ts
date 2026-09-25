@@ -105,6 +105,7 @@ function rewardDetail(grant: RewardGrant, pack: CompiledContentPack): string {
 }
 
 export class AdventureUi {
+  private errorMessage = "";
   private readonly screen = required<HTMLElement>("#adventure-screen");
   private readonly progress = required<HTMLOListElement>("#adventure-progress");
   private readonly content = required<HTMLElement>("#adventure-content");
@@ -175,9 +176,14 @@ export class AdventureUi {
       : null;
   }
 
+  public focusDeparture(): void {
+    this.content.querySelector<HTMLButtonElement>(".adventure-actions button")?.focus();
+  }
+
   public render(state: AdventureState, access: AdventureUiAccess = { isHost: true }): void {
     const openGrowth = new Set([...this.party.querySelectorAll<HTMLElement>("details[open] [data-advancement-member]")].map(node => node.dataset.advancementMember));
     const previous = this.lastRender?.state;
+    if (previous && previous !== state) this.errorMessage = "";
     this.lastRender = { state, access };
     if (this.rewardDraft && state.pendingReward?.rewardId !== this.rewardDraft.rewardId) {
       this.rewardDraft = null;
@@ -217,6 +223,11 @@ export class AdventureUi {
         return row;
       }));
     this.content.replaceChildren();
+    if (this.errorMessage) {
+      const status = element("p", "ui-status", this.errorMessage);
+      status.setAttribute("role", "alert");
+      this.content.append(status);
+    }
     this.content.classList.toggle("ui-reward-workspace", state.phase === "reward");
     if (state.phase !== "reward" && (this.rewardMessage || this.rewardPending)) this.content.append(element("p", "ui-status",
       this.rewardPending ? "보상 적용 결과 확인 중…" : this.rewardMessage));
@@ -545,11 +556,12 @@ export class AdventureUi {
   }
 
   public reportError(message: string): void {
+    this.errorMessage = message;
     this.advancementUi.reportError(message);
     if (this.lastRender && !this.screen.hidden) this.render(this.lastRender.state, this.lastRender.access);
   }
 
-  public clear(): void { this.advancementUi.clear(); this.lastRender = null; this.rewardDraft = null; this.rewardPending = false; this.rewardMessage = ""; }
+  public clear(): void { this.errorMessage = ""; this.advancementUi.clear(); this.lastRender = null; this.rewardDraft = null; this.rewardPending = false; this.rewardMessage = ""; }
 
   public setVisible(visible: boolean): void {
     this.screen.hidden = !visible;

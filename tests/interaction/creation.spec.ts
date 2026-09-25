@@ -91,6 +91,7 @@ test("U-CREATE reject preserves draft; retry reuses session; ACK plus snapshot g
   await expect(sheet.locator('[style*="human/fighter/female/front.webp"]').first()).toBeVisible();
   await sheet.getByRole("button", { name: "닫기", exact: true }).click();
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
+  await page.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true }).getByRole("button", { name: "건너뛰기", exact: true }).click();
   await expect.poll(() => backend.requests.length).toBe(3);
   const combat = backend.candidate();
   backend.publish(combat); backend.ack(true, combat.revision);
@@ -132,6 +133,7 @@ test("U-CREATE expired authentication returns to the same name, gender and Class
   await page.getByLabel("계정 이름", { exact: true }).fill("Player");
   await page.getByLabel("비밀번호", { exact: true }).fill("correct-password");
   await page.getByRole("button", { name: "로그인", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "카드길드에 오신 것을 환영합니다" })).toHaveCount(0);
   await expect(page.getByLabel("캐릭터 이름", { exact: true })).toHaveValue("별빛");
   await expect(page.getByLabel("여성", { exact: true })).toBeChecked();
   await expect(page.getByLabel("클래스", { exact: true })).toHaveValue("human.wizard");

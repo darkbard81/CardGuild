@@ -12,7 +12,7 @@
   },
   "runtimeStorage": {
     "atlas": 35,
-    "image": 112
+    "image": 119
   },
   "atlasImage": "/assets/m3-atlas.webp",
   "cardArtPlan": "art/source/card-art-plan.json",
@@ -643,6 +643,106 @@
       "runtime": "/assets/cards/hover-step.webp",
       "sourceSha256": "62ca5fa687f5797dfd585ec8561bb347889ab5358eb50e93c98e4726df828368",
       "outputSha256": "cfa9d46ca97cc12787ab462ad1bac4c0ccab49f6f097fee0ef40d8267109302d",
+      "sourceSize": {
+        "width": 1024,
+        "height": 1536
+      },
+      "outputSize": {
+        "width": 512,
+        "height": 768
+      },
+      "conversion": {
+        "kernel": "lanczos3",
+        "quality": 85,
+        "effort": 6
+      }
+    },
+    "ui.card.quick-cut": {
+      "source": "art/local/cards/quick-cut.png",
+      "output": "public/assets/cards/quick-cut.webp",
+      "runtime": "/assets/cards/quick-cut.webp",
+      "sourceSha256": "d66b10522d3525c5e016ef2b6afccaa18d3434fa7c0d298a6e8b9e32692f8c98",
+      "outputSha256": "56de54d663fe6ff93e25a051b8cd23a1b291dc0e04c2edac19a46646b055a8f5",
+      "sourceSize": {
+        "width": 1024,
+        "height": 1536
+      },
+      "outputSize": {
+        "width": 512,
+        "height": 768
+      },
+      "conversion": {
+        "kernel": "lanczos3",
+        "quality": 85,
+        "effort": 6
+      }
+    },
+    "ui.card.heavy-blow": {
+      "source": "art/local/cards/heavy-blow.png",
+      "output": "public/assets/cards/heavy-blow.webp",
+      "runtime": "/assets/cards/heavy-blow.webp",
+      "sourceSha256": "00ea1f7e54b1bfeb201e97d096d737f35bebb48991414a609891244d1ee29130",
+      "outputSha256": "3bf091826cf3a87e4bfddc3d6f343602d983f95b521ba8c3c902a8fc26d61bb4",
+      "sourceSize": {
+        "width": 1024,
+        "height": 1536
+      },
+      "outputSize": {
+        "width": 512,
+        "height": 768
+      },
+      "conversion": {
+        "kernel": "lanczos3",
+        "quality": 85,
+        "effort": 6
+      }
+    },
+    "ui.card.guarding-blow": {
+      "source": "art/local/cards/guarding-blow.png",
+      "output": "public/assets/cards/guarding-blow.webp",
+      "runtime": "/assets/cards/guarding-blow.webp",
+      "sourceSha256": "03c1f7322f5b8c553509c0167e73d927edf75a0c01680d8f5bcbc5a5dc2bc1be",
+      "outputSha256": "17cf10cc19fe347531975ebb5a3610a5db593922c9398f521ae81f57ea7ff07a",
+      "sourceSize": {
+        "width": 1024,
+        "height": 1536
+      },
+      "outputSize": {
+        "width": 512,
+        "height": 768
+      },
+      "conversion": {
+        "kernel": "lanczos3",
+        "quality": 85,
+        "effort": 6
+      }
+    },
+    "ui.card.piercing-shot": {
+      "source": "art/local/cards/piercing-shot.png",
+      "output": "public/assets/cards/piercing-shot.webp",
+      "runtime": "/assets/cards/piercing-shot.webp",
+      "sourceSha256": "78fd7abd84d5b940096de49fd3fb24ac453b60dc58d8a1fb2dfc4739385c8b17",
+      "outputSha256": "4f47636c4b99bd269761f7996df42db1b9eae0fdeedadd84275de2be0380facb",
+      "sourceSize": {
+        "width": 1024,
+        "height": 1536
+      },
+      "outputSize": {
+        "width": 512,
+        "height": 768
+      },
+      "conversion": {
+        "kernel": "lanczos3",
+        "quality": 85,
+        "effort": 6
+      }
+    },
+    "ui.card.hooking-cut": {
+      "source": "art/local/cards/hooking-cut.png",
+      "output": "public/assets/cards/hooking-cut.webp",
+      "runtime": "/assets/cards/hooking-cut.webp",
+      "sourceSha256": "e9e2a347bf3bb4fa8198b36daeca0c5a831bcd6e44f371d56a6b9085c5596e68",
+      "outputSha256": "85ccc16ca4bd8e71516fd8b56007113f26f84b81d2b5a59afa09338a2babd854",
       "sourceSize": {
         "width": 1024,
         "height": 1536
@@ -2727,6 +2827,42 @@
       "anchor": {
         "x": 0.5,
         "y": 0.5
+      }
+    },
+    "actor.slime-trainee.front": {
+      "source": "art/source/actors/enemy/slime-trainee/front-back.png",
+      "output": "art/processed/actors/enemy/slime-trainee/front.png",
+      "runtime": "/assets/actors/enemy/slime-trainee/front.webp",
+      "sourceBox": {
+        "left": 207,
+        "top": 0,
+        "width": 605,
+        "height": 1521
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.237318,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.slime-trainee.back": {
+      "source": "art/source/actors/enemy/slime-trainee/front-back.png",
+      "output": "art/processed/actors/enemy/slime-trainee/back.png",
+      "runtime": "/assets/actors/enemy/slime-trainee/back.webp",
+      "sourceBox": {
+        "left": 233,
+        "top": 0,
+        "width": 568,
+        "height": 1504
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.237318,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
       }
     }
   }

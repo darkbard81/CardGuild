@@ -11,7 +11,7 @@ test("J-PROGRESS victory flows through reward, required growth and preparation i
   await page.getByRole("button", { name: "모험 이어가기", exact: true }).click();
   await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
   await page.mouse.click(499, 504);
-  await page.getByRole("menu", { name: "Goblin Lackey", exact: true }).getByRole("menuitem", { name: /^Strike / }).click();
+  await page.getByRole("menu", { name: "길드 연습 상대 · 슬라임", exact: true }).getByRole("menuitem", { name: /^Strike / }).click();
   await expect(page.getByRole("heading", { name: "Choose one reward", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Brace Behind Cover/ }).click();
   await page.getByRole("button", { name: "이 보상 획득", exact: true }).click();
@@ -53,6 +53,8 @@ test("J-COOP two browsers join, claim, play and restore guest control after leav
     await guest.getByRole("button", { name: "Lyra 선택 확정", exact: true }).click();
     await expect(guest.getByRole("button", { name: "선택 해제", exact: true })).toBeEnabled();
     await host.getByRole("button", { name: "전투 시작", exact: true }).click();
+    await expect(guest.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true })).toHaveCount(0);
+    await host.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true }).getByRole("button", { name: "건너뛰기", exact: true }).click();
     const guestEnd = guest.getByRole("button", { name: "End Turn", exact: true });
     const hostEnd = host.getByRole("button", { name: "End Turn", exact: true });
     await expect(guest.getByRole("region", { name: "Tactical combat", exact: true })).toBeVisible();

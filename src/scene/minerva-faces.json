@@ -1,0 +1,120 @@
+{
+  "image": "/assets/scenes/minerva.webp",
+  "width": 2048,
+  "height": 2048,
+  "defaultExpression": "neutral",
+  "frames": {
+    "neutral": {
+      "x": 0,
+      "y": 0,
+      "width": 512,
+      "height": 512,
+      "label": "기본"
+    },
+    "welcome": {
+      "x": 512,
+      "y": 0,
+      "width": 512,
+      "height": 512,
+      "label": "환영미소"
+    },
+    "joy": {
+      "x": 1024,
+      "y": 0,
+      "width": 512,
+      "height": 512,
+      "label": "활짝웃음"
+    },
+    "wink": {
+      "x": 1536,
+      "y": 0,
+      "width": 512,
+      "height": 512,
+      "label": "윙크"
+    },
+    "explain": {
+      "x": 0,
+      "y": 512,
+      "width": 512,
+      "height": 512,
+      "label": "설명"
+    },
+    "think": {
+      "x": 512,
+      "y": 512,
+      "width": 512,
+      "height": 512,
+      "label": "생각"
+    },
+    "question": {
+      "x": 1024,
+      "y": 512,
+      "width": 512,
+      "height": 512,
+      "label": "의문"
+    },
+    "surprise": {
+      "x": 1536,
+      "y": 512,
+      "width": 512,
+      "height": 512,
+      "label": "놀람"
+    },
+    "worry": {
+      "x": 0,
+      "y": 1024,
+      "width": 512,
+      "height": 512,
+      "label": "걱정"
+    },
+    "sad": {
+      "x": 512,
+      "y": 1024,
+      "width": 512,
+      "height": 512,
+      "label": "슬픔"
+    },
+    "cry": {
+      "x": 1024,
+      "y": 1024,
+      "width": 512,
+      "height": 512,
+      "label": "눈물"
+    },
+    "flustered": {
+      "x": 1536,
+      "y": 1024,
+      "width": 512,
+      "height": 512,
+      "label": "당황"
+    },
+    "blush": {
+      "x": 0,
+      "y": 1536,
+      "width": 512,
+      "height": 512,
+      "label": "부끄러움"
+    },
+    "displeased": {
+      "x": 512,
+      "y": 1536,
+      "width": 512,
+      "height": 512,
+      "label": "불만"
+    },
+    "firm": {
+      "x": 1024,
+      "y": 1536,
+      "width": 512,
+      "height": 512,
+      "label": "단호함"
+    },
+    "cheer": {
+      "x": 1536,
+      "y": 1536,
+      "width": 512,
+      "height": 512,
+      "label": "응원"
+    }
+  }
+}

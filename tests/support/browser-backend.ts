@@ -4,7 +4,7 @@ import { dispatchSessionIntent, hashSessionGameplayState, type SessionCoreState 
 import { adventure, context } from "./session";
 
 /** Only the backend is controlled: the page loads the real bootstrap, controller, UI and SessionClient. */
-export async function controlledSession(page: Page, initial = adventure(), entry: "join" | "create" = "join", viewer = "host") {
+export async function controlledSession(page: Page, initial = adventure(), entry: "join" | "create" = "join", viewer = "host", welcome: "skip" | "show" = "skip") {
   const testInfo = test.info();
   testInfo.annotations.push({ type: "session", description: `seed=${initial.adventure?.adventureSeed ?? 60}; revision=${initial.revision}` });
   let state = initial;
@@ -44,6 +44,7 @@ export async function controlledSession(page: Page, initial = adventure(), entry
   await page.goto("/");
   if (entry === "create") {
     await page.getByRole("button", { name: "새 모험 시작", exact: true }).click();
+    if (welcome === "skip") await page.getByRole("button", { name: "건너뛰기", exact: true }).click();
   } else {
     await page.getByRole("button", { name: "초대 코드로 참가", exact: true }).click();
     await page.getByLabel("초대 코드", { exact: true }).fill("controlled-session");

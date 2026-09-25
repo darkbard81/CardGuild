@@ -647,5 +647,75 @@
     "description": "Wizard 클래스입니다. 캐릭터의 생성 및 성장 규칙을 연결하는 정체성입니다.",
     "cardGrants": [],
     "actionGrants": []
+  },
+  {
+    "id": "quick-cut",
+    "name": "Quick Cut",
+    "source": "cardguild",
+    "category": "weapon",
+    "description": "재빠르게 베어 명중하면 추가 참격 피해 1d2를 줍니다. 장착한 무기에서 Quick Cut 카드 1장을 제공합니다.",
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.quick-cut",
+        "count": 1
+      }
+    ],
+    "actionGrants": []
+  },
+  {
+    "id": "heavy-blow",
+    "name": "Heavy Blow",
+    "source": "cardguild",
+    "category": "weapon",
+    "description": "무게를 실어 추가 무기 피해 주사위 1개로 공격합니다. MAP 두 단계를 진행합니다. 장착한 무기에서 Heavy Blow 카드 1장을 제공합니다.",
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.heavy-blow",
+        "count": 1
+      }
+    ],
+    "actionGrants": []
+  },
+  {
+    "id": "guarding-blow",
+    "name": "Guarding Blow",
+    "source": "cardguild",
+    "category": "weapon",
+    "description": "지팡이로 공격합니다. 치명타이면 다음 자기 턴 시작까지 방어 자세로 AC +2를 얻습니다. 장착한 무기에서 Guarding Blow 카드 1장을 제공합니다.",
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.guarding-blow",
+        "count": 1
+      }
+    ],
+    "actionGrants": []
+  },
+  {
+    "id": "piercing-shot",
+    "name": "Piercing Shot",
+    "source": "cardguild",
+    "category": "weapon",
+    "description": "한 점을 노려 명중하면 추가 관통 피해 1d2를 줍니다. 장착한 무기에서 Piercing Shot 카드 1장을 제공합니다.",
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.piercing-shot",
+        "count": 1
+      }
+    ],
+    "actionGrants": []
+  },
+  {
+    "id": "hooking-cut",
+    "name": "Hooking Cut",
+    "source": "cardguild",
+    "category": "weapon",
+    "description": "할버드로 걸어 벱니다. 치명타이면 적을 넘어뜨립니다. 장착한 무기에서 Hooking Cut 카드 1장을 제공합니다.",
+    "cardGrants": [
+      {
+        "cardDefinitionId": "card.hooking-cut",
+        "count": 1
+      }
+    ],
+    "actionGrants": []
   }
 ]

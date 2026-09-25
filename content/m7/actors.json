@@ -44,27 +44,14 @@
       "equipment": {
         "weapon": "halberd",
         "armor": "scale-mail",
-        "shield": "shield",
-        "feet": "boots-of-fly"
+        "shield": "shield"
       },
       "preparedCards": [
-        "card.vicious-swing",
-        "card.demoralize"
+        "card.vicious-swing"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.spirit-beacon",
-        "count": 2,
-        "sourceId": "focus.spirit-beacon"
-      },
-      {
-        "cardDefinitionId": "card.reactive-strike",
-        "count": 1,
-        "sourceId": "feat.reactive-strike"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "hero.lyra",
@@ -112,32 +99,14 @@
     "starterLoadout": {
       "equipment": {
         "weapon": "light-blade",
-        "armor": "leather-armor",
-        "feet": "boots-of-fly"
+        "armor": "leather-armor"
       },
       "preparedCards": [
-        "card.slip-free",
-        "card.grapple"
+        "card.careful-advance"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.spirit-beacon",
-        "count": 1,
-        "sourceId": "focus.wind-beacon"
-      },
-      {
-        "cardDefinitionId": "card.hover-step",
-        "count": 2,
-        "sourceId": "feat.windstep"
-      },
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 1,
-        "sourceId": "feat.windstep"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "hero.brom",
@@ -187,27 +156,11 @@
         "shield": "shield"
       },
       "preparedCards": [
-        "card.grapple"
+        "card.lay-on-hands"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.shield-press",
-        "count": 2,
-        "sourceId": "feat.guardian-sentinel"
-      },
-      {
-        "cardDefinitionId": "card.brace-behind-cover",
-        "count": 2,
-        "sourceId": "feat.bulwark-stance"
-      },
-      {
-        "cardDefinitionId": "card.demoralize",
-        "count": 2,
-        "sourceId": "feat.dread-bellow"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "enemy.goblin-skirmisher",
@@ -1237,24 +1190,11 @@
         "armor": "leather-armor"
       },
       "preparedCards": [
-        "card.battle-medicine",
-        "card.heal",
-        "card.iron-presence"
+        "card.heal"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.heal",
-        "count": 2,
-        "sourceId": "feat.field-triage"
-      },
-      {
-        "cardDefinitionId": "card.soothe",
-        "count": 2,
-        "sourceId": "feat.steady-voice"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-bard",
@@ -1303,24 +1243,11 @@
         "armor": "leather-armor"
       },
       "preparedCards": [
-        "card.soothe",
-        "card.fear",
-        "card.careful-advance"
+        "card.soothe"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      },
-      {
-        "cardDefinitionId": "card.daze",
-        "count": 2,
-        "sourceId": "starter.bard"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-champion",
@@ -1370,24 +1297,11 @@
         "shield": "shield"
       },
       "preparedCards": [
-        "card.shield-press",
-        "card.demoralize",
-        "card.battle-medicine"
+        "card.lay-on-hands"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      },
-      {
-        "cardDefinitionId": "card.lay-on-hands",
-        "count": 2,
-        "sourceId": "starter.champion"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-cleric",
@@ -1437,24 +1351,11 @@
         "shield": "shield"
       },
       "preparedCards": [
-        "card.heal",
-        "card.harm",
-        "card.battle-medicine"
+        "card.heal"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      },
-      {
-        "cardDefinitionId": "card.spirit-lance",
-        "count": 2,
-        "sourceId": "starter.cleric"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-druid",
@@ -1504,24 +1405,11 @@
         "shield": "shield"
       },
       "preparedCards": [
-        "card.heal",
-        "card.arcane-ward",
-        "card.careful-advance"
+        "card.frostbite"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      },
-      {
-        "cardDefinitionId": "card.frostbite",
-        "count": 2,
-        "sourceId": "starter.druid"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-fighter",
@@ -1570,24 +1458,11 @@
         "armor": "scale-mail"
       },
       "preparedCards": [
-        "card.vicious-swing",
-        "card.demoralize",
-        "card.careful-advance"
+        "card.vicious-swing"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      },
-      {
-        "cardDefinitionId": "card.reactive-strike",
-        "count": 2,
-        "sourceId": "starter.fighter"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-ranger",
@@ -1636,19 +1511,11 @@
         "armor": "leather-armor"
       },
       "preparedCards": [
-        "card.aimed-shot",
-        "card.battle-medicine",
-        "card.careful-advance"
+        "card.aimed-shot"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-rogue",
@@ -1697,19 +1564,11 @@
         "armor": "leather-armor"
       },
       "preparedCards": [
-        "card.slip-free",
-        "card.grapple",
-        "card.battle-medicine"
+        "card.careful-advance"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-witch",
@@ -1759,24 +1618,11 @@
         "weapon": "staff"
       },
       "preparedCards": [
-        "card.fear",
-        "card.soothe",
-        "card.arcane-ward"
+        "card.fear"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      },
-      {
-        "cardDefinitionId": "card.daze",
-        "count": 2,
-        "sourceId": "starter.witch"
-      }
-    ]
+    "baseCardGrants": []
   },
   {
     "id": "character.human-wizard",
@@ -1826,23 +1672,59 @@
         "weapon": "staff"
       },
       "preparedCards": [
-        "card.force-barrage",
-        "card.arcane-ward",
-        "card.battle-medicine"
+        "card.force-barrage"
       ]
     },
     "innateActionIds": [],
-    "baseCardGrants": [
-      {
-        "cardDefinitionId": "card.careful-advance",
-        "count": 2,
-        "sourceId": "starter.movement"
-      },
-      {
-        "cardDefinitionId": "card.telekinetic-projectile",
-        "count": 2,
-        "sourceId": "starter.wizard"
+    "baseCardGrants": []
+  },
+  {
+    "id": "enemy.slime-trainee",
+    "name": "길드 연습 상대 · 슬라임",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "level": -1,
+        "ac": 12,
+        "maxHp": 12,
+        "strike": {
+          "name": "말랑한 손바닥",
+          "attackModifier": 2,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 4,
+            "modifier": 0,
+            "damageType": "bludgeoning"
+          },
+          "traits": []
+        },
+        "perception": 0,
+        "saves": {
+          "fortitude": 2,
+          "reflex": 0,
+          "will": 0
+        },
+        "skills": {
+          "athletics": 0
+        }
       }
-    ]
+    },
+    "speedFeet": 15,
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [],
+    "baseCardGrants": []
   }
 ]

@@ -114,6 +114,8 @@
   "actor.human.wizard.female.front": "art/processed/actors/human/wizard/female/front.png",
   "actor.human.wizard.female.back": "art/processed/actors/human/wizard/female/back.png",
   "ui.equipment.staff": "art/processed/ui/equipment-staff.png",
+  "actor.slime-trainee.front": "art/processed/actors/enemy/slime-trainee/front.png",
+  "actor.slime-trainee.back": "art/processed/actors/enemy/slime-trainee/back.png",
   "ui.card.vicious-swing": "public/assets/cards/vicious-swing.webp",
   "ui.card.force-barrage": "public/assets/cards/force-barrage.webp",
   "ui.card.heal": "public/assets/cards/heal.webp",
@@ -145,5 +147,10 @@
   "ui.card.dueling-parry": "public/assets/cards/dueling-parry.webp",
   "ui.card.arcane-ward": "public/assets/cards/arcane-ward.webp",
   "ui.card.careful-advance": "public/assets/cards/careful-advance.webp",
-  "ui.card.hover-step": "public/assets/cards/hover-step.webp"
+  "ui.card.hover-step": "public/assets/cards/hover-step.webp",
+  "ui.card.quick-cut": "public/assets/cards/quick-cut.webp",
+  "ui.card.heavy-blow": "public/assets/cards/heavy-blow.webp",
+  "ui.card.guarding-blow": "public/assets/cards/guarding-blow.webp",
+  "ui.card.piercing-shot": "public/assets/cards/piercing-shot.webp",
+  "ui.card.hooking-cut": "public/assets/cards/hooking-cut.webp"
 }

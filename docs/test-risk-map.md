@@ -118,3 +118,21 @@ The staged recruitment Tutorial and `--recruitment` playtest exercise actual aut
 | U-COOP / U-PREPARE | Host explicit share; no panel before recruitment or in restored reward/results; secret-free invitation; inert Guest detail and explicit ACK+snapshot claim/retry; waiting Guest explanation; solo confirm/cancel/failure; Resume gate; open Loadout becomes read-only on control loss | Interaction `coop-preparation.spec.ts`, `preparation.spec.ts` |
 
 The existing J-COOP uses the explicit preparation allowance and selection UI. #67 owns replacing its authored party precondition with the new Chapter's actual recruitment journey; it does not duplicate the authority matrix in a browser.
+
+## 독립 씬과 미네르바 환영
+
+| Risk | Player contract | Lowest owning verification |
+| --- | --- | --- |
+| D-SCENE | 캐릭터 데이터 없이 재생; 오래된 페이지 입력과 반복 완료는 무효; skip/cancel 종료 한 번; 오디오 장애에도 대화 가능; 잘못된 표정 참조 검출 | Domain `scene.test.ts` |
+| U-SCENE | 환영 표정/대사·다음·건너뛰기·돌아가기/Escape, 키 반복/더블클릭 방지와 독립 터치 탭; 생성 입력 포커스; 매번 새 시도에 표시; 대화만으로 생성 요청 없음; Guest에는 미표시 | Interaction `scene.spec.ts`, seed 60; U-CREATE `creation.spec.ts`가 재인증/저장 실패 후 draft와 대화 생략을 소유; U-ENTRY `entry.spec.ts`가 인증 목적지와 Continue를 소유 |
+| J-START | 실제 회원가입 → 미네르바 환영 → 생성 → 첫 전투 행동 연결 | Journey `start-continue.spec.ts`; 개별 입력/표정 조합은 반복하지 않음 |
+
+아트 크기·알파·16종 좌표·대사 참조는 `tools/assets/check-scene-assets.ts`가 `check`에서 검사한다. 제작 산출물과 순서는 [미네르바 씬](minerva-scene-dialogue.md)에 있다.
+
+### First practice opening (#67)
+
+| Risk | Contract | Owner |
+| --- | --- | --- |
+| G-OPENING | 모든 생성 클래스와 모집 동료는 무기 공격 1장 + 준비 카드 1장; 준비 용량 유지; 연속 치명타에도 보호 전투 HP ≥ 1; 비보호 피해 정상; replay와 저장 복구에 보호 유지·변조 거부 | Domain `tutorial-opening.test.ts`, `saves.test.ts` |
+| U-SCENE first battle | 보호 첫 전투에서 5페이지 안내, 완료/skip 전 요청 없음, 취소 시 포커스 복귀, 중복 요청 차단, 오류 재시도 시 생략, 세션 종료 시 오래된 완료 차단 | Interaction `scene.spec.ts`, seed 60 |
+| J-START opening | 생성 전 환영 → 생성/저장 → 첫 전투 안내 → 실제 연습전 행동; 진행 전투 Resume에는 안내 없음 | Journey `start-continue.spec.ts` |

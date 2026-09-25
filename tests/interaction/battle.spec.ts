@@ -3,7 +3,7 @@ import { controlledSession } from "../support/browser-backend";
 import { combatCheckpoint, HERO } from "../support/session";
 
 // Screen targets independently inspected in the 1024×768 product screenshot: the 3×3
-// Road Ambush board is already rotated 45 degrees. These are pixel input targets, not
+// Guild practice board is already rotated 45 degrees. These are pixel input targets, not
 // calls back into the product's inverse projection or test-only scene-graph exports.
 const hero = { x: 260, y: 386 };
 const east = { x: 379, y: 446 };
@@ -131,7 +131,7 @@ test("U-TARGET invalid target retains the selected card and allows a corrected t
   const combat = base.combat!;
   const zones = combat.cardZones[HERO]!;
   const state = { ...base, combat: { ...combat,
-    actors: { ...combat.actors, "goblin-lackey": { ...combat.actors["goblin-lackey"]!, position: { x: 1, y: 1 } } },
+    actors: { ...combat.actors, "slime-trainee": { ...combat.actors["slime-trainee"]!, position: { x: 1, y: 1 } } },
     cardZones: { ...combat.cardZones, [HERO]: { ...zones, hand: [{ ...zones.hand[0]!, definitionId: "card.vicious-swing" }] } },
   } };
   const backend = await controlledSession(page, state);

@@ -59,7 +59,7 @@ export const M7_PRODUCTION_POLICY = {
    * out of order meets them without the vocabulary the earlier ones teach.
    */
   tutorialEncounterIds: [
-    "encounter.road-ambush",
+    "encounter.guild-practice",
     "encounter.spear-line",
     "encounter.ruined-gate",
     "encounter.goblin-chief",
@@ -80,7 +80,8 @@ export const M7_PRODUCTION_POLICY = {
   volume: {
     starters: { min: 4, max: 4 }, // Existing authored companions, independent of gender visuals.
     creationTemplates: { min: 9, max: 9 },
-    playerCards: { min: 24, max: 32 },
+    // #67 adds five one-card starting weapon attacks; prior cards remain post-battle rewards.
+    playerCards: { min: 29, max: 37 },
     enemies: { min: 15, max: 20 },
     scenarios: { min: 8, max: 12 },
     equipment: { min: 20, max: 30 },
@@ -96,7 +97,7 @@ export const M7_PRODUCTION_POLICY = {
    * reward offer opened the last two #17 build directions.
    */
   reachableMinimum: {
-    playerCards: 28,
+    playerCards: 33,
     equipment: 22,
     enemies: 14,
     scenarios: 8,
@@ -143,6 +144,7 @@ export const M7_PRODUCTION_POLICY = {
   ],
 
   reserveActors: [
+    { id: "enemy.goblin-lackey", reason: "The first production encounter now uses the protected slime practice; retained for the staged recruitment slice.", followUp: "#67" },
     {
       id: "enemy.cave-spider",
       reason: "Placed only in encounter.web-hollow, a reserved Scenario.",
@@ -166,6 +168,7 @@ export const M7_PRODUCTION_POLICY = {
   ],
 
   reserveScenarios: [
+    { id: "encounter.road-ambush", reason: "Replaced by guild practice at production entry; retained for the staged recruitment slice until full Tutorial cutover.", followUp: "#67" },
     {
       id: "encounter.web-hollow",
       reason: "Brute + skirmisher repeats the ruined-gate role axis, so #19 kept it out of the eight.",
