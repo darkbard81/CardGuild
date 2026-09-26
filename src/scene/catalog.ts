@@ -37,7 +37,7 @@ export const PRONE_RECOVERY_SCENE: SceneDefinition = {
 export const FLANKING_TRAINING_SCENE: SceneDefinition = {
   id: "guild-flanking-training",
   lines: [
-    { speakerId: "minerva", expressionId: "welcome", text: "이번에는 Aerin과 함께 싸워요. 두 사람 모두 길드 보호로 HP가 1 아래로 내려가지 않아요. 이 훈련 다음 전투부터는 보호가 사라져요." },
+    { speakerId: "minerva", expressionId: "welcome", text: "이번에는 Aerin과 협공 연습이에요. 가까이에서 상대를 위협할 수 있도록 훈련용 단검을 빌려드릴게요. 훈련이 끝나면 원래 무기로 돌아가요. 두 사람 모두 길드 보호로 HP가 1 아래로 내려가지 않아요. 이 훈련 다음 전투부터는 보호가 사라져요." },
     { speakerId: "minerva", expressionId: "explain", text: "두 사람이 적의 서로 반대편에서 근접 무기나 맨손으로 위협하면 협공, Flanking이 돼요. 적을 향해 서서 안드로이드를 사이에 두도록 움직여보세요." },
     { speakerId: "minerva", expressionId: "explain", text: "협공하면 지난 훈련에서 봤던 Off-Guard가 되어 적의 AC가 2 낮아져요. 이번 안드로이드는 협공하지 않은 공격의 피해를 전부 무효화해요. 주문 피해도 같아요. 뒤에서 공격하거나 넘어뜨리는 것만으로는 부족하답니다." },
     { speakerId: "minerva", expressionId: "cheer", text: "공격하기 전에 미리보기의 Off-Guard −2, Flanking, 협공 아군 이름을 확인해보세요. 위치를 바꾸면 협공도 풀릴 수 있어요. 두 사람의 위치와 방향을 함께 살펴보세요!" },

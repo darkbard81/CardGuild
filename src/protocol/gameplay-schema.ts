@@ -278,6 +278,8 @@ const combat = {
     rules: {
       type: "object", additionalProperties: false,
       properties: {
+        partyWeaponOverride: { type: "object", additionalProperties: false, required: ["seat", "equipmentId"],
+          properties: { seat: { type: "integer", minimum: 1, maximum: 3 }, equipmentId: nonEmptyString } },
         damageRequiresFlanking: { enum: ["heroes", "enemies"] },
         partySize: { type: "object", additionalProperties: false, required: ["min", "max"],
           properties: { min: { type: "integer", minimum: 1, maximum: 3 }, max: { type: "integer", minimum: 1, maximum: 3 } } },

@@ -246,7 +246,7 @@ function validateCombat(save: CampaignSaveV5, context: SessionAuthorityContext):
   const authoredRules = context.pack.scenarios[combat.scenarioId]?.rules;
   if (stableSerialize(combat.rules) !== stableSerialize(authoredRules)) corrupt("Saved combat rules do not match their authored scenario.");
   if (Boolean(combat.opening) !== Boolean(authoredRules?.opening)) corrupt("Saved opening progress does not match the scenario.");
-  if (authoredRules?.opening || authoredRules?.damageRequiresFlanking) {
+  if (authoredRules?.opening || authoredRules?.damageRequiresFlanking || authoredRules?.partyWeaponOverride) {
     try {
       const setup = buildAdventureEncounter(context.pack, adventure);
       const replayed = replayCombat(setup.definition, createCombatReplay(combat)).state;

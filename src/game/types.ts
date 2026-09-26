@@ -461,6 +461,8 @@ export interface KnowledgeAttempt { readonly actorId: EntityId; readonly targetI
 
 /** Authored encounter exceptions. New modifiers belong here rather than on Actor statistics. */
 export interface ScenarioRules {
+  /** Effective combat weapon only; never writes the party loadout or inventory. */
+  readonly partyWeaponOverride?: { readonly seat: number; readonly equipmentId: EquipmentId };
   /** Damage against this team requires the source to flank the target. */
   readonly damageRequiresFlanking?: TeamId;
   readonly partySize?: { readonly min: number; readonly max: number };

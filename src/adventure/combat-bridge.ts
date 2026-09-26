@@ -46,19 +46,23 @@ export function buildAdventureEncounter(
       const actorDefinition = resolvePartyMemberDefinition(partyMember, pack);
       const spawn = spawnSlots.get(partyMember.seat);
       if (!spawn) throw new Error(`Scenario "${source.id}" has no spawn slot for seat ${partyMember.seat}.`);
+      const override = source.rules?.partyWeaponOverride;
+      const loadout = override?.seat === partyMember.seat
+        ? { ...partyMember.loadout, equipment: { ...partyMember.loadout.equipment, weapon: override.equipmentId } }
+        : partyMember.loadout;
       return deriveActorSetup(actorDefinition, {
         instanceId: partyMember.id,
         actorDefinitionId: partyMember.actorDefinitionId,
         team: "heroes",
         position: { ...spawn.position },
         facing: spawn.facing,
-      }, partyMember.loadout, pack.combatContent, partyMember.id,
+      }, loadout, pack.combatContent, partyMember.id,
       resolveEffectiveCharacterStatProfile(actorDefinition, partyMember.progression, pack.characterRules));
     });
   const actors = [...partyActors, ...staticActors];
   if (source.rules?.damageRequiresFlanking === "enemies" && partyActors.filter(actor =>
     resolveStrike({ ...actor, reactionAvailable: true, shieldRaised: false, defeated: false }, { content: pack.combatContent }).attackMode !== "ranged").length < 2) {
-    throw new Error("협공 훈련에는 근접 위협을 만드는 아군 두 명이 필요해요. 캐릭터의 장비에서 활을 해제해 맨손을 사용하거나 근접 무기를 장착해주세요.");
+    throw new Error("협공에는 근접 무기를 사용하는 아군 두 명이 필요해요. 동료의 장비를 확인해주세요.");
   }
 
   return {

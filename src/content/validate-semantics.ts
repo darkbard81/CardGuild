@@ -581,6 +581,13 @@ export function validateContentPackSemantics(
 
   source.scenarios.forEach((scenario, scenarioIndex) => {
     const prefix = `[${scenarioIndex}]`;
+    const override = scenario.rules?.partyWeaponOverride;
+    if (override) {
+      const weapon = source.equipment.find(item => item.id === override.equipmentId);
+      if (!scenario.partySpawnSlots.some(slot => slot.seat === override.seat) || weapon?.slot !== "weapon" || !weapon.weaponProfile) {
+        addIssue(context, "scenarios", `${prefix}.rules.partyWeaponOverride`, "INVALID_PARTY_WEAPON_OVERRIDE", "Combat weapon override requires an authored party seat and a weapon profile.", scenario.id);
+      }
+    }
     const range = scenario.rules?.partySize;
     if (range && range.min > range.max) addIssue(context, "scenarios", `${prefix}.rules.partySize`, "INVALID_PARTY_SIZE", "Scenario party minimum exceeds maximum.", scenario.id);
     const opening = scenario.rules?.opening;

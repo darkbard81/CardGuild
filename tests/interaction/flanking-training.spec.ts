@@ -26,7 +26,7 @@ for (const viewer of ["host", "guest"]) test(`U-FLANK ${viewer}: real party, Min
     await expect(page.getByRole("button", { name: "Aerin Co-op 허용", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "Arlen 정보", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "전투 시작", exact: true }).click();
-    await expect(scene).toContainText("Aerin과 함께");
+    await expect(scene).toContainText("Aerin과 협공");
     await expect(page.locator("#app")).toHaveAttribute("data-screen", "combat");
     await page.keyboard.press("Enter"); await page.keyboard.press("Enter");
     await expect(scene).toContainText("피해를 전부 무효화");
@@ -74,19 +74,24 @@ for (const viewer of ["host", "guest"]) test(`U-FLANK ${viewer}: real party, Min
 });
 
 
-test("U-FLANK ranged protagonist receives an actionable preparation reason and can depart after unequipping the bow", async ({ page }) => {
+test("U-FLANK Ranger departs with the saved bow and borrows a combat-only training dagger", async ({ page }) => {
   const backend = await controlledSession(page, recruitedParty(69, "human.ranger"), "join", "host", "skip", context);
+  const original = structuredClone(backend.state.adventure!.party.members[HERO]!.loadout);
   const departure = page.getByRole("button", { name: "전투 시작", exact: true });
-  await expect(departure).toBeDisabled();
-  await expect(page.getByText(/협공 훈련에는 근접 위협을 만드는 아군 두 명/)).toBeVisible();
-  await page.getByRole("button", { name: "캐릭터 상세", exact: true }).click();
-  await page.getByRole("button", { name: "장비 해제 비교", exact: true }).click();
-  await page.getByRole("button", { name: "해제", exact: true }).click();
-  await expect.poll(() => backend.requests.length).toBe(1);
-  const ready = backend.candidate(); backend.ack(true, ready.revision); backend.publish(ready);
-  await expect(page.getByRole("button", { name: "닫기", exact: true })).toBeEnabled();
-  await page.getByRole("button", { name: "닫기", exact: true }).click();
   await expect(departure).toBeEnabled();
   await departure.click();
-  await expect(page.getByRole("dialog", { name: "미네르바의 협공 안내", exact: true })).toBeVisible();
+  const scene = page.getByRole("dialog", { name: "미네르바의 협공 안내", exact: true });
+  await expect(scene).toContainText("훈련용 단검");
+  await expect(scene).toContainText("원래 무기로 돌아가요");
+  expect(backend.requests).toHaveLength(0);
+  await scene.getByRole("button", { name: "건너뛰기", exact: true }).click();
+  await expect.poll(() => backend.requests.length).toBe(1);
+  expect(backend.requests[0]!.intent).toEqual({ type: "start-encounter" });
+  const playing = backend.candidate(); backend.ack(true, playing.revision); backend.publish(playing);
+  await expect(scene).toHaveCount(0);
+  expect(playing.adventure!.party.members[HERO]!.loadout).toEqual(original);
+  expect(playing.combat!.actors[HERO]!.equipmentIds).toContain("training-dagger");
+  await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Arlen 상세", exact: true }).click();
+  await expect(page.getByRole("dialog", { name: "캐릭터 상세", exact: true })).toContainText("Training Dagger");
 });

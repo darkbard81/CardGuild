@@ -911,6 +911,10 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "partyWeaponOverride": {
+              "type": "object", "additionalProperties": false, "required": ["seat", "equipmentId"],
+              "properties": { "seat": { "type": "integer", "minimum": 1, "maximum": 3 }, "equipmentId": { "type": "string", "minLength": 1 } }
+            },
             "damageRequiresFlanking": { "enum": ["heroes", "enemies"] },
             "opening": {
               "type": "object",

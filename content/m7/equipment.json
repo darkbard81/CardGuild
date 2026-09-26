@@ -572,5 +572,37 @@
       },
       "traits": []
     }
+  },
+  {
+    "id": "training-dagger",
+    "name": "Training Dagger (훈련용 단검)",
+    "slot": "weapon",
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "agile"
+      },
+      {
+        "id": "finesse"
+      },
+      {
+        "id": "quick-cut"
+      }
+    ],
+    "statModifiers": [],
+    "weaponProfile": {
+      "name": "Training Dagger",
+      "category": "simple",
+      "attackMode": "melee",
+      "rangeFeet": 5,
+      "damage": {
+        "count": 1,
+        "sides": 4,
+        "damageType": "piercing"
+      },
+      "traits": []
+    }
   }
 ]

@@ -149,6 +149,16 @@ function collectReachable(pack: CompiledContentPack, reporter: Reporter): Reacha
     }
   }
 
+  // Encounter loans are reachable combat equipment, not permanent player inventory.
+  for (const scenario of scenarios) {
+    const override = scenario.rules?.partyWeaponOverride;
+    if (!override) continue;
+    usedEquipmentIds.add(override.equipmentId);
+    for (const actor of starters) for (const cardId of deckCardIds(actor, {
+      ...actor.starterLoadout, equipment: { ...actor.starterLoadout.equipment, weapon: override.equipmentId },
+    }, pack)) usedCardIds.add(cardId);
+  }
+
   // Whatever a reward can hand the party, judged by whether a starter can use it.
   for (const reward of adventure.rewards) {
     const availability = starters.map(starter => rewardAvailability(pack, adventure, starter, reward));

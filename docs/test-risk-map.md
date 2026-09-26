@@ -150,6 +150,7 @@ J-COOP uses a production recruitment-complete checkpoint and the explicit prepar
 
 | Risk | Contract | Owner |
 | --- | --- | --- |
-| G-FLANK | 2인·기존 안드로이드, 전체 생성 클래스의 복수 이동 해법, 최초 비협공·이동 후 기존 resolver/AC·관계 해제, 기본/카드/주문 피해 무효·비용/RNG 유지, Rear/Prone만으로 우회 불가, 아군 둘 HP 1, 일반 전투 영향 없음, 모집·인원·원거리 장비 admission, save/replay | Domain `flanking-training.test.ts`; 일반 geometry/stacking은 기존 G-CONDITION/G-FACING 소유 |
-| U-FLANK | 실제 모집 파티와 출발 전 안내, 안내만으로 행동 요청 없음, Host/Guest의 실제 보드 이동과 화면에 보이는 Flanking/아군/AC, stale preview 제거, Ranger 장비 해제 후 출발 | Interaction `flanking-training.spec.ts`, 1024×768 |
+| G-FLANK | 2인·기존 안드로이드, 전체 생성 클래스의 복수 이동 해법, 최초 비협공·이동 후 기존 resolver/AC·관계 해제, 기본/카드/주문 피해 무효·비용/RNG 유지, Rear/Prone만으로 우회 불가, 아군 둘 HP 1, 일반 전투 영향 없음, 모집·인원 admission, 임시 단검·원래 장비/인벤토리 보존·Resume/다음 전투 원복, save/replay | Domain `flanking-training.test.ts`; 일반 geometry/stacking은 기존 G-CONDITION/G-FACING 소유 |
+| U-FLANK | 실제 모집 파티와 출발 전 안내, 안내만으로 행동 요청 없음, Host/Guest의 실제 보드 이동과 화면에 보이는 Flanking/아군/AC, stale preview 제거, Ranger 장비 변경 없는 출발·대여 설명·단검 상세 표시 | Interaction `flanking-training.spec.ts`, 1024×768 |
 | J-PROGRESS | 1-2 승리 → Aerin 모집 → 준비 → 1-3 안내·이동·협공 Preview·실제 공격·승리 → Spear Line 준비 | Journey `progress-coop.spec.ts`; J-COOP는 같은 1-3의 기존 조작권 연결 |
+| B-FLANK | SQLite 저장·reopen 후 1-3 임시 단검과 원래 Ranger 활/loadout/인벤토리 동시 보존 | Integration `contracts/training-weapon.test.ts` |

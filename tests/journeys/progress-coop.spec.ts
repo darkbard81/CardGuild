@@ -58,7 +58,7 @@ test("J-PROGRESS Prone recovery, recruitment, real Flanking victory and unprotec
   await expect(page.getByRole("button", { name: "Aerin Co-op 허용", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   const flanking = page.getByRole("dialog", { name: "미네르바의 협공 안내", exact: true });
-  await expect(flanking).toContainText("Aerin과 함께");
+  await expect(flanking).toContainText("Aerin과 협공");
   await flanking.getByRole("button", { name: "건너뛰기", exact: true }).click();
   const end = page.getByRole("button", { name: "End Turn", exact: true });
   await expect(end).toBeEnabled();

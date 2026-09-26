@@ -1,12 +1,12 @@
 import type { ContentIdentity } from "../game";
 import type { SessionCoreState, SessionEvent, SessionIntent } from "../session";
 
-/** v15 adds authored flanking damage immunity. */
-export const PROTOCOL_VERSION = 15 as const;
+/** v16 adds encounter-local party weapon overrides. */
+export const PROTOCOL_VERSION = 16 as const;
 export const MAX_WS_PAYLOAD_BYTES = 64 * 1024;
 
 export interface ClientHello {
-  readonly v: 15;
+  readonly v: 16;
   readonly type: "hello";
   readonly sessionId: string;
   readonly playerId: string;
@@ -15,7 +15,7 @@ export interface ClientHello {
 }
 
 export interface ClientIntentEnvelope {
-  readonly v: 15;
+  readonly v: 16;
   readonly type: "intent";
   readonly requestId: string;
   readonly expectedRevision: number;
@@ -50,7 +50,7 @@ export interface ServerControlView {
 }
 
 export interface ServerSnapshot {
-  readonly v: 15;
+  readonly v: 16;
   readonly type: "snapshot";
   readonly revision: number;
   readonly controlRevision: number;
@@ -65,7 +65,7 @@ export interface ServerSnapshot {
 }
 
 export interface ServerAck {
-  readonly v: 15;
+  readonly v: 16;
   readonly type: "ack";
   readonly requestId: string;
   readonly accepted: boolean;
@@ -73,7 +73,7 @@ export interface ServerAck {
 }
 
 export interface ServerError {
-  readonly v: 15;
+  readonly v: 16;
   readonly type: "error";
   readonly code: ProtocolErrorCode;
   readonly message: string;

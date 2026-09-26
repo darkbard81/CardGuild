@@ -6745,7 +6745,11 @@
         "min": 2,
         "max": 2
       },
-      "damageRequiresFlanking": "enemies"
+      "damageRequiresFlanking": "enemies",
+      "partyWeaponOverride": {
+        "seat": 1,
+        "equipmentId": "training-dagger"
+      }
     }
   }
 ]

@@ -3,7 +3,7 @@ import { buildAdventureEncounter } from "../../src/adventure";
 import { createCombat, createCombatReplay, dispatchCombatCommand, hashCombatState, previewAction, replayCombat, type CombatState } from "../../src/game";
 import { resolveOffGuardTo } from "../../src/game/off-guard";
 import { restoreCampaignSave } from "../../src/server/campaign-save";
-import { dispatchSessionIntent } from "../../src/session";
+import { createResumedSessionCoreState, dispatchSessionIntent } from "../../src/session";
 import { command, play } from "../support/combat";
 import { HERO, SECOND, saveRecord } from "../support/session";
 import { recruitedParty, trainingReady, tutorialAct as act, tutorialContext as context, tutorialWin } from "../support/tutorial";
@@ -12,13 +12,7 @@ const enemy = "android-trainee";
 const target = { kind: "actor", actorId: enemy } as const;
 const strike = { kind: "basic", id: "strike" } as const;
 function setup(preset = "human.fighter", seed = 69) {
-  let ready = recruitedParty(seed, preset);
-  if (preset === "human.ranger") {
-    const loadout = ready.adventure!.party.members[HERO]!.loadout;
-    const equipment = { ...loadout.equipment };
-    delete equipment.weapon;
-    ready = act(ready, { type: "set-loadout", memberId: HERO, loadout: { ...loadout, equipment } });
-  }
+  const ready = recruitedParty(seed, preset);
   const started = act(ready, { type: "start-encounter" });
   return { ready, started, definition: buildAdventureEncounter(context.pack, started.adventure!).definition };
 }
@@ -101,7 +95,7 @@ it("G-FLANK all damage paths obey immunity; rear or Prone alone never bypass it;
   }
 });
 
-it("G-FLANK admission rejects wrong party sizes and ranged deadlock, preserves recruitment, save rules and the unprotected next battle", () => {
+it("G-FLANK admission rejects wrong party sizes and preserves recruitment, save rules and the unprotected next battle", () => {
   const ready = recruitedParty();
   const dispatch = (state: typeof ready) => dispatchSessionIntent(state, "host", { type: "start-encounter" }, context, {
     connectedPlayerIds: ["host"], effectiveControllerByMemberId: Object.fromEntries(state.partySlots.map(s => [s.memberId, "host"])),
@@ -113,7 +107,7 @@ it("G-FLANK admission rejects wrong party sizes and ranged deadlock, preserves r
     expect(() => buildAdventureEncounter(context.pack, { ...ready.adventure!, phase: "combat", party: { members } })).toThrow();
   }
   expect(dispatch(tutorialWin(trainingReady())).accepted).toBe(false); // Unsettled recruitment cannot depart.
-  expect(dispatch(recruitedParty(69, "human.ranger")).error).toContain("활을 해제");
+  expect(dispatch(recruitedParty(69, "human.ranger")).accepted).toBe(true);
   expect(setup("human.ranger").started.combat).not.toBeNull();
   const { started, definition } = setup();
   let combat = turnTo(started.combat!, HERO, definition);
@@ -149,5 +143,49 @@ it("G-FLANK enemy damage is not immunized and both actual party members retain H
       expect(result.state.actors[id]!.defeated).toBe(false);
     }
     expect(damageObserved).toBe(true);
+  }
+});
+
+
+it("G-FLANK training dagger is a temporary effective weapon for every class; save/Resume and next encounter preserve the real kit", () => {
+  for (const preset of Object.keys(context.pack.creationPresets!)) {
+    const ready = recruitedParty(69, preset);
+    const original = structuredClone(ready.adventure!);
+    const started = act(ready, { type: "start-encounter" });
+    expect(ready.adventure).toEqual(original);
+    expect(started.adventure!.party).toEqual(original.party);
+    expect(started.adventure!.collection).toEqual(original.collection);
+    const player = started.combat!.actors[HERO]!;
+    expect(player.equipmentIds).toContain("training-dagger");
+    expect(player.equipmentIds).not.toContain(original.party.members[HERO]!.loadout.equipment.weapon);
+    expect(player.deckContributions.filter(c => c.source.kind === "equipment-trait").every(c =>
+      c.source.kind === "equipment-trait" && c.source.equipmentId === "training-dagger")).toBe(true);
+    expect(player.deckContributions.filter(c => c.source.kind === "prepared").map(c => c.cardDefinitionId))
+      .toEqual(original.party.members[HERO]!.loadout.preparedCards);
+    expect(started.combat!.actors[SECOND]!.equipmentIds).toContain("halberd");
+    const restored = restoreCampaignSave(saveRecord(started), context).projection;
+    const resumed = act(createResumedSessionCoreState({ sessionId: "dagger-resume", playerId: "host", displayName: "Host" }, restored, context), { type: "resume-adventure" });
+    expect(resumed.combat).toEqual(started.combat);
+    expect(resumed.adventure!.party).toEqual(original.party);
+    const won = tutorialWin(resumed);
+    expect(won.adventure!.collection).toEqual(original.collection);
+    for (const id of [HERO, SECOND]) expect(won.adventure!.party.members[id]!.loadout).toEqual(original.party.members[id]!.loadout);
+    const next = act(won, { type: "start-encounter" });
+    expect(next.combat!.actors[HERO]!.equipmentIds).toContain(original.party.members[HERO]!.loadout.equipment.weapon);
+    expect(next.combat!.actors[HERO]!.equipmentIds).not.toContain("training-dagger");
+    expect(next.combat!.actors[HERO]!.deckContributions.some(c => c.source.kind === "equipment-trait" && c.source.equipmentId === "training-dagger")).toBe(false);
+    const forged = { ...started, combat: { ...started.combat!, actors: { ...started.combat!.actors,
+      [HERO]: { ...player, equipmentIds: [...player.equipmentIds.filter(id => id !== "training-dagger"), "halberd"] },
+    } } };
+    expect(() => restoreCampaignSave(saveRecord(forged), context)).toThrow();
+  }
+});
+
+it("G-FLANK invalid temporary equipment and missing party seats fail content authoring validation", async () => {
+  const { compileContentPack } = await import("../../src/content/compile-content");
+  const { M7_CONTENT_SOURCE } = await import("../../src/content/load-m7-content");
+  for (const override of [{ seat: 1, equipmentId: "missing" }, { seat: 1, equipmentId: "shield" }, { seat: 3, equipmentId: "training-dagger" }]) {
+    expect(() => compileContentPack({ ...M7_CONTENT_SOURCE, scenarios: M7_CONTENT_SOURCE.scenarios.map(s => s.id === "encounter.flanking-training"
+      ? { ...s, rules: { ...s.rules, partyWeaponOverride: override } } : s) })).toThrow();
   }
 });
