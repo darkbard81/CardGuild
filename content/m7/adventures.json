@@ -10,6 +10,7 @@
     "encounterIds": [
       "encounter.guild-practice",
       "encounter.prone-training",
+      "encounter.flanking-training",
       "encounter.spear-line",
       "encounter.ruined-gate",
       "encounter.goblin-chief",
@@ -205,6 +206,10 @@
       },
       {
         "afterEncounterId": "encounter.prone-training",
+        "amount": 50
+      },
+      {
+        "afterEncounterId": "encounter.flanking-training",
         "amount": 50
       },
       {

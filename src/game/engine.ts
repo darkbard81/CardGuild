@@ -1,3 +1,4 @@
+import { damagePrevention } from "./damage-policy";
 import { conditionBlocksMovement } from "./condition-effects";
 import { canUseRuleTraits, resolveEffectiveActionTraits } from "./capabilities";
 import { rollCheck } from "./checks";
@@ -473,16 +474,20 @@ function applyDamage(
   targetActorId: string,
   amount: number,
   damageType: DamageType,
+  content: CombatContent,
   events: CombatEvent[],
 ): void {
   const target = draft.actors[targetActorId];
   if (!target || target.defeated) return;
+  const source = draft.actors[sourceActorId];
+  const preventedBy = source ? damagePrevention(draft, source, target, content) : undefined;
+  if (preventedBy) amount = 0;
   const floor = target.team === "heroes" ? draft.partyHpFloor ?? 0 : 0;
   const hp = Math.max(Math.min(target.hp, floor), target.hp - amount);
   const applied = target.hp - hp;
   const defeated = hp === 0;
   replaceActor(draft, { ...target, hp, defeated });
-  events.push({ type: "DAMAGE_DEALT", sourceActorId, targetActorId, amount: applied, damageType, remainingHp: hp });
+  events.push({ type: "DAMAGE_DEALT", sourceActorId, targetActorId, amount: applied, damageType, remainingHp: hp, ...(preventedBy ? { preventedBy } : {}) });
   if (defeated) events.push({ type: "ACTOR_DEFEATED", actorId: targetActorId });
   checkCombatOutcome(draft, events);
 }
@@ -565,6 +570,7 @@ function applyOutcomeEffect(
         actorId,
         damageTotal(roll.total, effect.flatModifier, effect.multiplier ?? 1),
         effect.damageType,
+        content,
         events,
       );
       break;
@@ -945,7 +951,7 @@ function executeResolvedAction(
       resolution.damageMultiplier * (degree === "critical-success" ? 2 : 1),
     );
     if (plan.targetActorId) {
-      applyDamage(draft, plan.actionActorId, plan.targetActorId, damage, resolution.strike.damage.damageType, events);
+      applyDamage(draft, plan.actionActorId, plan.targetActorId, damage, resolution.strike.damage.damageType, content, events);
     }
   }
   applyOutcomeEffects(draft, plan, resolution.outcomes[degree], content, events);

@@ -7,9 +7,9 @@ import { createCampaignSave } from "../../src/server/campaign-save";
 import type { CampaignSaveRecord } from "../../src/server/persistence/types";
 
 const legacyDefinition = { ...PRODUCTION_CONTENT.adventure,
-  encounterIds: PRODUCTION_CONTENT.adventure.encounterIds.filter(id => id !== "encounter.prone-training"),
+  encounterIds: PRODUCTION_CONTENT.adventure.encounterIds.filter(id => !["encounter.prone-training", "encounter.flanking-training"].includes(id)),
   rewards: PRODUCTION_CONTENT.adventure.rewards.filter(reward => reward.afterEncounterId !== "encounter.prone-training"),
-  experienceAwards: PRODUCTION_CONTENT.adventure.experienceAwards.filter(award => award.afterEncounterId !== "encounter.prone-training"),
+  experienceAwards: PRODUCTION_CONTENT.adventure.experienceAwards.filter(award => !["encounter.prone-training", "encounter.flanking-training"].includes(award.afterEncounterId)),
 };
 /** Authored-party contract fixture; actual creation/start tutorials use PRODUCTION_CONTENT. */
 export const context = { pack: { ...PRODUCTION_CONTENT.pack, adventures: { ...PRODUCTION_CONTENT.pack.adventures, [legacyDefinition.id]: legacyDefinition } }, adventureId: PRODUCTION_CONTENT.adventureId };

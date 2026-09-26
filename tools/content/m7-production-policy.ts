@@ -61,6 +61,7 @@ export const M7_PRODUCTION_POLICY = {
   tutorialEncounterIds: [
     "encounter.guild-practice",
     "encounter.prone-training",
+    "encounter.flanking-training",
     "encounter.spear-line",
     "encounter.ruined-gate",
     "encounter.goblin-chief",
@@ -72,7 +73,7 @@ export const M7_PRODUCTION_POLICY = {
    * release was tuned around: onboarding ends at Lv.2, and the elite half of the
    * Adventure is met at Lv.3.
    */
-  levelMilestones: { "5": 2, "8": 3 },
+  levelMilestones: { "6": 2, "9": 3 },
 
   /** Explicit launch roster; rules-registry additions do not automatically become selectable. */
   creationClasses: ["bard", "champion", "cleric", "druid", "fighter", "ranger", "rogue", "witch", "wizard"],
@@ -84,10 +85,10 @@ export const M7_PRODUCTION_POLICY = {
     // #67 adds five one-card starting weapon attacks; prior cards remain post-battle rewards.
     playerCards: { min: 29, max: 37 },
     enemies: { min: 15, max: 20 },
-    scenarios: { min: 8, max: 12 },
+    scenarios: { min: 8, max: 13 },
     equipment: { min: 20, max: 30 },
-    adventureEncounters: { min: 9, max: 9 },
-    tutorialPrefix: { min: 5, max: 5 },
+    adventureEncounters: { min: 10, max: 10 },
+    tutorialPrefix: { min: 6, max: 6 },
   },
 
   /**

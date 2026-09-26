@@ -50,7 +50,7 @@ function resultClause(event: CombatEvent, names: ActorNameLookup, actorId: strin
     case "KNOWLEDGE_RECALLED":
       return event.success ? `${names(event.targetId)} 상세를 파티에 공개했습니다.` : `${names(event.targetId)} 지식 회상 실패 · 이 캐릭터는 재시도할 수 없습니다.`;
     case "DAMAGE_DEALT":
-      return `${names(event.targetActorId)} took ${event.amount} ${event.damageType} damage (${event.remainingHp} HP)`;
+      return event.preventedBy === "requires-flanking" ? `${names(event.targetActorId)} 피해 0 · 협공(Flanking)이 필요합니다.` : `${names(event.targetActorId)} took ${event.amount} ${event.damageType} damage (${event.remainingHp} HP)`;
     case "HP_RESTORED":
       return `${names(event.targetActorId)} recovered ${event.amount} HP (${event.remainingHp} HP)`;
     case "ACTOR_MOVED":

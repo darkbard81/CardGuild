@@ -411,6 +411,7 @@ export class BattleUi {
       this.selectedDetail.append(element("p", "detail-warning", preview.reason ?? "Target is not legal."));
       return;
     }
+    if (preview.damagePrevention) this.selectedDetail.append(element("p", "detail-warning", "협공 훈련: Flanking이 아니면 피해가 0이에요. 두 아군이 적의 반대편에서 근접 위협을 만들어야 해요."));
     const previewGrid = element("dl", "preview-grid");
     if (preview.hitChance !== undefined) {
       previewGrid.append(element("dt", undefined, "Hit"), element("dd", undefined, percentage(preview.hitChance)));

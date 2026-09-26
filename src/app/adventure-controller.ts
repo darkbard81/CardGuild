@@ -1,5 +1,5 @@
 import { SceneDialogueUi } from "../dom/scene-dialogue-ui";
-import { FIRST_BATTLE_SCENE, PRONE_RECOVERY_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
+import { FLANKING_TRAINING_SCENE, FIRST_BATTLE_SCENE, PRONE_RECOVERY_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
 import { CoopPreparationUi } from "../dom/coop-preparation-ui";
 import { waitingGuests } from "../session";
 import type { CharacterSheetDestination } from "../dom/character-workspace";
@@ -489,7 +489,7 @@ export class AdventureController {
 
   private async renderSnapshot(snapshot: ServerSnapshot): Promise<void> {
     if (this.snapshot !== snapshot) return;
-    if (this.briefingKey && this.briefingKey !== this.firstBattleKey()) {
+    if (this.briefingKey && this.briefingKey !== this.departureBriefingKey()) {
       this.sceneUi.close();
       this.clearBriefingBackdrop();
       this.briefingKey = null;
@@ -601,9 +601,14 @@ export class AdventureController {
     this.root.dataset.screen = "adventure";
     const editableMemberIds = this.snapshot ? this.controlledMemberIds(this.snapshot, viewer.playerId) : new Set<string>();
     const waiting = waitingGuests(session, this.snapshot!.control);
+    let preparationError: string | undefined;
+    if (state.phase === "between-encounters") {
+      try { buildAdventureEncounter(PRODUCTION_CONTENT.pack, { ...state, phase: "combat" }); }
+      catch (error) { preparationError = error instanceof Error ? error.message : "전투 준비를 확인해주세요."; }
+    }
     this.ui.render(state, { isHost,
       coopPanel: this.coopUi.render(session, viewer.playerId, this.snapshot!.control),
-      departureBlockedReason: waiting.length ? `${waiting.map(seat => seat.displayName).join(", ")} 동료 선택 대기 중` : undefined,
+      departureBlockedReason: waiting.length ? `${waiting.map(seat => seat.displayName).join(", ")} 동료 선택 대기 중` : preparationError,
       growth: this.growth?.summary ?? null,
       editableMemberIds,
       controllerNames: Object.fromEntries(Object.entries(this.snapshot?.control.effectiveControllerByMemberId ?? {}).map(([memberId, playerId]) => [memberId,
@@ -681,7 +686,7 @@ export class AdventureController {
     try {
       this.encounterBundle ??= this.catalog.loadEncounterBundle();
       await this.encounterBundle;
-      if (this.snapshot !== snapshot || this.briefingKey !== key || this.firstBattleKey() !== key) return;
+      if (this.snapshot !== snapshot || this.briefingKey !== key || this.departureBriefingKey() !== key) return;
       const adventure = snapshot.state.adventure!;
       // Read-only staging of the upcoming battlefield. Never dispatch, save, advance turns,
       // or replace the authoritative snapshot; actual combat starts after the dialogue.
@@ -707,12 +712,13 @@ export class AdventureController {
     }
   }
 
-  private firstBattleKey(): string | null {
+  private departureBriefingKey(): string | null {
     const state = this.snapshot?.state;
     const adventure = state?.adventure;
     if (!state || state.lifecycle !== "active" || state.combat ||
         state.hostPlayerId !== this.client?.credential.playerId ||
-        adventure?.phase !== "between-encounters" || adventure.completedEncounterIds.length ||
+        adventure?.phase !== "between-encounters" ||
+        (adventure.completedEncounterIds.length > 0 && adventure.currentEncounterId !== "encounter.flanking-training") ||
         !adventure.currentEncounterId ||
         PRODUCTION_CONTENT.pack.scenarios[adventure.currentEncounterId]?.partyHpFloor !== 1) return null;
     return `${state.sessionId}:${adventure.currentEncounterId}`;
@@ -720,13 +726,14 @@ export class AdventureController {
 
   private requestDeparture(): void {
     if (this.departurePending || this.briefingKey) return;
-    const key = this.firstBattleKey();
+    const key = this.departureBriefingKey();
     if (key && key !== this.completedBriefingKey) {
       this.briefingKey = key;
-      this.sceneUi.open(FIRST_BATTLE_SCENE, SCENE_CATALOG, {
-        title: "미네르바의 첫 전투 안내", finishLabel: "연습 전투 시작",
+      const flanking = this.snapshot?.state.adventure?.currentEncounterId === "encounter.flanking-training";
+      this.sceneUi.open(flanking ? FLANKING_TRAINING_SCENE : FIRST_BATTLE_SCENE, SCENE_CATALOG, {
+        title: flanking ? "미네르바의 협공 안내" : "미네르바의 첫 전투 안내", finishLabel: "연습 전투 시작",
         onFinish: result => {
-          if (this.briefingKey !== key || this.firstBattleKey() !== key) return;
+          if (this.briefingKey !== key || this.departureBriefingKey() !== key) return;
           this.briefingKey = null;
           this.clearBriefingBackdrop();
           if (this.snapshot) void this.renderSnapshot(this.snapshot);

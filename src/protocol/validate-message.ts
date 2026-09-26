@@ -2,7 +2,7 @@ import { CREATE_CHARACTER_PROPERTIES } from "../character/member-schema";
 import { CHARACTER_ADVANCEMENT_CHOICE_SCHEMA } from "../character/schema";
 import Ajv, { type ErrorObject } from "ajv";
 
-import { PROTOCOL_VERSION, type ClientMessage } from "./v14-types";
+import { PROTOCOL_VERSION, type ClientMessage } from "./v15-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {

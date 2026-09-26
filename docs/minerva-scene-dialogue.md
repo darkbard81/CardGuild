@@ -42,3 +42,5 @@ D-SCENE은 캐릭터 데이터 없는 재생, 오래된 입력, 단 한 번의 �
 첫 전투 안내 동안 기존 전투 렌더러로 전장·캐릭터·HUD를 미리 표시하고 그 위에 독립 DOM 다이얼로그를 띄운다. 준비 중인 파티에서 공통 encounter builder로 만든 읽기 전용 표시이며, 서버 snapshot이나 저장 상태를 바꾸지 않는다. 컨트롤 권한과 intent 전송을 부여하지 않고 턴을 진행하지 않는다. 완료/건너뛰기에서만 기존 서버 출전 요청을 보낸다. Escape, 세션 변경, 종료 때에는 전장 미리보기를 제거한다. 배경은 약하게 어둡게 하고 패널은 82% 불투명도로 유지한다.
 
 이는 승인된 UI와 첫 전투 전 표시 방식의 변경이다. 일반 trigger authoring, 동적 protagonist 화자나 전체 화면 Scene 배경은 추가하지 않는다. #68의 전투 중 authoritative opening gate와 같은 presenter의 연결은 [M12-6](m12-6-prone-training.md)에 정의한다.
+
+#69의 1-3 협공 안내는 같은 출발 전 presenter를 재사용한다. 실제 전투 화면을 읽기 전용으로 표시하고, 안내 완료/건너뛰기 뒤에만 `start-encounter`를 보낸다. [M12-7 협공 훈련](m12-7-flanking-training.md) 참고.

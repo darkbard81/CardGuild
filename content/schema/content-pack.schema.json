@@ -911,6 +911,7 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "damageRequiresFlanking": { "enum": ["heroes", "enemies"] },
             "opening": {
               "type": "object",
               "additionalProperties": false,

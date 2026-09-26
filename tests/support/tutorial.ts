@@ -35,7 +35,7 @@ export function resolveOpening(state: SessionCoreState) {
   if (!result.accepted) throw new Error(result.error);
   return result;
 }
-export function recruitedParty() {
-  const won = tutorialWin(trainingReady(60));
+export function recruitedParty(seed = 60, preset = "human.fighter") {
+  const won = tutorialWin(trainingReady(seed, preset));
   return tutorialAct(won, { type: "choose-reward", rewardId: won.adventure!.pendingReward!.rewardId, choiceIndex: 0 });
 }

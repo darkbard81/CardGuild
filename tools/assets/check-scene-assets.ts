@@ -1,13 +1,14 @@
 import { PRODUCTION_CONTENT } from "../../src/content/production-content";
 import { assertScene } from "../../src/scene/validation";
 import sharp from "sharp";
-import { PRONE_RECOVERY_SCENE, FIRST_BATTLE_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../../src/scene/catalog";
+import { FLANKING_TRAINING_SCENE, PRONE_RECOVERY_SCENE, FIRST_BATTLE_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../../src/scene/catalog";
 
 export async function checkSceneAssets(): Promise<void> {
   for (const scenario of Object.values(PRODUCTION_CONTENT.pack.scenarios)) {
     const sceneId = scenario.rules?.opening?.sceneId;
     if (sceneId && sceneId !== PRONE_RECOVERY_SCENE.id) throw new Error(`${scenario.id}: unknown opening scene ${sceneId}`);
   }
+  assertScene(FLANKING_TRAINING_SCENE, SCENE_CATALOG);
   assertScene(WELCOME_SCENE, SCENE_CATALOG);
   assertScene(FIRST_BATTLE_SCENE, SCENE_CATALOG);
   assertScene(PRONE_RECOVERY_SCENE, SCENE_CATALOG);

@@ -1,3 +1,4 @@
+import { damagePrevention } from "./damage-policy";
 import { conditionBlocksMovement } from "./condition-effects";
 import { canRecallKnowledge } from "./knowledge";
 import { canUseRuleTraits, isCardEligible, resolveCardEligibility, isContextualBasicAction, resolveEffectiveActionTraits } from "./capabilities";
@@ -468,6 +469,11 @@ export function previewAction(
   const plan = buildIntentPlan(state, actor, resolved, source, target, content);
   if (!plan) return { legal: false, reason: ACTION_CANNOT_RESOLVE, notes: [] };
   const resolution = plan.resolution;
+  const targetActor = plan.targetActorId ? state.actors[plan.targetActorId] : undefined;
+  const damages = resolution.kind === "strike" ||
+    (resolution.kind === "direct" && resolution.effects.some(effect => effect.kind === "damage")) ||
+    (resolution.kind === "check" && Object.values(resolution.outcomes).some(effects => effects.some(effect => effect.kind === "damage")));
+  const prevention = damages && targetActor ? damagePrevention(state, actor, targetActor, content) : undefined;
 
   if (resolution.kind === "move") {
     const reached = target.kind === "tile"
@@ -482,7 +488,7 @@ export function previewAction(
     };
   }
   if (resolution.kind === "direct") {
-    return { legal: true, notes: plan.notes };
+    return { legal: true, notes: plan.notes, ...(prevention ? { damagePrevention: prevention } : {}) };
   }
 
   const check = resolution.check;
@@ -492,6 +498,7 @@ export function previewAction(
   const checkPreview = {
     legal: true,
     check: { roller: check.roller, rollerActorId: check.rollerActorId, modifier: check.modifier, dc: check.dc },
+    ...(prevention ? { damagePrevention: prevention } : {}),
     degreeProbabilities: probabilities,
     notes: plan.notes,
   };
@@ -503,7 +510,7 @@ export function previewAction(
     tactical: resolution.tactical,
     hitChance: probabilities.success + probabilities["critical-success"],
     criticalChance: probabilities["critical-success"],
-    damageRange: [
+    damageRange: prevention ? [0, 0] : [
       // Both ends run the execution helper, so the minimum-1 rule cannot drift.
       damageTotal(strike.damage.count, strike.damage.flatModifier, resolution.damageMultiplier),
       damageTotal(strike.damage.count * strike.damage.sides, strike.damage.flatModifier, resolution.damageMultiplier),

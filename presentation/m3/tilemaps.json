@@ -1945,6 +1945,116 @@
         ]
       }
     },
+    "encounter.flanking-training": {
+      "width": 3,
+      "height": 3,
+      "palettes": {
+        "ground": [
+          "terrain.stone-floor",
+          "terrain.rubble",
+          "terrain.chasm"
+        ],
+        "transitions": [
+          "transition.web"
+        ],
+        "objects": [
+          "object.lever",
+          "object.chest"
+        ]
+      },
+      "layers": {
+        "ground": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "transitions": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ],
+        "objects": [
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1,
+          -1
+        ]
+      },
+      "meta": {
+        "tileIds": [
+          "road-0,0",
+          "road-1,0",
+          "road-2,0",
+          "road-0,1",
+          "road-1,1",
+          "road-2,1",
+          "road-0,2",
+          "road-1,2",
+          "road-2,2"
+        ],
+        "objectIds": [
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null,
+          null
+        ],
+        "type": [
+          "open",
+          "open",
+          "open",
+          "open",
+          "open",
+          "open",
+          "open",
+          "open",
+          "open"
+        ],
+        "walkable": [
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true,
+          true
+        ],
+        "cost": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1
+        ]
+      }
+    },
     "encounter.goblin-chief": {
       "width": 5,
       "height": 3,

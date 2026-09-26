@@ -461,6 +461,8 @@ export interface KnowledgeAttempt { readonly actorId: EntityId; readonly targetI
 
 /** Authored encounter exceptions. New modifiers belong here rather than on Actor statistics. */
 export interface ScenarioRules {
+  /** Damage against this team requires the source to flank the target. */
+  readonly damageRequiresFlanking?: TeamId;
   readonly partySize?: { readonly min: number; readonly max: number };
   readonly opening?: {
     readonly actorId: EntityId;
@@ -868,6 +870,7 @@ export type CombatEvent =
     }
   | {
       readonly type: "DAMAGE_DEALT";
+      readonly preventedBy?: "requires-flanking";
       readonly sourceActorId: EntityId;
       readonly targetActorId: EntityId;
       readonly amount: number;
@@ -988,6 +991,7 @@ export interface ActionPreview {
   /** Only a Strike has actor-side hit semantics; a target's save must never fill these. */
   readonly hitChance?: number;
   readonly criticalChance?: number;
+  readonly damagePrevention?: "requires-flanking";
   readonly damageRange?: readonly [number, number];
   readonly pathCostFeet?: number;
   readonly notes: readonly string[];

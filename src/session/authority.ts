@@ -403,9 +403,11 @@ export function dispatchSessionIntent(
       const range = context.pack.scenarioSources[started.state.currentEncounterId!]?.rules?.partySize;
       const size = Object.keys(started.state.party.members).length;
       if (range && (size < range.min || size > range.max)) return reject(state, "DOMAIN_REJECTED", "This encounter requires its authored party size.");
-      const encounter = buildAdventureEncounter(context.pack, started.state);
-      const setup = createCombat(encounter.definition, encounter.seed);
-      return commit(state, { ...departureState(state, control), adventure: started.state, combat: setup.state }, [...started.events, ...setup.events]);
+      try {
+        const encounter = buildAdventureEncounter(context.pack, started.state);
+        const setup = createCombat(encounter.definition, encounter.seed);
+        return commit(state, { ...departureState(state, control), adventure: started.state, combat: setup.state }, [...started.events, ...setup.events]);
+      } catch (error) { return reject(state, "DOMAIN_REJECTED", error instanceof Error ? error.message : String(error)); }
     }
     case "choose-reward": {
       const result = dispatchAdventureCommand(state.adventure as AdventureState, {

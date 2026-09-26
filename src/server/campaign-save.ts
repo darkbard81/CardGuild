@@ -246,12 +246,12 @@ function validateCombat(save: CampaignSaveV5, context: SessionAuthorityContext):
   const authoredRules = context.pack.scenarios[combat.scenarioId]?.rules;
   if (stableSerialize(combat.rules) !== stableSerialize(authoredRules)) corrupt("Saved combat rules do not match their authored scenario.");
   if (Boolean(combat.opening) !== Boolean(authoredRules?.opening)) corrupt("Saved opening progress does not match the scenario.");
-  if (authoredRules?.opening) {
+  if (authoredRules?.opening || authoredRules?.damageRequiresFlanking) {
     try {
       const setup = buildAdventureEncounter(context.pack, adventure);
       const replayed = replayCombat(setup.definition, createCombatReplay(combat)).state;
-      if (hashCombatState(replayed) !== hashCombatState(combat)) corrupt("Saved opening combat differs from its authoritative replay.");
-    } catch (error) { corrupt(error instanceof Error ? error.message : "Saved opening replay is invalid."); }
+      if (hashCombatState(replayed) !== hashCombatState(combat)) corrupt("Saved training combat differs from its authoritative replay.");
+    } catch (error) { corrupt(error instanceof Error ? error.message : "Saved training replay is invalid."); }
   }
   if (combat.scenarioId !== adventure.currentEncounterId) {
     corrupt("Saved combat scenario does not match the saved Adventure encounter.");
