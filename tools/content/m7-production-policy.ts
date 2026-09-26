@@ -60,6 +60,7 @@ export const M7_PRODUCTION_POLICY = {
    */
   tutorialEncounterIds: [
     "encounter.guild-practice",
+    "encounter.prone-training",
     "encounter.spear-line",
     "encounter.ruined-gate",
     "encounter.goblin-chief",
@@ -71,7 +72,7 @@ export const M7_PRODUCTION_POLICY = {
    * release was tuned around: onboarding ends at Lv.2, and the elite half of the
    * Adventure is met at Lv.3.
    */
-  levelMilestones: { "4": 2, "7": 3 },
+  levelMilestones: { "5": 2, "8": 3 },
 
   /** Explicit launch roster; rules-registry additions do not automatically become selectable. */
   creationClasses: ["bard", "champion", "cleric", "druid", "fighter", "ranger", "rogue", "witch", "wizard"],
@@ -85,8 +86,8 @@ export const M7_PRODUCTION_POLICY = {
     enemies: { min: 15, max: 20 },
     scenarios: { min: 8, max: 12 },
     equipment: { min: 20, max: 30 },
-    adventureEncounters: { min: 6, max: 8 },
-    tutorialPrefix: { min: 3, max: 4 },
+    adventureEncounters: { min: 9, max: 9 },
+    tutorialPrefix: { min: 5, max: 5 },
   },
 
   /**

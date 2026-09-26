@@ -1,7 +1,7 @@
 import { test, expect, newAdventure, beginBattle, stepToCenter, signIn, endTurn } from "../support/journey";
 
 test("J-START first entry, authentication, Minerva welcome, solo character creation and the first real combat action", async ({ page, server }) => {
-  await newAdventure(page, server.origin, false, true);
+  await newAdventure(page, server.origin, true);
   await beginBattle(page);
   await stepToCenter(page);
 });

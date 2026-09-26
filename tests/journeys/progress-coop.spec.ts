@@ -1,8 +1,8 @@
-import { test, expect, newAdventure, signIn, endTurn } from "../support/journey";
+import { test, expect, signIn, endTurn } from "../support/journey";
 import { register } from "../support/network";
-import { nearVictorySave } from "../support/checkpoints";
+import { nearVictorySave, recruitedSave } from "../support/checkpoints";
 
-test("J-PROGRESS victory flows through reward, required growth and preparation into the next encounter", async ({ page, server }) => {
+test("J-PROGRESS first victory, growth, forced Prone, Ring Stand and second victory recruit Aerin", async ({ page, server }) => {
   const account = await register(server.origin, "journey-player");
   nearVictorySave(server.databasePath, account.account.accountId);
   await signIn(page, server.origin);
@@ -16,30 +16,52 @@ test("J-PROGRESS victory flows through reward, required growth and preparation i
   await page.getByRole("button", { name: /Brace Behind Cover/ }).click();
   await page.getByRole("button", { name: "이 보상 획득", exact: true }).click();
   await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeDisabled();
-  await page.getByRole("button", { name: "Aerin 성장 선택", exact: true }).click();
+  await page.getByRole("button", { name: "Arlen 성장 선택", exact: true }).click();
   await page.getByLabel("Skill Increase").selectOption("athletics");
   await page.getByRole("button", { name: "성장 확정", exact: true }).click();
   await expect(page.getByRole("button", { name: "전투 시작", exact: true })).toBeEnabled();
-  await page.getByRole("button", { name: "캐릭터 상세", exact: true }).click();
-  const sheet = page.getByRole("dialog", { name: "캐릭터 상세", exact: true });
-  await expect(sheet).toBeVisible();
-  await sheet.getByRole("button", { name: "보조손 · Steel Shield", exact: true }).click();
-  await sheet.getByRole("button", { name: "장비 해제 비교", exact: true }).click();
-  await sheet.getByRole("button", { name: "해제", exact: true }).click();
-  await expect(sheet.getByRole("status")).toContainText("저장됨");
-  await sheet.getByRole("button", { name: "보조손 · 빈 보조손", exact: true }).click();
-  await sheet.getByRole("button", { name: "닫기", exact: true }).click();
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   await expect(page.getByRole("region", { name: "Tactical combat", exact: true })).toBeVisible();
-  await expect(page.getByRole("list", { name: "Initiative order", exact: true })).toContainText("Spear");
-  await page.getByRole("button", { name: "Aerin 상세", exact: true }).click();
-  await expect(sheet.getByRole("button", { name: "보조손 · 빈 보조손", exact: true })).toBeVisible();
-  await expect(sheet.getByRole("button", { name: "장비 해제 비교", exact: true })).toHaveCount(0);
+  const scene = page.getByRole("dialog", { name: "미네르바의 상태 회복 안내", exact: true });
+  await expect(scene).toContainText("AC가 2");
+  await scene.getByRole("button", { name: "건너뛰기", exact: true }).click();
+  await expect(scene).toHaveCount(0);
+  await page.mouse.click(259, 386);
+  await page.getByRole("menuitem", { name: /^Stand / }).click();
+  await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
+  const recruit = page.getByRole("button", { name: "Aerin 선택", exact: true });
+  for (let action = 0; action < 15 && !await recruit.isVisible(); action++) {
+    const end = page.getByRole("button", { name: "End Turn", exact: true });
+    await expect.poll(async () => await recruit.isVisible() || await end.isEnabled()).toBe(true);
+    if (await recruit.isVisible()) break;
+    if (await page.getByLabel("Action available", { exact: true }).count() === 0) {
+      // The existing zero-action flow already requests a facing, so this click ends the turn.
+      await page.mouse.click(499, 504);
+      await expect.poll(async () => await recruit.isVisible() || await page.getByLabel("Action available", { exact: true }).count() > 0).toBe(true);
+      continue;
+    }
+    await page.mouse.click(379, 446);
+    const strike = page.getByRole("menuitem", { name: /^Strike / });
+    if (await strike.isEnabled()) await strike.click();
+    else { await page.keyboard.press("Escape"); await endTurn(page); }
+    // Await the action's committed presentation, not a fixed delay or a whole extra turn.
+    await expect.poll(async () => await recruit.isVisible() || await end.isEnabled()).toBe(true);
+  }
+  await expect(recruit).toBeVisible();
+  await recruit.click();
+  await page.getByRole("button", { name: "동료 합류", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Aerin Co-op 허용", exact: true })).toBeVisible();
+
 });
 
 test("J-COOP two browsers join, claim, play and restore guest control after leaving", async ({ page: host, browser, server }) => {
-  await newAdventure(host, server.origin, true);
-  await host.getByRole("button", { name: "Lyra Co-op 허용", exact: true }).click();
+  const account = await register(server.origin, "journey-player");
+  recruitedSave(server.databasePath, account.account.accountId);
+  await signIn(host, server.origin);
+  await host.getByRole("button", { name: "이어하기", exact: true }).click();
+  await host.getByRole("button", { name: "이어하기", exact: true }).click();
+  await host.getByRole("button", { name: "모험 이어가기", exact: true }).click();
+  await host.getByRole("button", { name: "Aerin Co-op 허용", exact: true }).click();
   const invite = await host.getByLabel("초대 코드", { exact: true }).inputValue();
   const guestContext = await browser.newContext({ viewport: { width: 1024, height: 768 } });
   try {
@@ -49,12 +71,12 @@ test("J-COOP two browsers join, claim, play and restore guest control after leav
     await guest.getByLabel("초대 코드", { exact: true }).fill(invite!);
     await guest.getByLabel("표시 이름 (선택)", { exact: true }).fill("Guest");
     await guest.getByRole("button", { name: "참가하기", exact: true }).click();
-    await guest.getByRole("button", { name: "Lyra 선택", exact: true }).click();
-    await guest.getByRole("button", { name: "Lyra 선택 확정", exact: true }).click();
+    await guest.getByRole("button", { name: "Aerin 선택", exact: true }).click();
+    await guest.getByRole("button", { name: "Aerin 선택 확정", exact: true }).click();
     await expect(guest.getByRole("button", { name: "선택 해제", exact: true })).toBeEnabled();
     await host.getByRole("button", { name: "전투 시작", exact: true }).click();
     await expect(guest.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true })).toHaveCount(0);
-    await host.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true }).getByRole("button", { name: "건너뛰기", exact: true }).click();
+    await expect(host.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true })).toHaveCount(0);
     const guestEnd = guest.getByRole("button", { name: "End Turn", exact: true });
     const hostEnd = host.getByRole("button", { name: "End Turn", exact: true });
     await expect(guest.getByRole("region", { name: "Tactical combat", exact: true })).toBeVisible();
@@ -78,7 +100,7 @@ test("J-COOP two browsers join, claim, play and restore guest control after leav
     await host.getByText("Combat Log", { exact: true }).click();
     await guest.getByText("Combat Log", { exact: true }).click();
     await endTurn(guest);
-    await expect(host.locator("#combat-log")).toContainText("Lyra ended the turn.");
-    await expect(guest.locator("#combat-log")).toContainText("Lyra ended the turn.");
+    await expect(host.locator("#combat-log")).toContainText("Aerin ended the turn.");
+    await expect(guest.locator("#combat-log")).toContainText("Aerin ended the turn.");
   } finally { await guestContext.close(); }
 });

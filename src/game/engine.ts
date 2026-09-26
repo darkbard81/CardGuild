@@ -59,6 +59,8 @@ import type {
 } from "./types";
 
 interface CombatDraft {
+  rules?: CombatState["rules"];
+  opening?: CombatState["opening"];
   partyHpFloor?: 1;
   knowledge?: CombatState["knowledge"];
   version: 6;
@@ -232,7 +234,19 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
     });
   }
   initiatives.sort((left, right) => right.total - left.total || left.actorId.localeCompare(right.actorId));
-  const initiativeOrder = initiatives.map((entry) => entry.actorId);
+  const regularInitiativeOrder = initiatives.map((entry) => entry.actorId);
+  const partyCount = Object.values(actors).filter(actor => actor.team === "heroes").length;
+  if (scenario.rules?.partySize && (partyCount < scenario.rules.partySize.min || partyCount > scenario.rules.partySize.max)) {
+    throw new Error("Party size does not satisfy the scenario rules.");
+  }
+  const opening = scenario.rules?.opening;
+  const targets = opening ? Object.values(actors).filter(actor => actor.team === opening.targetTeam) : [];
+  if (opening && (!actors[opening.actorId] || targets.length !== 1 || targets[0]!.id === opening.actorId)) {
+    throw new Error("Scenario opening requires its actor and exactly one distinct target-team actor.");
+  }
+  const initiativeOrder = opening
+    ? [opening.actorId, ...regularInitiativeOrder.filter(id => id !== opening.actorId)]
+    : regularInitiativeOrder;
   const activeActorId = initiativeOrder[0];
   if (!activeActorId) throw new Error("A combat scenario requires at least one actor.");
   const activeActor = actors[activeActorId];
@@ -240,6 +254,8 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
 
   const state: CombatState = {
     version: 6,
+    ...(scenario.rules ? { rules: { ...scenario.rules, ...(scenario.rules.opening ? { opening: { ...scenario.rules.opening } } : {}) } } : {}),
+    ...(opening ? { opening: { phase: "pending" as const, targetActorId: targets[0]!.id, regularInitiativeOrder } } : {}),
     scenarioId: scenario.id,
     ...(scenario.partyHpFloor === undefined ? {} : { partyHpFloor: scenario.partyHpFloor }),
     seed,
@@ -271,6 +287,15 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
     outcome: null,
     commandLog: [],
   };
+  if (opening) {
+    const action = content.actions[opening.actionId];
+    if (action?.resolution.kind !== "check" || !actors[opening.actorId]?.innateActionIds.includes(opening.actionId)) {
+      throw new Error("Scenario opening must reference an available innate check action.");
+    }
+    const legal = validateActionIntent(state, opening.actorId, { kind: "innate", id: opening.actionId },
+      { kind: "actor", actorId: targets[0]!.id }, content);
+    if (!legal.legal) throw new Error(`Scenario opening is not legal: ${legal.reason}`);
+  }
   events.push({ type: "TURN_STARTED", actorId: activeActorId, round: 1 });
   return { state, events };
 }
@@ -611,6 +636,7 @@ function rollPlannedCheck(
 ): DegreeOfSuccess {
   const result = rollCheck(draft.rng, check.modifier, check.dc);
   draft.rng = result.rng;
+  const authoredDegree = draft.opening?.phase === "pending" ? draft.rules?.opening?.degree : undefined;
   events.push({
     type: "CHECK_ROLLED",
     actionActorId: plan.actionActorId,
@@ -621,11 +647,12 @@ function rollPlannedCheck(
     modifier: check.modifier,
     dc: check.dc,
     baseDegree: result.baseDegree,
-    degree: result.degree,
+    degree: authoredDegree ?? result.degree,
+    ...(authoredDegree ? { rolledDegree: result.degree } : {}),
     modifierSources: plan.notes,
     ...(plan.resolution.kind === "strike" ? { tactical: plan.resolution.tactical } : {}),
   });
-  return result.degree;
+  return authoredDegree ?? result.degree;
 }
 
 function eligibleMoveReactions(
@@ -943,12 +970,15 @@ function advanceTurn(draft: CombatDraft, content: CombatContent, events: CombatE
   decayValuedConditions(draft, endedActorId, content, events);
   events.push({ type: "TURN_ENDED", actorId: endedActorId });
 
-  const order = draft.turn.initiativeOrder;
+  let order = draft.turn.initiativeOrder;
   let nextIndex = draft.turn.activeIndex;
   let wrapped = false;
   for (let count = 0; count < order.length; count += 1) {
     nextIndex = (nextIndex + 1) % order.length;
-    if (nextIndex === 0) wrapped = true;
+    if (nextIndex === 0) {
+      wrapped = true;
+      if (draft.round === 1 && draft.opening) order = draft.opening.regularInitiativeOrder;
+    }
     const candidateId = order[nextIndex];
     if (candidateId && !draft.actors[candidateId]?.defeated) break;
   }
@@ -1054,6 +1084,7 @@ function useAction(
     faceActionTarget(draft, actor.id, command.target, events);
   }
   executeResolvedAction(draft, plan, resolved.definition, content, events);
+  if (draft.opening?.phase === "pending") draft.opening = { ...draft.opening, phase: "dialogue" };
   checkCombatOutcome(draft, events);
   // A final in-place Step already contains the player's final facing decision.
   if (!draft.outcome && !draft.pendingReaction && draft.turn.actionsRemaining === 0
@@ -1225,9 +1256,30 @@ export function dispatchCombatCommand(
   command: CombatCommand,
   content: CombatContent,
 ): CommandResult {
+  const opening = state.rules?.opening;
+  if (state.opening?.phase === "pending" && opening &&
+      !(command.type === "use-action" && command.actorId === opening.actorId &&
+        command.action.kind === "innate" && command.action.id === opening.actionId &&
+        command.target.kind === "actor" && command.target.actorId === state.opening.targetActorId)) {
+    return fail(state, "The authored opening action must resolve first.");
+  }
+  if (state.opening?.phase === "dialogue" && command.type !== "complete-scene") {
+    return fail(state, "Complete the pending scene before continuing combat.");
+  }
   const sequenceError = validateSequence(state, command);
   if (sequenceError) return fail(state, sequenceError);
   switch (command.type) {
+    case "complete-scene": {
+      if (!opening || state.opening?.phase !== "dialogue" || command.sceneId !== opening.sceneId || command.actorId !== opening.actorId) {
+        return fail(state, "Scene completion does not match the pending opening.");
+      }
+      const draft = cloneState(state);
+      const events: CombatEvent[] = [];
+      beginAcceptedCommand(draft, command);
+      draft.opening = { ...state.opening, phase: "complete" };
+      advanceTurn(draft, content, events);
+      return { accepted: true, state: asState(draft), events };
+    }
     case "use-action":
       return useAction(state, command, content);
     case "end-turn":

@@ -401,6 +401,7 @@ export type ActionTarget =
   | { readonly kind: "effect"; readonly effectId: EffectId };
 
 export type CombatCommand =
+  | { readonly type: "complete-scene"; readonly id: string; readonly sequence: number; readonly actorId: EntityId; readonly sceneId: string }
   | {
       readonly type: "use-action";
       readonly id: string;
@@ -458,7 +459,28 @@ export interface PendingReaction {
 
 export interface KnowledgeAttempt { readonly actorId: EntityId; readonly targetId: EntityId; readonly success: boolean }
 
+/** Authored encounter exceptions. New modifiers belong here rather than on Actor statistics. */
+export interface ScenarioRules {
+  readonly partySize?: { readonly min: number; readonly max: number };
+  readonly opening?: {
+    readonly actorId: EntityId;
+    readonly actionId: ActionId;
+    /** Exactly one live actor of this team must be present at setup. */
+    readonly targetTeam: TeamId;
+    readonly degree: DegreeOfSuccess;
+    readonly sceneId: string;
+  };
+}
+export interface OpeningProgress {
+  readonly phase: "pending" | "dialogue" | "complete";
+  readonly targetActorId: EntityId;
+  /** Actual rolled order, restored at the start of round two. */
+  readonly regularInitiativeOrder: readonly EntityId[];
+}
+
 export interface CombatState {
+  readonly rules?: ScenarioRules;
+  readonly opening?: OpeningProgress;
   /** Authored practice protection; absent in ordinary encounters. */
   readonly partyHpFloor?: 1;
   /** Absent in older v5 snapshots: no knowledge has been earned. */
@@ -767,6 +789,7 @@ export interface ObjectiveDefinition {
 }
 
 export interface ScenarioDefinition {
+  readonly rules?: ScenarioRules;
   readonly partyHpFloor?: 1;
   readonly id: ScenarioId;
   readonly name: string;
@@ -827,6 +850,8 @@ export type CombatEvent =
   | { readonly type: "FACING_CHANGED"; readonly actorId: EntityId; readonly facing: Direction }
   | {
       readonly type: "CHECK_ROLLED";
+      /** Natural result, when an authored opening overrides the effective degree. */
+      readonly rolledDegree?: DegreeOfSuccess;
       readonly tactical?: StrikeTacticalFeedback;
       /** Whose Action this is. */
       readonly actionActorId: EntityId;

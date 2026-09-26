@@ -581,6 +581,21 @@ export function validateContentPackSemantics(
 
   source.scenarios.forEach((scenario, scenarioIndex) => {
     const prefix = `[${scenarioIndex}]`;
+    const range = scenario.rules?.partySize;
+    if (range && range.min > range.max) addIssue(context, "scenarios", `${prefix}.rules.partySize`, "INVALID_PARTY_SIZE", "Scenario party minimum exceeds maximum.", scenario.id);
+    const opening = scenario.rules?.opening;
+    if (opening) {
+      const placement = scenario.placements.find(p => p.instanceId === opening.actorId);
+      const actor = source.actors.find(a => a.id === placement?.actorDefinitionId);
+      const action = source.actions.find(a => a.id === opening.actionId);
+      if (!placement || placement.team === opening.targetTeam || !actor?.innateActionIds.includes(opening.actionId)
+        || action?.resolution.kind !== "check" || action.targeting !== "enemy") {
+        addIssue(context, "scenarios", `${prefix}.rules.opening`, "INVALID_OPENING", "Opening requires its placed actor and an authored innate enemy check action.", scenario.id);
+      }
+      if (opening.targetTeam === "heroes" && range?.max !== 1) {
+        addIssue(context, "scenarios", `${prefix}.rules.partySize`, "AMBIGUOUS_OPENING_TARGET", "Opening target team must identify one actor; hero openings require a solo scenario.", scenario.id);
+      }
+    }
     const map = scenario.map;
     const tileIds = new Set<string>();
     const tilePositions = new Set<string>();
@@ -718,13 +733,14 @@ export function validateContentPackSemantics(
       const path = `[${adventureIndex}].encounterIds[${encounterIndex}]`;
       if (!knownScenarios.has(scenarioId)) addIssue(context, "adventures", path, "UNKNOWN_SCENARIO", `Scenario "${scenarioId}" is not defined.`, adventure.id);
       const scenario = scenariosById.get(scenarioId);
-      if (scenario && scenario.partySpawnSlots.length < adventure.partySize.max) {
+      const scenarioMax = scenario?.rules?.partySize?.max ?? adventure.partySize.max;
+      if (scenario && scenario.partySpawnSlots.length < scenarioMax) {
         addIssue(context, "adventures", path, "INSUFFICIENT_PARTY_SPAWNS", `Scenario "${scenarioId}" provides ${scenario.partySpawnSlots.length} party spawn slots but adventure maximum is ${adventure.partySize.max}.`, adventure.id);
       }
       if (scenario) {
         const availableSeats = new Set(scenario.partySpawnSlots.map((spawn) => spawn.seat));
         for (const seat of [1, 2, 3] as const) {
-          if (seat > adventure.partySize.max) break;
+          if (seat > scenarioMax) break;
           if (!availableSeats.has(seat)) {
             addIssue(context, "adventures", path, "MISSING_PARTY_SPAWN_SEAT", `Scenario "${scenarioId}" is missing required party spawn seat ${seat}.`, adventure.id);
           }

@@ -1726,5 +1726,56 @@
     },
     "innateActionIds": [],
     "baseCardGrants": []
+  },
+  {
+    "id": "enemy.android-trainee",
+    "name": "길드 훈련 안드로이드",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "level": -1,
+        "ac": 12,
+        "maxHp": 12,
+        "strike": {
+          "name": "완충 장갑",
+          "attackModifier": 2,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 4,
+            "modifier": 0,
+            "damageType": "bludgeoning"
+          },
+          "traits": []
+        },
+        "perception": 0,
+        "saves": {
+          "fortitude": 2,
+          "reflex": 0,
+          "will": 0
+        },
+        "skills": {
+          "athletics": 2
+        }
+      }
+    },
+    "speedFeet": 15,
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "trip"
+    ],
+    "baseCardGrants": []
   }
 ]

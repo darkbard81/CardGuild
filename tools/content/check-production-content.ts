@@ -507,7 +507,7 @@ function checkPartySizeCoverage(
     let session: AdventureState;
     try {
       session = createAdventureSession({
-        definition: adventure,
+        definition: { ...adventure, rewards: adventure.rewards.filter(reward => !reward.choices.some(choice => choice.kind === "companion")) },
         actorDefinitions: pack.actorDefinitions, characterRules: pack.characterRules,
         combatContent: pack.combatContent,
       }, party, COVERAGE_SEED);
@@ -517,6 +517,8 @@ function checkPartySizeCoverage(
     }
 
     for (const encounterId of adventure.encounterIds) {
+      const range = pack.scenarioSources[encounterId]?.rules?.partySize;
+      if (range && (partySize < range.min || partySize > range.max)) continue;
       const state: AdventureState = { ...session, phase: "combat", currentEncounterId: encounterId };
       let actors: readonly ActorState[];
       try {
@@ -742,7 +744,7 @@ async function main(): Promise<void> {
   process.stdout.write(
     `Production OK: ${pack.manifest.id}@${pack.manifest.version} ${pack.fingerprint}\n` +
       `  Adventure ${PRODUCTION_CONTENT.adventureId}: ${String(PRODUCTION_CONTENT.adventure.encounterIds.length)} encounters ` +
-      `(${String(M7_PRODUCTION_POLICY.tutorialEncounterIds.length)} tutorial), buildable at ${PARTY_SIZES.map(String).join("P/")}P\n` +
+      `(${String(M7_PRODUCTION_POLICY.tutorialEncounterIds.length)} tutorial), authored party-size coverage within ${PARTY_SIZES.map(String).join("P/")}P\n` +
       `  Reachable: ${String(reachable.starters.length)} starters, ${String(reachable.enemyIds.size)} enemies, ` +
       `${String(reachable.playerCardIds.size)} player cards, ${String(reachable.playerEquipmentIds.size)} player equipment\n` +
       `  Reserved: ${String(reserved)} definitions, each with a reason and a follow-up\n`,

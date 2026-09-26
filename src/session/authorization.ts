@@ -68,7 +68,11 @@ export function authorizeSessionIntent(
     return "A restored campaign accepts no gameplay before the host resumes it.";
   }
 
+  if (state.lifecycle === "active" && state.combat?.opening?.phase === "dialogue" && intent.type !== "complete-scene") return "Complete the scene before gameplay resumes.";
   switch (intent.type) {
+    case "complete-scene":
+      return isHost && state.lifecycle === "active" && state.combat?.opening?.phase === "dialogue"
+        && intent.sceneId === state.combat.rules?.opening?.sceneId ? undefined : "Only the host can complete the pending scene.";
     case "set-coop-allowed":
     case "proceed-solo":
       if (!isHost || !isCoopPreparation(state)) return "Only the host can change Co-op at a preparation boundary.";

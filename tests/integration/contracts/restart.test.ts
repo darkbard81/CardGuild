@@ -13,8 +13,7 @@ it.each(["SIGTERM", "SIGKILL"] as const)("B-RESUME %s of the built server preser
     const created = await response.json() as SessionCredentialResponse & { campaign: { campaignId: string } };
     const client = await Wire.open(server.origin, created); wires.push(client);
     await client.snapshot();
-    await client.intent({ type: "set-party-composition", actorDefinitionIds: ["hero.aerin"] });
-    await client.intent({ type: "begin-adventure" });
+    await client.intent({ type: "create-character", name: "Arlen", gender: "male", creationPresetId: "human.fighter" });
     const committed = await client.intent({ type: "set-loadout", memberId: HERO, loadout: { equipment: {}, preparedCards: [] } });
     await server.stop(signal);
     await server.start();

@@ -1,12 +1,12 @@
 import type { ContentIdentity } from "../game";
 import type { SessionCoreState, SessionEvent, SessionIntent } from "../session";
 
-/** v13 adds live companion delegation and atomic solo departure. */
-export const PROTOCOL_VERSION = 13 as const;
+/** v14 adds authoritative scene completion for authored combat openings. */
+export const PROTOCOL_VERSION = 14 as const;
 export const MAX_WS_PAYLOAD_BYTES = 64 * 1024;
 
 export interface ClientHello {
-  readonly v: 13;
+  readonly v: 14;
   readonly type: "hello";
   readonly sessionId: string;
   readonly playerId: string;
@@ -15,7 +15,7 @@ export interface ClientHello {
 }
 
 export interface ClientIntentEnvelope {
-  readonly v: 13;
+  readonly v: 14;
   readonly type: "intent";
   readonly requestId: string;
   readonly expectedRevision: number;
@@ -50,7 +50,7 @@ export interface ServerControlView {
 }
 
 export interface ServerSnapshot {
-  readonly v: 13;
+  readonly v: 14;
   readonly type: "snapshot";
   readonly revision: number;
   readonly controlRevision: number;
@@ -65,7 +65,7 @@ export interface ServerSnapshot {
 }
 
 export interface ServerAck {
-  readonly v: 13;
+  readonly v: 14;
   readonly type: "ack";
   readonly requestId: string;
   readonly accepted: boolean;
@@ -73,7 +73,7 @@ export interface ServerAck {
 }
 
 export interface ServerError {
-  readonly v: 13;
+  readonly v: 14;
   readonly type: "error";
   readonly code: ProtocolErrorCode;
   readonly message: string;

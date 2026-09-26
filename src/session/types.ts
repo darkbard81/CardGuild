@@ -105,6 +105,7 @@ export interface ResumeSessionOptions extends SessionPlayerIdentity {
 }
 
 export type SessionIntent =
+  | { readonly type: "complete-scene"; readonly sceneId: string }
   | { readonly type: "set-coop-allowed"; readonly memberIds: readonly string[]; readonly revokeGuests: boolean }
   | { readonly type: "proceed-solo" }
   | { readonly type: "leave-preparation" }

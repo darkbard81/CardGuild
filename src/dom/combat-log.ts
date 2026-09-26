@@ -88,7 +88,7 @@ function resultClause(event: CombatEvent, names: ActorNameLookup, actorId: strin
 function detailLine(event: CombatEvent, names: ActorNameLookup, content: CombatContent): string | null {
   switch (event.type) {
     case "CHECK_ROLLED":
-      return `${event.label}: d20 ${event.roll} + ${event.modifier} vs DC ${event.dc} → ${event.degree}.`;
+      return `${event.label}: d20 ${event.roll} + ${event.modifier} vs DC ${event.dc} → ${event.degree}.${event.rolledDegree ? ` 시나리오 지정 결과 (원래 판정: ${event.rolledDegree}).` : ""}`;
     case "ACTION_SPENT":
       return `Cost ${event.amount} action${event.amount === 1 ? "" : "s"} · ${event.remaining} left.`;
     case "INITIATIVE_ROLLED":

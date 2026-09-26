@@ -2,7 +2,7 @@ import { CREATE_CHARACTER_PROPERTIES } from "../character/member-schema";
 import { CHARACTER_ADVANCEMENT_CHOICE_SCHEMA } from "../character/schema";
 import Ajv, { type ErrorObject } from "ajv";
 
-import { PROTOCOL_VERSION, type ClientMessage } from "./v13-types";
+import { PROTOCOL_VERSION, type ClientMessage } from "./v14-types";
 
 const nonEmptyString = { type: "string", minLength: 1, maxLength: 256 } as const;
 const gridPosition = {
@@ -138,6 +138,7 @@ const intent = {
       required: ["type", "action", "target"],
       properties: { type: { const: "use-action" }, action: actionSource, target: actionTarget },
     },
+    { type: "object", additionalProperties: false, required: ["type", "sceneId"], properties: { type: { const: "complete-scene" }, sceneId: { type: "string", minLength: 1 } } },
     { type: "object", additionalProperties: false, required: ["type", "facing"], properties: { type: { const: "end-turn" }, facing: { enum: ["north", "east", "south", "west"] } } },
     {
       type: "object",

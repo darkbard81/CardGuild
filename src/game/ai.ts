@@ -132,7 +132,7 @@ function innateActionsTakenThisTurn(state: CombatState, actorId: string): Readon
   for (let index = state.commandLog.length - 1; index >= 0; index -= 1) {
     const command = state.commandLog[index];
     if (!command || command.actorId !== actorId) continue;
-    if (command.type === "end-turn") break;
+    if (command.type === "end-turn" || command.type === "complete-scene") break;
     if (command.type === "use-action" && command.action.kind === "innate") taken.add(command.action.id);
   }
   return taken;

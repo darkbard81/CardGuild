@@ -19,6 +19,7 @@ import type {
   MapObjectState,
   ObjectiveDefinition,
   ScenarioDefinition,
+  ScenarioRules,
   ScenarioId,
   TeamId,
   TileState,
@@ -117,6 +118,7 @@ export interface BattleMapSource {
 }
 
 export interface ScenarioSource {
+  readonly rules?: ScenarioRules;
   readonly partyHpFloor?: 1;
   readonly id: ScenarioId;
   readonly name: string;

@@ -4,7 +4,7 @@ import { dispatchSessionIntent, hashSessionGameplayState, type SessionCoreState 
 import { adventure, context } from "./session";
 
 /** Only the backend is controlled: the page loads the real bootstrap, controller, UI and SessionClient. */
-export async function controlledSession(page: Page, initial = adventure(), entry: "join" | "create" = "join", viewer = "host", welcome: "skip" | "show" = "skip") {
+export async function controlledSession(page: Page, initial = adventure(), entry: "join" | "create" = "join", viewer = "host", welcome: "skip" | "show" = "skip", authority = context) {
   const testInfo = test.info();
   testInfo.annotations.push({ type: "session", description: `seed=${initial.adventure?.adventureSeed ?? 60}; revision=${initial.revision}` });
   let state = initial;
@@ -12,6 +12,7 @@ export async function controlledSession(page: Page, initial = adventure(), entry
   const requests: ClientIntentEnvelope[] = [];
   const campaigns: unknown[] = [];
   let controlRevision = 0;
+  let handshakes = 0;
   let connectedPlayerIds = state.seats.map(seat => seat.playerId);
   let controllers = Object.fromEntries(state.partySlots.map(slot => [slot.memberId, state.guestClaims.byMemberId[slot.memberId] ?? "host"]));
   const snapshot = (cause: ServerSnapshot["cause"] = { kind: "resync" }): ServerSnapshot => ({
@@ -33,7 +34,7 @@ export async function controlledSession(page: Page, initial = adventure(), entry
     socket = route;
     route.onMessage(raw => {
       const message = JSON.parse(String(raw)) as { type: string };
-      if (message.type === "hello") send(snapshot());
+      if (message.type === "hello") { handshakes++; send(snapshot()); }
       if (message.type === "intent") {
         const request = message as ClientIntentEnvelope;
         requests.push(request);
@@ -52,6 +53,7 @@ export async function controlledSession(page: Page, initial = adventure(), entry
     await expect.poll(() => Boolean(socket)).toBe(true);
   }
   return {
+    get handshakes() { return handshakes; },
     requests,
     campaigns,
     get state() { return state; },
@@ -59,7 +61,7 @@ export async function controlledSession(page: Page, initial = adventure(), entry
     publish(next: SessionCoreState = state, events: ServerSnapshot["events"] = []) { state = next; send({ ...snapshot(), events }); },
     control(next: Record<string, string>, connected = connectedPlayerIds) { controllers = next; connectedPlayerIds = connected; controlRevision++; send(snapshot({ kind: "control" })); },
     candidate(request = requests.at(-1)!) {
-      const result = dispatchSessionIntent(state, viewer, request.intent, { ...context, adventureId: state.adventure?.adventureId ?? context.adventureId },
+      const result = dispatchSessionIntent(state, viewer, request.intent, { ...authority, adventureId: state.adventure?.adventureId ?? authority.adventureId },
         { connectedPlayerIds, effectiveControllerByMemberId: controllers });
       if (!result.accepted) throw new Error(result.error);
       return result.state;

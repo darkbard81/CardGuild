@@ -11,33 +11,36 @@ test("U-SCENE pages, expressions, keyboard and duplicate input reach creation wi
   await expect(scene).toContainText("저는 길드 접수원 미네르바예요.");
   await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "welcome");
   await expect(page.getByLabel("캐릭터 이름", { exact: true })).toHaveCount(0);
-  await expect(scene.getByRole("button", { name: "다음", exact: true })).toBeFocused();
+  await expect(scene).toBeFocused();
+  await expect(scene.getByRole("button")).toHaveText(["건너뛰기"]);
   await page.screenshot({ path: test.info().outputPath("minerva-welcome.png") });
-  await scene.getByRole("button", { name: "다음", exact: true }).dblclick();
+  await page.mouse.move(80, 120);
+  await page.mouse.down();
+  await page.mouse.move(180, 160);
+  await page.mouse.up();
+  await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "welcome");
+  await page.mouse.dblclick(80, 120);
   await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "explain");
   await expect(scene).toContainText("이름과 성별");
   await page.keyboard.down("Enter");
   await page.keyboard.down("Enter");
   await page.keyboard.up("Enter");
   await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "cheer");
-  await scene.getByRole("button", { name: "캐릭터 만들기", exact: true }).click();
+  await page.mouse.click(600, 200);
   await expect(scene).toHaveCount(0);
   await expect(page.getByLabel("캐릭터 이름", { exact: true })).toBeFocused();
   expect(backend.campaigns).toHaveLength(0);
   expect(backend.requests).toHaveLength(0);
 });
 
-test("U-SCENE cancel, Escape and a fresh explicit attempt replay welcome; skip is inert", async ({ page }) => {
+test("U-SCENE Escape and a fresh explicit attempt replay welcome; skip is inert", async ({ page }) => {
   const backend = await controlledSession(page, lobby(), "create", "host", "show");
   const scene = page.getByRole("dialog", { name: title });
-  for (const cancel of ["button", "escape"]) {
-    if (cancel === "button") await scene.getByRole("button", { name: "돌아가기", exact: true }).click();
-    else await page.keyboard.press("Escape");
-    await expect(scene).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "새 모험 시작", exact: true })).toBeFocused();
-    await page.getByRole("button", { name: "새 모험 시작", exact: true }).click();
-    await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "welcome");
-  }
+  await page.keyboard.press("Escape");
+  await expect(scene).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "새 모험 시작", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "새 모험 시작", exact: true }).click();
+  await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "welcome");
   await scene.getByRole("button", { name: "건너뛰기", exact: true }).click();
   await expect(page.getByLabel("캐릭터 이름", { exact: true })).toBeFocused();
   expect(backend.campaigns).toHaveLength(0);
@@ -56,11 +59,20 @@ test.describe("touch", () => {
     const bounds = await scene.boundingBox();
     expect(bounds!.x).toBeGreaterThanOrEqual(0);
     expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(600);
-    await scene.getByRole("button", { name: "다음", exact: true }).tap();
+    const cdp = await page.context().newCDPSession(page);
+    try {
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 40, y: 80, id: 1 }, { x: 100, y: 80, id: 2 }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+      await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "welcome");
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: 40, y: 80, id: 1 }] });
+      await cdp.send("Input.dispatchTouchEvent", { type: "touchCancel", touchPoints: [] });
+      await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "welcome");
+    } finally { await cdp.detach(); }
+    await page.touchscreen.tap(40, 80);
     await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "explain");
-    await scene.getByRole("button", { name: "다음", exact: true }).tap();
+    await scene.getByRole("img").tap();
     await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "cheer");
-    await scene.getByRole("button", { name: "캐릭터 만들기", exact: true }).tap();
+    await page.touchscreen.tap(500, 100);
     await expect(page.getByLabel("캐릭터 이름", { exact: true })).toBeVisible();
     expect(backend.campaigns).toHaveLength(0);
   });
@@ -80,6 +92,13 @@ test("U-SCENE first battle briefing cancels to preparation and skips only once a
   const scene = page.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true });
   await start.click();
   await expect(scene).toContainText("슬라임");
+  await expect(page.locator('[data-screen="combat"]')).toBeVisible();
+  await expect(page.locator(".combat-stage")).toBeVisible();
+  await page.screenshot({ path: test.info().outputPath("minerva-battle-overlay.png") });
+  // The overlay intercepts the position occupied by End Turn behind it.
+  await page.mouse.click(950, 315);
+  await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "explain");
+  expect(backend.state.combat).toBeNull();
   expect(backend.requests).toHaveLength(0);
   await page.keyboard.press("Escape");
   await expect(scene).toHaveCount(0);
@@ -113,16 +132,16 @@ test("U-SCENE first battle completion explains protection before a single depart
   const backend = await controlledSession(page);
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   const scene = page.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true });
-  await scene.getByRole("button", { name: "다음", exact: true }).click();
+  await page.keyboard.press("Enter");
   await expect(scene).toContainText("공격 카드 한 장");
-  await scene.getByRole("button", { name: "다음", exact: true }).click();
+  await page.keyboard.press("Enter");
   await expect(scene).toContainText("행동을 세 번");
-  await scene.getByRole("button", { name: "다음", exact: true }).click();
+  await page.keyboard.press("Enter");
   await expect(scene).toContainText("HP가 1보다 낮아지지 않아요");
   await expect(scene.getByRole("img")).toHaveAttribute("data-expression", "firm");
-  await scene.getByRole("button", { name: "다음", exact: true }).click();
+  await page.keyboard.press("Enter");
   expect(backend.requests).toHaveLength(0);
-  await scene.getByRole("button", { name: "연습 전투 시작", exact: true }).click();
+  await page.keyboard.press("Space");
   await expect.poll(() => backend.requests.length).toBe(1);
   await expect(scene).toHaveCount(0);
 });

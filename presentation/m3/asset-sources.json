@@ -116,6 +116,8 @@
   "ui.equipment.staff": "art/processed/ui/equipment-staff.png",
   "actor.slime-trainee.front": "art/processed/actors/enemy/slime-trainee/front.png",
   "actor.slime-trainee.back": "art/processed/actors/enemy/slime-trainee/back.png",
+  "actor.android-trainee.front": "art/processed/actors/enemy/android-trainee/front.png",
+  "actor.android-trainee.back": "art/processed/actors/enemy/android-trainee/back.png",
   "ui.card.vicious-swing": "public/assets/cards/vicious-swing.webp",
   "ui.card.force-barrage": "public/assets/cards/force-barrage.webp",
   "ui.card.heal": "public/assets/cards/heal.webp",

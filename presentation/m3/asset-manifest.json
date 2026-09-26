@@ -2137,6 +2137,46 @@
         "height": 0.9297
       }
     },
+    "actor.android-trainee.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/android-trainee/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0625,
+        "left": 0.1797,
+        "width": 0.6445,
+        "height": 0.9375
+      }
+    },
+    "actor.android-trainee.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/android-trainee/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 132,
+      "ink": {
+        "top": 0.0677,
+        "left": 0.1797,
+        "width": 0.6445,
+        "height": 0.9323
+      }
+    },
     "ui.card.vicious-swing": {
       "kind": "ui",
       "source": {
@@ -2857,6 +2897,10 @@
     "enemy.slime-trainee": {
       "front": "actor.slime-trainee.front",
       "back": "actor.slime-trainee.back"
+    },
+    "enemy.android-trainee": {
+      "front": "actor.android-trainee.front",
+      "back": "actor.android-trainee.back"
     }
   },
   "terrainVisuals": {

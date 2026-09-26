@@ -202,7 +202,7 @@ function deterministicCommandId(sequence: number, type: CombatCommand["type"]): 
 
 function combatCommandForIntent(
   state: SessionCoreState,
-  intent: Extract<SessionIntent, { type: "use-action" | "end-turn" | "use-reaction" | "pass-reaction" }>,
+  intent: Extract<SessionIntent, { type: "complete-scene" | "use-action" | "end-turn" | "use-reaction" | "pass-reaction" }>,
 ): CombatCommand {
   const combat = state.combat as NonNullable<SessionCoreState["combat"]>;
   const sequence = combat.sequence + 1;
@@ -212,6 +212,8 @@ function combatCommandForIntent(
   if (!actorId) throw new Error("Authoritative combat state has no actionable actor.");
   const base = { id: deterministicCommandId(sequence, intent.type), sequence, actorId };
   switch (intent.type) {
+    case "complete-scene":
+      return { ...base, type: intent.type, sceneId: intent.sceneId };
     case "use-action":
       return { ...base, type: intent.type, action: intent.action, target: intent.target };
     case "end-turn":
@@ -398,6 +400,9 @@ export function dispatchSessionIntent(
       if (!loadout.valid) return reject(state, "DOMAIN_REJECTED", loadout.issues[0]?.message ?? "Invalid party Loadout.");
       const started = dispatchAdventureCommand(adventure, { type: "start-encounter" }, runtime);
       if (!started.accepted) return reject(state, "DOMAIN_REJECTED", started.error ?? "Adventure rejected encounter start.");
+      const range = context.pack.scenarioSources[started.state.currentEncounterId!]?.rules?.partySize;
+      const size = Object.keys(started.state.party.members).length;
+      if (range && (size < range.min || size > range.max)) return reject(state, "DOMAIN_REJECTED", "This encounter requires its authored party size.");
       const encounter = buildAdventureEncounter(context.pack, started.state);
       const setup = createCombat(encounter.definition, encounter.seed);
       return commit(state, { ...departureState(state, control), adventure: started.state, combat: setup.state }, [...started.events, ...setup.events]);
@@ -422,6 +427,7 @@ export function dispatchSessionIntent(
       if (!result.accepted) return reject(state, "DOMAIN_REJECTED", result.error ?? "Adventure rejected loadout.");
       return commit(state, { ...state, adventure: result.state }, result.events);
     }
+    case "complete-scene":
     case "use-action":
     case "end-turn":
     case "use-reaction":

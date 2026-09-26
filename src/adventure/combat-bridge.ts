@@ -28,6 +28,9 @@ export function buildAdventureEncounter(
 
   // Static composition follows the party that actually walked in.
   const partySize = Object.keys(state.party.members).length;
+  if (source.rules?.partySize && (partySize < source.rules.partySize.min || partySize > source.rules.partySize.max)) {
+    throw new Error("Party size does not satisfy the scenario rules.");
+  }
   const staticActors = source.placements
     .filter((placement) => placementAppliesToPartySize(placement, partySize))
     .map((placement) => {
@@ -63,6 +66,7 @@ export function buildAdventureEncounter(
         name: source.name,
         objective: { ...source.objective },
         ...(source.partyHpFloor === undefined ? {} : { partyHpFloor: source.partyHpFloor }),
+        ...(source.rules ? { rules: source.rules } : {}),
         actors,
         map: {
           width: source.map.width,

@@ -2697,6 +2697,46 @@
         }
       ],
       "prompt": "Reference CardGuild art/STYLE.md: upright paper standee, 2D hyper detailed Japanese anime, thick pure white outer cutout outline, cel-painted shading, upper-left key light, no baked floor shadow, no perspective or isometric projection. Generate a single FRONT full-body view of a friendly adult female slime guild training partner. Clearly adult woman, turquoise translucent gel skin and flowing gel hair, emerald eyes, modest opaque dark-green short-sleeved guild training tunic with shorts and a gold guild badge, bare gel feet. Fully clothed, approachable confident smile, balanced relaxed ready stance, empty hands held near her sides. Her gel silhouette is recognizably humanoid with two legs and feet and rounded slime hair droplets. Not a child or chibi baby, not sexualized. Full figure centered with both feet on a common baseline, generous transparent margins around outline. Portrait 2:3 canvas. Genuine transparent RGBA background, no checkerboard painting, no scenery, no floor, no lettering, numbers or watermark. This is one FRONT view only, not a sheet or turnaround. Back view: Reference art/STYLE.md of CardGuild: upright 2D hyper detailed anime paper standee, upper-left light, thick pure white outer cutout outline, genuine transparent background, no ground or baked shadow. Using the attached finished FRONT view as the exact identity and costume reference, generate ONE matching full-body BACK view of this same adult female turquoise slime guild training partner. Show her true rear: back of gel hair, back of green tunic and shorts with same tan trim and brown belt, backs of arms, legs and heels. No face looking back, no front chest badge visible on the back, no mirrored front. Preserve mature adult proportions, emerald/turquoise gel material, hairstyle, clothing, silhouette scale, relaxed pose and empty hands. Entire figure and white outline visible with transparent margins, same feet baseline. Portrait 2:3 image. No text, panels, floor, checkerboard painting or background glow."
+    },
+    {
+      "input": "art/source/actors/enemy/android-trainee/front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.android-trainee",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.android-trainee.front",
+          "side": "front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        },
+        {
+          "assetId": "actor.android-trainee.back",
+          "side": "back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 132
+          }
+        }
+      ],
+      "prompt": "Create one production CardGuild full-body FRONT standee, one character only. Follow art/STYLE.md: upright 2D hyper detailed Japanese anime / cel-painted game character; crisp dark inner linework, thick pure white cutout outline around entire silhouette; upper-left lighting, NO ground shadow, no floor, no perspective, transparent alpha background. Adult female guild training android, clearly adult face and proportions, very large massive bust under fully covering ivory and dark-green mechanical training armor, articulated brass joints and hands, short silver bob, teal eyes, small gold guild emblem, sturdy boots, padded articulated gloves for grappling. Nonsexual neutral ready stance, both feet visible on same baseline, hands separated readable. Front-facing full body head to boots entirely inside portrait canvas with generous transparent margin. No text, no frame, no watermark, no second view. Consistent CardGuild restrained ivory/brass/forest-green palette. Intended normalized size256x384 anchored bottom center. Generate FRONT only, later back must match this exact character. Back: Reference art/STYLE.md CardGuild. Use attached front image as exact identity/costume/proportions reference. Generate ONE matching fullbody true BACK view of this same adult female guild training android, silver bob, ivory/forest-green/brass articulated armor, sturdy boots, same silhouette and feet baseline, arms relaxed hands separated. Rear of head/armor/boots, no face looking back, no chest insignia on back. Upright 2D detailed Japanese anime cel-painted standee, thick pure white cutout outline, upper-left light. Full figure visible inside portrait 2:3 frame generous margins. IMPORTANT genuine transparent RGBA background: no black gradient, no checkerboard image, no glow, no floor shadows, no scenery. Back only, no text."
     }
   ],
   "presentation": {

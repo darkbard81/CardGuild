@@ -12,7 +12,7 @@
   },
   "runtimeStorage": {
     "atlas": 35,
-    "image": 119
+    "image": 121
   },
   "atlasImage": "/assets/m3-atlas.webp",
   "cardArtPlan": "art/source/card-art-plan.json",
@@ -2860,6 +2860,42 @@
       "sourceIndex": 1,
       "flipX": false,
       "processingScale": 0.237318,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.android-trainee.front": {
+      "source": "art/source/actors/enemy/android-trainee/front-back.png",
+      "output": "art/processed/actors/enemy/android-trainee/front.png",
+      "runtime": "/assets/actors/enemy/android-trainee/front.webp",
+      "sourceBox": {
+        "left": 161,
+        "top": 0,
+        "width": 702,
+        "height": 1536
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.235,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.android-trainee.back": {
+      "source": "art/source/actors/enemy/android-trainee/front-back.png",
+      "output": "art/processed/actors/enemy/android-trainee/back.png",
+      "runtime": "/assets/actors/enemy/android-trainee/back.webp",
+      "sourceBox": {
+        "left": 159,
+        "top": 6,
+        "width": 703,
+        "height": 1523
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.235,
       "anchor": {
         "x": 0.5,
         "y": 1

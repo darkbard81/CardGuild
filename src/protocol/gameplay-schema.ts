@@ -189,6 +189,8 @@ const adventure = {
 
 const combatCommand = {
   oneOf: [
+    { type: "object", additionalProperties: false, required: ["type", "id", "sequence", "actorId", "sceneId"],
+      properties: { type: { const: "complete-scene" }, id: nonEmptyString, sequence: integer, actorId: nonEmptyString, sceneId: nonEmptyString } },
     {
       type: "object",
       additionalProperties: false,
@@ -273,6 +275,20 @@ const combat = {
     contentIdentity,
     setupFingerprint: nonEmptyString,
     partyHpFloor: { const: 1 },
+    rules: {
+      type: "object", additionalProperties: false,
+      properties: {
+        partySize: { type: "object", additionalProperties: false, required: ["min", "max"],
+          properties: { min: { type: "integer", minimum: 1, maximum: 3 }, max: { type: "integer", minimum: 1, maximum: 3 } } },
+        opening: { type: "object", additionalProperties: false,
+          required: ["actorId", "actionId", "targetTeam", "degree", "sceneId"],
+          properties: { actorId: nonEmptyString, actionId: nonEmptyString, targetTeam: { enum: ["heroes", "enemies"] },
+            degree: { enum: ["critical-success", "success", "failure", "critical-failure"] }, sceneId: nonEmptyString } },
+      },
+    },
+    opening: { type: "object", additionalProperties: false, required: ["phase", "targetActorId", "regularInitiativeOrder"],
+      properties: { phase: { enum: ["pending", "dialogue", "complete"] }, targetActorId: nonEmptyString,
+        regularInitiativeOrder: { type: "array", minItems: 2, uniqueItems: true, items: nonEmptyString } } },
     round: nonNegativeInteger,
     turn: {
       type: "object",

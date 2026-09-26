@@ -2430,30 +2430,52 @@
 
 @layer screens {
   .scene-dialogue {
-    width: min(900px, calc(100vw - 40px));
-    max-height: calc(100dvh - 40px);
-    padding: 28px;
+    position: fixed;
+    inset: 0;
+    margin: 0;
+    width: 100vw;
+    height: 100dvh;
+    max-width: none;
+    max-height: none;
+    padding: 0;
+    border: 0;
+    background: transparent;
     color: var(--ui-color-text);
-    background: var(--ui-surface-panel);
-    border: 1px solid var(--ui-color-border);
-    border-radius: 16px;
-    overflow: auto;
+    overflow: hidden;
+    touch-action: none;
   }
-  .scene-dialogue::backdrop { background: rgb(8 14 12 / 88%); }
-  .scene-dialogue-body { display: grid; grid-template-columns: minmax(200px, 360px) 1fr; gap: 28px; align-items: center; }
+  .scene-dialogue:focus { outline: none; }
+  .scene-dialogue::backdrop { background: rgb(8 14 20 / 16%); }
+  .scene-dialogue-panel {
+    position: absolute;
+    bottom: max(16px, env(safe-area-inset-bottom));
+    left: max(24px, env(safe-area-inset-left));
+    right: max(24px, env(safe-area-inset-right));
+    max-height: calc(100dvh - 32px);
+    padding: 18px;
+    background: rgb(31 42 54 / 82%);
+    border: 1px solid rgb(119 151 175 / 60%);
+    border-radius: 14px;
+    box-shadow: 0 8px 28px rgb(0 0 0 / 25%);
+    overflow: auto;
+    touch-action: pan-y;
+  }
+  .scene-dialogue-body { display: grid; grid-template-columns: 176px 1fr; gap: 24px; align-items: center; }
   .scene-dialogue-body--narration { grid-template-columns: 1fr; }
-  .scene-face { width: 100%; aspect-ratio: 1; background-repeat: no-repeat; align-self: end; }
-  .scene-dialogue-copy h2 { color: var(--ui-color-text); margin: 0 0 20px; font-size: 1.6rem; }
-  .scene-dialogue-text { font-size: 1.2rem; line-height: 1.9; word-break: keep-all; overflow-wrap: anywhere; }
-  .scene-dialogue-position { color: var(--ui-color-muted); font-size: .9rem; }
-  .scene-dialogue-controls { display: flex; justify-content: flex-end; gap: 12px; border-top: 1px solid var(--ui-color-border); padding-top: 20px; margin-top: 20px; }
-  .scene-dialogue-controls button { min-height: 48px; padding: 10px 20px; touch-action: manipulation; }
-  .scene-dialogue-controls button:first-child { margin-right: auto; }
+  .scene-face { width: 100%; aspect-ratio: 1; background-repeat: no-repeat; border: 1px solid rgb(119 151 175 / 50%); border-radius: 10px; }
+  .scene-dialogue-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+  .scene-dialogue-copy h2 { color: var(--ui-color-text); margin: 0; font-size: 1.5rem; }
+  .scene-dialogue-text { margin: 12px 0; font-size: 1.2rem; line-height: 1.7; word-break: keep-all; overflow-wrap: anywhere; }
+  .scene-dialogue-position { color: var(--ui-color-muted); font-size: .9rem; white-space: nowrap; }
+  .scene-dialogue-controls { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-top: 1px solid var(--ui-color-border); padding-top: 12px; }
+  .scene-dialogue-controls span { color: var(--ui-color-muted); font-size: .8rem; }
+  .scene-dialogue-controls button { min-height: 44px; flex-shrink: 0; padding: 8px 18px; touch-action: manipulation; }
   @media (max-width: 650px) {
-    .scene-dialogue { padding: 16px; width: calc(100vw - 24px); }
-    .scene-dialogue-body { grid-template-columns: minmax(100px, 32%) 1fr; gap: 14px; }
-    .scene-dialogue-text { font-size: 1rem; line-height: 1.65; }
-    .scene-dialogue-controls { gap: 6px; flex-wrap: wrap; }
-    .scene-dialogue-controls button { padding: 8px 12px; }
+    .scene-dialogue-panel { padding: 12px; left: 12px; right: 12px; bottom: 12px; }
+    .scene-dialogue-body { grid-template-columns: minmax(80px, 25%) 1fr; gap: 12px; }
+    .scene-dialogue-copy h2 { font-size: 1.2rem; }
+    .scene-dialogue-text { font-size: 1rem; line-height: 1.6; }
+    .scene-dialogue-controls { gap: 8px; flex-wrap: wrap; }
+    .scene-dialogue-controls button { margin-left: auto; }
   }
 }

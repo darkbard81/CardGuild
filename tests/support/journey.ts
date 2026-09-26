@@ -1,7 +1,6 @@
 import { test as base, expect, type Page } from "@playwright/test";
 import { productProcess } from "./process";
-import { PASSWORD, Wire } from "./network";
-import type { SessionCredentialResponse } from "../../src/server/session-store";
+import { PASSWORD } from "./network";
 
 export const test = base.extend<{ server: Awaited<ReturnType<typeof productProcess>> }>({
   // Playwright requires destructuring even when there are no fixture dependencies.
@@ -26,7 +25,7 @@ export async function signIn(page: Page, origin: string, username = "journey-pla
   await expect(page.getByRole("button", { name: "로그아웃", exact: true })).toBeVisible();
 }
 
-export async function newAdventure(page: Page, origin: string, two = false, welcome = false) {
+export async function newAdventure(page: Page, origin: string, welcome = false) {
   await page.goto(origin);
   await page.getByRole("button", { name: "새 모험 시작", exact: true }).click();
   await page.getByRole("button", { name: "계정 만들기", exact: true }).click();
@@ -36,27 +35,11 @@ export async function newAdventure(page: Page, origin: string, two = false, welc
   await page.getByRole("button", { name: "계정 만들기", exact: true }).click();
   if (welcome) {
     await expect(page.getByRole("dialog")).toContainText("저는 길드 접수원 미네르바예요.");
-    await page.getByRole("button", { name: "다음", exact: true }).click();
-    await page.getByRole("button", { name: "다음", exact: true }).click();
-    await page.getByRole("button", { name: "캐릭터 만들기", exact: true }).click();
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
+    await page.keyboard.press("Enter");
   } else await page.getByRole("button", { name: "건너뛰기", exact: true }).click();
   await expect(page.getByRole("heading", { name: "캐릭터 생성", exact: true })).toBeVisible();
-  if (two) {
-    // Keep the authored 2P precondition until #67 switches the Chapter journey to recruitment.
-    const response = await page.request.post(`${origin}/api/campaigns`, { data: { name: "Journey campaign", displayName: "Host" } });
-    expect(response.ok()).toBe(true);
-    const credential = await response.json() as SessionCredentialResponse;
-    const wire = await Wire.open(origin, credential);
-    try {
-      await wire.snapshot();
-      await wire.intent({ type: "set-party-composition", actorDefinitionIds: ["hero.aerin", "hero.lyra"] });
-      await wire.intent({ type: "begin-adventure" });
-    } finally { await wire.close(); }
-    await page.evaluate(value => sessionStorage.setItem("cardguild.session.v2", JSON.stringify(value)), credential);
-    await page.reload();
-    await expect(page.getByRole("button", { name: "Lyra Co-op 허용", exact: true })).toBeVisible();
-    return;
-  }
   await page.getByLabel("캐릭터 이름", { exact: true }).fill("Aerin");
   await page.getByLabel("클래스", { exact: true }).selectOption("human.fighter");
   await page.getByRole("button", { name: "생성하고 시작", exact: true }).click();
@@ -66,8 +49,8 @@ export async function newAdventure(page: Page, origin: string, two = false, welc
 export async function beginBattle(page: Page) {
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   const briefing = page.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true });
-  await expect(briefing.or(page.getByRole("region", { name: "Tactical combat", exact: true }))).toBeVisible();
-  if (await briefing.isVisible()) await briefing.getByRole("button", { name: "건너뛰기", exact: true }).click();
+  await expect(briefing).toBeVisible();
+  await briefing.getByRole("button", { name: "건너뛰기", exact: true }).click();
   await expect(page.getByRole("region", { name: "Tactical combat", exact: true })).toBeVisible();
 }
 

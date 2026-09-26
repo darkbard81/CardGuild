@@ -309,10 +309,14 @@ export class SessionHost {
     if (this.stateValue.lifecycle !== "active") return;
     for (let count = 0; count < 512; count += 1) {
       const combat = this.stateValue.combat;
-      if (!combat) return;
+      if (!combat || combat.opening?.phase === "dialogue") return;
       let command: CombatCommand | null;
       const pending = combat.pendingReaction;
-      if (pending) {
+      if (combat.opening?.phase === "pending" && combat.rules?.opening) {
+        command = { type: "use-action", id: "opening", sequence: -1, actorId: combat.rules.opening.actorId,
+          action: { kind: "innate", id: combat.rules.opening.actionId },
+          target: { kind: "actor", actorId: combat.opening.targetActorId } };
+      } else if (pending) {
         const head = combat.actors[pending.candidates[0]?.actorId ?? ""];
         if (!head || head.team === "heroes") return;
         const candidate = pending.candidates[0];

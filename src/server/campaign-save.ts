@@ -1,3 +1,6 @@
+import { stableSerialize } from "../game/determinism";
+import { createCombatReplay, hashCombatState, replayCombat } from "../game/replay";
+import { buildAdventureEncounter } from "../adventure/combat-bridge";
 import { resolvePartyMemberDefinition } from "../character/member";
 import {
   assertAdventureCharacterInvariants,
@@ -239,6 +242,16 @@ function validateCombat(save: CampaignSaveV5, context: SessionAuthorityContext):
   }
   if (combat.partyHpFloor !== context.pack.scenarios[combat.scenarioId]?.partyHpFloor) {
     corrupt("Saved combat protection does not match its authored scenario.");
+  }
+  const authoredRules = context.pack.scenarios[combat.scenarioId]?.rules;
+  if (stableSerialize(combat.rules) !== stableSerialize(authoredRules)) corrupt("Saved combat rules do not match their authored scenario.");
+  if (Boolean(combat.opening) !== Boolean(authoredRules?.opening)) corrupt("Saved opening progress does not match the scenario.");
+  if (authoredRules?.opening) {
+    try {
+      const setup = buildAdventureEncounter(context.pack, adventure);
+      const replayed = replayCombat(setup.definition, createCombatReplay(combat)).state;
+      if (hashCombatState(replayed) !== hashCombatState(combat)) corrupt("Saved opening combat differs from its authoritative replay.");
+    } catch (error) { corrupt(error instanceof Error ? error.message : "Saved opening replay is invalid."); }
   }
   if (combat.scenarioId !== adventure.currentEncounterId) {
     corrupt("Saved combat scenario does not match the saved Adventure encounter.");

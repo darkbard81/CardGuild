@@ -907,6 +907,71 @@
       "required": ["id", "name", "objective", "placements", "partySpawnSlots", "map"],
       "properties": {
         "partyHpFloor": { "const": 1 },
+        "rules": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "opening": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "actorId",
+                "actionId",
+                "targetTeam",
+                "degree",
+                "sceneId"
+              ],
+              "properties": {
+                "actorId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "actionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "targetTeam": {
+                  "enum": [
+                    "heroes",
+                    "enemies"
+                  ]
+                },
+                "degree": {
+                  "enum": [
+                    "critical-success",
+                    "success",
+                    "failure",
+                    "critical-failure"
+                  ]
+                },
+                "sceneId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "partySize": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "min",
+                "max"
+              ],
+              "properties": {
+                "min": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3
+                },
+                "max": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3
+                }
+              }
+            }
+          }
+        },
         "id": { "$ref": "#/$defs/nonEmptyString" },
         "name": { "$ref": "#/$defs/nonEmptyString" },
         "objective": {

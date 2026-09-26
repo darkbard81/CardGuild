@@ -6427,5 +6427,164 @@
       "objects": []
     },
     "partyHpFloor": 1
+  },
+  {
+    "id": "encounter.prone-training",
+    "name": "1-2 상태 대응 훈련",
+    "objective": {
+      "kind": "defeat-all-enemies",
+      "description": "넘어진 상태를 확인하고 자기 칸 Ring의 Stand로 일어나세요. 길드 보호: HP 최소 1. 안드로이드를 쓰러뜨리면 Aerin이 합류합니다."
+    },
+    "placements": [
+      {
+        "instanceId": "android-trainee",
+        "actorDefinitionId": "enemy.android-trainee",
+        "team": "enemies",
+        "position": {
+          "x": 1,
+          "y": 1
+        },
+        "facing": "west"
+      }
+    ],
+    "partySpawnSlots": [
+      {
+        "seat": 1,
+        "position": {
+          "x": 0,
+          "y": 1
+        },
+        "facing": "east"
+      }
+    ],
+    "map": {
+      "width": 3,
+      "height": 3,
+      "tiles": [
+        {
+          "id": "road-0,0",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-1,0",
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-2,0",
+          "position": {
+            "x": 2,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-0,1",
+          "position": {
+            "x": 0,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-1,1",
+          "position": {
+            "x": 1,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-2,1",
+          "position": {
+            "x": 2,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-0,2",
+          "position": {
+            "x": 0,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-1,2",
+          "position": {
+            "x": 1,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-2,2",
+          "position": {
+            "x": 2,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        }
+      ],
+      "objects": []
+    },
+    "partyHpFloor": 1,
+    "rules": {
+      "partySize": {
+        "min": 1,
+        "max": 1
+      },
+      "opening": {
+        "actorId": "android-trainee",
+        "actionId": "trip",
+        "targetTeam": "heroes",
+        "degree": "success",
+        "sceneId": "guild-prone-recovery"
+      }
+    }
   }
 ]

@@ -1,10 +1,16 @@
+import { PRODUCTION_CONTENT } from "../../src/content/production-content";
 import { assertScene } from "../../src/scene/validation";
 import sharp from "sharp";
-import { FIRST_BATTLE_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../../src/scene/catalog";
+import { PRONE_RECOVERY_SCENE, FIRST_BATTLE_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../../src/scene/catalog";
 
 export async function checkSceneAssets(): Promise<void> {
+  for (const scenario of Object.values(PRODUCTION_CONTENT.pack.scenarios)) {
+    const sceneId = scenario.rules?.opening?.sceneId;
+    if (sceneId && sceneId !== PRONE_RECOVERY_SCENE.id) throw new Error(`${scenario.id}: unknown opening scene ${sceneId}`);
+  }
   assertScene(WELCOME_SCENE, SCENE_CATALOG);
   assertScene(FIRST_BATTLE_SCENE, SCENE_CATALOG);
+  assertScene(PRONE_RECOVERY_SCENE, SCENE_CATALOG);
   for (const [id, set] of Object.entries(SCENE_CATALOG.faceSets)) {
     const file = `public${set.image}`;
     const meta = await sharp(file).metadata();

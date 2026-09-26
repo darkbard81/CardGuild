@@ -1,18 +1,18 @@
 import { SceneDialogueUi } from "../dom/scene-dialogue-ui";
-import { FIRST_BATTLE_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
+import { FIRST_BATTLE_SCENE, PRONE_RECOVERY_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
 import { CoopPreparationUi } from "../dom/coop-preparation-ui";
 import { waitingGuests } from "../session";
 import type { CharacterSheetDestination } from "../dom/character-workspace";
 import type { CharacterAdvancementChoice } from "../character";
 import type { CreateCharacterInput } from "../character/member";
-import type { AdventureEvent, AdventureState } from "../adventure";
+import { buildAdventureEncounter, type AdventureEvent, type AdventureState } from "../adventure";
 import { ApiError, isTerminalHandshakeFailure, SessionClient, type AccountIdentity, type SessionCredential } from "../client";
 import { PRODUCTION_CONTENT } from "../content/production-content";
 import { AdventureUi } from "../dom/adventure-ui";
 import { CharacterDetailUi } from "../dom/character-detail-ui";
 import { trackGrowthSummary, type GrowthNotice } from "../dom/progression-view";
 import { SessionLobbyUi } from "../dom/session-lobby-ui";
-import type { CombatEvent, CombatState } from "../game";
+import { createCombat, type CombatEvent, type CombatState } from "../game";
 import type { PartyMemberLoadout } from "../loadout";
 import type { AssetCatalog } from "../presentation";
 import type { ServerSnapshot } from "../protocol";
@@ -76,8 +76,11 @@ export class AdventureController {
   private readonly sceneUi = new SceneDialogueUi();
   private welcomePending = false;
   private briefingKey: string | null = null;
+  private briefingBackdrop: BattleController | null = null;
   private completedBriefingKey: string | null = null;
   private departurePending = false;
+  private gatedSceneKey: string | null = null;
+  private sceneCommitPending = false;
 
   /**
    * The last victory's growth, and the snapshot that published it. Built from committed
@@ -435,6 +438,9 @@ export class AdventureController {
 
   private returnToLanding(message: string): void {
     this.sceneUi.close();
+    this.gatedSceneKey = null;
+    this.sceneCommitPending = false;
+    this.clearBriefingBackdrop();
     this.briefingKey = null;
     this.completedBriefingKey = null;
     this.departurePending = false;
@@ -485,7 +491,11 @@ export class AdventureController {
     if (this.snapshot !== snapshot) return;
     if (this.briefingKey && this.briefingKey !== this.firstBattleKey()) {
       this.sceneUi.close();
+      this.clearBriefingBackdrop();
       this.briefingKey = null;
+    }
+    if (this.gatedSceneKey && (snapshot.state.lifecycle !== "active" || !snapshot.state.combat)) {
+      this.sceneUi.close(); this.gatedSceneKey = null; this.sceneCommitPending = false;
     }
     this.trackGrowth(snapshot);
     const state = snapshot.state;
@@ -519,12 +529,14 @@ export class AdventureController {
       await this.encounterBundle;
       if (this.snapshot !== snapshot) return;
       this.renderCombat(snapshot, viewer, state.combat);
+      this.renderGatedScene(snapshot, viewer.playerId);
       return;
     }
 
     this.battle?.destroy();
     this.battle = null;
     this.renderAdventure(adventure, viewer);
+    if (this.briefingKey) void this.renderBriefingBackdrop(snapshot, this.briefingKey);
   }
 
   private renderSessionLobby(
@@ -623,6 +635,78 @@ export class AdventureController {
     return this.client?.sendIntent({ type: "set-loadout", memberId, loadout }, settled) ?? false;
   }
 
+  private renderGatedScene(snapshot: ServerSnapshot, playerId: string): void {
+    const combat = snapshot.state.combat;
+    if (combat?.opening?.phase !== "dialogue") {
+      if (this.gatedSceneKey && !this.sceneCommitPending) {
+        this.sceneUi.close(); this.gatedSceneKey = null;
+      }
+      return;
+    }
+    if (snapshot.state.hostPlayerId !== playerId) return;
+    const sceneId = combat.rules?.opening?.sceneId;
+    if (sceneId !== PRONE_RECOVERY_SCENE.id) return;
+    const key = `${snapshot.state.sessionId}:${combat.setupFingerprint}:${sceneId}`;
+    if (this.gatedSceneKey === key) return;
+    this.gatedSceneKey = key;
+    const complete = () => {
+      if (this.gatedSceneKey !== key || this.sceneCommitPending) return;
+      this.sceneCommitPending = true;
+      this.sceneUi.showCompletion("안내 완료를 저장하고 있어요…");
+      const retry = () => {
+        this.sceneCommitPending = false;
+        if (this.gatedSceneKey === key) this.sceneUi.showCompletion("완료를 저장하지 못했어요. 연결을 확인한 뒤 화면을 눌러 다시 시도해주세요.", complete);
+      };
+      const sent = this.client?.sendIntent({ type: "complete-scene", sceneId }, accepted => {
+        if (this.gatedSceneKey !== key) return;
+        if (!accepted) { retry(); return; }
+        this.sceneCommitPending = false;
+        this.sceneUi.close(); this.gatedSceneKey = null;
+        if (this.snapshot) void this.renderSnapshot(this.snapshot);
+      });
+      if (!sent) retry();
+    };
+    this.sceneUi.open(PRONE_RECOVERY_SCENE, SCENE_CATALOG, {
+      title: "미네르바의 상태 회복 안내", finishLabel: "직접 Stand 사용하기", holdOnFinish: true,
+      onFinish: complete,
+    });
+  }
+
+  private clearBriefingBackdrop(): void {
+    this.briefingBackdrop?.destroy();
+    this.briefingBackdrop = null;
+  }
+
+  private async renderBriefingBackdrop(snapshot: ServerSnapshot, key: string): Promise<void> {
+    try {
+      this.encounterBundle ??= this.catalog.loadEncounterBundle();
+      await this.encounterBundle;
+      if (this.snapshot !== snapshot || this.briefingKey !== key || this.firstBattleKey() !== key) return;
+      const adventure = snapshot.state.adventure!;
+      // Read-only staging of the upcoming battlefield. Never dispatch, save, advance turns,
+      // or replace the authoritative snapshot; actual combat starts after the dialogue.
+      const encounter = buildAdventureEncounter(PRODUCTION_CONTENT.pack, { ...adventure, phase: "combat" });
+      const preview = createCombat(encounter.definition, encounter.seed).state;
+      this.clearBriefingBackdrop();
+      this.ui.setVisible(false);
+      this.characterDetail.close();
+      this.root.dataset.screen = "combat";
+      this.briefingBackdrop = new BattleController(this.app, this.catalog, {
+        ...encounter, state: preview, history: [], controlledActorIds: new Set<string>(),
+        onIntent: () => false,
+        session: { connection: "connected", controllerNames: {}, members: Object.values(adventure.party.members) },
+      });
+    } catch {
+      if (this.snapshot !== snapshot || this.briefingKey !== key) return;
+      this.sceneUi.close();
+      this.briefingKey = null;
+      this.encounterBundle = null;
+      this.clearBriefingBackdrop();
+      void this.renderSnapshot(snapshot);
+      this.ui.reportError("전장을 불러오지 못했습니다. 전투 시작을 다시 선택해주세요.");
+    }
+  }
+
   private firstBattleKey(): string | null {
     const state = this.snapshot?.state;
     const adventure = state?.adventure;
@@ -644,11 +728,14 @@ export class AdventureController {
         onFinish: result => {
           if (this.briefingKey !== key || this.firstBattleKey() !== key) return;
           this.briefingKey = null;
+          this.clearBriefingBackdrop();
+          if (this.snapshot) void this.renderSnapshot(this.snapshot);
           if (result === "cancelled") { this.ui.focusDeparture(); return; }
           this.completedBriefingKey = key;
           this.requestDeparture();
         },
       });
+      if (this.snapshot) void this.renderBriefingBackdrop(this.snapshot, key);
       return;
     }
     const client = this.client;
@@ -665,7 +752,11 @@ export class AdventureController {
   }
 
   public destroy(): void {
+    this.briefingKey = null;
     this.sceneUi.close();
+    this.gatedSceneKey = null;
+    this.sceneCommitPending = false;
+    this.clearBriefingBackdrop();
     this.characterDetail.destroy();
     this.battle?.destroy();
     this.client?.destroy();
