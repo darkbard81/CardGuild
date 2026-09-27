@@ -1,5 +1,14 @@
 {
   "front": "Create one production CardGuild full-body FRONT standee, one character only. Follow art/STYLE.md: upright 2D hyper detailed Japanese anime / cel-painted game character; crisp dark inner linework, thick pure white cutout outline around entire silhouette; upper-left lighting, NO ground shadow, no floor, no perspective, transparent alpha background. Adult female guild training android, clearly adult face and proportions, very large massive bust under fully covering ivory and dark-green mechanical training armor, articulated brass joints and hands, short silver bob, teal eyes, small gold guild emblem, sturdy boots, padded articulated gloves for grappling. Nonsexual neutral ready stance, both feet visible on same baseline, hands separated readable. Front-facing full body head to boots entirely inside portrait canvas with generous transparent margin. No text, no frame, no watermark, no second view. Consistent CardGuild restrained ivory/brass/forest-green palette. Intended normalized size256x384 anchored bottom center. Generate FRONT only, later back must match this exact character.",
   "back": "Reference art/STYLE.md CardGuild. Use attached front image as exact identity/costume/proportions reference. Generate ONE matching fullbody true BACK view of this same adult female guild training android, silver bob, ivory/forest-green/brass articulated armor, sturdy boots, same silhouette and feet baseline, arms relaxed hands separated. Rear of head/armor/boots, no face looking back, no chest insignia on back. Upright 2D detailed Japanese anime cel-painted standee, thick pure white cutout outline, upper-left light. Full figure visible inside portrait 2:3 frame generous margins. IMPORTANT genuine transparent RGBA background: no black gradient, no checkerboard image, no glow, no floor shadows, no scenery. Back only, no text.",
-  "backReference": "/home/deck/Documents/CardGuild/art/source/actors/enemy/android-trainee/front.png"
+  "backReference": "/home/deck/Documents/CardGuild/art/source/actors/enemy/android-trainee/front.png",
+  "reconstruction": {
+    "date": "2026-09-27",
+    "frontInput": "art/processed/qc/actors/enemy/android-trainee/front.jpeg",
+    "backInput": "art/processed/qc/actors/enemy/android-trainee/back.png",
+    "frontInputSha256": "e2bfe37a406e2a7f39a68592abb5ec3438b10628cb0af142ce929e36d1036c12",
+    "backInputSha256": "5bbe6d9929493dfe413f09fc91d09e04395b21b8c5dab3f602bc8ac63e5ca883",
+    "processing": "JPEG decoded to RGBA PNG; exterior-connected near-white background removed using the existing build-assets thresholds (minimum RGB > 210, channel spread < 30). Back PNG alpha preserved. Front-left/back-right 2048x1536 transparent source sheet; existing shared-scale 256x384 bottom-center normalization.",
+    "originalPrompts": "front/back prompt fields describe the previous generated artwork; this reconstruction uses supplied replacement images without generative changes."
+  }
 }

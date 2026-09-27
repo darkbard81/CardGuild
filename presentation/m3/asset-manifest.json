@@ -2152,8 +2152,8 @@
       "displayHeight": 132,
       "ink": {
         "top": 0.0625,
-        "left": 0.1797,
-        "width": 0.6445,
+        "left": 0.2695,
+        "width": 0.4648,
         "height": 0.9375
       }
     },
@@ -2171,10 +2171,10 @@
       },
       "displayHeight": 132,
       "ink": {
-        "top": 0.0677,
-        "left": 0.1797,
-        "width": 0.6445,
-        "height": 0.9323
+        "top": 0.0599,
+        "left": 0.25,
+        "width": 0.5039,
+        "height": 0.9401
       }
     },
     "ui.card.vicious-swing": {
