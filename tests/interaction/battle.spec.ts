@@ -131,7 +131,7 @@ test("U-TARGET invalid target retains the selected card and allows a corrected t
   const combat = base.combat!;
   const zones = combat.cardZones[HERO]!;
   const state = { ...base, combat: { ...combat,
-    actors: { ...combat.actors, "slime-trainee": { ...combat.actors["slime-trainee"]!, position: { x: 1, y: 1 } } },
+    actors: { ...combat.actors, "android-trainee": { ...combat.actors["android-trainee"]!, position: { x: 1, y: 1 } } },
     cardZones: { ...combat.cardZones, [HERO]: { ...zones, hand: [{ ...zones.hand[0]!, definitionId: "card.vicious-swing" }] } },
   } };
   const backend = await controlledSession(page, state);

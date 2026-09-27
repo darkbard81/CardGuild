@@ -590,6 +590,19 @@ export function validateContentPackSemantics(
     }
     const range = scenario.rules?.partySize;
     if (range && range.min > range.max) addIssue(context, "scenarios", `${prefix}.rules.partySize`, "INVALID_PARTY_SIZE", "Scenario party minimum exceeds maximum.", scenario.id);
+    const capability = scenario.rules?.innateActionOverride;
+    if (capability) {
+      const placement = scenario.placements.find(p => p.instanceId === capability.actorId);
+      const actor = source.actors.find(a => a.id === placement?.actorDefinitionId);
+      if (!actor || capability.actionIds.some(id => !actor.innateActionIds.includes(id))) {
+        addIssue(context, "scenarios", `${prefix}.rules.innateActionOverride`, "INVALID_CAPABILITY_OVERRIDE", "Override requires a placed actor and a subset of its innate actions.", scenario.id);
+      }
+    }
+    const guarantee = scenario.rules?.guaranteedCheck;
+    if (guarantee && (!scenario.placements.some(p => p.instanceId === guarantee.targetActorId)
+      || !["check", "recall-knowledge"].includes(source.actions.find(a => a.id === guarantee.actionId)?.resolution.kind ?? ""))) {
+      addIssue(context, "scenarios", `${prefix}.rules.guaranteedCheck`, "INVALID_GUARANTEED_CHECK", "Guaranteed check requires a placed target and a check action.", scenario.id);
+    }
     const opening = scenario.rules?.opening;
     if (opening) {
       const placement = scenario.placements.find(p => p.instanceId === opening.actorId);

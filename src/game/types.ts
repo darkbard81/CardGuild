@@ -461,6 +461,10 @@ export interface KnowledgeAttempt { readonly actorId: EntityId; readonly targetI
 
 /** Authored encounter exceptions. New modifiers belong here rather than on Actor statistics. */
 export interface ScenarioRules {
+  /** Limit a placed actor's innate capabilities for this encounter only. */
+  readonly innateActionOverride?: { readonly actorId: EntityId; readonly actionIds: readonly ActionId[] };
+  /** Override the first matching rolled check; consumed by authoritative combat state. */
+  readonly guaranteedCheck?: { readonly actionId: ActionId; readonly targetActorId: EntityId; readonly degree: DegreeOfSuccess; readonly uses: 1 };
   /** Effective combat weapon only; never writes the party loadout or inventory. */
   readonly partyWeaponOverride?: { readonly seat: number; readonly equipmentId: EquipmentId };
   /** Damage against this team requires the source to flank the target. */
@@ -485,6 +489,7 @@ export interface OpeningProgress {
 export interface CombatState {
   readonly rules?: ScenarioRules;
   readonly opening?: OpeningProgress;
+  readonly guaranteedCheckConsumed?: boolean;
   /** Authored practice protection; absent in ordinary encounters. */
   readonly partyHpFloor?: 1;
   /** Absent in older v5 snapshots: no knowledge has been earned. */
@@ -854,7 +859,7 @@ export type CombatEvent =
   | { readonly type: "FACING_CHANGED"; readonly actorId: EntityId; readonly facing: Direction }
   | {
       readonly type: "CHECK_ROLLED";
-      /** Natural result, when an authored opening overrides the effective degree. */
+      /** Natural result, when an authored rule overrides the effective degree. */
       readonly rolledDegree?: DegreeOfSuccess;
       readonly tactical?: StrikeTacticalFeedback;
       /** Whose Action this is. */

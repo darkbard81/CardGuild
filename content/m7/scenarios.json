@@ -6265,12 +6265,12 @@
     "name": "1-1 길드 연습전",
     "objective": {
       "kind": "defeat-all-enemies",
-      "description": "기본 행동과 두 장의 카드를 익히고 슬라임 연습 상대를 쓰러뜨리세요. 길드 보호: 아군 HP는 1 아래로 내려가지 않습니다."
+      "description": "기본 행동과 두 장의 카드를 익히고 훈련용 안드로이드를 쓰러뜨리세요. 길드 보호: 아군 HP는 1 아래로 내려가지 않습니다."
     },
     "placements": [
       {
-        "instanceId": "slime-trainee",
-        "actorDefinitionId": "enemy.slime-trainee",
+        "instanceId": "android-trainee",
+        "actorDefinitionId": "enemy.android-trainee",
         "team": "enemies",
         "position": {
           "x": 2,
@@ -6426,7 +6426,13 @@
       ],
       "objects": []
     },
-    "partyHpFloor": 1
+    "partyHpFloor": 1,
+    "rules": {
+      "innateActionOverride": {
+        "actorId": "android-trainee",
+        "actionIds": []
+      }
+    }
   },
   {
     "id": "encounter.prone-training",
@@ -6749,6 +6755,172 @@
       "partyWeaponOverride": {
         "seat": 1,
         "equipmentId": "training-dagger"
+      }
+    }
+  },
+  {
+    "id": "encounter.knowledge-training",
+    "name": "1-4 지식 회상 훈련",
+    "objective": {
+      "kind": "defeat-all-enemies",
+      "description": "Recall Knowledge로 안드로이드의 정보를 알아내고 캐릭터 상세를 직접 확인해보세요. 첫 지식 판정은 성공합니다. 마지막 길드 보호 훈련: 두 아군 HP 최소 1."
+    },
+    "placements": [
+      {
+        "instanceId": "android-trainee",
+        "actorDefinitionId": "enemy.android-trainee",
+        "team": "enemies",
+        "position": {
+          "x": 1,
+          "y": 1
+        },
+        "facing": "west"
+      }
+    ],
+    "partySpawnSlots": [
+      {
+        "seat": 1,
+        "position": {
+          "x": 0,
+          "y": 1
+        },
+        "facing": "east"
+      },
+      {
+        "seat": 2,
+        "position": {
+          "x": 0,
+          "y": 0
+        },
+        "facing": "east"
+      }
+    ],
+    "map": {
+      "width": 3,
+      "height": 3,
+      "tiles": [
+        {
+          "id": "road-0,0",
+          "position": {
+            "x": 0,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-1,0",
+          "position": {
+            "x": 1,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-2,0",
+          "position": {
+            "x": 2,
+            "y": 0
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-0,1",
+          "position": {
+            "x": 0,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-1,1",
+          "position": {
+            "x": 1,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-2,1",
+          "position": {
+            "x": 2,
+            "y": 1
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-0,2",
+          "position": {
+            "x": 0,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-1,2",
+          "position": {
+            "x": 1,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        },
+        {
+          "id": "road-2,2",
+          "position": {
+            "x": 2,
+            "y": 2
+          },
+          "traits": [
+            {
+              "id": "open"
+            }
+          ]
+        }
+      ],
+      "objects": []
+    },
+    "partyHpFloor": 1,
+    "rules": {
+      "partySize": {
+        "min": 2,
+        "max": 2
+      },
+      "guaranteedCheck": {
+        "actionId": "recall-knowledge",
+        "targetActorId": "android-trainee",
+        "degree": "success",
+        "uses": 1
       }
     }
   }

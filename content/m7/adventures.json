@@ -2,7 +2,7 @@
   {
     "id": "adventure.goblin-trouble",
     "name": "Goblin Trouble",
-    "description": "길드 보호 아래 슬라임과 기본 전투, 안드로이드와 상태 회복을 익힌 뒤 Aerin과 함께 모험을 계속합니다.",
+    "description": "길드 훈련 안드로이드와 네 번의 보호 훈련으로 기본 전투, 상태 회복, 협공과 지식 회상을 익힌 뒤 Aerin과 실제 모험을 시작합니다.",
     "partySize": {
       "min": 1,
       "max": 3
@@ -11,6 +11,7 @@
       "encounter.guild-practice",
       "encounter.prone-training",
       "encounter.flanking-training",
+      "encounter.knowledge-training",
       "encounter.spear-line",
       "encounter.ruined-gate",
       "encounter.goblin-chief",
@@ -210,6 +211,10 @@
       },
       {
         "afterEncounterId": "encounter.flanking-training",
+        "amount": 50
+      },
+      {
+        "afterEncounterId": "encounter.knowledge-training",
         "amount": 50
       },
       {

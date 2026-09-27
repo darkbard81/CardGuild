@@ -1,5 +1,7 @@
 # M12-6 상태 대응 훈련 (#68)
 
+이 문서의 전투 수·보호 범위·검증 수치는 #68 구현 당시 기록이다. 현재 #70 기준 보호는 1-1~1-4까지이며 [M12-8](m12-8-knowledge-training.md)의 전투 순서와 보호 종료 경계를 따른다.
+
 Production `adventure.goblin-trouble`의 두 번째 전투는 `encounter.prone-training`이다. 기존 encounter를 삭제하지 않고 첫 연습전 뒤에 삽입한다. 9개 encounter 중 1-1/1-2는 솔로 학습 구간이며, 1-2의 `rules.partySize`가 Solo를 강제한다. EXP 50을 추가하고 기존 Lv.2/Lv.3 milestone의 승리 횟수를 5/8로 옮겼다. 1-2 승리 보상 `reward.training-aerin`은 기존 `companion.aerin`을 atomic recruitment로 합류시킨다. 이후 준비 화면에서 동료의 Co-op 조작권을 허용할 수 있다. 1-3 Flanking 제작은 이 변경에 포함하지 않는다.
 
 ## 전투와 저장 계약

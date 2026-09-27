@@ -54,10 +54,11 @@ export async function beginBattle(page: Page) {
   await expect(page.getByRole("region", { name: "Tactical combat", exact: true })).toBeVisible();
 }
 
-export async function stepToCenter(page: Page) {
+export async function stepToOpenTile(page: Page) {
   await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
-  await page.mouse.click(379, 446);
-  await page.getByRole("menu", { name: "Tile 1,1", exact: true }).getByRole("menuitem", { name: /Step/ }).click();
+  // The Android may act first and occupy the center; the adjacent north tile stays open.
+  await page.mouse.click(379, 326);
+  await page.getByRole("menu", { name: "Tile 0,0", exact: true }).getByRole("menuitem", { name: /Step/ }).click();
   await page.getByText("Combat Log", { exact: true }).click();
   await expect(page.locator("#combat-log")).toContainText("Aerin used Step");
 }

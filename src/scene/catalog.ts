@@ -17,10 +17,10 @@ export const WELCOME_SCENE: SceneDefinition = {
 export const FIRST_BATTLE_SCENE: SceneDefinition = {
   id: "guild-first-battle-briefing",
   lines: [
-    { speakerId: "minerva", expressionId: "welcome", text: "첫 전투는 길드의 연습 상대인 슬라임과 함께할 거예요. 서두르지 말고, 모험가님의 힘을 하나씩 익혀보세요." },
+    { speakerId: "minerva", expressionId: "welcome", text: "첫 전투는 길드의 훈련용 안드로이드과 함께할 거예요. 서두르지 말고, 모험가님의 힘을 하나씩 익혀보세요." },
     { speakerId: "minerva", expressionId: "explain", text: "처음에는 무기로 사용하는 공격 카드 한 장과, 클래스에 맞는 준비 카드 한 장이 주어져요. 기본 공격과 이동은 카드 없이도 할 수 있답니다." },
     { speakerId: "minerva", expressionId: "explain", text: "자기 턴에는 행동을 세 번 할 수 있어요. 카드마다 필요한 행동 수가 다르니 내용을 확인해보세요. 턴을 마칠 때는 바라볼 방향도 골라주세요." },
-    { speakerId: "minerva", expressionId: "firm", text: "이번 연습전에서는 길드의 보호로 HP가 1보다 낮아지지 않아요. 이 보호는 길드의 세 연습전에만 적용된다는 점을 기억해주세요." },
+    { speakerId: "minerva", expressionId: "firm", text: "이번 연습전에서는 길드의 보호로 HP가 1보다 낮아지지 않아요. 이 보호는 길드 훈련이 끝날 때까지 적용된다는 점을 기억해주세요." },
     { speakerId: "minerva", expressionId: "cheer", text: "실수해도 괜찮아요. 무기와 카드를 직접 사용해보면서 익혀보세요. 준비되셨다면 시작해볼까요?" },
   ],
 };
@@ -37,9 +37,20 @@ export const PRONE_RECOVERY_SCENE: SceneDefinition = {
 export const FLANKING_TRAINING_SCENE: SceneDefinition = {
   id: "guild-flanking-training",
   lines: [
-    { speakerId: "minerva", expressionId: "welcome", text: "이번에는 Aerin과 협공 연습이에요. 가까이에서 상대를 위협할 수 있도록 훈련용 단검을 빌려드릴게요. 훈련이 끝나면 원래 무기로 돌아가요. 두 사람 모두 길드 보호로 HP가 1 아래로 내려가지 않아요. 이 훈련 다음 전투부터는 보호가 사라져요." },
+    { speakerId: "minerva", expressionId: "welcome", text: "이번에는 Aerin과 협공 연습이에요. 가까이에서 상대를 위협할 수 있도록 훈련용 단검을 빌려드릴게요. 훈련이 끝나면 원래 무기로 돌아가요. 두 사람 모두 길드 보호로 HP가 1 아래로 내려가지 않아요. 다음 지식 회상 훈련까지 보호가 이어져요." },
     { speakerId: "minerva", expressionId: "explain", text: "두 사람이 적의 서로 반대편에서 근접 무기나 맨손으로 위협하면 협공, Flanking이 돼요. 적을 향해 서서 안드로이드를 사이에 두도록 움직여보세요." },
     { speakerId: "minerva", expressionId: "explain", text: "협공하면 지난 훈련에서 봤던 Off-Guard가 되어 적의 AC가 2 낮아져요. 이번 안드로이드는 협공하지 않은 공격의 피해를 전부 무효화해요. 주문 피해도 같아요. 뒤에서 공격하거나 넘어뜨리는 것만으로는 부족하답니다." },
     { speakerId: "minerva", expressionId: "cheer", text: "공격하기 전에 미리보기의 Off-Guard −2, Flanking, 협공 아군 이름을 확인해보세요. 위치를 바꾸면 협공도 풀릴 수 있어요. 두 사람의 위치와 방향을 함께 살펴보세요!" },
+  ],
+};
+
+export const KNOWLEDGE_TRAINING_SCENE: SceneDefinition = {
+  id: "guild-knowledge-training",
+  lines: [
+    { speakerId: "minerva", expressionId: "welcome", text: "마지막 길드 훈련이에요. 원래 무기로 돌아왔군요. 이번에는 싸우기 전에 상대를 알아보는 법을 배워볼게요." },
+    { speakerId: "minerva", expressionId: "explain", text: "처음 보는 적의 상세 정보는 잠겨 있어요. 적을 선택하면 Ring에서 Recall Knowledge를 사용할 수 있어요." },
+    { speakerId: "minerva", expressionId: "explain", text: "Recall Knowledge는 행동 하나를 사용해 적에 대한 지식을 떠올립니다. 성공하면 적의 능력과 공격, 내성을 파티 전체가 확인할 수 있어요." },
+    { speakerId: "minerva", expressionId: "cheer", text: "이번 훈련의 첫 지식 판정은 길드가 제공한 훈련 정보로 반드시 성공해요. 성공한 뒤 안드로이드를 다시 선택해서 캐릭터 상세를 직접 열어보세요." },
+    { speakerId: "minerva", expressionId: "firm", text: "이번 훈련까지는 길드 보호로 HP가 1 아래로 내려가지 않아요. 다음 전투부터는 실제 전투입니다." },
   ],
 };

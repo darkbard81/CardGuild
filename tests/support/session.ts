@@ -7,9 +7,9 @@ import { createCampaignSave } from "../../src/server/campaign-save";
 import type { CampaignSaveRecord } from "../../src/server/persistence/types";
 
 const legacyDefinition = { ...PRODUCTION_CONTENT.adventure,
-  encounterIds: PRODUCTION_CONTENT.adventure.encounterIds.filter(id => !["encounter.prone-training", "encounter.flanking-training"].includes(id)),
+  encounterIds: PRODUCTION_CONTENT.adventure.encounterIds.filter(id => !["encounter.prone-training", "encounter.flanking-training", "encounter.knowledge-training"].includes(id)),
   rewards: PRODUCTION_CONTENT.adventure.rewards.filter(reward => reward.afterEncounterId !== "encounter.prone-training"),
-  experienceAwards: PRODUCTION_CONTENT.adventure.experienceAwards.filter(award => !["encounter.prone-training", "encounter.flanking-training"].includes(award.afterEncounterId)),
+  experienceAwards: PRODUCTION_CONTENT.adventure.experienceAwards.filter(award => !["encounter.prone-training", "encounter.flanking-training", "encounter.knowledge-training"].includes(award.afterEncounterId)),
 };
 /** Authored-party contract fixture; actual creation/start tutorials use PRODUCTION_CONTENT. */
 export const context = { pack: { ...PRODUCTION_CONTENT.pack, adventures: { ...PRODUCTION_CONTENT.pack.adventures, [legacyDefinition.id]: legacyDefinition } }, adventureId: PRODUCTION_CONTENT.adventureId };
@@ -69,13 +69,15 @@ export function reactionCheckpoint(): SessionCoreState {
   } };
   const active = act(equipped, { type: "start-encounter" });
   const combat = active.combat!;
-  const heroTurn = { ...active, combat: { ...combat, turn: { ...combat.turn,
+  const heroTurn = { ...active, combat: { ...combat,
+    actors: { ...combat.actors, [HERO]: { ...combat.actors[HERO]!, reactionAvailable: true } },
+    turn: { ...combat.turn,
     activeIndex: combat.turn.initiativeOrder.indexOf(HERO), activeActorId: HERO,
   } } };
   const ended = act(heroTurn, { type: "end-turn", facing: "east" });
   const result = dispatchServerCombatCommand(ended, {
     type: "use-action", id: "fixture-enemy-move", sequence: 0,
-    actorId: "slime-trainee", action: { kind: "basic", id: "stride" },
+    actorId: "android-trainee", action: { kind: "basic", id: "stride" },
     target: { kind: "tile", position: { x: 2, y: 2 } },
   }, context);
   if (!result.accepted || !result.state.combat?.pendingReaction) throw new Error("Reaction checkpoint did not open");

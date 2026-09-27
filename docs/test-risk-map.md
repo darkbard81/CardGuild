@@ -154,3 +154,12 @@ J-COOP uses a production recruitment-complete checkpoint and the explicit prepar
 | U-FLANK | 실제 모집 파티와 출발 전 안내, 안내만으로 행동 요청 없음, Host/Guest의 실제 보드 이동과 화면에 보이는 Flanking/아군/AC, stale preview 제거, Ranger 장비 변경 없는 출발·대여 설명·단검 상세 표시 | Interaction `flanking-training.spec.ts`, 1024×768 |
 | J-PROGRESS | 1-2 승리 → Aerin 모집 → 준비 → 1-3 안내·이동·협공 Preview·실제 공격·승리 → Spear Line 준비 | Journey `progress-coop.spec.ts`; J-COOP는 같은 1-3의 기존 조작권 연결 |
 | B-FLANK | SQLite 저장·reopen 후 1-3 임시 단검과 원래 Ranger 활/loadout/인벤토리 동시 보존 | Integration `contracts/training-weapon.test.ts` |
+
+## M12-8 지식 회상 훈련 (#70)
+
+| Risk | Contract / owner |
+| --- | --- |
+| G-KNOWLEDGE-TRAINING | 네 Android 훈련의 HP 보호/능력/장비 경계, 모든 생성 preset의 첫 보장 판정·실제 RNG·실패 결과 기록·한 번 소비·일반 판정·replay/save 위조 거부·참조 오류 — Domain `knowledge-training.test.ts`; 일반 Knowledge 계산은 기존 소유자 유지 |
+| B-KNOWLEDGE-TRAINING | 파일 SQLite reopen 후 소비/지식 보존 및 재사용 거부 — Integration `knowledge-training.test.ts` |
+| U-KNOWLEDGE-TRAINING | Host 안내 → 실제 Ring 한 번 입력 → ACK만으로 미해금 → snapshot 이후 수동 상세, Guest 조작 및 재접속 재생 방지 — Interaction `knowledge-training.spec.ts` |
+| J-PROGRESS | 기존 1-3 승리 → 원래 장비 복귀 → 1-4 Recall/직접 상세/승리 → Spear Line 보호 종료 연결 — Journey `progress-coop.spec.ts` |

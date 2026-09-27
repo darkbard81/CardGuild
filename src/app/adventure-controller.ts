@@ -1,5 +1,5 @@
 import { SceneDialogueUi } from "../dom/scene-dialogue-ui";
-import { FLANKING_TRAINING_SCENE, FIRST_BATTLE_SCENE, PRONE_RECOVERY_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
+import { KNOWLEDGE_TRAINING_SCENE, FLANKING_TRAINING_SCENE, FIRST_BATTLE_SCENE, PRONE_RECOVERY_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
 import { CoopPreparationUi } from "../dom/coop-preparation-ui";
 import { waitingGuests } from "../session";
 import type { CharacterSheetDestination } from "../dom/character-workspace";
@@ -718,7 +718,7 @@ export class AdventureController {
     if (!state || state.lifecycle !== "active" || state.combat ||
         state.hostPlayerId !== this.client?.credential.playerId ||
         adventure?.phase !== "between-encounters" ||
-        (adventure.completedEncounterIds.length > 0 && adventure.currentEncounterId !== "encounter.flanking-training") ||
+        (adventure.completedEncounterIds.length > 0 && !["encounter.flanking-training", "encounter.knowledge-training"].includes(adventure.currentEncounterId ?? "")) ||
         !adventure.currentEncounterId ||
         PRODUCTION_CONTENT.pack.scenarios[adventure.currentEncounterId]?.partyHpFloor !== 1) return null;
     return `${state.sessionId}:${adventure.currentEncounterId}`;
@@ -730,8 +730,9 @@ export class AdventureController {
     if (key && key !== this.completedBriefingKey) {
       this.briefingKey = key;
       const flanking = this.snapshot?.state.adventure?.currentEncounterId === "encounter.flanking-training";
-      this.sceneUi.open(flanking ? FLANKING_TRAINING_SCENE : FIRST_BATTLE_SCENE, SCENE_CATALOG, {
-        title: flanking ? "미네르바의 협공 안내" : "미네르바의 첫 전투 안내", finishLabel: "연습 전투 시작",
+      const knowledge = this.snapshot?.state.adventure?.currentEncounterId === "encounter.knowledge-training";
+      this.sceneUi.open(knowledge ? KNOWLEDGE_TRAINING_SCENE : flanking ? FLANKING_TRAINING_SCENE : FIRST_BATTLE_SCENE, SCENE_CATALOG, {
+        title: knowledge ? "미네르바의 지식 회상 안내" : flanking ? "미네르바의 협공 안내" : "미네르바의 첫 전투 안내", finishLabel: "연습 전투 시작",
         onFinish: result => {
           if (this.briefingKey !== key || this.departureBriefingKey() !== key) return;
           this.briefingKey = null;

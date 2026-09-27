@@ -74,14 +74,14 @@ test("U-KNOWLEDGE Ring commits one recall request and unlocks detail only on the
   await page.getByRole("button", { name: "상세 모드 · 실행으로 전환", exact: true }).click();
   await recall.click();
   await expect.poll(() => backend.requests.length).toBe(1);
-  expect(backend.requests[0]!.intent).toMatchObject({ type: "use-action", action: { kind: "basic", id: "recall-knowledge" }, target: { kind: "actor", actorId: "slime-trainee" } });
+  expect(backend.requests[0]!.intent).toMatchObject({ type: "use-action", action: { kind: "basic", id: "recall-knowledge" }, target: { kind: "actor", actorId: "android-trainee" } });
   await expect(page.getByRole("button", { name: /상세 잠김/ })).toBeVisible();
   const candidate = backend.candidate();
   backend.ack(true, candidate.revision);
   await expect(page.getByRole("button", { name: /상세 잠김/ })).toBeVisible();
-  backend.publish(candidate, [{ type: "KNOWLEDGE_RECALLED", actorId: HERO, targetId: "slime-trainee", success: true }]);
-  await expect(page.locator("#combat-log")).toContainText("길드 연습 상대 · 슬라임 상세를 파티에 공개했습니다.");
-  await page.getByRole("button", { name: "길드 연습 상대 · 슬라임 상세", exact: true }).click();
+  backend.publish(candidate, [{ type: "KNOWLEDGE_RECALLED", actorId: HERO, targetId: "android-trainee", success: true }]);
+  await expect(page.locator("#combat-log")).toContainText("길드 훈련 안드로이드 상세를 파티에 공개했습니다.");
+  await page.getByRole("button", { name: "길드 훈련 안드로이드 상세", exact: true }).click();
   await expect(page.getByRole("dialog", { name: "캐릭터 상세", exact: true })).toBeVisible();
   expect(backend.requests).toHaveLength(1);
 });

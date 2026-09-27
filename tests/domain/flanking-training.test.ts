@@ -95,7 +95,7 @@ it("G-FLANK all damage paths obey immunity; rear or Prone alone never bypass it;
   }
 });
 
-it("G-FLANK admission rejects wrong party sizes and preserves recruitment, save rules and the unprotected next battle", () => {
+it("G-FLANK admission rejects wrong party sizes and preserves recruitment, save rules and the protected knowledge training", () => {
   const ready = recruitedParty();
   const dispatch = (state: typeof ready) => dispatchSessionIntent(state, "host", { type: "start-encounter" }, context, {
     connectedPlayerIds: ["host"], effectiveControllerByMemberId: Object.fromEntries(state.partySlots.map(s => [s.memberId, "host"])),
@@ -117,9 +117,9 @@ it("G-FLANK admission rejects wrong party sizes and preserves recruitment, save 
   const forged = { ...saved, combat: { ...combat, rules: { ...combat.rules, damageRequiresFlanking: undefined } } };
   expect(() => restoreCampaignSave(saveRecord(forged), context)).toThrow();
   const won = tutorialWin(started);
-  expect(won.adventure!.currentEncounterId).toBe("encounter.spear-line");
+  expect(won.adventure!.currentEncounterId).toBe("encounter.knowledge-training");
   const next = act(won, { type: "start-encounter" });
-  expect(next.combat!.partyHpFloor).toBeUndefined();
+  expect(next.combat!.partyHpFloor).toBe(1);
   expect(next.combat!.rules?.damageRequiresFlanking).toBeUndefined();
 });
 

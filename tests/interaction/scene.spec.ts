@@ -91,7 +91,7 @@ test("U-SCENE first battle briefing cancels to preparation and skips only once a
   const start = page.getByRole("button", { name: "전투 시작", exact: true });
   const scene = page.getByRole("dialog", { name: "미네르바의 첫 전투 안내", exact: true });
   await start.click();
-  await expect(scene).toContainText("슬라임");
+  await expect(scene).toContainText("안드로이드");
   await expect(page.locator('[data-screen="combat"]')).toBeVisible();
   await expect(page.locator(".combat-stage")).toBeVisible();
   await page.screenshot({ path: test.info().outputPath("minerva-battle-overlay.png") });

@@ -78,7 +78,7 @@ it("G-SAVE reaction continuation survives restore and remains answerable after R
   const resumed = act(fresh, { type: "resume-adventure" });
   const answered = act(resumed, { type: "pass-reaction", triggerId: restored.combat!.pendingReaction!.triggerId });
   expect(answered.combat!.pendingReaction).toBeNull();
-  expect(answered.combat!.actors["slime-trainee"]!.position).toEqual({ x: 2, y: 2 });
+  expect(answered.combat!.actors["android-trainee"]!.position).toEqual({ x: 2, y: 2 });
 });
 
 it("G-SAVE unspent growth choices survive restore and continue to gate departure", () => {

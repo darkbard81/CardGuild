@@ -267,6 +267,7 @@ const combat = {
     "commandLog",
   ],
   properties: {
+    guaranteedCheckConsumed: { type: "boolean" },
     knowledge: { type: "array", items: { type: "object", additionalProperties: false,
       required: ["actorId", "targetId", "success"], properties: { actorId: nonEmptyString, targetId: nonEmptyString, success: { type: "boolean" } } } },
     version: integer,
@@ -278,6 +279,11 @@ const combat = {
     rules: {
       type: "object", additionalProperties: false,
       properties: {
+        innateActionOverride: { type: "object", additionalProperties: false, required: ["actorId", "actionIds"],
+          properties: { actorId: nonEmptyString, actionIds: { type: "array", uniqueItems: true, items: nonEmptyString } } },
+        guaranteedCheck: { type: "object", additionalProperties: false, required: ["actionId", "targetActorId", "degree", "uses"],
+          properties: { actionId: nonEmptyString, targetActorId: nonEmptyString,
+            degree: { enum: ["critical-success", "success", "failure", "critical-failure"] }, uses: { const: 1 } } },
         partyWeaponOverride: { type: "object", additionalProperties: false, required: ["seat", "equipmentId"],
           properties: { seat: { type: "integer", minimum: 1, maximum: 3 }, equipmentId: nonEmptyString } },
         damageRequiresFlanking: { enum: ["heroes", "enemies"] },

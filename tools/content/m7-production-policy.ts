@@ -62,6 +62,7 @@ export const M7_PRODUCTION_POLICY = {
     "encounter.guild-practice",
     "encounter.prone-training",
     "encounter.flanking-training",
+    "encounter.knowledge-training",
     "encounter.spear-line",
     "encounter.ruined-gate",
     "encounter.goblin-chief",
@@ -73,7 +74,7 @@ export const M7_PRODUCTION_POLICY = {
    * release was tuned around: onboarding ends at Lv.2, and the elite half of the
    * Adventure is met at Lv.3.
    */
-  levelMilestones: { "6": 2, "9": 3 },
+  levelMilestones: { "7": 2, "10": 3 },
 
   /** Explicit launch roster; rules-registry additions do not automatically become selectable. */
   creationClasses: ["bard", "champion", "cleric", "druid", "fighter", "ranger", "rogue", "witch", "wizard"],
@@ -85,10 +86,10 @@ export const M7_PRODUCTION_POLICY = {
     // #67 adds five one-card starting weapon attacks; prior cards remain post-battle rewards.
     playerCards: { min: 29, max: 37 },
     enemies: { min: 15, max: 20 },
-    scenarios: { min: 8, max: 13 },
+    scenarios: { min: 8, max: 14 },
     equipment: { min: 20, max: 30 },
-    adventureEncounters: { min: 10, max: 10 },
-    tutorialPrefix: { min: 6, max: 6 },
+    adventureEncounters: { min: 11, max: 11 },
+    tutorialPrefix: { min: 7, max: 7 },
   },
 
   /**
@@ -146,7 +147,8 @@ export const M7_PRODUCTION_POLICY = {
   ],
 
   reserveActors: [
-    { id: "enemy.goblin-lackey", reason: "The first production encounter now uses the protected slime practice; retained for the staged recruitment slice.", followUp: "#67" },
+    { id: "enemy.slime-trainee", reason: "Android now hosts all four guild training encounters; former practice enemy retained as reserve.", followUp: "#70" },
+    { id: "enemy.goblin-lackey", reason: "The first production encounter now uses the protected Android practice; retained for the staged recruitment slice.", followUp: "#67" },
     {
       id: "enemy.cave-spider",
       reason: "Placed only in encounter.web-hollow, a reserved Scenario.",

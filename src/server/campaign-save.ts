@@ -245,8 +245,12 @@ function validateCombat(save: CampaignSaveV5, context: SessionAuthorityContext):
   }
   const authoredRules = context.pack.scenarios[combat.scenarioId]?.rules;
   if (stableSerialize(combat.rules) !== stableSerialize(authoredRules)) corrupt("Saved combat rules do not match their authored scenario.");
+  const capability = authoredRules?.innateActionOverride;
+  if (capability && stableSerialize(combat.actors[capability.actorId]?.innateActionIds) !== stableSerialize(capability.actionIds)) {
+    corrupt("Saved innate capabilities do not match their authored override.");
+  }
   if (Boolean(combat.opening) !== Boolean(authoredRules?.opening)) corrupt("Saved opening progress does not match the scenario.");
-  if (authoredRules?.opening || authoredRules?.damageRequiresFlanking || authoredRules?.partyWeaponOverride) {
+  if (authoredRules?.opening || authoredRules?.damageRequiresFlanking || authoredRules?.partyWeaponOverride || authoredRules?.guaranteedCheck) {
     try {
       const setup = buildAdventureEncounter(context.pack, adventure);
       const replayed = replayCombat(setup.definition, createCombatReplay(combat)).state;

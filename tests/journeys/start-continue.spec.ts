@@ -1,15 +1,15 @@
-import { test, expect, newAdventure, beginBattle, stepToCenter, signIn, endTurn } from "../support/journey";
+import { test, expect, newAdventure, beginBattle, stepToOpenTile, signIn, endTurn } from "../support/journey";
 
 test("J-START first entry, authentication, Minerva welcome, solo character creation and the first real combat action", async ({ page, server }) => {
   await newAdventure(page, server.origin, true);
   await beginBattle(page);
-  await stepToCenter(page);
+  await stepToOpenTile(page);
 });
 
 test("J-CONTINUE approved progress survives server restart and a fresh browser can Resume and act", async ({ page, browser, server }) => {
   await newAdventure(page, server.origin);
   await beginBattle(page);
-  await stepToCenter(page);
+  await stepToOpenTile(page);
   await page.close();
   await server.stop("SIGKILL");
   await server.start();

@@ -16,7 +16,7 @@ test("J-PROGRESS Prone recovery, recruitment, real Flanking victory and unprotec
   await page.getByRole("button", { name: "모험 이어가기", exact: true }).click();
   await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
   await page.mouse.click(499, 504);
-  await page.getByRole("menu", { name: "길드 연습 상대 · 슬라임", exact: true }).getByRole("menuitem", { name: /^Strike / }).click();
+  await page.getByRole("menu", { name: "길드 훈련 안드로이드", exact: true }).getByRole("menuitem", { name: /^Strike / }).click();
   await expect(page.getByRole("heading", { name: "Choose one reward", exact: true })).toBeVisible();
   await page.getByRole("button", { name: /Brace Behind Cover/ }).click();
   await page.getByRole("button", { name: "이 보상 획득", exact: true }).click();
@@ -95,8 +95,56 @@ test("J-PROGRESS Prone recovery, recruitment, real Flanking victory and unprotec
     await expect.poll(async () => await departure.isVisible() || await end.isEnabled()).toBe(true);
   }
   await expect(departure).toBeVisible();
+  expect(snapshots.at(-1)!.state.adventure!.currentEncounterId).toBe("encounter.knowledge-training");
+  await departure.click();
+  await page.getByRole("dialog", { name: "미네르바의 지식 회상 안내", exact: true }).getByRole("button", { name: "건너뛰기", exact: true }).click();
+  await expect.poll(() => snapshots.at(-1)?.state.combat?.scenarioId).toBe("encounter.knowledge-training");
+  await expect(end).toBeEnabled();
+  expect(snapshots.at(-1)!.state.combat!.actors["party.hero-1"]!.equipmentIds).toContain("halberd");
+  expect(snapshots.at(-1)!.state.combat!.actors["party.hero-1"]!.equipmentIds).not.toContain("training-dagger");
+  await page.mouse.click(379, 446);
+  await expect(page.getByRole("menuitem", { name: /상세 잠김/ })).toBeVisible();
+  await page.getByRole("menuitem", { name: /Recall Knowledge/ }).click();
+  await expect.poll(() => snapshots.at(-1)?.state.combat?.guaranteedCheckConsumed).toBe(true);
+  await expect(end).toBeEnabled();
+  await page.mouse.click(379, 446);
+  await page.getByRole("menuitem", { name: /^캐릭터 상세/ }).click();
+  const knowledgeDetail = page.getByRole("dialog", { name: "캐릭터 상세", exact: true });
+  await expect(knowledgeDetail).toContainText("길드 훈련 안드로이드");
+  await page.keyboard.press("Escape");
+  for (let action = 0; action < 24 && !await departure.isVisible(); action++) {
+    await expect.poll(async () => await departure.isVisible() || await end.isEnabled()).toBe(true);
+    if (await departure.isVisible()) break;
+    const combat = snapshots.at(-1)!.state.combat!;
+    const actor = combat.actors[combat.turn.activeActorId]!;
+    const target = combat.actors["android-trainee"]!;
+    const point = (p: { x: number; y: number }) => ({ x: 379 + 120 * (p.x - p.y), y: 326 + 60 * (p.x + p.y) });
+    const enemyPoint = point(target.position);
+    if (await page.getByLabel("Action available", { exact: true }).count() === 0) {
+      const previous = snapshots.at(-1)!.revision;
+      await page.mouse.click(enemyPoint.x, enemyPoint.y);
+      await expect.poll(() => snapshots.at(-1)!.revision).toBeGreaterThan(previous);
+      continue;
+    }
+    if (actor.conditions.some(c => c.id === "prone")) {
+      const self = point(actor.position);
+      await page.mouse.click(self.x, self.y);
+      await page.getByRole("menuitem", { name: /^Stand / }).click();
+    } else {
+      await page.mouse.click(enemyPoint.x, enemyPoint.y);
+      const strike = page.getByRole("menuitem", { name: /^Strike / });
+      if (await strike.isEnabled()) await strike.click();
+      else { await page.keyboard.press("Escape"); await endTurn(page); }
+    }
+    await expect.poll(async () => await departure.isVisible() || await end.isEnabled()).toBe(true);
+  }
+  await expect(departure).toBeVisible();
   expect(snapshots.at(-1)!.state.adventure!.currentEncounterId).toBe("encounter.spear-line");
   await expect(page.getByRole("heading", { name: "Spear Line", exact: true })).toBeVisible();
+  await departure.click();
+  await expect.poll(() => snapshots.at(-1)?.state.combat?.scenarioId).toBe("encounter.spear-line");
+  expect(snapshots.at(-1)!.state.combat!.partyHpFloor).toBeUndefined();
+  expect(snapshots.at(-1)!.state.combat!.rules).toBeUndefined();
 });
 
 test("J-COOP two browsers join, claim, play and restore guest control after leaving", async ({ page: host, browser, server }) => {

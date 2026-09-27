@@ -2,7 +2,7 @@
 
 Production 순서는 `guild-practice → prone-training → Aerin 모집 → flanking-training → spear-line ...`이다. 기존 encounter를 유지하고 세 번째에 3×3 open grid를 추가했다. 기존 `enemy.android-trainee` 한 체와 `companion.aerin → hero.aerin`을 재사용하며 신규 Actor/아트는 없다. 초기 두 아군은 같은 편에서 시작하므로 이동 없이 협공이 성립하지 않는다. 출발은 2인만 허용한다.
 
-1-3 보상은 EXP 50이며 별도 선택 보상은 없다. 승리하면 Spear Line 준비로 이동한다. 전체 10 encounter, tutorial prefix 6개, 기존 Lv.2/Lv.3 milestone은 6/9승으로 이동했다. 두 캐릭터의 실제 identity·성장 및 기존 Host/Guest 조작권을 그대로 전달한다. 저장 loadout은 유지하고 아래 임시 무기 규칙만 Combat에 적용한다.
+1-3 보상은 EXP 50이며 별도 선택 보상은 없다. 승리하면 1-4 지식 회상 훈련 준비로 이동한다. #70 추가 후 전체 11 encounter, tutorial prefix 7개, Lv.2/Lv.3 milestone은 7/10승이다. 두 캐릭터의 실제 identity·성장 및 기존 Host/Guest 조작권을 그대로 전달한다. 저장 loadout은 유지하고 아래 임시 무기 규칙만 Combat에 적용한다.
 
 ## 피해와 보호
 
@@ -10,7 +10,7 @@ Production 순서는 `guild-practice → prone-training → Aerin 모집 → fla
 
 기본 Strike, 카드 Strike, 판정형/직접 피해 주문, 반응 공격은 공통 피해 적용 경로를 사용한다. 면역은 피해만 막는다. 행동/카드/반응 소비와 명중·피해 RNG는 그대로이며 비피해 효과는 그대로 처리한다. 피해마다 현재 관계를 확인하고 `DAMAGE_DEALT.amount: 0`, `preventedBy: "requires-flanking"`을 기록한다. Preview와 실행은 같은 피해 정책을 공유한다. 무효인 Strike는 Damage 0–0과 한국어 이유를 표시하고 주문도 이유를 표시한다. 전투 로그에도 협공 필요를 표시한다.
 
-`partyHpFloor: 1`은 주인공과 Aerin 모두에게 적용한다. 다음 Spear Line에는 피해 면역과 HP 보호가 모두 없다. 안드로이드의 AI와 능력치는 1-2의 기존 정의 그대로다.
+`partyHpFloor: 1`은 주인공과 Aerin 모두에게 적용한다. 다음 1-4에는 HP 보호만 유지되고 피해 면역은 없다. 이후 Spear Line부터 HP 보호도 없다. 안드로이드의 AI와 능력치는 1-2의 기존 정의 그대로다.
 
 ## 안내와 임시 훈련용 단검
 
@@ -20,7 +20,7 @@ Production 순서는 `guild-practice → prone-training → Aerin 모집 → fla
 
 Combat bridge는 실제 loadout을 먼저 검증한 뒤, 전투 구성에만 쓰는 복사본의 weapon을 단검으로 지정한다. Actor의 유효 장비·무기 카드·공격 수치는 이 복사본으로 함께 산출한다. AdventureState의 파티 장비, 원래 활, inventory, 준비 카드는 변경하지 않는다. 원래 무기의 자동 카드는 이 전투 동안 단검의 자동 카드로 대체되고, 저장된 준비 카드는 유지되어 무기 조건에 따라 사용 가능 여부가 결정된다. 단검은 보상이나 영구 소유 장비로 지급하지 않는다.
 
-미네르바는 단검 대여와 원래 무기로의 복귀를 안내한다. Ranger는 활 해제 없이 출발한다. 저장/Resume는 이미 확정된 CombatState의 단검과 덱을 그대로 복구하며, 다음 Spear Line을 구성할 때 원래 저장된 무기와 덱을 다시 사용한다. 준비 화면의 장비는 계속 원래 무기를, 전투 상세는 현재의 Training Dagger를 표시한다. 동료가 근접 위협을 만들지 못하는 별도 loadout을 선택한 경우의 출발 검사는 유지한다.
+미네르바는 단검 대여와 원래 무기로의 복귀를 안내한다. Ranger는 활 해제 없이 출발한다. 저장/Resume는 이미 확정된 CombatState의 단검과 덱을 그대로 복구하며, 다음 1-4 지식 회상 훈련을 구성할 때 원래 저장된 무기와 덱을 다시 사용한다. 준비 화면의 장비는 계속 원래 무기를, 전투 상세는 현재의 Training Dagger를 표시한다. 동료가 근접 위협을 만들지 못하는 별도 loadout을 선택한 경우의 출발 검사는 유지한다.
 
 ## 저장과 검증
 

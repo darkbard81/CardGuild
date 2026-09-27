@@ -16,7 +16,7 @@ export function nearVictorySave(databasePath: string, accountId: string) {
   const combat = playing.combat!;
   const state = { ...playing, combat: { ...combat,
     turn: { ...combat.turn, activeActorId: HERO, activeIndex: combat.turn.initiativeOrder.indexOf(HERO) },
-    actors: { ...combat.actors, "slime-trainee": { ...combat.actors["slime-trainee"]!, hp: 1 } },
+    actors: { ...combat.actors, "android-trainee": { ...combat.actors["android-trainee"]!, hp: 1 } },
   } };
   persistCheckpoint(databasePath, accountId, state, "progress-checkpoint");
 }

@@ -62,6 +62,7 @@ import type {
 interface CombatDraft {
   rules?: CombatState["rules"];
   opening?: CombatState["opening"];
+  guaranteedCheckConsumed?: boolean;
   partyHpFloor?: 1;
   knowledge?: CombatState["knowledge"];
   version: 6;
@@ -206,6 +207,16 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
       },
     ]),
   );
+  const capability = scenario.rules?.innateActionOverride;
+  if (capability) {
+    const actor = actors[capability.actorId];
+    if (!actor || capability.actionIds.some(id => !actor.innateActionIds.includes(id))) throw new Error("Invalid innate capability override.");
+    actors[actor.id] = { ...actor, innateActionIds: [...capability.actionIds] };
+  }
+  const guarantee = scenario.rules?.guaranteedCheck;
+  if (guarantee && (!actors[guarantee.targetActorId] || !["check", "recall-knowledge"].includes(content.actions[guarantee.actionId]?.resolution.kind ?? ""))) {
+    throw new Error("Guaranteed check requires a placed target and check action.");
+  }
   const events: CombatEvent[] = [{ type: "COMBAT_STARTED", scenarioId: scenario.id, seed }];
   const cardZones: Record<string, CardZones> = {};
 
@@ -256,6 +267,7 @@ export function createCombat(definition: CombatDefinition, seed: number): Combat
   const state: CombatState = {
     version: 6,
     ...(scenario.rules ? { rules: { ...scenario.rules, ...(scenario.rules.opening ? { opening: { ...scenario.rules.opening } } : {}) } } : {}),
+    ...(guarantee ? { guaranteedCheckConsumed: false } : {}),
     ...(opening ? { opening: { phase: "pending" as const, targetActorId: targets[0]!.id, regularInitiativeOrder } } : {}),
     scenarioId: scenario.id,
     ...(scenario.partyHpFloor === undefined ? {} : { partyHpFloor: scenario.partyHpFloor }),
@@ -642,7 +654,10 @@ function rollPlannedCheck(
 ): DegreeOfSuccess {
   const result = rollCheck(draft.rng, check.modifier, check.dc);
   draft.rng = result.rng;
-  const authoredDegree = draft.opening?.phase === "pending" ? draft.rules?.opening?.degree : undefined;
+  const guarantee = draft.rules?.guaranteedCheck;
+  const matches = guarantee && !draft.guaranteedCheckConsumed && plan.actionId === guarantee.actionId && plan.targetActorId === guarantee.targetActorId;
+  const authoredDegree = draft.opening?.phase === "pending" ? draft.rules?.opening?.degree : matches ? guarantee.degree : undefined;
+  if (matches) draft.guaranteedCheckConsumed = true;
   events.push({
     type: "CHECK_ROLLED",
     actionActorId: plan.actionActorId,
