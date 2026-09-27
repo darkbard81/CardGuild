@@ -17,7 +17,7 @@ export const WELCOME_SCENE: SceneDefinition = {
 export const FIRST_BATTLE_SCENE: SceneDefinition = {
   id: "guild-first-battle-briefing",
   lines: [
-    { speakerId: "minerva", expressionId: "welcome", text: "첫 전투는 길드의 훈련용 안드로이드과 함께할 거예요. 서두르지 말고, 모험가님의 힘을 하나씩 익혀보세요." },
+    { speakerId: "minerva", expressionId: "welcome", text: "첫 전투는 길드의 훈련용 안드로이드와 함께할 거예요. 서두르지 말고, 모험가님의 힘을 하나씩 익혀보세요." },
     { speakerId: "minerva", expressionId: "explain", text: "처음에는 무기로 사용하는 공격 카드 한 장과, 클래스에 맞는 준비 카드 한 장이 주어져요. 기본 공격과 이동은 카드 없이도 할 수 있답니다." },
     { speakerId: "minerva", expressionId: "explain", text: "자기 턴에는 행동을 세 번 할 수 있어요. 카드마다 필요한 행동 수가 다르니 내용을 확인해보세요. 턴을 마칠 때는 바라볼 방향도 골라주세요." },
     { speakerId: "minerva", expressionId: "firm", text: "이번 연습전에서는 길드의 보호로 HP가 1보다 낮아지지 않아요. 이 보호는 길드 훈련이 끝날 때까지 적용된다는 점을 기억해주세요." },
