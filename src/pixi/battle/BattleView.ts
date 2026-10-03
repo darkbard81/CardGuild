@@ -20,6 +20,7 @@ import type { BoardFrame, BoardSafeArea, BoardViewConfig } from "./BoardViewConf
 import { DEFAULT_BOARD_VIEW_CONFIG, ZERO_BOARD_SAFE_AREA } from "./BoardViewConfig";
 import { ObjectRenderer } from "./ObjectRenderer";
 import { TacticalOverlayRenderer } from "./TacticalOverlayRenderer";
+import { TerrainOcclusion } from "./TerrainOcclusion";
 import { TerrainRenderer, type SortableVisual } from "./TerrainRenderer";
 
 /**
@@ -108,6 +109,7 @@ export class BattleView {
    * square cell a 2:1 diamond instead of a rotated rectangle. Only the board is in here;
    * standees are laid out against the same projection but stay upright on their own layer.
    */
+  private readonly backgroundSprite = new Sprite({ label: "encounter-background", eventMode: "none" });
   private readonly boardCameraRoot = new Container({ label: "boardCameraRoot" });
   private readonly boardSquashRoot = new Container({ label: "boardSquashRoot" });
   private readonly boardTurnRoot = new Container({ label: "boardTurnRoot" });
@@ -129,6 +131,8 @@ export class BattleView {
   private readonly terrainRenderer: TerrainRenderer;
   private readonly objectRenderer: ObjectRenderer;
   private readonly actorRenderer: ActorRenderer;
+  private readonly terrainOcclusion = new TerrainOcclusion();
+  private terrainOcclusionEnabled = true;
   private readonly tacticalRenderer = new TacticalOverlayRenderer();
   private readonly camera: BattleCamera;
   private readonly animations: AnimationRecord[] = [];
@@ -211,7 +215,7 @@ export class BattleView {
 
   public constructor(
     private readonly app: Application,
-    catalog: AssetCatalog,
+    private readonly catalog: AssetCatalog,
     private readonly handlers: BattleViewHandlers,
     config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
   ) {
@@ -226,6 +230,7 @@ export class BattleView {
     this.boardCameraRoot.addChild(this.boardSquashRoot);
     this.boardFloorLayer.addChild(this.boardCameraRoot);
     this.scene.addChild(
+      this.backgroundSprite,
       this.boardFloorLayer,
       this.boardOverlayLayer,
       this.propLayer,
@@ -285,6 +290,10 @@ export class BattleView {
       this.hoverPosition = null;
     }
 
+    this.backgroundSprite.texture = this.catalog.backgroundTexture(state.scenarioId) ?? Texture.EMPTY;
+    this.backgroundSprite.visible = this.backgroundSprite.texture !== Texture.EMPTY;
+    this.backgroundSprite.alpha = 0.65;
+    this.terrainOcclusion.clear();
     this.depthRenderLayer.detachAll();
     // The board texture is destroyed and rebuilt when the map changes size, so let go of
     // it before asking for the new one rather than leaving a sprite bound to a dead page.
@@ -298,11 +307,15 @@ export class BattleView {
       this.boardTurnRoot.addChild(this.boardSprite);
     }
     this.boardSprite.texture = boardTexture;
+    const elevations = this.catalog.tilemap(state.scenarioId).meta.elevations ?? [];
+    this.projection.setElevations(elevations);
+    const elevated = elevations.some(value => value > 0);
+    this.boardSprite.visible = !elevated;
     // Place the plane before anything is laid out against it, so the first frame of a new
     // encounter reads the projection it will actually be drawn with.
     this.projection.update(state.map.width, state.map.height, this.camera.placement(this.boardFrame()));
 
-    const props = [...this.terrainRenderer.renderProps(state), ...this.objectRenderer.render(state)];
+    const props = [...this.terrainRenderer.renderElevatedTiles(state), ...this.terrainRenderer.renderProps(state), ...this.objectRenderer.render(state)];
     const actors = this.actorRenderer.render(state);
     this.visuals = [];
     this.actorVisuals.clear();
@@ -363,10 +376,15 @@ export class BattleView {
     this.layoutScene();
   }
 
+  private projectionElevations(): readonly number[] {
+    return this.state ? this.catalog.tilemap(this.state.scenarioId).meta.elevations ?? [] : [];
+  }
+
   private boardFrame(): BoardFrame {
     return {
       viewportWidth: this.app.screen.width,
       viewportHeight: this.app.screen.height,
+      maxElevation: Math.max(0, ...this.projectionElevations()),
       columns: this.state?.map.width ?? 1,
       rows: this.state?.map.height ?? 1,
       // Headroom belongs to fitting the tile plane, not to the HUD occlusion rectangle
@@ -390,22 +408,44 @@ export class BattleView {
    * character on the far edge is drawn exactly as large as one on the near edge.
    */
   private placeVisual(visual: PositionedVisual): void {
-    const contact = this.projection.gridToScreen(visual.currentPosition.x + 0.5, visual.currentPosition.y + 0.5);
+    const contact = this.projection.surfaceToScreen(visual.currentPosition.x + 0.5, visual.currentPosition.y + 0.5,
+      this.projection.interpolatedElevation(visual.currentPosition.x, visual.currentPosition.y));
+    const groundContact = this.projection.gridToScreen(visual.currentPosition.x + 0.5, visual.currentPosition.y + 0.5);
     visual.display.position.copyFrom(contact);
     const scale = this.projection.getContentScale();
     visual.display.scale.set(scale);
     if (visual.screenSpace) visual.screenSpace.scale.set(scale > 0 ? 1 / scale : 1);
-    visual.display.zIndex = Math.round(contact.y * 100) + visual.layerPriority;
+    visual.display.zIndex = Math.round(groundContact.y * 100) + visual.layerPriority;
+  }
+
+  /** Preview comparison; clearing restores the original terrain without changing actors or depth. */
+  public setTerrainOcclusionEnabled(enabled: boolean): void {
+    this.terrainOcclusionEnabled = enabled;
+    if (enabled) this.updateTerrainOcclusion();
+    else this.terrainOcclusion.clear();
+  }
+
+  private updateTerrainOcclusion(): void {
+    if (!this.terrainOcclusionEnabled) return;
+    this.terrainOcclusion.update(this.visuals.flatMap(visual => visual.terrainSurface ? [{ display: visual.display, surface: visual.terrainSurface }] : []),
+      this.visuals.flatMap(visual => visual.standeeBody ? [{ display: visual.display, body: visual.standeeBody }] : []));
   }
 
   private layoutScene(): void {
     if (!this.state || this.app.screen.width <= 0 || this.app.screen.height <= 0) return;
+    if (this.backgroundSprite.visible) {
+      const texture = this.backgroundSprite.texture;
+      const scale = Math.max(this.app.screen.width / texture.width, this.app.screen.height / texture.height);
+      this.backgroundSprite.scale.set(scale);
+      this.backgroundSprite.position.set((this.app.screen.width - texture.width * scale) / 2, (this.app.screen.height - texture.height * scale) / 2);
+    }
     const placement = this.camera.placement(this.boardFrame());
     this.projection.update(this.state.map.width, this.state.map.height, placement);
     this.boardCameraRoot.position.set(placement.originX, placement.originY);
     this.boardCameraRoot.scale.set(placement.scale);
     for (const visual of this.visuals) this.placeVisual(visual);
     this.depthRenderLayer.sortRenderLayerChildren();
+    this.updateTerrainOcclusion();
     this.renderOverlay();
     this.app.stage.hitArea = new Rectangle(0, 0, this.app.screen.width, this.app.screen.height);
   }
@@ -419,6 +459,10 @@ export class BattleView {
     clearLayer(this.boardOverlayLayer);
     clearLayer(this.facingAimLayer);
     if (!this.state) return;
+    this.tacticalRenderer.attachCell = this.projectionElevations().some(value => value > 0) ? (graphic, position) => {
+      graphic.zIndex = Math.round(this.projection.gridToScreen(position.x + 0.5, position.y + 0.5).y * 100) + 5;
+      this.depthRenderLayer.attach(graphic);
+    } : undefined;
     this.tacticalRenderer.render(
       this.state,
       this.currentHighlights,
@@ -427,6 +471,7 @@ export class BattleView {
       this.boardOverlayLayer,
       this.facingAimLayer,
     );
+    this.depthRenderLayer.sortRenderLayerChildren();
   }
 
   private renderFeedback(events: readonly CombatEvent[]): void {
@@ -441,6 +486,10 @@ export class BattleView {
         .fill({ color: 0xff4d42, alpha: 0.42 })
         .stroke({ width: 4, color: 0xff8f82, alpha: 0.95 });
       this.effectLayer.addChild(flash);
+      if (this.projectionElevations().some(value => value > 0)) {
+        flash.zIndex = Math.round(this.projection.gridToScreen(actor.position.x + 0.5, actor.position.y + 0.5).y * 100) + 6;
+        this.depthRenderLayer.attach(flash);
+      }
       let elapsed = 0;
       const callback = (ticker: Ticker): void => {
         elapsed += ticker.deltaMS;
@@ -479,6 +528,7 @@ export class BattleView {
         visual.currentPosition.y = lerp(from.y, to.y, progress);
         this.placeVisual(visual);
         this.depthRenderLayer.sortRenderLayerChildren();
+        this.updateTerrainOcclusion();
         if (elapsed >= (path.length - 1) * segmentDuration) {
           visual.currentPosition = { ...path[path.length - 1] as GridPosition };
           this.placeVisual(visual);
@@ -510,6 +560,7 @@ export class BattleView {
 
   private gridAt(screenX: number, screenY: number): GridPosition | null {
     if (!this.state) return null;
+    if (this.projectionElevations().some(value => value > 0)) return this.projection.pickSurface(screenX, screenY);
     const board = this.projection.screenToGrid(screenX, screenY);
     const position = { x: Math.floor(board.x), y: Math.floor(board.y) };
     if (position.x < 0 || position.y < 0 || position.x >= this.state.map.width || position.y >= this.state.map.height) return null;
@@ -524,7 +575,8 @@ export class BattleView {
    */
   private facingPointAt(screenX: number, screenY: number): { x: number; y: number } | null {
     if (!this.state) return null;
-    const board = this.projection.screenToGrid(screenX, screenY);
+    const board = this.projectionElevations().some(value => value > 0)
+      ? this.projection.screenToSurfaceGrid(screenX, screenY) : this.projection.screenToGrid(screenX, screenY);
     return { x: board.x, y: board.y };
   }
 
@@ -646,6 +698,7 @@ export class BattleView {
     this.resizeObserver.disconnect();
     if (this.resizeFrame !== null) window.cancelAnimationFrame(this.resizeFrame);
     this.cancelAnimations();
+    this.terrainOcclusion.clear();
     this.depthRenderLayer.detachAll();
     this.app.stage.off("pointertap", this.pointerTapHandler);
     this.app.stage.off("pointermove", this.pointerMoveStageHandler);

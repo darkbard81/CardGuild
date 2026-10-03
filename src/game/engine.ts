@@ -475,7 +475,11 @@ function checkCombatOutcome(draft: CombatDraft, events: CombatEvent[]): void {
   if (draft.outcome) return;
   const heroesAlive = Object.values(draft.actors).some((actor) => actor.team === "heroes" && !actor.defeated);
   const enemiesAlive = Object.values(draft.actors).some((actor) => actor.team === "enemies" && !actor.defeated);
-  if (heroesAlive && enemiesAlive) return;
+  const goal = draft.rules?.victory;
+  const resolved = goal
+    ? goal.enemyIds.every(id => draft.actors[id]?.defeated === true) && goal.objectIds.every(id => draft.map.objects[id]?.used === true)
+    : !enemiesAlive;
+  if (heroesAlive && !resolved) return;
   draft.outcome = heroesAlive ? "victory" : "defeat";
   events.push({ type: "COMBAT_ENDED", outcome: draft.outcome });
 }
@@ -923,9 +927,9 @@ function executeInteract(
   const targetTile = Object.values(draft.map.tiles).find((tile) => tile.id === object.interaction.targetTileId);
   if (!targetTile) return;
   const traits = [
-    ...targetTile.traits.filter((trait) => trait.id !== "blocked" && trait.id !== "gate"),
+    ...targetTile.traits.filter((trait) => !["blocked", "gate", "obstacle", "open"].includes(trait.id)),
     { id: "open", sourceId: object.id },
-    { id: "gate-open", sourceId: object.id },
+    ...(object.interaction.kind === "open-gate" ? [{ id: "gate-open", sourceId: object.id }] : []),
   ];
   const tile = { ...targetTile, traits };
   draft.map = {

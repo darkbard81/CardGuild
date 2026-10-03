@@ -394,12 +394,12 @@ export class AdventureUi {
     if (state.phase === "complete") {
       this.content.append(
         element("p", "eyebrow", "Adventure Complete"),
-        element("h1", undefined, `${this.definition.name} resolved`),
-        element("p", "adventure-description", `${String(this.definition.encounterIds.length)}개 Encounter를 모두 통과했습니다. 획득한 보상은 Collection에 남습니다.`),
+        element("h1", undefined, this.definition.ending?.title ?? `${this.definition.name} resolved`),
+        element("p", "adventure-description", this.definition.ending?.description ?? `${String(this.definition.encounterIds.length)}개 Encounter를 모두 통과했습니다. 획득한 보상은 Collection에 남습니다.`),
       );
       const growth = this.growth(access);
       if (growth) this.content.append(growth);
-      this.content.append(this.actionButton("시작 화면으로", this.handlers.onExit));
+      this.content.append(this.secondaryActionButton("보상·장비 정리", () => this.handlers.onOpenCharacter()), this.actionButton("시작 화면으로", this.handlers.onExit));
       return;
     }
     if (state.phase === "failed") {

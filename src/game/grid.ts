@@ -137,6 +137,23 @@ export function findPath(
   );
 }
 
+/** Follow a legal route to a goal's neighbour, including steps away from a concave obstacle.
+ * The finite map bounds the search; movement permissions and costs stay with the ordinary search.
+ */
+export function approachAlongPath(
+  map: BattleMapState, actors: Readonly<Record<string, ActorState>>, actorId: string,
+  goal: GridPosition, legalDestinations: readonly GridPosition[],
+): GridPosition | null {
+  const actor = actors[actorId];
+  if (!actor || gridDistance(actor.position, goal) <= 5 || legalDestinations.length === 0) return null;
+  const route = [...findReachableTiles(map, actors, actorId, actor.position, map.width * map.height * 10, "land").values()]
+    .filter(node => gridDistance(node.position, goal) === 5)
+    .sort(compareNodes)[0];
+  if (!route) return null;
+  const legal = new Set(legalDestinations.map(positionKey));
+  return [...route.path].reverse().find(position => legal.has(positionKey(position))) ?? null;
+}
+
 export function canStepOnto(tile: TileState, mode: MovementMode): boolean {
   return movementCost(tile, mode) === 5 && !hasTrait(tile, "difficult");
 }

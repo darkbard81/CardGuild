@@ -3,7 +3,7 @@ import type { ActionDefinition, ActionSource, CardDefinition, CombatContent, Com
 /** Context providers may expose only these Basic actions, never arbitrary Card capabilities. */
 const CONTEXTUAL_BASIC_ACTIONS: Readonly<Record<ContextActionGroup, readonly string[]>> = {
   escape: ["stand", "escape-grab"],
-  interact: ["interact-lever"],
+  interact: ["interact-lever", "destroy-obstacle"],
   shield: ["raise-shield"],
   sustain: ["sustain-spell"],
 };

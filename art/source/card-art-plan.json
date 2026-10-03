@@ -420,6 +420,28 @@
       "sourceSha256": "e9e2a347bf3bb4fa8198b36daeca0c5a831bcd6e44f371d56a6b9085c5596e68",
       "outputSha256": "85ccc16ca4bd8e71516fd8b56007113f26f84b81d2b5a59afa09338a2babd854",
       "generatedWith": "Reused existing card.trip illustration (originally built-in image_gen via luna-gen); original prompt preserved"
+    },
+    {
+      "cardId": "card.needle-darts",
+      "assetId": "ui.card.needle-darts",
+      "classTheme": "Arcane",
+      "source": "art/local/cards/needle-darts.png",
+      "output": "public/assets/cards/needle-darts.webp",
+      "prompt": "Character-free spell illustration. CardGuild detailed cel-painted fantasy card art. Exactly three sharp silver metal needles fly in a tight group from lower left toward an iron practice target in a misty woodland clearing, thin teal magical trails, sparkling autumn leaves, dynamic diagonal composition, clear metal surfaces. No people, no body parts. Opaque full-bleed portrait illustration, exactly 1024x1536, 2:3 ratio. Keep the action readable at small sizes and bottom 20 percent low-detail for a DOM label, without empty strip. no text, no frame, no lettering, no numbers, no logo, no watermark.",
+      "generatedWith": "built-in image_gen (direct; character-free spell illustration)",
+      "sourceSha256": "275f31b15d78254d75474e1e1fbc662945b400837ab398fc97fc5026ebbbd683",
+      "outputSha256": "6b400c6162b2f14731abbb6ad2ee3e2693d2243d581bfc9387e7086cf6fa5da4"
+    },
+    {
+      "cardId": "card.shield-spell",
+      "assetId": "ui.card.shield-spell",
+      "classTheme": "Arcane",
+      "source": "art/local/cards/shield-spell.png",
+      "output": "public/assets/cards/shield-spell.webp",
+      "prompt": "Character-free spell illustration. CardGuild detailed cel-painted fantasy card art. A luminous translucent blue-white shield made of magical force floats before a peaceful timber village gate at sunrise. A single incoming practice arrow stops at its glowing hexagonal surface. Clearly a magical barrier, no physical shield, no people or body parts. Emerald and amber forest colors around the blue shield, confident protective mood. Opaque full-bleed portrait illustration, exactly 1024x1536, 2:3 ratio. Keep the action readable at small sizes and bottom 20 percent low-detail for a DOM label, without empty strip. no text, no frame, no lettering, no numbers, no logo, no watermark.",
+      "generatedWith": "built-in image_gen (direct; character-free spell illustration)",
+      "sourceSha256": "847112a3be7eafaf2cc3bfc432400889d4d931ef6410f7a679f7c9d3486d4f52",
+      "outputSha256": "5f65feaa07666db33af0bba497c9da9d56e68d3cbab7b62a0abfb0798c465066"
     }
   ]
 }

@@ -2177,6 +2177,294 @@
         "height": 0.9401
       }
     },
+    "terrain.forest-grass": {
+      "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.forest-grass"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.forest-dirt": {
+      "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.forest-dirt"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.forest-leaves": {
+      "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.forest-leaves"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "terrain.pond-water": {
+      "kind": "terrain",
+      "source": {
+        "type": "atlas",
+        "frame": "terrain.pond-water"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 128,
+      "displayHeight": 128,
+      "footprint": {
+        "width": 128,
+        "height": 128
+      }
+    },
+    "object.woodland-tree": {
+      "kind": "object",
+      "source": {
+        "type": "atlas",
+        "frame": "object.woodland-tree"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 210
+    },
+    "object.woodland-rock": {
+      "kind": "object",
+      "source": {
+        "type": "atlas",
+        "frame": "object.woodland-rock"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 78
+    },
+    "actor.dark-elf-warrior.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dark-elf-warrior/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 144,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.1016,
+        "width": 0.8008,
+        "height": 0.9401
+      }
+    },
+    "actor.dark-elf-warrior.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dark-elf-warrior/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 144,
+      "ink": {
+        "top": 0.0651,
+        "left": 0.1211,
+        "width": 0.7578,
+        "height": 0.9349
+      }
+    },
+    "actor.dark-elf-rogue.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dark-elf-rogue/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 144,
+      "ink": {
+        "top": 0.0677,
+        "left": 0.1602,
+        "width": 0.6797,
+        "height": 0.9323
+      }
+    },
+    "actor.dark-elf-rogue.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dark-elf-rogue/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 144,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.1367,
+        "width": 0.7266,
+        "height": 0.9401
+      }
+    },
+    "actor.dark-elf-archer.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dark-elf-archer/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 144,
+      "ink": {
+        "top": 0.0677,
+        "left": 0.1992,
+        "width": 0.6016,
+        "height": 0.9323
+      }
+    },
+    "actor.dark-elf-archer.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dark-elf-archer/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 144,
+      "ink": {
+        "top": 0.0625,
+        "left": 0.1563,
+        "width": 0.6914,
+        "height": 0.9375
+      }
+    },
+    "actor.dark-elf-mage.front": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dark-elf-mage/front.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 144,
+      "ink": {
+        "top": 0.0625,
+        "left": 0.1641,
+        "width": 0.6719,
+        "height": 0.9375
+      }
+    },
+    "actor.dark-elf-mage.back": {
+      "kind": "actor",
+      "source": {
+        "type": "image",
+        "path": "/assets/actors/enemy/dark-elf-mage/back.webp",
+        "width": 256,
+        "height": 384
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 144,
+      "ink": {
+        "top": 0.0599,
+        "left": 0.168,
+        "width": 0.668,
+        "height": 0.9401
+      }
+    },
+    "ui.equipment.sickle": {
+      "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.sickle"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayHeight": 64
+    },
+    "ui.equipment.dueling-cape": {
+      "kind": "ui",
+      "source": {
+        "type": "atlas",
+        "frame": "ui.equipment.dueling-cape"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayHeight": 64
+    },
+    "object.willow-cottage": {
+      "kind": "object",
+      "source": {
+        "type": "atlas",
+        "frame": "object.willow-cottage"
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      },
+      "displayHeight": 170
+    },
     "ui.card.vicious-swing": {
       "kind": "ui",
       "source": {
@@ -2731,6 +3019,36 @@
       },
       "displayWidth": 120,
       "displayHeight": 180
+    },
+    "ui.card.needle-darts": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/needle-darts.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
+    },
+    "ui.card.shield-spell": {
+      "kind": "ui",
+      "source": {
+        "type": "image",
+        "path": "/assets/cards/shield-spell.webp",
+        "width": 512,
+        "height": 768
+      },
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "displayWidth": 120,
+      "displayHeight": 180
     }
   },
   "actorVisuals": {
@@ -2901,6 +3219,22 @@
     "enemy.android-trainee": {
       "front": "actor.android-trainee.front",
       "back": "actor.android-trainee.back"
+    },
+    "enemy.dark-elf-warrior": {
+      "front": "actor.dark-elf-warrior.front",
+      "back": "actor.dark-elf-warrior.back"
+    },
+    "enemy.dark-elf-rogue": {
+      "front": "actor.dark-elf-rogue.front",
+      "back": "actor.dark-elf-rogue.back"
+    },
+    "enemy.dark-elf-archer": {
+      "front": "actor.dark-elf-archer.front",
+      "back": "actor.dark-elf-archer.back"
+    },
+    "enemy.dark-elf-mage": {
+      "front": "actor.dark-elf-mage.front",
+      "back": "actor.dark-elf-mage.back"
     }
   },
   "terrainVisuals": {
@@ -2914,7 +3248,10 @@
   },
   "objectVisuals": {
     "chest": "object.chest",
-    "lever": "object.lever"
+    "lever": "object.lever",
+    "tree": "object.woodland-tree",
+    "rock": "object.woodland-rock",
+    "cottage": "object.willow-cottage"
   },
   "equipmentVisuals": {
     "halberd": "ui.equipment.halberd",
@@ -2943,7 +3280,9 @@
     "warding-charm": "ui.equipment.warding-charm",
     "hexers-focus": "ui.equipment.hexers-focus",
     "bloodied-talisman": "ui.equipment.bloodied-talisman",
-    "staff": "ui.equipment.staff"
+    "staff": "ui.equipment.staff",
+    "sickle": "ui.equipment.sickle",
+    "dueling-cape": "ui.equipment.dueling-cape"
   },
   "cardVisuals": {
     "card.trip": "ui.card.trip",
@@ -2982,6 +3321,8 @@
     "card.heavy-blow": "ui.card.heavy-blow",
     "card.guarding-blow": "ui.card.guarding-blow",
     "card.piercing-shot": "ui.card.piercing-shot",
-    "card.hooking-cut": "ui.card.hooking-cut"
+    "card.hooking-cut": "ui.card.hooking-cut",
+    "card.needle-darts": "ui.card.needle-darts",
+    "card.shield-spell": "ui.card.shield-spell"
   }
 }

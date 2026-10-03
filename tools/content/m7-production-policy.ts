@@ -49,9 +49,9 @@ export const M7_PRODUCTION_POLICY = {
   /** The pack `PRODUCTION_CONTENT` is expected to select. */
   packId: "cardguild.m7",
   /** The single authoritative Adventure. */
-  adventureId: "adventure.goblin-trouble",
+  adventureId: "adventure.willowbrook",
   /** Authored recruitment integration slice; not a selectable production start. Cutover is #67. */
-  stagedAdventureIds: ["adventure.recruitment-tutorial"],
+  stagedAdventureIds: ["adventure.recruitment-tutorial", "adventure.goblin-trouble"],
 
   /**
    * The onboarding run, in order. These have to be the first encounters of the
@@ -63,18 +63,12 @@ export const M7_PRODUCTION_POLICY = {
     "encounter.prone-training",
     "encounter.flanking-training",
     "encounter.knowledge-training",
-    "encounter.spear-line",
-    "encounter.ruined-gate",
-    "encounter.goblin-chief",
   ],
 
   /**
-   * Where a party that wins straight through must stand, keyed by victory count. The EXP
-   * table is free to move as long as these two moments do not: they are the pacing the
-   * release was tuned around: onboarding ends at Lv.2, and the elite half of the
-   * Adventure is met at Lv.3.
+   * Chapter 1 ends at level 1 after four protected tutorials and four field encounters.
    */
-  levelMilestones: { "7": 2, "10": 3 },
+  levelMilestones: { "8": 1 },
 
   /** Explicit launch roster; rules-registry additions do not automatically become selectable. */
   creationClasses: ["bard", "champion", "cleric", "druid", "fighter", "ranger", "rogue", "witch", "wizard"],
@@ -84,12 +78,12 @@ export const M7_PRODUCTION_POLICY = {
     starters: { min: 4, max: 4 }, // Existing authored companions, independent of gender visuals.
     creationTemplates: { min: 9, max: 9 },
     // #67 adds five one-card starting weapon attacks; prior cards remain post-battle rewards.
-    playerCards: { min: 29, max: 37 },
-    enemies: { min: 15, max: 20 },
-    scenarios: { min: 8, max: 14 },
+    playerCards: { min: 39, max: 39 },
+    enemies: { min: 15, max: 24 },
+    scenarios: { min: 18, max: 18 },
     equipment: { min: 20, max: 30 },
-    adventureEncounters: { min: 11, max: 11 },
-    tutorialPrefix: { min: 7, max: 7 },
+    adventureEncounters: { min: 8, max: 8 },
+    tutorialPrefix: { min: 4, max: 4 },
   },
 
   /**
@@ -100,13 +94,28 @@ export const M7_PRODUCTION_POLICY = {
    * reward offer opened the last two #17 build directions.
    */
   reachableMinimum: {
-    playerCards: 33,
-    equipment: 22,
-    enemies: 14,
+    playerCards: 20,
+    equipment: 11,
+    enemies: 5,
     scenarios: 8,
   },
 
   reserveCards: [
+    {"id": "card.arcane-ward", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.battle-medicine", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.combat-grab", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.demoralize", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.dueling-parry", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.fly", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.grapple", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.harm", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.hover-step", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.iron-presence", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.reactive-strike", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.shield-press", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.slip-free", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.spirit-beacon", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "card.spirit-lance", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
     { id: "card.intimidating-strike", reason: "Level 2 capability removed from the level 1 starter; no current reward offers it.", followUp: "#21" },
     { id: "card.knockdown", reason: "Level 4 Slam Down capability removed from the level 1 starter; outside this Adventure progression.", followUp: "#21" },
     {
@@ -122,6 +131,19 @@ export const M7_PRODUCTION_POLICY = {
   ],
 
   reserveEquipment: [
+    {"id": "boots-of-fly", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "buckler", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "dueling-rapier", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "flick-mace", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "greatsword", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "hexers-focus", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "medics-kit", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "scout-leather", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "spiked-shield", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "striders-boots", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "throwing-axes", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "tower-shield", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "warding-charm", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
     {
       id: "boar-spear",
       reason: "#17 reward-grade weapon the six reward offers did not take.",
@@ -147,6 +169,19 @@ export const M7_PRODUCTION_POLICY = {
   ],
 
   reserveActors: [
+    {"id": "enemy.bone-priest", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.cult-firebrand", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.cult-hierophant", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.cult-initiate", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.dire-wolf", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.goblin-brute", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.goblin-chief", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.goblin-skirmisher", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.goblin-spearman", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.skeleton-archer", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.skeleton-guard", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.skeleton-rabble", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "enemy.wolf-yearling", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
     { id: "enemy.slime-trainee", reason: "Android now hosts all four guild training encounters; former practice enemy retained as reserve.", followUp: "#70" },
     { id: "enemy.goblin-lackey", reason: "The first production encounter now uses the protected Android practice; retained for the staged recruitment slice.", followUp: "#67" },
     {
@@ -172,6 +207,13 @@ export const M7_PRODUCTION_POLICY = {
   ],
 
   reserveScenarios: [
+    {"id": "encounter.archer-perch", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "encounter.bone-cellar", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "encounter.cult-sanctum", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "encounter.goblin-chief", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "encounter.ruined-gate", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "encounter.spear-line", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
+    {"id": "encounter.wolf-run", "reason": "Preserved legacy expedition content; the selected release ends after four Willowbrook encounters at level 1.", "followUp": "#62"},
     { id: "encounter.road-ambush", reason: "Replaced by guild practice at production entry; retained for the staged recruitment slice until full Tutorial cutover.", followUp: "#67" },
     {
       id: "encounter.web-hollow",

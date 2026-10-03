@@ -48,7 +48,7 @@ export async function readCardArtPlan(root: string): Promise<CardArtPlan> {
         entry.output !== `public/assets/cards/${slug}.webp` || ids.has(entry.cardId)) {
       throw new Error(`Invalid or duplicate card art identity/path: ${entry.cardId}`);
     }
-    for (const phrase of ["2:3 ratio", "2D hyper Detailed Chibi Anime Style", "Chibi Elf Woman has Massive bust", "no text", "no frame"]) {
+    for (const phrase of ["2:3 ratio", "no text", "no frame", ...(entry.prompt.includes("Character-free spell illustration") ? [] : ["2D hyper Detailed Chibi Anime Style", "Chibi Elf Woman has Massive bust"])]) {
       if (!entry.prompt.includes(phrase)) throw new Error(`${entry.cardId} prompt is missing: ${phrase}`);
     }
     ids.add(entry.cardId);

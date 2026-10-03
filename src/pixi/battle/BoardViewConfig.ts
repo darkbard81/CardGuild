@@ -1,3 +1,5 @@
+import { TERRAIN_ELEVATION_STEP } from "../../presentation/terrain-elevation";
+
 /**
  * Pixels reserved for the floating HUD on each edge of the canvas. The board is fitted
  * inside this rectangle so no square ever sits under an overlay panel. The values are
@@ -106,6 +108,7 @@ export const DEFAULT_BOARD_VIEW_CONFIG: BoardViewConfig = Object.freeze({
 export interface BoardFrame {
   readonly viewportWidth: number;
   readonly viewportHeight: number;
+  readonly maxElevation?: number;
   readonly columns: number;
   readonly rows: number;
   readonly safeArea: BoardSafeArea;
@@ -143,7 +146,7 @@ export function boardPlaneExtent(
   const boardHeight = Math.max(1, frame.rows) * config.boardTextureCellSize;
   return {
     width: boardWidth * cosine + boardHeight * sine,
-    height: (boardWidth * sine + boardHeight * cosine) * config.boardSquashY,
+    height: (boardWidth * sine + boardHeight * cosine) * config.boardSquashY + (frame.maxElevation ?? 0) * TERRAIN_ELEVATION_STEP,
   };
 }
 

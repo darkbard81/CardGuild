@@ -312,7 +312,7 @@ export interface TileState {
 }
 
 export interface MapInteraction {
-  readonly kind: "open-gate";
+  readonly kind: "open-gate" | "destroy-obstacle";
   readonly targetTileId: string;
 }
 
@@ -461,6 +461,8 @@ export interface KnowledgeAttempt { readonly actorId: EntityId; readonly targetI
 
 /** Authored encounter exceptions. New modifiers belong here rather than on Actor statistics. */
 export interface ScenarioRules {
+  /** Resolve every authored target; omission retains elimination victory. */
+  readonly victory?: { readonly enemyIds: readonly EntityId[]; readonly objectIds: readonly ObjectId[] };
   /** Limit a placed actor's innate capabilities for this encounter only. */
   readonly innateActionOverride?: { readonly actorId: EntityId; readonly actionIds: readonly ActionId[] };
   /** Override the first matching rolled check; consumed by authoritative combat state. */
@@ -793,7 +795,7 @@ export interface EquipmentDefinition {
 export type ActorSetup = Omit<ActorState, "reactionAvailable" | "shieldRaised" | "defeated">;
 
 export interface ObjectiveDefinition {
-  readonly kind: "defeat-all-enemies";
+  readonly kind: "defeat-all-enemies" | "resolve-objectives";
   readonly description: string;
 }
 

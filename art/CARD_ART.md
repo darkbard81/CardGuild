@@ -65,3 +65,7 @@ Historical evidence before the #60 suite replacement, verified on 2026-09-16 aft
 13 catalog tests and 15 Browser Unit tests passed. All 32 originals and WebPs
 passed dimensions, opacity, SHA-256 and mapping checks; there are zero card
 frames in the delivered atlas. The 32 WebPs total 3,752,490 bytes.
+
+## 인물이 없는 주문 그림
+
+Needle Darts와 Shield는 `Character-free spell illustration` 프롬프트로 주문 자체를 보여준다. 이 변형은 캐릭터 체형 문구 대신 금속 바늘과 마법 방패를 중심에 두며 기존 2:3, no text/no frame, 불투명 배경, 원본·출력 크기와 해시 검증은 동일하다. 직접 실행한 image_gen의 실제 출처를 기록하고 luna-gen 실행으로 표기하지 않는다.

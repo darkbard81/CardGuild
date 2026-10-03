@@ -129,7 +129,7 @@ export function authorizeSessionIntent(
     case "advance-character":
     case "set-loadout":
       if (state.lifecycle !== "active") return "Loadout is not editable outside an active adventure.";
-      if (state.combat || !["ready", "between-encounters"].includes(state.adventure?.phase ?? "")) {
+      if (state.combat || !["ready", "between-encounters", ...(intent.type === "set-loadout" ? ["complete"] : [])].includes(state.adventure?.phase ?? "")) {
         return "Loadout is not editable in the current phase.";
       }
       if (!state.adventure?.party.members[intent.memberId]) return "Party member does not exist in this adventure.";

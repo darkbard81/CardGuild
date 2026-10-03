@@ -35,7 +35,7 @@ export function facingPolygon(
       : direction === "south"
         ? [[0.5, 0.52], [0.78, 0.79], [0.22, 0.79]]
         : [[0.48, 0.5], [0.21, 0.76], [0.21, 0.24]];
-  return logical.map(([col, row]) => projection.gridToScreen(x + (col ?? 0), y + (row ?? 0)));
+  return logical.map(([col, row]) => projection.surfaceToScreen(x + (col ?? 0), y + (row ?? 0), projection.elevationAt(x, y)));
 }
 
 /**
@@ -66,6 +66,7 @@ const AIMED_ARROW = facingArrow("#fff0c4");
 const IDLE_ARROW = facingArrow("#e0b553");
 
 export class TacticalOverlayRenderer {
+  public attachCell: ((graphic: Graphics, position: GridPosition) => void) | undefined;
   public render(
     state: CombatState,
     highlights: BoardHighlights,
@@ -107,9 +108,9 @@ export class TacticalOverlayRenderer {
    * answers the board is shaped around and which one the pointer is currently giving.
    */
   private facingArrows(layer: Container, projection: BoardProjection, position: GridPosition, aimed?: Direction): void {
-    const centre = projection.gridToScreen(position.x + 0.5, position.y + 0.5);
+    const centre = projection.surfaceToScreen(position.x + 0.5, position.y + 0.5);
     for (const [direction, vector] of Object.entries(DIRECTION_VECTORS) as [Direction, GridPosition][]) {
-      const target = projection.gridToScreen(position.x + vector.x + 0.5, position.y + vector.y + 0.5);
+      const target = projection.surfaceToScreen(position.x + vector.x + 0.5, position.y + vector.y + 0.5);
       const dx = target.x - centre.x;
       const dy = target.y - centre.y;
       const span = Math.hypot(dx, dy);
@@ -145,5 +146,6 @@ export class TacticalOverlayRenderer {
       .stroke({ width, color: stroke, alpha: strokeAlpha });
     graphic.eventMode = "none";
     layer.addChild(graphic);
+    this.attachCell?.(graphic, position);
   }
 }

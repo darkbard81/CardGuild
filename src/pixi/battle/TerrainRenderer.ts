@@ -1,8 +1,11 @@
-import { type Application, Container, Graphics, RenderTexture, Sprite, type Texture } from "pixi.js";
+import { type Application, Container, Graphics, Matrix, RenderTexture, Sprite, Texture } from "pixi.js";
 
 import type { CombatState, GridPosition, TileState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
 import { pointPropHeight, tilemapAssetAt } from "../../presentation";
+import { exposedTerrainFaces, TERRAIN_ELEVATION_STEP } from "../../presentation/terrain-elevation";
+import { TerrainColumnTextures } from "./TerrainColumnTextures";
+import { TerrainSideTextures } from "./TerrainSideTexture";
 import type { BoardViewConfig } from "./BoardViewConfig";
 import { DEFAULT_BOARD_VIEW_CONFIG } from "./BoardViewConfig";
 import { gateAxis, gateTextureRotation } from "./GateOrientation";
@@ -20,6 +23,9 @@ interface TileSurface {
 
 export interface SortableVisual {
   readonly display: Container;
+  readonly terrain?: boolean;
+  readonly terrainSurface?: Sprite;
+  readonly standeeBody?: Sprite;
   readonly position: GridPosition;
   readonly layerPriority: number;
   readonly stableId: string;
@@ -46,6 +52,7 @@ export function tileStateVisual(
   tileTraits: ReadonlySet<string>,
   terrainVisuals: AssetCatalog["manifest"]["terrainVisuals"],
 ): string | null {
+  if (tileTraits.has("obstacle") || tileTraits.has("village-building")) return null;
   if (tileTraits.has("gate-open")) return terrainVisuals.gateOpen;
   if (tileTraits.has("gate")) return terrainVisuals.gateClosed;
   if (tileTraits.has("blocked")) return terrainVisuals.blocked;
@@ -59,12 +66,14 @@ export function isGateTile(tileTraits: ReadonlySet<string>): boolean {
 
 export class TerrainRenderer {
   private boardTexture: Texture | null = null;
+  private readonly sideTextures: TerrainSideTextures;
+  private readonly columnTextures: TerrainColumnTextures;
 
   public constructor(
     private readonly app: Application,
     private readonly catalog: AssetCatalog,
     private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG,
-  ) {}
+  ) { this.sideTextures = new TerrainSideTextures(app, catalog); this.columnTextures = new TerrainColumnTextures(app); }
 
   private tilesByCell(state: CombatState): ReadonlyMap<string, TileState> {
     return new Map(Object.values(state.map.tiles).map((tile) => [`${tile.position.x},${tile.position.y}`, tile]));
@@ -169,6 +178,68 @@ export class TerrainRenderer {
     return boundary;
   }
 
+  /** Elevated surfaces join actors in ground-depth order, so a nearer pillar can hide a farther actor. */
+  public renderElevatedTiles(state: CombatState): readonly SortableVisual[] {
+    const map = this.catalog.tilemap(state.scenarioId);
+    const tiles = this.tilesByCell(state);
+    const cell = this.config.boardTextureCellSize;
+    const cosine = Math.cos(this.config.boardRotationRadians);
+    const sine = Math.sin(this.config.boardRotationRadians);
+    const squash = this.config.boardSquashY;
+    const visuals: SortableVisual[] = [];
+    this.columnTextures.begin();
+    if (!map.meta.elevations?.some(value => value > 0)) {
+      this.columnTextures.finish();
+      return visuals;
+    }
+    for (let y = 0; y < map.height; y++) for (let x = 0; x < map.width; x++) {
+      const index = y * map.width + x;
+      const tile = tiles.get(`${x},${y}`);
+      const tileTraits = tile ? traits(tile) : new Set<string>();
+      const ground = tilemapAssetAt(map, "ground", index)!;
+      const stateVisual = tileStateVisual(tileTraits, this.catalog.manifest.terrainVisuals);
+      const material = stateVisual ?? ground;
+      const display = new Container({ label: `terrain-column-${x}-${y}`, eventMode: "none" });
+      const faces = exposedTerrainFaces(map, x, y);
+      // South = screen-left, east = screen-right. Crop downwards from the tile top.
+      for (const side of ["left", "right"] as const) {
+        const pixels = faces[side] * TERRAIN_ELEVATION_STEP;
+        if (pixels <= 0) continue;
+        const texture = this.sideTextures.crop(material, pixels);
+        const face = new Sprite(texture);
+        face.anchor.set(0, 0);
+        const start = side === "left" ? { x: (-cosine - sine) * cell / 2, y: (-sine + cosine) * cell / 2 * squash }
+          : { x: (cosine - sine) * cell / 2, y: (sine + cosine) * cell / 2 * squash };
+        const edge = side === "left" ? { x: cosine * cell, y: sine * cell * squash }
+          : { x: sine * cell, y: -cosine * cell * squash };
+        face.setFromMatrix(new Matrix(edge.x / 128, edge.y / 128, 0, 1, start.x, start.y));
+        face.tint = side === "left" ? 0x969696 : 0xe8e8e8;
+        display.addChild(face);
+      }
+      const top = new Container();
+      top.setFromMatrix(new Matrix(cosine, sine * squash, -sine, cosine * squash, 0, 0));
+      for (const id of [ground, tilemapAssetAt(map, "transitions", index), stateVisual]) {
+        if (!id) continue;
+        const sprite = new Sprite(this.catalog.texture(id));
+        sprite.anchor.set(0.5); sprite.setSize(cell, cell);
+        if (id === stateVisual && isGateTile(tileTraits)) sprite.rotation = gateTextureRotation(gateAxis({ x, y }, (a, b) => {
+          const neighbour = tiles.get(`${a},${b}`); return !!neighbour && isSolidTile(traits(neighbour));
+        }));
+        top.addChild(sprite);
+      }
+      top.addChild(new Graphics().rect(-cell / 2, -cell / 2, cell, cell).stroke({ width: 2, color: 0x171713, alpha: 0.78 }));
+      display.addChild(top);
+      const key = JSON.stringify([ground, tilemapAssetAt(map, "transitions", index), stateVisual, faces,
+        isGateTile(tileTraits) ? top.children.at(-2)?.rotation : 0]);
+      const terrainSurface = this.columnTextures.sprite(key, display);
+      const column = new Container({ label: `terrain-column-${x}-${y}`, eventMode: "none" });
+      column.addChild(terrainSurface);
+      visuals.push({ display: column, terrainSurface, terrain: true, position: { x, y }, layerPriority: 0, stableId: `terrain-${index}` });
+    }
+    this.columnTextures.finish();
+    return visuals;
+  }
+
   public renderProps(state: CombatState): readonly SortableVisual[] {
     const tilemap = this.catalog.tilemap(state.scenarioId);
     const stateTiles = this.tilesByCell(state);
@@ -181,7 +252,7 @@ export class TerrainRenderer {
         // Scenery only. A lever is a real map object and ObjectRenderer owns it; a wall
         // or a gate is the tile's own state and was drawn into the board texture.
         const assetId = tilemapAssetAt(tilemap, "objects", index);
-        if (!assetId || assetId === this.catalog.manifest.objectVisuals.lever) continue;
+        if (!assetId || Object.values(state.map.objects).some(object => object.position.x === col && object.position.y === row)) continue;
         visuals.push(this.prop(assetId, tile.position, tile.id, 10));
       }
     }
@@ -208,6 +279,8 @@ export class TerrainRenderer {
   }
 
   public destroy(): void {
+    this.columnTextures.destroy();
+    this.sideTextures.destroy();
     this.boardTexture?.destroy(true);
     this.boardTexture = null;
   }

@@ -717,5 +717,95 @@
       }
     ],
     "actionGrants": []
+  },
+  {
+    "id": "forest-grass",
+    "name": "풀밭",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "숲의 풀밭 바닥입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "forest-dirt",
+    "name": "흙길",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "숲을 통과하는 단단한 흙길입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "forest-leaves",
+    "name": "낙엽",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "낙엽으로 덮인 숲 바닥입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "pond-water",
+    "name": "연못",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "지상 이동이 불가능한 연못입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "obstacle",
+    "name": "파괴 장애물",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "별도 오브젝트를 파괴하면 막힌 바닥이 열립니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "woodland-tree",
+    "name": "나무",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "파괴 가능한 나무입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "woodland-rock",
+    "name": "바위",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "파괴 가능한 바위입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "village-building",
+    "name": "마을 건물",
+    "source": "cardguild",
+    "category": "terrain",
+    "description": "윌로우브룩의 보호해야 할 건물입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "metal",
+    "name": "금속",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "금속으로 이루어진 마법 효과입니다.",
+    "cardGrants": [],
+    "actionGrants": []
+  },
+  {
+    "id": "force",
+    "name": "역장",
+    "source": "pf2e-remaster",
+    "category": "action",
+    "description": "순수한 마법 역장을 만드는 효과입니다.",
+    "cardGrants": [],
+    "actionGrants": []
   }
 ]

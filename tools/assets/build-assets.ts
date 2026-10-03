@@ -77,6 +77,7 @@ interface GenerationPlan {
   readonly sources: readonly SourcePlan[];
   readonly presentation: {
     readonly terrainVisuals: Readonly<Record<string, string>>;
+    readonly groundMaterials?: Readonly<Record<string, string>>;
     readonly objectVisuals: Readonly<Record<string, string>>;
     /**
      * Dressing that no gameplay trait asks for — a chest in an empty corner. It lives in
@@ -719,11 +720,11 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
   // Tilemaps follow the pack the game actually ships (#12), so every production Scenario
   // gets one. The legacy fixture path was left behind when the runtime moved.
   const scenarios: readonly ScenarioSource[] = Object.values(PRODUCTION_CONTENT.pack.scenarioSources);
-  const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm"];
+  const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm", ...Object.values(plan.presentation.groundMaterials ?? {})];
   const transitionPalette = ["transition.web"];
   // Point props only. A wall or a gate is the tile's own state, drawn as board surface
   // from the tile's traits at runtime, so neither takes a slot on the object layer.
-  const objectPalette = ["object.lever", "object.chest"];
+  const objectPalette = ["object.lever", "object.chest", ...(plan.presentation.objectVisuals.cottage ? [plan.presentation.objectVisuals.cottage] : [])];
   const maps: Record<string, unknown> = {};
   for (const scenario of scenarios) {
     const { width, height } = scenario.map;
@@ -744,7 +745,8 @@ async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> 
       const index = y * width + x;
       if (tileIds[index] !== null) throw new Error(`${scenario.id} has duplicate tile position ${x},${y}.`);
       const traits = traitSet(tile);
-      ground[index] = traits.has("impassable") ? 2 : traits.has("difficult") ? 1 : 0;
+      const material = Object.entries(plan.presentation.groundMaterials ?? {}).find(([trait]) => traits.has(trait))?.[1];
+      ground[index] = material ? groundPalette.indexOf(material) : traits.has("impassable") ? 2 : traits.has("difficult") ? 1 : 0;
       if (traits.has("web")) transitions[index] = 0;
       tileIds[index] = tile.id;
       objectIds[index] = (objects[index] ?? -1) >= 0 ? tile.id : null;

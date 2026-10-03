@@ -1,3 +1,4 @@
+import { TERRAIN_ELEVATION_STEP } from "../../presentation/terrain-elevation";
 import type { BoardPlacement } from "./BoardProjection";
 import type { BoardFrame, BoardViewConfig } from "./BoardViewConfig";
 import {
@@ -120,7 +121,8 @@ export class BattleCamera {
    */
   public clamp(frame: BoardFrame): void {
     this.zoom = Math.max(this.defaultZoom, Math.min(this.maxZoom(frame), this.zoom));
-    const { originX, originY, scale } = this.placement(frame);
+    const { originX, scale } = this.placement(frame);
+    const originY = boardSafeBox(frame).centerY + this.panY;
     const area = boardSafeBox(frame);
     const extent = boardPlaneExtent(frame, this.config);
     const { left, top, right, bottom } = frame.safeArea;
@@ -134,7 +136,7 @@ export class BattleCamera {
     const area = boardSafeBox(frame);
     return {
       originX: area.centerX + this.panX,
-      originY: area.centerY + this.panY,
+      originY: area.centerY + this.panY + (frame.maxElevation ?? 0) * TERRAIN_ELEVATION_STEP / 2 * boardFitScale(frame, this.config) * this.zoom,
       scale: boardFitScale(frame, this.config) * this.zoom,
     };
   }

@@ -11,8 +11,8 @@
     "padding": 2
   },
   "runtimeStorage": {
-    "atlas": 35,
-    "image": 121
+    "atlas": 44,
+    "image": 131
   },
   "atlasImage": "/assets/m3-atlas.webp",
   "cardArtPlan": "art/source/card-art-plan.json",
@@ -743,6 +743,46 @@
       "runtime": "/assets/cards/hooking-cut.webp",
       "sourceSha256": "e9e2a347bf3bb4fa8198b36daeca0c5a831bcd6e44f371d56a6b9085c5596e68",
       "outputSha256": "85ccc16ca4bd8e71516fd8b56007113f26f84b81d2b5a59afa09338a2babd854",
+      "sourceSize": {
+        "width": 1024,
+        "height": 1536
+      },
+      "outputSize": {
+        "width": 512,
+        "height": 768
+      },
+      "conversion": {
+        "kernel": "lanczos3",
+        "quality": 85,
+        "effort": 6
+      }
+    },
+    "ui.card.needle-darts": {
+      "source": "art/local/cards/needle-darts.png",
+      "output": "public/assets/cards/needle-darts.webp",
+      "runtime": "/assets/cards/needle-darts.webp",
+      "sourceSha256": "275f31b15d78254d75474e1e1fbc662945b400837ab398fc97fc5026ebbbd683",
+      "outputSha256": "6b400c6162b2f14731abbb6ad2ee3e2693d2243d581bfc9387e7086cf6fa5da4",
+      "sourceSize": {
+        "width": 1024,
+        "height": 1536
+      },
+      "outputSize": {
+        "width": 512,
+        "height": 768
+      },
+      "conversion": {
+        "kernel": "lanczos3",
+        "quality": 85,
+        "effort": 6
+      }
+    },
+    "ui.card.shield-spell": {
+      "source": "art/local/cards/shield-spell.png",
+      "output": "public/assets/cards/shield-spell.webp",
+      "runtime": "/assets/cards/shield-spell.webp",
+      "sourceSha256": "847112a3be7eafaf2cc3bfc432400889d4d931ef6410f7a679f7c9d3486d4f52",
+      "outputSha256": "5f65feaa07666db33af0bba497c9da9d56e68d3cbab7b62a0abfb0798c465066",
       "sourceSize": {
         "width": 1024,
         "height": 1536
@@ -2896,6 +2936,312 @@
       "sourceIndex": 1,
       "flipX": false,
       "processingScale": 0.23654,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "terrain.forest-grass": {
+      "source": "art/source/terrain/forest-grass.png",
+      "output": "art/processed/terrain/forest-grass.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 0,
+        "top": 0,
+        "width": 256,
+        "height": 256
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 1,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "terrain.forest-dirt": {
+      "source": "art/source/terrain/forest-dirt.png",
+      "output": "art/processed/terrain/forest-dirt.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 0,
+        "top": 0,
+        "width": 256,
+        "height": 256
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 1,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "terrain.forest-leaves": {
+      "source": "art/source/terrain/forest-leaves.png",
+      "output": "art/processed/terrain/forest-leaves.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 0,
+        "top": 0,
+        "width": 256,
+        "height": 256
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 1,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "terrain.pond-water": {
+      "source": "art/source/terrain/pond-water.png",
+      "output": "art/processed/terrain/pond-water.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 0,
+        "top": 0,
+        "width": 256,
+        "height": 256
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 1,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "object.woodland-tree": {
+      "source": "art/source/objects/woodland-tree.png",
+      "output": "art/processed/objects/woodland-tree.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 27,
+        "top": 35,
+        "width": 1178,
+        "height": 1191
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.195586,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "object.woodland-rock": {
+      "source": "art/source/objects/woodland-rock.png",
+      "output": "art/processed/objects/woodland-rock.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 68,
+        "top": 72,
+        "width": 1183,
+        "height": 1075
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.194759,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dark-elf-warrior.front": {
+      "source": "art/source/actors/dark-elf-warrior-front-back.png",
+      "output": "art/processed/actors/enemy/dark-elf-warrior/front.png",
+      "runtime": "/assets/actors/enemy/dark-elf-warrior/front.webp",
+      "sourceBox": {
+        "left": 38,
+        "top": 2,
+        "width": 434,
+        "height": 763
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.47308,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dark-elf-warrior.back": {
+      "source": "art/source/actors/dark-elf-warrior-front-back.png",
+      "output": "art/processed/actors/enemy/dark-elf-warrior/back.png",
+      "runtime": "/assets/actors/enemy/dark-elf-warrior/back.webp",
+      "sourceBox": {
+        "left": 55,
+        "top": 4,
+        "width": 411,
+        "height": 758
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.47308,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dark-elf-rogue.front": {
+      "source": "art/source/actors/dark-elf-rogue-front-back.png",
+      "output": "art/processed/actors/enemy/dark-elf-rogue/front.png",
+      "runtime": "/assets/actors/enemy/dark-elf-rogue/front.webp",
+      "sourceBox": {
+        "left": 83,
+        "top": 6,
+        "width": 363,
+        "height": 744
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.480639,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dark-elf-rogue.back": {
+      "source": "art/source/actors/dark-elf-rogue-front-back.png",
+      "output": "art/processed/actors/enemy/dark-elf-rogue/back.png",
+      "runtime": "/assets/actors/enemy/dark-elf-rogue/back.webp",
+      "sourceBox": {
+        "left": 66,
+        "top": 5,
+        "width": 387,
+        "height": 751
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.480639,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dark-elf-archer.front": {
+      "source": "art/source/actors/dark-elf-archer-front-back.png",
+      "output": "art/processed/actors/enemy/dark-elf-archer/front.png",
+      "runtime": "/assets/actors/enemy/dark-elf-archer/front.webp",
+      "sourceBox": {
+        "left": 100,
+        "top": 3,
+        "width": 322,
+        "height": 751
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.47683,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dark-elf-archer.back": {
+      "source": "art/source/actors/dark-elf-archer-front-back.png",
+      "output": "art/processed/actors/enemy/dark-elf-archer/back.png",
+      "runtime": "/assets/actors/enemy/dark-elf-archer/back.webp",
+      "sourceBox": {
+        "left": 84,
+        "top": 0,
+        "width": 372,
+        "height": 757
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.47683,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dark-elf-mage.front": {
+      "source": "art/source/actors/dark-elf-mage-front-back.png",
+      "output": "art/processed/actors/enemy/dark-elf-mage/front.png",
+      "runtime": "/assets/actors/enemy/dark-elf-mage/front.webp",
+      "sourceBox": {
+        "left": 90,
+        "top": 5,
+        "width": 357,
+        "height": 748
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.481923,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "actor.dark-elf-mage.back": {
+      "source": "art/source/actors/dark-elf-mage-front-back.png",
+      "output": "art/processed/actors/enemy/dark-elf-mage/back.png",
+      "runtime": "/assets/actors/enemy/dark-elf-mage/back.webp",
+      "sourceBox": {
+        "left": 69,
+        "top": 5,
+        "width": 355,
+        "height": 749
+      },
+      "sourceIndex": 1,
+      "flipX": false,
+      "processingScale": 0.481923,
+      "anchor": {
+        "x": 0.5,
+        "y": 1
+      }
+    },
+    "ui.equipment.sickle": {
+      "source": "art/source/ui/sickle.png",
+      "output": "art/processed/ui/equipment-sickle.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 63,
+        "top": 91,
+        "width": 1160,
+        "height": 1072
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.198621,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "ui.equipment.dueling-cape": {
+      "source": "art/source/ui/dueling-cape.png",
+      "output": "art/processed/ui/equipment-dueling-cape.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 53,
+        "top": 57,
+        "width": 1159,
+        "height": 1152
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.198792,
+      "anchor": {
+        "x": 0.5,
+        "y": 0.5
+      }
+    },
+    "object.willow-cottage": {
+      "source": "art/source/objects/willow-cottage.png",
+      "output": "art/processed/objects/willow-cottage.png",
+      "runtime": "/assets/m3-atlas.webp",
+      "sourceBox": {
+        "left": 29,
+        "top": 64,
+        "width": 1196,
+        "height": 1145
+      },
+      "sourceIndex": 0,
+      "flipX": false,
+      "processingScale": 0.192642,
       "anchor": {
         "x": 0.5,
         "y": 1

@@ -1,0 +1,96 @@
+{
+  "policy": "Existing greedy hero policy, two heroes; public tutorial victory fixtures prepare the starting state. Limited evidence, not a win-rate estimate.",
+  "rows": [
+    {
+      "preset": "human.fighter",
+      "seed": 1,
+      "outcome": "victory",
+      "commands": 53,
+      "hp": [
+        13,
+        19
+      ]
+    },
+    {
+      "preset": "human.fighter",
+      "seed": 2,
+      "outcome": "victory",
+      "commands": 49,
+      "hp": [
+        14,
+        19
+      ]
+    },
+    {
+      "preset": "human.fighter",
+      "seed": 3,
+      "outcome": "victory",
+      "commands": 46,
+      "hp": [
+        14,
+        16
+      ]
+    },
+    {
+      "preset": "human.ranger",
+      "seed": 1,
+      "outcome": "defeat",
+      "commands": 80,
+      "hp": [
+        0,
+        0
+      ]
+    },
+    {
+      "preset": "human.ranger",
+      "seed": 2,
+      "outcome": "defeat",
+      "commands": 154,
+      "hp": [
+        0,
+        0
+      ]
+    },
+    {
+      "preset": "human.ranger",
+      "seed": 3,
+      "outcome": "victory",
+      "commands": 46,
+      "hp": [
+        14,
+        17
+      ]
+    },
+    {
+      "preset": "human.wizard",
+      "seed": 1,
+      "outcome": "defeat",
+      "commands": 94,
+      "hp": [
+        0,
+        0
+      ]
+    },
+    {
+      "preset": "human.wizard",
+      "seed": 2,
+      "outcome": "victory",
+      "commands": 72,
+      "hp": [
+        0,
+        13
+      ]
+    },
+    {
+      "preset": "human.wizard",
+      "seed": 3,
+      "outcome": "defeat",
+      "commands": 66,
+      "hp": [
+        0,
+        0
+      ]
+    }
+  ],
+  "evidence": "2026-10-03, final combat rules and actor stats; subsequent objective wording only. No HP floor. No stalled run."
+}

@@ -1,0 +1,47 @@
+import { expect, test } from "@playwright/test";
+import { controlledSession } from "../support/browser-backend";
+import { recruitedParty, tutorialWin, tutorialAct as act, tutorialContext as context } from "../support/tutorial";
+import { HERO } from "../support/session";
+import { buildAdventureEncounter } from "../../src/adventure";
+import { play } from "../support/combat";
+
+test("U-WILLOW hometown briefing cancels safely, enters the forest and confirms tree destruction", async ({ page }, info) => {
+  const ready = tutorialWin(tutorialWin(recruitedParty(60)));
+  const started = act(ready, { type: "start-encounter" });
+  const definition = buildAdventureEncounter(context.pack, started.adventure!).definition;
+  let combat = started.combat!;
+  for (let i = 0; i < 6 && combat.turn.activeActorId !== HERO; i++) combat = play(combat, { type: "end-turn", actorId: combat.turn.activeActorId, facing: combat.actors[combat.turn.activeActorId]!.facing }, definition);
+  combat = play(combat, { type: "use-action", actorId: HERO, action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 9, y: 16 } } }, definition);
+  const active = { ...started, combat };
+  const backend = await controlledSession(page, ready, "join", "host", "skip", context);
+  const depart = page.getByRole("button", { name: "전투 시작", exact: true });
+  const scene = page.getByRole("dialog", { name: "챕터 1 · Aerin의 고향", exact: true });
+  await depart.click(); await expect(scene).toContainText("윌로우브룩");
+  await page.keyboard.press("Escape"); await expect(scene).toHaveCount(0);
+  expect(backend.requests).toHaveLength(0);
+  await depart.click(); await scene.getByRole("button", { name: "건너뛰기", exact: true }).click();
+  await expect.poll(() => backend.requests.length).toBe(1);
+  expect(backend.requests[0]!.intent).toEqual({ type: "start-encounter" });
+  backend.candidate(); backend.ack(true, active.revision); backend.publish(active);
+  await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
+  await page.screenshot({ path: info.outputPath("willow-gameplay.png") });
+  // Pixel target from the fitted 20×20 board at the standard 1024×768 viewport.
+  await page.mouse.click(272, 491);
+  await expect(page.getByRole("menuitem", { name: /장애물 파괴/ })).toBeEnabled();
+  await page.getByRole("menuitem", { name: /장애물 파괴/ }).click();
+  await expect.poll(() => backend.requests.length).toBe(2);
+  const candidate = backend.candidate();
+  expect(backend.requests[1]!.intent).toMatchObject({ type: "use-action", action: { kind: "context", id: "destroy-obstacle" }, target: { kind: "object", objectId: "forest-tree-9-15" } });
+  backend.ack(true, candidate.revision); backend.publish(candidate);
+  await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
+  await page.mouse.click(272, 491);
+  await expect(page.getByRole("menu", { name: "Tile 9,15", exact: true }).getByRole("menuitem", { name: /^Step / })).toBeEnabled();
+  await expect(page.getByRole("menuitem", { name: /장애물 파괴/ })).toHaveCount(0);
+  await page.getByRole("menuitem", { name: /^Step / }).click();
+  await expect.poll(() => backend.requests.length).toBe(3);
+  const moved = backend.candidate();
+  expect(moved.combat!.actors[HERO]!.position).toEqual({ x: 9, y: 15 });
+  backend.ack(true, moved.revision); backend.publish(moved);
+  await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
+  await page.screenshot({ path: info.outputPath("willow-cleared.png") });
+});

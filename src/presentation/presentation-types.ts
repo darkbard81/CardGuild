@@ -75,6 +75,8 @@ export interface PresentationAssetManifest {
   readonly objectVisuals: {
     readonly chest: PresentationAssetId;
     readonly lever: PresentationAssetId;
+    readonly tree?: PresentationAssetId;
+    readonly rock?: PresentationAssetId;
   };
   readonly equipmentVisuals: Readonly<Record<string, PresentationAssetId>>;
   readonly cardVisuals: Readonly<Record<string, PresentationAssetId>>;
@@ -124,6 +126,8 @@ export interface PresentationTilemap {
     readonly objects: readonly number[];
   };
   readonly meta: {
+    /** Optional presentation height; omitted maps remain flat. */
+    readonly elevations?: readonly number[];
     readonly tileIds: readonly string[];
     readonly objectIds: readonly (string | null)[];
     readonly type: readonly string[];

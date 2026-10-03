@@ -54,3 +54,21 @@ export const KNOWLEDGE_TRAINING_SCENE: SceneDefinition = {
     { speakerId: "minerva", expressionId: "firm", text: "이번 훈련까지는 길드 보호로 HP가 1 아래로 내려가지 않아요. 다음 전투부터는 실제 전투입니다." },
   ],
 };
+
+
+export const WILLOW_RESCUE_SCENE: SceneDefinition = {
+  id: "willow-rescue-briefing",
+  lines: [
+    { text: "Aerin: 제 고향 윌로우브룩으로 가는 숲길이에요. 황동잎 용병대가 마을의 식량과 통행세를 노리고 피난길을 막았어요." },
+    { text: "마을 전령: 전사와 척후병이 길을 지키고, 궁수와 마법사가 연못 너머를 감시합니다. 이들은 계약을 위해 싸우는 다크엘프 용병들입니다." },
+    { text: "Aerin: 연못 양옆으로 돌아갈 수 있어요. 나무나 바위 옆에서 ‘장애물 파괴’를 쓰면 행동 하나로 지름길도 열 수 있어요. 물 위로는 걸을 수 없어요." },
+    { text: "길드의 보호는 끝났습니다. 휠로 전장을 확대하고 Alt+드래그나 두 손가락으로 이동하세요. 황동잎 용병대를 물리쳐 주민들의 피난길을 확보하세요." },
+  ],
+};
+
+export const CHAPTER_ONE_BRIEFINGS: Readonly<Record<string, SceneDefinition>> = {
+  "encounter.willow-rescue": WILLOW_RESCUE_SCENE,
+  "encounter.willow-dike": {"id": "willow-dike-briefing", "lines": [{"text": "Aerin: 숲길이 열렸지만 연못 둑의 두 궁수가 피난민을 겨누고 있어요. 사격진지만 무력화하면 주민들이 건널 수 있습니다."}, {"text": "연못 양 끝을 돌아 궁수 둘을 쓰러뜨리세요. 호위병과 모두 싸울 필요는 없습니다. 받은 낫을 장비하면 Trip으로 적의 발을 묶을 수 있어요."}]},
+  "encounter.willow-gate": {"id": "willow-gate-briefing", "lines": [{"text": "마을 전령: 피난문 두 곳이 나무와 바위로 막혀 있습니다. 주민들이 들어오려면 양쪽 길을 모두 열어야 합니다."}, {"text": "Aerin: 서쪽 피난문 나무와 동쪽 피난문 바위를 찾아 옆에서 장애물 파괴를 쓰세요. 적을 전멸시키는 것만으로는 끝나지 않습니다."}]},
+  "encounter.willow-square": {"id": "willow-square-briefing", "lines": [{"text": "Aerin: 집들의 불빛이 보여요. 광장의 전사 지휘관과 마법사가 계약서를 쥐고 있습니다. 둘을 쓰러뜨리면 용병대는 철수할 거예요."}, {"text": "마을 전령: 집은 주민들의 보금자리입니다. 골목과 광장을 이용해 지휘부에 접근하세요. 이 전투가 끝나면 모두 집으로 돌아갈 수 있어요."}]},
+};

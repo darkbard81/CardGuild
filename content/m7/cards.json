@@ -604,5 +604,33 @@
         "id": "attack"
       }
     ]
+  },
+  {
+    "id": "card.needle-darts",
+    "name": "Needle Darts",
+    "actionId": "needle-darts",
+    "level": 1,
+    "traits": [
+      {
+        "id": "cantrip"
+      },
+      {
+        "id": "spell"
+      }
+    ]
+  },
+  {
+    "id": "card.shield-spell",
+    "name": "Shield",
+    "actionId": "shield-spell",
+    "level": 1,
+    "traits": [
+      {
+        "id": "cantrip"
+      },
+      {
+        "id": "spell"
+      }
+    ]
   }
 ]

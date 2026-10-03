@@ -3,9 +3,26 @@
   "title": "CardGuild Content Pack v13",
   "type": "object",
   "additionalProperties": false,
-  "required": ["manifest", "traits", "conditions", "actions", "cards", "equipment", "actors", "scenarios", "adventures", "ancestries", "classes"],
+  "required": [
+    "manifest",
+    "traits",
+    "conditions",
+    "actions",
+    "cards",
+    "equipment",
+    "actors",
+    "scenarios",
+    "adventures",
+    "ancestries",
+    "classes"
+  ],
   "properties": {
-    "companions": { "type": "array", "items": { "$ref": "#/$defs/companion" } },
+    "companions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/companion"
+      }
+    },
     "creationPresets": {
       "type": "array",
       "items": {
@@ -17,7 +34,10 @@
           "appearance"
         ],
         "properties": {
-          "description": { "type": "string", "minLength": 1 },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
           "id": {
             "type": "string",
             "minLength": 1
@@ -47,49 +67,210 @@
         }
       }
     },
-    "manifest": { "$ref": "#/$defs/manifest" },
-    "traits": { "type": "array", "items": { "$ref": "#/$defs/traitDefinition" } },
-    "conditions": { "type": "array", "items": { "$ref": "#/$defs/conditionDefinition" } },
-    "actions": { "type": "array", "items": { "$ref": "#/$defs/actionDefinition" } },
-    "cards": { "type": "array", "items": { "$ref": "#/$defs/cardDefinition" } },
-    "equipment": { "type": "array", "items": { "$ref": "#/$defs/equipmentDefinition" } },
-    "actors": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/actorDefinition" } },
-    "scenarios": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/scenario" } },
-    "adventures": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/adventure" } },
-    "ancestries": {"type": "array", "items": {"$ref": "#/$defs/ancestryDefinition"}},
-    "classes": {"type": "array", "items": {"$ref": "#/$defs/classDefinition"}}
+    "manifest": {
+      "$ref": "#/$defs/manifest"
+    },
+    "traits": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/traitDefinition"
+      }
+    },
+    "conditions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/conditionDefinition"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/actionDefinition"
+      }
+    },
+    "cards": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/cardDefinition"
+      }
+    },
+    "equipment": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/equipmentDefinition"
+      }
+    },
+    "actors": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/actorDefinition"
+      }
+    },
+    "scenarios": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/scenario"
+      }
+    },
+    "adventures": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/adventure"
+      }
+    },
+    "ancestries": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/ancestryDefinition"
+      }
+    },
+    "classes": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/classDefinition"
+      }
+    }
   },
   "$defs": {
-    "companion": {"type": "object", "additionalProperties": false, "required": ["id", "actorDefinitionId", "description", "appearanceKey", "startingExperience"], "properties": {"id": {"type": "string", "minLength": 1}, "actorDefinitionId": {"type": "string", "minLength": 1}, "description": {"type": "string", "minLength": 1}, "appearanceKey": {"type": "string", "minLength": 1}, "startingExperience": {"type": "integer", "minimum": 0, "maximum": 999}}},
-    "nonEmptyString": { "type": "string", "minLength": 1 },
-    "attributeId": { "enum": ["str", "dex", "con", "int", "wis", "cha"] },
-    "proficiencyRank": { "enum": ["untrained", "trained", "expert", "master", "legendary"] },
-    "saveId": { "enum": ["fortitude", "reflex", "will"] },
-    "armorCategory": { "enum": ["unarmored", "light", "medium", "heavy"] },
-    "skillId": { "enum": ["acrobatics", "arcana", "athletics", "crafting", "deception", "diplomacy", "intimidation", "medicine", "nature", "occultism", "performance", "religion", "society", "stealth", "survival", "thievery"] },
+    "companion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "actorDefinitionId",
+        "description",
+        "appearanceKey",
+        "startingExperience"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "actorDefinitionId": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1
+        },
+        "appearanceKey": {
+          "type": "string",
+          "minLength": 1
+        },
+        "startingExperience": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999
+        }
+      }
+    },
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "attributeId": {
+      "enum": [
+        "str",
+        "dex",
+        "con",
+        "int",
+        "wis",
+        "cha"
+      ]
+    },
+    "proficiencyRank": {
+      "enum": [
+        "untrained",
+        "trained",
+        "expert",
+        "master",
+        "legendary"
+      ]
+    },
+    "saveId": {
+      "enum": [
+        "fortitude",
+        "reflex",
+        "will"
+      ]
+    },
+    "armorCategory": {
+      "enum": [
+        "unarmored",
+        "light",
+        "medium",
+        "heavy"
+      ]
+    },
+    "skillId": {
+      "enum": [
+        "acrobatics",
+        "arcana",
+        "athletics",
+        "crafting",
+        "deception",
+        "diplomacy",
+        "intimidation",
+        "medicine",
+        "nature",
+        "occultism",
+        "performance",
+        "religion",
+        "society",
+        "stealth",
+        "survival",
+        "thievery"
+      ]
+    },
     "gridPosition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["x", "y"],
+      "required": [
+        "x",
+        "y"
+      ],
       "properties": {
-        "x": { "type": "integer", "minimum": 0 },
-        "y": { "type": "integer", "minimum": 0 }
+        "x": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "y": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "traitInstance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id"],
+      "required": [
+        "id"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sourceId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "params": {
           "type": "object",
           "additionalProperties": {
             "anyOf": [
-              { "type": "string" },
-              { "type": "number" },
-              { "type": "boolean" }
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              }
             ]
           }
         }
@@ -98,76 +279,192 @@
     "conditionInstance": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "sourceId"],
+      "required": [
+        "id",
+        "sourceId"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
-        "value": { "type": "integer" }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "sourceId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "value": {
+          "type": "integer"
+        }
       }
     },
     "damageType": {
       "enum": [
-        "slashing", "piercing", "bludgeoning", "force",
-        "acid", "cold", "electricity", "fire", "mental", "poison", "sonic", "spirit", "vitality", "void"
+        "slashing",
+        "piercing",
+        "bludgeoning",
+        "force",
+        "acid",
+        "cold",
+        "electricity",
+        "fire",
+        "mental",
+        "poison",
+        "sonic",
+        "spirit",
+        "vitality",
+        "void"
       ]
     },
     "damageDie": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["count", "sides", "modifier", "damageType"],
+      "required": [
+        "count",
+        "sides",
+        "modifier",
+        "damageType"
+      ],
       "properties": {
-        "count": { "type": "integer", "minimum": 1 },
-        "sides": { "type": "integer", "minimum": 2 },
-        "modifier": { "type": "integer" },
-        "damageType": { "$ref": "#/$defs/damageType" }
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sides": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "modifier": {
+          "type": "integer"
+        },
+        "damageType": {
+          "$ref": "#/$defs/damageType"
+        }
       }
     },
-    "weaponCategory": { "enum": ["unarmed", "simple", "martial", "advanced"] },
-    "weaponAttackMode": { "enum": ["melee", "ranged"] },
+    "weaponCategory": {
+      "enum": [
+        "unarmed",
+        "simple",
+        "martial",
+        "advanced"
+      ]
+    },
+    "weaponAttackMode": {
+      "enum": [
+        "melee",
+        "ranged"
+      ]
+    },
     "weaponDamageDice": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["count", "sides", "damageType"],
+      "required": [
+        "count",
+        "sides",
+        "damageType"
+      ],
       "properties": {
-        "count": { "type": "integer", "minimum": 1 },
-        "sides": { "type": "integer", "minimum": 2 },
-        "damageType": { "$ref": "#/$defs/damageType" }
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sides": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "damageType": {
+          "$ref": "#/$defs/damageType"
+        }
       }
     },
     "characterWeaponProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "category", "attackMode", "rangeFeet", "damage", "traits"],
+      "required": [
+        "name",
+        "category",
+        "attackMode",
+        "rangeFeet",
+        "damage",
+        "traits"
+      ],
       "properties": {
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "category": { "$ref": "#/$defs/weaponCategory" },
-        "attackMode": { "$ref": "#/$defs/weaponAttackMode" },
-        "rangeFeet": { "type": "integer", "minimum": 1 },
-        "damage": { "$ref": "#/$defs/weaponDamageDice" },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "category": {
+          "$ref": "#/$defs/weaponCategory"
+        },
+        "attackMode": {
+          "$ref": "#/$defs/weaponAttackMode"
+        },
+        "rangeFeet": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "damage": {
+          "$ref": "#/$defs/weaponDamageDice"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        }
       }
     },
     "fixedStrikeProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["name", "attackModifier", "rangeFeet", "damage", "traits"],
+      "required": [
+        "name",
+        "attackModifier",
+        "rangeFeet",
+        "damage",
+        "traits"
+      ],
       "properties": {
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "attackModifier": { "type": "integer" },
-        "rangeFeet": { "type": "integer", "minimum": 1 },
-        "damage": { "$ref": "#/$defs/damageDie" },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "attackModifier": {
+          "type": "integer"
+        },
+        "rangeFeet": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "damage": {
+          "$ref": "#/$defs/damageDie"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        }
       }
     },
     "cardGrant": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cardDefinitionId", "count", "sourceId"],
+      "required": [
+        "cardDefinitionId",
+        "count",
+        "sourceId"
+      ],
       "properties": {
-        "cardDefinitionId": { "$ref": "#/$defs/nonEmptyString" },
-        "count": { "type": "integer", "minimum": 1 },
-        "sourceId": { "$ref": "#/$defs/nonEmptyString" },
-        "traitId": { "$ref": "#/$defs/nonEmptyString" }
+        "cardDefinitionId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sourceId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "traitId": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
       }
     },
     "actionTiming": {
@@ -175,47 +472,91 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "actions"],
+          "required": [
+            "kind",
+            "actions"
+          ],
           "properties": {
-            "kind": { "const": "turn" },
-            "actions": { "enum": [1, 2, 3] }
+            "kind": {
+              "const": "turn"
+            },
+            "actions": {
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "reaction" } }
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "reaction"
+            }
+          }
         }
       ]
     },
-    "actionParticipant": { "enum": ["actor", "target"] },
+    "actionParticipant": {
+      "enum": [
+        "actor",
+        "target"
+      ]
+    },
     "actionStatisticRef": {
       "oneOf": [
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "skill"],
+          "required": [
+            "kind",
+            "skill"
+          ],
           "properties": {
-            "kind": { "const": "skill" },
-            "skill": { "$ref": "#/$defs/skillId" },
-            "attributeOverride": { "$ref": "#/$defs/attributeId" }
+            "kind": {
+              "const": "skill"
+            },
+            "skill": {
+              "$ref": "#/$defs/skillId"
+            },
+            "attributeOverride": {
+              "$ref": "#/$defs/attributeId"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "save"],
+          "required": [
+            "kind",
+            "save"
+          ],
           "properties": {
-            "kind": { "const": "save" },
-            "save": { "$ref": "#/$defs/saveId" }
+            "kind": {
+              "const": "save"
+            },
+            "save": {
+              "$ref": "#/$defs/saveId"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "perception" } }
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "perception"
+            }
+          }
         }
       ]
     },
@@ -224,38 +565,70 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "value"],
+          "required": [
+            "kind",
+            "value"
+          ],
           "properties": {
-            "kind": { "const": "fixed" },
-            "value": { "type": "integer", "minimum": 1 }
+            "kind": {
+              "const": "fixed"
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 1
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "owner"],
+          "required": [
+            "kind",
+            "owner"
+          ],
           "properties": {
-            "kind": { "const": "armor-class" },
-            "owner": { "$ref": "#/$defs/actionParticipant" }
+            "kind": {
+              "const": "armor-class"
+            },
+            "owner": {
+              "$ref": "#/$defs/actionParticipant"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "owner", "statistic"],
+          "required": [
+            "kind",
+            "owner",
+            "statistic"
+          ],
           "properties": {
-            "kind": { "const": "statistic-dc" },
-            "owner": { "$ref": "#/$defs/actionParticipant" },
-            "statistic": { "$ref": "#/$defs/actionStatisticRef" }
+            "kind": {
+              "const": "statistic-dc"
+            },
+            "owner": {
+              "$ref": "#/$defs/actionParticipant"
+            },
+            "statistic": {
+              "$ref": "#/$defs/actionStatisticRef"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "owner"],
+          "required": [
+            "kind",
+            "owner"
+          ],
           "properties": {
-            "kind": { "const": "class-dc" },
-            "owner": { "$ref": "#/$defs/actionParticipant" }
+            "kind": {
+              "const": "class-dc"
+            },
+            "owner": {
+              "$ref": "#/$defs/actionParticipant"
+            }
           }
         }
       ]
@@ -265,186 +638,416 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "weapon-reach" } }
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "weapon-reach"
+            }
+          }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "value"],
+          "required": [
+            "kind",
+            "value"
+          ],
           "properties": {
-            "kind": { "const": "feet" },
-            "value": { "type": "integer", "minimum": 1 }
+            "kind": {
+              "const": "feet"
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 1
+            }
           }
         }
       ]
     },
     "actionOutcomeEffect": {
       "oneOf": [
-        { "type": "object", "additionalProperties": false, "required": ["kind", "success"], "properties": { "kind": { "const": "record-knowledge" }, "success": { "type": "boolean" } } },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "owner", "condition"],
+          "required": [
+            "kind",
+            "success"
+          ],
           "properties": {
-            "kind": { "const": "apply-condition" },
-            "owner": { "$ref": "#/$defs/actionParticipant" },
-            "condition": { "$ref": "#/$defs/nonEmptyString" },
-            "value": { "type": "integer", "minimum": 1 }
+            "kind": {
+              "const": "record-knowledge"
+            },
+            "success": {
+              "type": "boolean"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "owner", "condition"],
+          "required": [
+            "kind",
+            "owner",
+            "condition"
+          ],
           "properties": {
-            "kind": { "const": "remove-condition" },
-            "owner": { "$ref": "#/$defs/actionParticipant" },
-            "condition": { "$ref": "#/$defs/nonEmptyString" }
+            "kind": {
+              "const": "apply-condition"
+            },
+            "owner": {
+              "$ref": "#/$defs/actionParticipant"
+            },
+            "condition": {
+              "$ref": "#/$defs/nonEmptyString"
+            },
+            "value": {
+              "type": "integer",
+              "minimum": 1
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "actionId"],
+          "required": [
+            "kind",
+            "owner",
+            "condition"
+          ],
           "properties": {
-            "kind": { "const": "lock-action" },
-            "actionId": { "$ref": "#/$defs/nonEmptyString" }
+            "kind": {
+              "const": "remove-condition"
+            },
+            "owner": {
+              "$ref": "#/$defs/actionParticipant"
+            },
+            "condition": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "owner", "dice", "flatModifier", "damageType"],
+          "required": [
+            "kind",
+            "actionId"
+          ],
           "properties": {
-            "kind": { "const": "damage" },
-            "owner": { "$ref": "#/$defs/actionParticipant" },
+            "kind": {
+              "const": "lock-action"
+            },
+            "actionId": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "owner",
+            "dice",
+            "flatModifier",
+            "damageType"
+          ],
+          "properties": {
+            "kind": {
+              "const": "damage"
+            },
+            "owner": {
+              "$ref": "#/$defs/actionParticipant"
+            },
             "dice": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["count", "sides"],
+              "required": [
+                "count",
+                "sides"
+              ],
               "properties": {
-                "count": { "type": "integer", "minimum": 1 },
-                "sides": { "type": "integer", "minimum": 2 }
+                "count": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "sides": {
+                  "type": "integer",
+                  "minimum": 2
+                }
               }
             },
-            "flatModifier": { "type": "integer" },
-            "damageType": { "$ref": "#/$defs/damageType" },
-            "multiplier": { "type": "number", "exclusiveMinimum": 0 }
+            "flatModifier": {
+              "type": "integer"
+            },
+            "damageType": {
+              "$ref": "#/$defs/damageType"
+            },
+            "multiplier": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "owner", "dice", "flatModifier"],
+          "required": [
+            "kind",
+            "owner",
+            "dice",
+            "flatModifier"
+          ],
           "properties": {
-            "kind": { "const": "restore-hp" },
-            "owner": { "$ref": "#/$defs/actionParticipant" },
+            "kind": {
+              "const": "restore-hp"
+            },
+            "owner": {
+              "$ref": "#/$defs/actionParticipant"
+            },
             "dice": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["count", "sides"],
+              "required": [
+                "count",
+                "sides"
+              ],
               "properties": {
-                "count": { "type": "integer", "minimum": 0 },
-                "sides": { "type": "integer", "minimum": 2 }
+                "count": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "sides": {
+                  "type": "integer",
+                  "minimum": 2
+                }
               }
             },
-            "flatModifier": { "type": "integer", "minimum": 0 },
-            "multiplier": { "type": "number", "exclusiveMinimum": 0 }
+            "flatModifier": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "multiplier": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "effectName"],
+          "required": [
+            "kind",
+            "effectName"
+          ],
           "properties": {
-            "kind": { "const": "create-sustained-effect" },
-            "effectName": { "$ref": "#/$defs/nonEmptyString" }
+            "kind": {
+              "const": "create-sustained-effect"
+            },
+            "effectName": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "sustain-effect" } }
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "sustain-effect"
+            }
+          }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "raise-shield" } }
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "raise-shield"
+            }
+          }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "interact" } }
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "interact"
+            }
+          }
         }
       ]
     },
     "degreeOutcomeMap": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["critical-success", "success", "failure", "critical-failure"],
+      "required": [
+        "critical-success",
+        "success",
+        "failure",
+        "critical-failure"
+      ],
       "properties": {
-        "critical-success": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } },
-        "success": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } },
-        "failure": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } },
-        "critical-failure": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } }
+        "critical-success": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/actionOutcomeEffect"
+          }
+        },
+        "success": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/actionOutcomeEffect"
+          }
+        },
+        "failure": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/actionOutcomeEffect"
+          }
+        },
+        "critical-failure": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/actionOutcomeEffect"
+          }
+        }
       }
     },
     "actionCheckDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["roller", "statistic", "dc"],
+      "required": [
+        "roller",
+        "statistic",
+        "dc"
+      ],
       "properties": {
-        "roller": { "$ref": "#/$defs/actionParticipant" },
-        "statistic": { "$ref": "#/$defs/actionStatisticRef" },
-        "dc": { "$ref": "#/$defs/actionDcRef" }
+        "roller": {
+          "$ref": "#/$defs/actionParticipant"
+        },
+        "statistic": {
+          "$ref": "#/$defs/actionStatisticRef"
+        },
+        "dc": {
+          "$ref": "#/$defs/actionDcRef"
+        }
       }
     },
     "actionResolution": {
       "oneOf": [
-        { "type": "object", "additionalProperties": false, "required": ["kind"], "properties": { "kind": { "const": "recall-knowledge" } } },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "movementMode", "step", "triggersReactions"],
+          "required": [
+            "kind"
+          ],
           "properties": {
-            "kind": { "const": "move" },
-            "movementMode": { "enum": ["land", "fly"] },
-            "step": { "type": "boolean" },
-            "triggersReactions": { "type": "boolean" }
+            "kind": {
+              "const": "recall-knowledge"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "damageMultiplier", "outcomes"],
+          "required": [
+            "kind",
+            "movementMode",
+            "step",
+            "triggersReactions"
+          ],
           "properties": {
-            "kind": { "const": "strike" },
-            "damageMultiplier": { "type": "number", "exclusiveMinimum": 0 },
-            "extraWeaponDice": { "type": "integer", "minimum": 1 },
-            "outcomes": { "$ref": "#/$defs/degreeOutcomeMap" }
+            "kind": {
+              "const": "move"
+            },
+            "movementMode": {
+              "enum": [
+                "land",
+                "fly"
+              ]
+            },
+            "step": {
+              "type": "boolean"
+            },
+            "triggersReactions": {
+              "type": "boolean"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "check", "outcomes"],
+          "required": [
+            "kind",
+            "damageMultiplier",
+            "outcomes"
+          ],
           "properties": {
-            "kind": { "const": "check" },
-            "check": { "$ref": "#/$defs/actionCheckDefinition" },
-            "outcomes": { "$ref": "#/$defs/degreeOutcomeMap" }
+            "kind": {
+              "const": "strike"
+            },
+            "damageMultiplier": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "extraWeaponDice": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "outcomes": {
+              "$ref": "#/$defs/degreeOutcomeMap"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "effects"],
+          "required": [
+            "kind",
+            "check",
+            "outcomes"
+          ],
           "properties": {
-            "kind": { "const": "direct" },
-            "effects": { "type": "array", "items": { "$ref": "#/$defs/actionOutcomeEffect" } }
+            "kind": {
+              "const": "check"
+            },
+            "check": {
+              "$ref": "#/$defs/actionCheckDefinition"
+            },
+            "outcomes": {
+              "$ref": "#/$defs/degreeOutcomeMap"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind",
+            "effects"
+          ],
+          "properties": {
+            "kind": {
+              "const": "direct"
+            },
+            "effects": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/actionOutcomeEffect"
+              }
+            }
           }
         }
       ]
@@ -454,29 +1057,58 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "mode"],
+          "required": [
+            "kind",
+            "mode"
+          ],
           "properties": {
-            "kind": { "const": "weapon-mode" },
-            "mode": { "$ref": "#/$defs/weaponAttackMode" }
+            "kind": {
+              "const": "weapon-mode"
+            },
+            "mode": {
+              "$ref": "#/$defs/weaponAttackMode"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "slot"],
+          "required": [
+            "kind",
+            "slot"
+          ],
           "properties": {
-            "kind": { "const": "equipped-slot" },
-            "slot": { "enum": ["weapon", "armor", "shield", "feet"] }
+            "kind": {
+              "const": "equipped-slot"
+            },
+            "slot": {
+              "enum": [
+                "weapon",
+                "armor",
+                "shield",
+                "feet"
+              ]
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "skill", "minimum"],
+          "required": [
+            "kind",
+            "skill",
+            "minimum"
+          ],
           "properties": {
-            "kind": { "const": "skill-rank" },
-            "skill": { "$ref": "#/$defs/skillId" },
-            "minimum": { "$ref": "#/$defs/proficiencyRank" }
+            "kind": {
+              "const": "skill-rank"
+            },
+            "skill": {
+              "$ref": "#/$defs/skillId"
+            },
+            "minimum": {
+              "$ref": "#/$defs/proficiencyRank"
+            }
           }
         }
       ]
@@ -484,93 +1116,280 @@
     "actionDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "description", "timing", "traits", "targeting", "resolution"],
+      "required": [
+        "id",
+        "name",
+        "description",
+        "timing",
+        "traits",
+        "targeting",
+        "resolution"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "description": { "type": "string" },
-        "timing": { "$ref": "#/$defs/actionTiming" },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
-        "targeting": { "enum": ["none", "self", "ally", "creature", "enemy", "tile", "object", "effect"] },
-        "range": { "$ref": "#/$defs/actionRange" },
-        "requirements": { "type": "array", "items": { "$ref": "#/$defs/actionRequirement" } },
-        "mapAttackCount": { "enum": [1, 2, 3] },
-        "resolution": { "$ref": "#/$defs/actionResolution" }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "type": "string"
+        },
+        "timing": {
+          "$ref": "#/$defs/actionTiming"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        },
+        "targeting": {
+          "enum": [
+            "none",
+            "self",
+            "ally",
+            "creature",
+            "enemy",
+            "tile",
+            "object",
+            "effect"
+          ]
+        },
+        "range": {
+          "$ref": "#/$defs/actionRange"
+        },
+        "requirements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/actionRequirement"
+          }
+        },
+        "mapAttackCount": {
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "resolution": {
+          "$ref": "#/$defs/actionResolution"
+        }
       }
     },
     "cardDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "actionId", "traits", "level"],
+      "required": [
+        "id",
+        "name",
+        "actionId",
+        "traits",
+        "level"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "actionId": { "$ref": "#/$defs/nonEmptyString" },
-        "level": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
-        "levelByClass": { "type": "object", "additionalProperties": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 } },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "actionId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991
+        },
+        "levelByClass": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        }
       }
     },
     "traitCardGrant": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["cardDefinitionId", "count"],
+      "required": [
+        "cardDefinitionId",
+        "count"
+      ],
       "properties": {
-        "cardDefinitionId": { "$ref": "#/$defs/nonEmptyString" },
-        "count": { "type": "integer", "minimum": 1 }
+        "cardDefinitionId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "count": {
+          "type": "integer",
+          "minimum": 1
+        }
       }
     },
     "traitActionGrant": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["actionId", "contextGroup"],
+      "required": [
+        "actionId",
+        "contextGroup"
+      ],
       "properties": {
-        "actionId": { "$ref": "#/$defs/nonEmptyString" },
-        "contextGroup": { "enum": ["escape", "interact", "shield", "sustain"] }
+        "actionId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "contextGroup": {
+          "enum": [
+            "escape",
+            "interact",
+            "shield",
+            "sustain"
+          ]
+        }
       }
     },
-    "traitSource": { "enum": ["pf2e-remaster", "cardguild"] },
+    "traitSource": {
+      "enum": [
+        "pf2e-remaster",
+        "cardguild"
+      ]
+    },
     "traitCategory": {
-      "enum": ["system", "ancestry", "class", "personality", "creature", "action", "weapon", "equipment", "condition", "terrain", "damage", "general"]
+      "enum": [
+        "system",
+        "ancestry",
+        "class",
+        "personality",
+        "creature",
+        "action",
+        "weapon",
+        "equipment",
+        "condition",
+        "terrain",
+        "damage",
+        "general"
+      ]
     },
     "traitDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "source", "category", "description", "cardGrants", "actionGrants"],
+      "required": [
+        "id",
+        "name",
+        "source",
+        "category",
+        "description",
+        "cardGrants",
+        "actionGrants"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "source": { "$ref": "#/$defs/traitSource" },
-        "category": { "$ref": "#/$defs/traitCategory" },
-        "description": { "$ref": "#/$defs/nonEmptyString" },
-        "cardGrants": { "type": "array", "items": { "$ref": "#/$defs/traitCardGrant" } },
-        "actionGrants": { "type": "array", "items": { "$ref": "#/$defs/traitActionGrant" } },
-        "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "source": {
+          "$ref": "#/$defs/traitSource"
+        },
+        "category": {
+          "$ref": "#/$defs/traitCategory"
+        },
+        "description": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "cardGrants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitCardGrant"
+          }
+        },
+        "actionGrants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitActionGrant"
+          }
+        },
+        "statModifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/statModifier"
+          }
+        }
       }
     },
     "conditionValuePolicy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["min", "max", "merge", "modifierScale"],
+      "required": [
+        "min",
+        "max",
+        "merge",
+        "modifierScale"
+      ],
       "properties": {
-        "min": { "type": "integer", "minimum": 0 },
-        "max": { "type": "integer", "minimum": 1 },
-        "merge": { "const": "max" },
-        "modifierScale": { "const": "multiply-by-value" },
-        "endTurnDelta": { "const": -1 }
+        "min": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "merge": {
+          "const": "max"
+        },
+        "modifierScale": {
+          "const": "multiply-by-value"
+        },
+        "endTurnDelta": {
+          "const": -1
+        }
       }
     },
     "conditionDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "traits"],
+      "required": [
+        "id",
+        "name",
+        "traits"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
-        "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } },
-        "valuePolicy": { "$ref": "#/$defs/conditionValuePolicy" },
-        "expiry": { "enum": ["actor-turn-start"] }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        },
+        "statModifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/statModifier"
+          }
+        },
+        "valuePolicy": {
+          "$ref": "#/$defs/conditionValuePolicy"
+        },
+        "expiry": {
+          "enum": [
+            "actor-turn-start"
+          ]
+        }
       }
     },
     "statModifierSelector": {
@@ -578,55 +1397,103 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "all" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "perception" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "ac" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "attack" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "damage" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
-          "properties": { "kind": { "const": "class-dc" } }
-        },
-        {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["kind"],
+          "required": [
+            "kind"
+          ],
           "properties": {
-            "kind": { "const": "save" },
-            "id": { "$ref": "#/$defs/saveId" }
+            "kind": {
+              "const": "all"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind"],
+          "required": [
+            "kind"
+          ],
           "properties": {
-            "kind": { "const": "skill" },
-            "id": { "$ref": "#/$defs/skillId" }
+            "kind": {
+              "const": "perception"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "ac"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "attack"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "damage"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "class-dc"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "save"
+            },
+            "id": {
+              "$ref": "#/$defs/saveId"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "kind"
+          ],
+          "properties": {
+            "kind": {
+              "const": "skill"
+            },
+            "id": {
+              "$ref": "#/$defs/skillId"
+            }
           }
         }
       ]
@@ -634,165 +1501,425 @@
     "statModifier": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["selector", "type", "value", "label"],
+      "required": [
+        "selector",
+        "type",
+        "value",
+        "label"
+      ],
       "properties": {
-        "selector": { "$ref": "#/$defs/statModifierSelector" },
-        "type": { "enum": ["circumstance", "item", "status", "untyped"] },
-        "value": { "type": "integer" },
-        "label": { "$ref": "#/$defs/nonEmptyString" }
+        "selector": {
+          "$ref": "#/$defs/statModifierSelector"
+        },
+        "type": {
+          "enum": [
+            "circumstance",
+            "item",
+            "status",
+            "untyped"
+          ]
+        },
+        "value": {
+          "type": "integer"
+        },
+        "label": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
       },
-      "if": { "required": ["type"], "properties": { "type": { "const": "untyped" } } },
-      "then": { "properties": { "value": { "type": "integer", "maximum": -1 } } }
+      "if": {
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "const": "untyped"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "value": {
+            "type": "integer",
+            "maximum": -1
+          }
+        }
+      }
     },
     "equipmentDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "slot", "traits", "statModifiers"],
+      "required": [
+        "id",
+        "name",
+        "slot",
+        "traits",
+        "statModifiers"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "slot": { "enum": ["weapon", "armor", "shield", "feet"] },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
-        "statModifiers": { "type": "array", "items": { "$ref": "#/$defs/statModifier" } },
-        "weaponProfile": { "$ref": "#/$defs/characterWeaponProfile" },
-        "armorProfile": { "$ref": "#/$defs/armorProfile" },
-        "shieldBonus": { "type": "integer", "minimum": 1 }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "slot": {
+          "enum": [
+            "weapon",
+            "armor",
+            "shield",
+            "feet"
+          ]
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        },
+        "statModifiers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/statModifier"
+          }
+        },
+        "weaponProfile": {
+          "$ref": "#/$defs/characterWeaponProfile"
+        },
+        "armorProfile": {
+          "$ref": "#/$defs/armorProfile"
+        },
+        "shieldBonus": {
+          "type": "integer",
+          "minimum": 1
+        }
       },
       "allOf": [
         {
-          "if": { "required": ["slot"], "properties": { "slot": { "const": "weapon" } } },
-          "then": {
-            "required": ["weaponProfile"],
-            "properties": { "weaponProfile": { "$ref": "#/$defs/characterWeaponProfile" } }
+          "if": {
+            "required": [
+              "slot"
+            ],
+            "properties": {
+              "slot": {
+                "const": "weapon"
+              }
+            }
           },
-          "else": { "properties": { "weaponProfile": false } }
+          "then": {
+            "required": [
+              "weaponProfile"
+            ],
+            "properties": {
+              "weaponProfile": {
+                "$ref": "#/$defs/characterWeaponProfile"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "weaponProfile": false
+            }
+          }
         },
         {
-          "if": { "required": ["slot"], "properties": { "slot": { "const": "armor" } } },
-          "then": {
-            "required": ["armorProfile"],
-            "properties": { "armorProfile": { "$ref": "#/$defs/armorProfile" } }
+          "if": {
+            "required": [
+              "slot"
+            ],
+            "properties": {
+              "slot": {
+                "const": "armor"
+              }
+            }
           },
-          "else": { "properties": { "armorProfile": false } }
+          "then": {
+            "required": [
+              "armorProfile"
+            ],
+            "properties": {
+              "armorProfile": {
+                "$ref": "#/$defs/armorProfile"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "armorProfile": false
+            }
+          }
         },
         {
-          "if": { "required": ["shieldBonus"], "properties": { "shieldBonus": { "type": "integer" } } },
-          "then": { "properties": { "slot": { "const": "shield" } } }
+          "if": {
+            "required": [
+              "shieldBonus"
+            ],
+            "properties": {
+              "shieldBonus": {
+                "type": "integer"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "slot": {
+                "const": "shield"
+              }
+            }
+          }
         }
       ]
     },
     "armorProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["category", "acItemBonus", "dexCap"],
+      "required": [
+        "category",
+        "acItemBonus",
+        "dexCap"
+      ],
       "properties": {
-        "category": { "enum": ["light", "medium", "heavy"] },
-        "acItemBonus": { "type": "integer", "minimum": 0 },
-        "dexCap": { "type": "integer", "minimum": 0 }
+        "category": {
+          "enum": [
+            "light",
+            "medium",
+            "heavy"
+          ]
+        },
+        "acItemBonus": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "dexCap": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "loadoutProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["preparedCardCapacity"],
+      "required": [
+        "preparedCardCapacity"
+      ],
       "properties": {
-        "preparedCardCapacity": { "type": "integer", "minimum": 0 }
+        "preparedCardCapacity": {
+          "type": "integer",
+          "minimum": 0
+        }
       }
     },
     "starterEquipment": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "weapon": { "$ref": "#/$defs/nonEmptyString" },
-        "armor": { "$ref": "#/$defs/nonEmptyString" },
-        "shield": { "$ref": "#/$defs/nonEmptyString" },
-        "feet": { "$ref": "#/$defs/nonEmptyString" }
+        "weapon": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "armor": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "shield": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "feet": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
       }
     },
     "starterLoadout": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["equipment", "preparedCards"],
+      "required": [
+        "equipment",
+        "preparedCards"
+      ],
       "properties": {
-        "equipment": { "$ref": "#/$defs/starterEquipment" },
-        "preparedCards": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } }
+        "equipment": {
+          "$ref": "#/$defs/starterEquipment"
+        },
+        "preparedCards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        }
       }
     },
     "armorProficiencies": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["unarmored", "light", "medium", "heavy"],
+      "required": [
+        "unarmored",
+        "light",
+        "medium",
+        "heavy"
+      ],
       "properties": {
-        "unarmored": { "$ref": "#/$defs/proficiencyRank" },
-        "light": { "$ref": "#/$defs/proficiencyRank" },
-        "medium": { "$ref": "#/$defs/proficiencyRank" },
-        "heavy": { "$ref": "#/$defs/proficiencyRank" }
+        "unarmored": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
+        "light": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
+        "medium": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
+        "heavy": {
+          "$ref": "#/$defs/proficiencyRank"
+        }
       }
     },
     "weaponProficiencies": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["unarmed", "simple", "martial", "advanced"],
+      "required": [
+        "unarmed",
+        "simple",
+        "martial",
+        "advanced"
+      ],
       "properties": {
-        "unarmed": { "$ref": "#/$defs/proficiencyRank" },
-        "simple": { "$ref": "#/$defs/proficiencyRank" },
-        "martial": { "$ref": "#/$defs/proficiencyRank" },
-        "advanced": { "$ref": "#/$defs/proficiencyRank" }
+        "unarmed": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
+        "simple": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
+        "martial": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
+        "advanced": {
+          "$ref": "#/$defs/proficiencyRank"
+        }
       }
     },
     "fixedCreatureSaves": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["fortitude", "reflex", "will"],
+      "required": [
+        "fortitude",
+        "reflex",
+        "will"
+      ],
       "properties": {
-        "fortitude": { "type": "integer" },
-        "reflex": { "type": "integer" },
-        "will": { "type": "integer" }
+        "fortitude": {
+          "type": "integer"
+        },
+        "reflex": {
+          "type": "integer"
+        },
+        "will": {
+          "type": "integer"
+        }
       }
     },
     "fixedCreatureSkills": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "acrobatics": { "type": "integer" },
-        "arcana": { "type": "integer" },
-        "athletics": { "type": "integer" },
-        "crafting": { "type": "integer" },
-        "deception": { "type": "integer" },
-        "diplomacy": { "type": "integer" },
-        "intimidation": { "type": "integer" },
-        "medicine": { "type": "integer" },
-        "nature": { "type": "integer" },
-        "occultism": { "type": "integer" },
-        "performance": { "type": "integer" },
-        "religion": { "type": "integer" },
-        "society": { "type": "integer" },
-        "stealth": { "type": "integer" },
-        "survival": { "type": "integer" },
-        "thievery": { "type": "integer" }
+        "acrobatics": {
+          "type": "integer"
+        },
+        "arcana": {
+          "type": "integer"
+        },
+        "athletics": {
+          "type": "integer"
+        },
+        "crafting": {
+          "type": "integer"
+        },
+        "deception": {
+          "type": "integer"
+        },
+        "diplomacy": {
+          "type": "integer"
+        },
+        "intimidation": {
+          "type": "integer"
+        },
+        "medicine": {
+          "type": "integer"
+        },
+        "nature": {
+          "type": "integer"
+        },
+        "occultism": {
+          "type": "integer"
+        },
+        "performance": {
+          "type": "integer"
+        },
+        "religion": {
+          "type": "integer"
+        },
+        "society": {
+          "type": "integer"
+        },
+        "stealth": {
+          "type": "integer"
+        },
+        "survival": {
+          "type": "integer"
+        },
+        "thievery": {
+          "type": "integer"
+        }
       }
     },
     "actorStatProfile": {
       "oneOf": [
-        {"$ref": "#/$defs/characterBuildSource"},
+        {
+          "$ref": "#/$defs/characterBuildSource"
+        },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "stats"],
+          "required": [
+            "kind",
+            "stats"
+          ],
           "properties": {
-            "kind": { "const": "creature" },
+            "kind": {
+              "const": "creature"
+            },
             "stats": {
               "type": "object",
               "additionalProperties": false,
-              "required": ["ac", "maxHp", "strike", "perception", "saves", "skills"],
+              "required": [
+                "ac",
+                "maxHp",
+                "strike",
+                "perception",
+                "saves",
+                "skills"
+              ],
               "properties": {
-                "level": { "type": "integer", "minimum": -1, "maximum": 25 },
-                "ac": { "type": "integer", "minimum": 0 },
-                "maxHp": { "type": "integer", "minimum": 1 },
-                "strike": { "$ref": "#/$defs/fixedStrikeProfile" },
-                "perception": { "type": "integer" },
-                "saves": { "$ref": "#/$defs/fixedCreatureSaves" },
-                "skills": { "$ref": "#/$defs/fixedCreatureSkills" }
+                "level": {
+                  "type": "integer",
+                  "minimum": -1,
+                  "maximum": 25
+                },
+                "ac": {
+                  "type": "integer",
+                  "minimum": 0
+                },
+                "maxHp": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "strike": {
+                  "$ref": "#/$defs/fixedStrikeProfile"
+                },
+                "perception": {
+                  "type": "integer"
+                },
+                "saves": {
+                  "$ref": "#/$defs/fixedCreatureSaves"
+                },
+                "skills": {
+                  "$ref": "#/$defs/fixedCreatureSkills"
+                }
               }
             }
           }
@@ -802,48 +1929,151 @@
     "actorDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "statProfile", "initialConditions", "traits", "loadoutProfile", "starterLoadout", "innateActionIds", "baseCardGrants"],
+      "required": [
+        "id",
+        "name",
+        "statProfile",
+        "initialConditions",
+        "traits",
+        "loadoutProfile",
+        "starterLoadout",
+        "innateActionIds",
+        "baseCardGrants"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "statProfile": { "$ref": "#/$defs/actorStatProfile" },
-        "speedFeet": { "type": "integer", "minimum": 0 },
-        "initialConditions": { "type": "array", "items": { "$ref": "#/$defs/conditionInstance" } },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
-        "loadoutProfile": { "$ref": "#/$defs/loadoutProfile" },
-        "starterLoadout": { "$ref": "#/$defs/starterLoadout" },
-        "innateActionIds": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
-        "baseCardGrants": { "type": "array", "items": { "$ref": "#/$defs/cardGrant" } }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "statProfile": {
+          "$ref": "#/$defs/actorStatProfile"
+        },
+        "speedFeet": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "initialConditions": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/conditionInstance"
+          }
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        },
+        "loadoutProfile": {
+          "$ref": "#/$defs/loadoutProfile"
+        },
+        "starterLoadout": {
+          "$ref": "#/$defs/starterLoadout"
+        },
+        "innateActionIds": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "baseCardGrants": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/cardGrant"
+          }
+        }
       },
       "allOf": [
         {
           "if": {
             "properties": {
-              "statProfile": {"properties": {"kind": {"const": "character"}}, "required": ["kind"], "type": "object"}
+              "statProfile": {
+                "properties": {
+                  "kind": {
+                    "const": "character"
+                  }
+                },
+                "required": [
+                  "kind"
+                ],
+                "type": "object"
+              }
             }
           },
-          "then": {"properties": {"speedFeet": false}},
-          "else": {"required": ["speedFeet"], "properties": {"speedFeet": {"type": "integer", "minimum": 0}}}
+          "then": {
+            "properties": {
+              "speedFeet": false
+            }
+          },
+          "else": {
+            "required": [
+              "speedFeet"
+            ],
+            "properties": {
+              "speedFeet": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          }
         }
       ]
     },
     "encounterActorPlacement": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["instanceId", "actorDefinitionId", "team", "position", "facing"],
+      "required": [
+        "instanceId",
+        "actorDefinitionId",
+        "team",
+        "position",
+        "facing"
+      ],
       "properties": {
-        "instanceId": { "$ref": "#/$defs/nonEmptyString" },
-        "actorDefinitionId": { "$ref": "#/$defs/nonEmptyString" },
-        "team": { "const": "enemies" },
-        "position": { "$ref": "#/$defs/gridPosition" },
-        "facing": { "enum": ["north", "east", "south", "west"] },
+        "instanceId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "actorDefinitionId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "team": {
+          "const": "enemies"
+        },
+        "position": {
+          "$ref": "#/$defs/gridPosition"
+        },
+        "facing": {
+          "enum": [
+            "north",
+            "east",
+            "south",
+            "west"
+          ]
+        },
         "partySize": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["min", "max"],
+          "required": [
+            "min",
+            "max"
+          ],
           "properties": {
-            "min": { "enum": [1, 2, 3] },
-            "max": { "enum": [1, 2, 3] }
+            "min": {
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            },
+            "max": {
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            }
           }
         }
       }
@@ -851,73 +2081,240 @@
     "partySpawnSlot": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["seat", "position", "facing"],
+      "required": [
+        "seat",
+        "position",
+        "facing"
+      ],
       "properties": {
-        "seat": { "enum": [1, 2, 3] },
-        "position": { "$ref": "#/$defs/gridPosition" },
-        "facing": { "enum": ["north", "east", "south", "west"] }
+        "seat": {
+          "enum": [
+            1,
+            2,
+            3
+          ]
+        },
+        "position": {
+          "$ref": "#/$defs/gridPosition"
+        },
+        "facing": {
+          "enum": [
+            "north",
+            "east",
+            "south",
+            "west"
+          ]
+        }
       }
     },
     "tileDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "position", "traits"],
+      "required": [
+        "id",
+        "position",
+        "traits"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "position": { "$ref": "#/$defs/gridPosition" },
-        "traits": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/traitInstance" } }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "position": {
+          "$ref": "#/$defs/gridPosition"
+        },
+        "traits": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        }
       }
     },
     "mapInteraction": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "targetTileId"],
+      "required": [
+        "kind",
+        "targetTileId"
+      ],
       "properties": {
-        "kind": { "const": "open-gate" },
-        "targetTileId": { "$ref": "#/$defs/nonEmptyString" }
+        "kind": {
+          "enum": [
+            "open-gate",
+            "destroy-obstacle"
+          ]
+        },
+        "targetTileId": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
       }
     },
     "mapObjectDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "position", "traits", "interaction", "used"],
+      "required": [
+        "id",
+        "name",
+        "position",
+        "traits",
+        "interaction",
+        "used"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "position": { "$ref": "#/$defs/gridPosition" },
-        "traits": { "type": "array", "items": { "$ref": "#/$defs/traitInstance" } },
-        "interaction": { "$ref": "#/$defs/mapInteraction" },
-        "used": { "type": "boolean" }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "position": {
+          "$ref": "#/$defs/gridPosition"
+        },
+        "traits": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/traitInstance"
+          }
+        },
+        "interaction": {
+          "$ref": "#/$defs/mapInteraction"
+        },
+        "used": {
+          "type": "boolean"
+        }
       }
     },
     "battleMap": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["width", "height", "tiles", "objects"],
+      "required": [
+        "width",
+        "height",
+        "tiles",
+        "objects"
+      ],
       "properties": {
-        "width": { "type": "integer", "minimum": 1 },
-        "height": { "type": "integer", "minimum": 1 },
-        "tiles": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/tileDefinition" } },
-        "objects": { "type": "array", "items": { "$ref": "#/$defs/mapObjectDefinition" } }
+        "width": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "height": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "tiles": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/tileDefinition"
+          }
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/mapObjectDefinition"
+          }
+        }
       }
     },
     "scenario": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "objective", "placements", "partySpawnSlots", "map"],
+      "required": [
+        "id",
+        "name",
+        "objective",
+        "placements",
+        "partySpawnSlots",
+        "map"
+      ],
       "properties": {
-        "partyHpFloor": { "const": 1 },
+        "partyHpFloor": {
+          "const": 1
+        },
         "rules": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "innateActionOverride": {"type": "object", "additionalProperties": false, "required": ["actorId", "actionIds"], "properties": {"actorId": {"type": "string", "minLength": 1}, "actionIds": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}}},
-            "guaranteedCheck": {"type": "object", "additionalProperties": false, "required": ["actionId", "targetActorId", "degree", "uses"], "properties": {"actionId": {"type": "string", "minLength": 1}, "targetActorId": {"type": "string", "minLength": 1}, "degree": {"enum": ["critical-success", "success", "failure", "critical-failure"]}, "uses": {"const": 1}}},
-            "partyWeaponOverride": {
-              "type": "object", "additionalProperties": false, "required": ["seat", "equipmentId"],
-              "properties": { "seat": { "type": "integer", "minimum": 1, "maximum": 3 }, "equipmentId": { "type": "string", "minLength": 1 } }
+            "innateActionOverride": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "actorId",
+                "actionIds"
+              ],
+              "properties": {
+                "actorId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "actionIds": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
             },
-            "damageRequiresFlanking": { "enum": ["heroes", "enemies"] },
+            "guaranteedCheck": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "actionId",
+                "targetActorId",
+                "degree",
+                "uses"
+              ],
+              "properties": {
+                "actionId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "targetActorId": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "degree": {
+                  "enum": [
+                    "critical-success",
+                    "success",
+                    "failure",
+                    "critical-failure"
+                  ]
+                },
+                "uses": {
+                  "const": 1
+                }
+              }
+            },
+            "partyWeaponOverride": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "seat",
+                "equipmentId"
+              ],
+              "properties": {
+                "seat": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 3
+                },
+                "equipmentId": {
+                  "type": "string",
+                  "minLength": 1
+                }
+              }
+            },
+            "damageRequiresFlanking": {
+              "enum": [
+                "heroes",
+                "enemies"
+              ]
+            },
             "opening": {
               "type": "object",
               "additionalProperties": false,
@@ -976,23 +2373,78 @@
                   "maximum": 3
                 }
               }
+            },
+            "victory": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "enemyIds",
+                "objectIds"
+              ],
+              "properties": {
+                "enemyIds": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                },
+                "objectIds": {
+                  "type": "array",
+                  "uniqueItems": true,
+                  "items": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
             }
           }
         },
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "objective": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "description"],
+          "required": [
+            "kind",
+            "description"
+          ],
           "properties": {
-            "kind": { "const": "defeat-all-enemies" },
-            "description": { "$ref": "#/$defs/nonEmptyString" }
+            "kind": {
+              "enum": [
+                "defeat-all-enemies",
+                "resolve-objectives"
+              ]
+            },
+            "description": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
           }
         },
-        "placements": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/encounterActorPlacement" } },
-        "partySpawnSlots": { "type": "array", "minItems": 1, "maxItems": 3, "items": { "$ref": "#/$defs/partySpawnSlot" } },
-        "map": { "$ref": "#/$defs/battleMap" }
+        "placements": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/encounterActorPlacement"
+          }
+        },
+        "partySpawnSlots": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": {
+            "$ref": "#/$defs/partySpawnSlot"
+          }
+        },
+        "map": {
+          "$ref": "#/$defs/battleMap"
+        }
       }
     },
     "rewardGrant": {
@@ -1000,28 +2452,49 @@
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "definitionId"],
+          "required": [
+            "kind",
+            "definitionId"
+          ],
           "properties": {
-            "kind": { "const": "equipment" },
-            "definitionId": { "$ref": "#/$defs/nonEmptyString" }
+            "kind": {
+              "const": "equipment"
+            },
+            "definitionId": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "definitionId"],
+          "required": [
+            "kind",
+            "definitionId"
+          ],
           "properties": {
-            "kind": { "const": "card" },
-            "definitionId": { "$ref": "#/$defs/nonEmptyString" }
+            "kind": {
+              "const": "card"
+            },
+            "definitionId": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
           }
         },
         {
           "type": "object",
           "additionalProperties": false,
-          "required": ["kind", "definitionId"],
+          "required": [
+            "kind",
+            "definitionId"
+          ],
           "properties": {
-            "kind": { "const": "companion" },
-            "definitionId": { "$ref": "#/$defs/nonEmptyString" }
+            "kind": {
+              "const": "companion"
+            },
+            "definitionId": {
+              "$ref": "#/$defs/nonEmptyString"
+            }
           }
         }
       ]
@@ -1029,80 +2502,211 @@
     "adventureReward": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "afterEncounterId", "choices"],
+      "required": [
+        "id",
+        "afterEncounterId",
+        "choices"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "afterEncounterId": { "$ref": "#/$defs/nonEmptyString" },
-        "choices": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/rewardGrant" } }
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "afterEncounterId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/rewardGrant"
+          }
+        }
       }
     },
     "adventureExperienceAward": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["afterEncounterId", "amount"],
+      "required": [
+        "afterEncounterId",
+        "amount"
+      ],
       "properties": {
-        "afterEncounterId": { "$ref": "#/$defs/nonEmptyString" },
-        "amount": { "type": "integer", "minimum": 0, "maximum": 1000000 }
+        "afterEncounterId": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "amount": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 1000000
+        }
       }
     },
     "adventure": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "name", "description", "partySize", "encounterIds", "rewards", "experienceAwards"],
+      "required": [
+        "id",
+        "name",
+        "description",
+        "partySize",
+        "encounterIds",
+        "rewards",
+        "experienceAwards"
+      ],
       "properties": {
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "name": { "$ref": "#/$defs/nonEmptyString" },
-        "description": { "type": "string" },
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "name": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "description": {
+          "type": "string"
+        },
         "partySize": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["min", "max"],
+          "required": [
+            "min",
+            "max"
+          ],
           "properties": {
-            "min": { "enum": [1, 2, 3] },
-            "max": { "enum": [1, 2, 3] }
+            "min": {
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            },
+            "max": {
+              "enum": [
+                1,
+                2,
+                3
+              ]
+            }
           }
         },
-        "encounterIds": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/nonEmptyString" } },
-        "rewards": { "type": "array", "items": { "$ref": "#/$defs/adventureReward" } },
-        "experienceAwards": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/adventureExperienceAward" } }
+        "encounterIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/nonEmptyString"
+          }
+        },
+        "rewards": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/adventureReward"
+          }
+        },
+        "experienceAwards": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/adventureExperienceAward"
+          }
+        },
+        "ending": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "title",
+            "description"
+          ],
+          "properties": {
+            "title": {
+              "type": "string",
+              "minLength": 1
+            },
+            "description": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
       }
     },
     "manifest": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["schemaVersion", "id", "version", "rulesetId"],
+      "required": [
+        "schemaVersion",
+        "id",
+        "version",
+        "rulesetId"
+      ],
       "properties": {
-        "schemaVersion": {"const": 14},
-        "id": { "$ref": "#/$defs/nonEmptyString" },
-        "version": { "$ref": "#/$defs/nonEmptyString" },
-        "rulesetId": { "$ref": "#/$defs/nonEmptyString" }
+        "schemaVersion": {
+          "const": 14
+        },
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "version": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "rulesetId": {
+          "$ref": "#/$defs/nonEmptyString"
+        }
       }
     },
     "characterBuild": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["freeBoosts", "trainedSkills"],
+      "required": [
+        "freeBoosts",
+        "trainedSkills"
+      ],
       "properties": {
         "freeBoosts": {
           "type": "array",
-          "items": {"$ref": "#/$defs/attributeId"},
+          "items": {
+            "$ref": "#/$defs/attributeId"
+          },
           "minItems": 4,
           "maxItems": 4,
           "uniqueItems": true
         },
-        "trainedSkills": {"type": "array", "items": {"$ref": "#/$defs/skillId"}, "uniqueItems": true}
+        "trainedSkills": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/skillId"
+          },
+          "uniqueItems": true
+        }
       }
     },
     "characterAdvancementChoice": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["level"],
+      "required": [
+        "level"
+      ],
       "properties": {
-        "level": {"enum": [3, 5, 7, 9, 10, 11, 13, 15, 17, 19, 20]},
-        "skillIncrease": {"$ref": "#/$defs/skillId"},
+        "level": {
+          "enum": [
+            3,
+            5,
+            7,
+            9,
+            10,
+            11,
+            13,
+            15,
+            17,
+            19,
+            20
+          ]
+        },
+        "skillIncrease": {
+          "$ref": "#/$defs/skillId"
+        },
         "attributeBoosts": {
           "type": "array",
-          "items": {"$ref": "#/$defs/attributeId"},
+          "items": {
+            "$ref": "#/$defs/attributeId"
+          },
           "minItems": 4,
           "maxItems": 4,
           "uniqueItems": true
@@ -1112,25 +2716,58 @@
     "characterBuildSource": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["kind", "build", "level", "advancements"],
+      "required": [
+        "kind",
+        "build",
+        "level",
+        "advancements"
+      ],
       "properties": {
-        "kind": {"const": "character"},
-        "build": {"$ref": "#/$defs/characterBuild"},
-        "level": {"type": "integer", "minimum": 1},
-        "advancements": {"type": "array", "items": {"$ref": "#/$defs/characterAdvancementChoice"}}
+        "kind": {
+          "const": "character"
+        },
+        "build": {
+          "$ref": "#/$defs/characterBuild"
+        },
+        "level": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "advancements": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/characterAdvancementChoice"
+          }
+        }
       }
     },
     "ancestryDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "hitPoints", "speedFeet", "fixedBoosts"],
+      "required": [
+        "id",
+        "hitPoints",
+        "speedFeet",
+        "fixedBoosts"
+      ],
       "properties": {
-        "id": {"$ref": "#/$defs/nonEmptyString"},
-        "hitPoints": {"type": "integer", "minimum": 1},
-        "speedFeet": {"type": "integer", "minimum": 1, "multipleOf": 5},
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "hitPoints": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "speedFeet": {
+          "type": "integer",
+          "minimum": 1,
+          "multipleOf": 5
+        },
         "fixedBoosts": {
           "type": "array",
-          "items": {"$ref": "#/$defs/attributeId"},
+          "items": {
+            "$ref": "#/$defs/attributeId"
+          },
           "minItems": 2,
           "maxItems": 2,
           "uniqueItems": true
@@ -1140,40 +2777,86 @@
     "classProficiencyProfile": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["perception", "classDc", "saves", "armor", "weapons"],
+      "required": [
+        "perception",
+        "classDc",
+        "saves",
+        "armor",
+        "weapons"
+      ],
       "properties": {
-        "perception": {"$ref": "#/$defs/proficiencyRank"},
-        "classDc": {"$ref": "#/$defs/proficiencyRank"},
+        "perception": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
+        "classDc": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
         "saves": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["fortitude", "reflex", "will"],
+          "required": [
+            "fortitude",
+            "reflex",
+            "will"
+          ],
           "properties": {
-            "fortitude": {"$ref": "#/$defs/proficiencyRank"},
-            "reflex": {"$ref": "#/$defs/proficiencyRank"},
-            "will": {"$ref": "#/$defs/proficiencyRank"}
+            "fortitude": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "reflex": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "will": {
+              "$ref": "#/$defs/proficiencyRank"
+            }
           }
         },
         "armor": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["unarmored", "light", "medium", "heavy"],
+          "required": [
+            "unarmored",
+            "light",
+            "medium",
+            "heavy"
+          ],
           "properties": {
-            "unarmored": {"$ref": "#/$defs/proficiencyRank"},
-            "light": {"$ref": "#/$defs/proficiencyRank"},
-            "medium": {"$ref": "#/$defs/proficiencyRank"},
-            "heavy": {"$ref": "#/$defs/proficiencyRank"}
+            "unarmored": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "light": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "medium": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "heavy": {
+              "$ref": "#/$defs/proficiencyRank"
+            }
           }
         },
         "weapons": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["unarmed", "simple", "martial", "advanced"],
+          "required": [
+            "unarmed",
+            "simple",
+            "martial",
+            "advanced"
+          ],
           "properties": {
-            "unarmed": {"$ref": "#/$defs/proficiencyRank"},
-            "simple": {"$ref": "#/$defs/proficiencyRank"},
-            "martial": {"$ref": "#/$defs/proficiencyRank"},
-            "advanced": {"$ref": "#/$defs/proficiencyRank"}
+            "unarmed": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "simple": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "martial": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "advanced": {
+              "$ref": "#/$defs/proficiencyRank"
+            }
           }
         }
       }
@@ -1181,18 +2864,30 @@
     "classProficiencyMilestone": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["level"],
+      "required": [
+        "level"
+      ],
       "properties": {
-        "perception": {"$ref": "#/$defs/proficiencyRank"},
-        "classDc": {"$ref": "#/$defs/proficiencyRank"},
+        "perception": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
+        "classDc": {
+          "$ref": "#/$defs/proficiencyRank"
+        },
         "saves": {
           "type": "object",
           "additionalProperties": false,
           "required": [],
           "properties": {
-            "fortitude": {"$ref": "#/$defs/proficiencyRank"},
-            "reflex": {"$ref": "#/$defs/proficiencyRank"},
-            "will": {"$ref": "#/$defs/proficiencyRank"}
+            "fortitude": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "reflex": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "will": {
+              "$ref": "#/$defs/proficiencyRank"
+            }
           }
         },
         "armor": {
@@ -1200,10 +2895,18 @@
           "additionalProperties": false,
           "required": [],
           "properties": {
-            "unarmored": {"$ref": "#/$defs/proficiencyRank"},
-            "light": {"$ref": "#/$defs/proficiencyRank"},
-            "medium": {"$ref": "#/$defs/proficiencyRank"},
-            "heavy": {"$ref": "#/$defs/proficiencyRank"}
+            "unarmored": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "light": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "medium": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "heavy": {
+              "$ref": "#/$defs/proficiencyRank"
+            }
           }
         },
         "weapons": {
@@ -1211,25 +2914,57 @@
           "additionalProperties": false,
           "required": [],
           "properties": {
-            "unarmed": {"$ref": "#/$defs/proficiencyRank"},
-            "simple": {"$ref": "#/$defs/proficiencyRank"},
-            "martial": {"$ref": "#/$defs/proficiencyRank"},
-            "advanced": {"$ref": "#/$defs/proficiencyRank"}
+            "unarmed": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "simple": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "martial": {
+              "$ref": "#/$defs/proficiencyRank"
+            },
+            "advanced": {
+              "$ref": "#/$defs/proficiencyRank"
+            }
           }
         },
-        "level": {"type": "integer", "minimum": 2, "maximum": 20}
+        "level": {
+          "type": "integer",
+          "minimum": 2,
+          "maximum": 20
+        }
       }
     },
     "classDefinition": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id", "hpPerLevel", "keyAttribute", "starting", "milestones"],
+      "required": [
+        "id",
+        "hpPerLevel",
+        "keyAttribute",
+        "starting",
+        "milestones"
+      ],
       "properties": {
-        "id": {"$ref": "#/$defs/nonEmptyString"},
-        "hpPerLevel": {"type": "integer", "minimum": 1},
-        "keyAttribute": {"$ref": "#/$defs/attributeId"},
-        "starting": {"$ref": "#/$defs/classProficiencyProfile"},
-        "milestones": {"type": "array", "items": {"$ref": "#/$defs/classProficiencyMilestone"}}
+        "id": {
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "hpPerLevel": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "keyAttribute": {
+          "$ref": "#/$defs/attributeId"
+        },
+        "starting": {
+          "$ref": "#/$defs/classProficiencyProfile"
+        },
+        "milestones": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/classProficiencyMilestone"
+          }
+        }
       }
     }
   }

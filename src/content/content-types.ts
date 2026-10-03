@@ -158,6 +158,7 @@ export interface AdventureExperienceAward {
 }
 
 export interface AdventureDefinition {
+  readonly ending?: { readonly title: string; readonly description: string };
   readonly id: string;
   readonly name: string;
   readonly description: string;

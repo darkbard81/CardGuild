@@ -14,7 +14,7 @@ export function rewardAvailability(
   const immediate = reward.choices.map(() => false);
   const eventual = [...immediate];
   let offered = false;
-  for (const encounterId of adventure.encounterIds.slice(0, -1)) {
+  for (const encounterId of adventure.encounterIds) {
     const award = adventure.experienceAwards.find(entry => entry.afterEncounterId === encounterId)!;
     member = { ...member, progression: applyExperience(member.progression, award.amount).progression };
     for (let choice = chooseAdvancement(member, pack); choice; choice = chooseAdvancement(member, pack)) {

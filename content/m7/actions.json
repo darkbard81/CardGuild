@@ -2386,5 +2386,140 @@
         "critical-failure": []
       }
     }
+  },
+  {
+    "id": "destroy-obstacle",
+    "name": "장애물 파괴",
+    "description": "인접한 나무나 바위를 1행동으로 파괴하여 길을 엽니다. 무기 공격 판정과 별개인 장애물 정리 행동입니다.",
+    "timing": {
+      "kind": "turn",
+      "actions": 1
+    },
+    "traits": [
+      {
+        "id": "manipulate"
+      }
+    ],
+    "targeting": "object",
+    "resolution": {
+      "kind": "direct",
+      "effects": [
+        {
+          "kind": "interact"
+        }
+      ]
+    }
+  },
+  {
+    "id": "needle-darts",
+    "name": "Needle Darts",
+    "description": "금속 바늘을 쏩니다. 2행동·60ft, Arcana(INT) 대 AC, 명중 3d4 관통. 치명타는 두 배입니다. 지속 출혈·금속 약점은 이 카드에 포함되지 않습니다.",
+    "timing": {
+      "kind": "turn",
+      "actions": 2
+    },
+    "traits": [
+      {
+        "id": "attack"
+      },
+      {
+        "id": "cantrip"
+      },
+      {
+        "id": "concentrate"
+      },
+      {
+        "id": "manipulate"
+      },
+      {
+        "id": "spell"
+      },
+      {
+        "id": "metal"
+      }
+    ],
+    "targeting": "enemy",
+    "range": {
+      "kind": "feet",
+      "value": 60
+    },
+    "resolution": {
+      "kind": "check",
+      "check": {
+        "roller": "actor",
+        "statistic": {
+          "kind": "skill",
+          "skill": "arcana",
+          "attributeOverride": "int"
+        },
+        "dc": {
+          "kind": "armor-class",
+          "owner": "target"
+        }
+      },
+      "outcomes": {
+        "critical-success": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": {
+              "count": 3,
+              "sides": 4
+            },
+            "flatModifier": 0,
+            "damageType": "piercing",
+            "multiplier": 2
+          }
+        ],
+        "success": [
+          {
+            "kind": "damage",
+            "owner": "target",
+            "dice": {
+              "count": 3,
+              "sides": 4
+            },
+            "flatModifier": 0,
+            "damageType": "piercing"
+          }
+        ],
+        "failure": [],
+        "critical-failure": []
+      }
+    }
+  },
+  {
+    "id": "shield-spell",
+    "name": "Shield",
+    "description": "1행동으로 마법 방패를 만듭니다. 다음 자기 턴 시작까지 AC +1 상황 보너스. 손은 필요하지 않으며 Shield Block 반응은 제공하지 않습니다.",
+    "timing": {
+      "kind": "turn",
+      "actions": 1
+    },
+    "traits": [
+      {
+        "id": "cantrip"
+      },
+      {
+        "id": "concentrate"
+      },
+      {
+        "id": "force"
+      },
+      {
+        "id": "spell"
+      }
+    ],
+    "targeting": "self",
+    "resolution": {
+      "kind": "direct",
+      "effects": [
+        {
+          "kind": "apply-condition",
+          "owner": "actor",
+          "condition": "warded"
+        }
+      ]
+    }
   }
 ]

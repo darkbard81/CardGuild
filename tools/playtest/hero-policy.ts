@@ -1,4 +1,4 @@
-import { gridDistance } from "../../src/game/grid";
+import { approachAlongPath, gridDistance } from "../../src/game/grid";
 import { listLegalActions, listLegalTargets, previewAction } from "../../src/game/queries";
 import type {
   ActionDefinition,
@@ -207,6 +207,23 @@ export function chooseHeroCommand(state: CombatState, content: CombatContent): C
     if (defence) return useActionCommand(state, actor.id, defence.source, { kind: "none" });
   }
 
+  // Chapter objectives are public state; prefer opening the named evacuation routes.
+  const objectives = (state.rules?.victory?.objectIds ?? []).flatMap(id => {
+    const object = state.map.objects[id]; return object && !object.used ? [object] : [];
+  }).sort((a, b) => gridDistance(a.position, actor.position) - gridDistance(b.position, actor.position));
+  const destroy = enabled(actions, "context", "destroy-obstacle");
+  if (destroy) {
+    const targets = listLegalTargets(state, actor.id, destroy.source, content);
+    const target = objectives.find(object => targets.some(target => target.kind === "object" && target.objectId === object.id));
+    if (target) return useActionCommand(state, actor.id, destroy.source, { kind: "object", objectId: target.id });
+  }
+  const objectiveStride = enabled(actions, "basic", BASIC_STRIDE_ID);
+  if (objectiveStride) for (const object of objectives) {
+    const next = approachAlongPath(state.map, state.actors, actor.id, object.position,
+      listLegalTargets(state, actor.id, objectiveStride.source, content).flatMap(target => target.kind === "tile" ? [target.position] : []));
+    if (next) return useActionCommand(state, actor.id, objectiveStride.source, { kind: "tile", position: next });
+  }
+
   const interact = enabled(actions, "context", INTERACT_ACTION_ID);
   if (interact) {
     const object = listLegalTargets(state, actor.id, interact.source, content)
@@ -264,6 +281,9 @@ export function chooseHeroCommand(state: CombatState, content: CombatContent): C
     )[0];
   for (const goal of [enemy?.position, lever?.position]) {
     if (!stride || !goal) continue;
+    const detour = approachAlongPath(state.map, state.actors, actor.id, goal,
+      listLegalTargets(state, actor.id, stride.source, content).flatMap(target => target.kind === "tile" ? [target.position] : []));
+    if (detour) return useActionCommand(state, actor.id, stride.source, { kind: "tile", position: detour });
     const destination = listLegalTargets(state, actor.id, stride.source, content)
       .filter((candidate): candidate is Extract<LegalTarget, { kind: "tile" }> => candidate.kind === "tile")
       .sort(
@@ -279,6 +299,7 @@ export function chooseHeroCommand(state: CombatState, content: CombatContent): C
         position: destination.position,
       });
     }
+
   }
 
   // The basic Strike is already in the scored pool, so reaching here means the hero had

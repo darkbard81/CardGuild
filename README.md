@@ -542,3 +542,11 @@ EXP가 선택이 필요한 level에 도달하면 Adventure에서 Skill/Attribute
 선택은 저장 COMMIT 이후 적용됩니다. [상세 규칙과 전후 balance 비교](docs/m11-2-character-progression-foundation.md).
 
 Card의 Trait·사용 자격·Ring/Hand 계약과 버전 영향은 [Card capability foundation](docs/card-capability-foundation.md)을 참고하세요.
+
+## 높이 지형 개발 미리보기
+
+`npx vite --host 127.0.0.1 --port 4195 --strictPort` → `http://127.0.0.1:4195/terrain-preview.html`. 기존 상단 타일과 BattleView로 0/1/2/4 높이, 선택/호버, 카메라, 높이 JSON 왕복을 확인할 수 있습니다. 기본 게임 맵은 높이 0을 유지합니다. 작성 형식·측면 이미지 교체·후속 이동 규칙의 경계는 [높이 지형 안내](docs/terrain-elevation.md)를 참고하세요.
+
+## 챕터 1 완성본
+
+기본 모험은 길드 훈련 4개 다음에 숲길·연못 둑·피난문·광장 4전투로 끝납니다. PF2e 참고 보상 4종, 엔딩, 완료 후 보상 편성과 저장을 포함합니다. [구성·원본 출처·검증·미리보기](docs/chapter1-complete.md)를 참고하세요.

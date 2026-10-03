@@ -1,0 +1,323 @@
+{
+  "policy": "Greedy public legal-action policy, objective-aware; protected tutorial victories are preconditions. Field battles use unmodified content, two heroes, no HP overrides or forced rolls. Rewards claimed; starter loadouts retained.",
+  "rows": [
+    {
+      "preset": "human.fighter",
+      "seed": 1,
+      "phase": "complete",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "victory",
+          "commands": 53,
+          "hp": [
+            13,
+            19
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-dike",
+          "outcome": "victory",
+          "commands": 31,
+          "hp": [
+            4,
+            19
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-gate",
+          "outcome": "victory",
+          "commands": 14,
+          "hp": [
+            19,
+            19
+          ],
+          "resolvedObjects": [
+            "willow-gate-rock-11-8",
+            "willow-gate-tree-8-8"
+          ]
+        },
+        {
+          "encounter": "encounter.willow-square",
+          "outcome": "victory",
+          "commands": 52,
+          "hp": [
+            14,
+            15
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    },
+    {
+      "preset": "human.fighter",
+      "seed": 2,
+      "phase": "complete",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "victory",
+          "commands": 49,
+          "hp": [
+            14,
+            19
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-dike",
+          "outcome": "victory",
+          "commands": 30,
+          "hp": [
+            6,
+            19
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-gate",
+          "outcome": "victory",
+          "commands": 28,
+          "hp": [
+            17,
+            19
+          ],
+          "resolvedObjects": [
+            "willow-gate-rock-11-8",
+            "willow-gate-tree-8-8"
+          ]
+        },
+        {
+          "encounter": "encounter.willow-square",
+          "outcome": "victory",
+          "commands": 79,
+          "hp": [
+            0,
+            4
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    },
+    {
+      "preset": "human.fighter",
+      "seed": 3,
+      "phase": "complete",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "victory",
+          "commands": 46,
+          "hp": [
+            14,
+            16
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-dike",
+          "outcome": "victory",
+          "commands": 49,
+          "hp": [
+            17,
+            13
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-gate",
+          "outcome": "victory",
+          "commands": 25,
+          "hp": [
+            10,
+            19
+          ],
+          "resolvedObjects": [
+            "willow-gate-rock-11-8",
+            "willow-gate-tree-8-8"
+          ]
+        },
+        {
+          "encounter": "encounter.willow-square",
+          "outcome": "victory",
+          "commands": 24,
+          "hp": [
+            8,
+            19
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    },
+    {
+      "preset": "human.ranger",
+      "seed": 1,
+      "phase": "combat",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "defeat",
+          "commands": 80,
+          "hp": [
+            0,
+            0
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    },
+    {
+      "preset": "human.ranger",
+      "seed": 2,
+      "phase": "combat",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "defeat",
+          "commands": 154,
+          "hp": [
+            0,
+            0
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    },
+    {
+      "preset": "human.ranger",
+      "seed": 3,
+      "phase": "complete",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "victory",
+          "commands": 46,
+          "hp": [
+            14,
+            17
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-dike",
+          "outcome": "victory",
+          "commands": 37,
+          "hp": [
+            12,
+            8
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-gate",
+          "outcome": "victory",
+          "commands": 25,
+          "hp": [
+            6,
+            19
+          ],
+          "resolvedObjects": [
+            "willow-gate-rock-11-8",
+            "willow-gate-tree-8-8"
+          ]
+        },
+        {
+          "encounter": "encounter.willow-square",
+          "outcome": "victory",
+          "commands": 42,
+          "hp": [
+            1,
+            19
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    },
+    {
+      "preset": "human.wizard",
+      "seed": 1,
+      "phase": "combat",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "defeat",
+          "commands": 94,
+          "hp": [
+            0,
+            0
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    },
+    {
+      "preset": "human.wizard",
+      "seed": 2,
+      "phase": "complete",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "victory",
+          "commands": 72,
+          "hp": [
+            0,
+            13
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-dike",
+          "outcome": "victory",
+          "commands": 44,
+          "hp": [
+            0,
+            19
+          ],
+          "resolvedObjects": []
+        },
+        {
+          "encounter": "encounter.willow-gate",
+          "outcome": "victory",
+          "commands": 28,
+          "hp": [
+            11,
+            13
+          ],
+          "resolvedObjects": [
+            "willow-gate-rock-11-8",
+            "willow-gate-tree-8-8"
+          ]
+        },
+        {
+          "encounter": "encounter.willow-square",
+          "outcome": "victory",
+          "commands": 83,
+          "hp": [
+            0,
+            7
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    },
+    {
+      "preset": "human.wizard",
+      "seed": 3,
+      "phase": "combat",
+      "encounters": [
+        {
+          "encounter": "encounter.willow-rescue",
+          "outcome": "defeat",
+          "commands": 66,
+          "hp": [
+            0,
+            0
+          ],
+          "resolvedObjects": []
+        }
+      ]
+    }
+  ]
+}

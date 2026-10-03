@@ -4,6 +4,8 @@ import type {
   PresentationTilemapPack,
 } from "./presentation-types";
 
+import { validateElevations } from "./terrain-elevation";
+
 function assertLayer(
   scenarioId: string,
   layerName: string,
@@ -51,6 +53,7 @@ export function validatePresentationTilemaps(
       throw new Error(`Tilemap "${scenarioId}" dimensions must be positive integers.`);
     }
     const length = map.width * map.height;
+    if (map.meta.elevations) validateElevations(map.meta.elevations, length);
     assertPalette(scenarioId, "ground", map.palettes.ground, manifest);
     assertPalette(scenarioId, "transitions", map.palettes.transitions, manifest);
     assertPalette(scenarioId, "objects", map.palettes.objects, manifest);

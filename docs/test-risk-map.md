@@ -152,7 +152,7 @@ J-COOP uses a production recruitment-complete checkpoint and the explicit prepar
 | --- | --- | --- |
 | G-FLANK | 2인·기존 안드로이드, 전체 생성 클래스의 복수 이동 해법, 최초 비협공·이동 후 기존 resolver/AC·관계 해제, 기본/카드/주문 피해 무효·비용/RNG 유지, Rear/Prone만으로 우회 불가, 아군 둘 HP 1, 일반 전투 영향 없음, 모집·인원 admission, 임시 단검·원래 장비/인벤토리 보존·Resume/다음 전투 원복, save/replay | Domain `flanking-training.test.ts`; 일반 geometry/stacking은 기존 G-CONDITION/G-FACING 소유 |
 | U-FLANK | 실제 모집 파티와 출발 전 안내, 안내만으로 행동 요청 없음, Host/Guest의 실제 보드 이동과 화면에 보이는 Flanking/아군/AC, stale preview 제거, Ranger 장비 변경 없는 출발·대여 설명·단검 상세 표시 | Interaction `flanking-training.spec.ts`, 1024×768 |
-| J-PROGRESS | 1-2 승리 → Aerin 모집 → 준비 → 1-3 안내·이동·협공 Preview·실제 공격·승리 → Spear Line 준비 | Journey `progress-coop.spec.ts`; J-COOP는 같은 1-3의 기존 조작권 연결 |
+| J-PROGRESS | 1-2 승리 → Aerin 모집 → 준비 → 1-3 안내·이동·협공 Preview·실제 공격·승리 → 지식 회상 훈련 → 버드나무 숲길 진입 | Journey `progress-coop.spec.ts`; J-COOP는 같은 1-3의 기존 조작권 연결 |
 | B-FLANK | SQLite 저장·reopen 후 1-3 임시 단검과 원래 Ranger 활/loadout/인벤토리 동시 보존 | Integration `contracts/training-weapon.test.ts` |
 
 ## M12-8 지식 회상 훈련 (#70)
@@ -162,4 +162,28 @@ J-COOP uses a production recruitment-complete checkpoint and the explicit prepar
 | G-KNOWLEDGE-TRAINING | 네 Android 훈련의 HP 보호/능력/장비 경계, 모든 생성 preset의 첫 보장 판정·실제 RNG·실패 결과 기록·한 번 소비·일반 판정·replay/save 위조 거부·참조 오류 — Domain `knowledge-training.test.ts`; 일반 Knowledge 계산은 기존 소유자 유지 |
 | B-KNOWLEDGE-TRAINING | 파일 SQLite reopen 후 소비/지식 보존 및 재사용 거부 — Integration `knowledge-training.test.ts` |
 | U-KNOWLEDGE-TRAINING | Host 안내 → 실제 Ring 한 번 입력 → ACK만으로 미해금 → snapshot 이후 수동 상세, Guest 조작 및 재접속 재생 방지 — Interaction `knowledge-training.spec.ts` |
-| J-PROGRESS | 기존 1-3 승리 → 원래 장비 복귀 → 1-4 Recall/직접 상세/승리 → Spear Line 보호 종료 연결 — Journey `progress-coop.spec.ts` |
+| J-PROGRESS | 기존 1-3 승리 → 원래 장비 복귀 → 1-4 Recall/직접 상세/승리 → 버드나무 숲길 보호 종료 연결 — Journey `progress-coop.spec.ts` |
+
+## Presentation terrain elevation
+
+| Risk | Contract / owner |
+| --- | --- |
+| G-ELEVATION | 높이 기본값 0, 0/1/2/4 면 노출·상단 기준, 높이 파일 왕복·잘못된 높이/재질 거부, pan/zoom에서 높이 투영·측면 가림·좌표 복원 — Domain `terrain-elevation.test.ts` |
+| U-ELEVATION | 실제 BattleView 높이 타일 선택·호버·측면 비선택, 높이 편집, JSON 복원·오류 보존, 휠 확대와 pan 입력 — Interaction `terrain-elevation.spec.ts`, 1024×768, seed 60. 기존 게임의 빈 높이 맵 연결은 기존 Journey가 검증 |
+| G-STANDEE | 실제 draw 순서의 깊이/tie-break·사각형 합집합/여집합의 비중첩, 같은 지형 RT 재사용과 교체·평면 복귀·destroy 시 해제 — Domain `standee-occlusion.test.ts` |
+| U-STANDEE | 투명 여백 포함 전체 사각형, 선택 무관, 앞 지형만 alpha 0.15, 다중 배우/지형층, 숨김·알파 0·이동·크기·anchor·반전·카메라, 실제 캐릭터 정면/후면 ON/OFF 픽셀 복원과 높이 0 복귀 — Interaction `standee-occlusion.spec.ts`, Canvas, 1024×768, seed 60, preview revision 1–7 |
+
+## Chapter 1 first forest map
+
+| Risk | Contract / owner |
+| --- | --- |
+| G-WILLOW | 20×20 숲의 3종 지면/물, 적까지 연결된 보행로, 파괴 1행동·국소 충돌 해제·원거리/재사용 거부·replay/save/Resume — Domain `willow-rescue.test.ts`; U자 장애물에서 적 우회 — `ai-detour.test.ts` |
+| U-WILLOW | 고향 안내 취소/출발, 실제 나무 Ring 파괴 입력과 ACK/snapshot 반영 — Interaction `willow-rescue.spec.ts` |
+
+## Chapter 1 completion
+
+| Risk | Contract / owner |
+| --- | --- |
+| G-CHAPTER | 네 필드 맵 연결성·목표 참조, 목표 AND/잔여 적 생존, 실제 두 장애물 파괴·리플레이, 보상 중복 거부·완료 단계 편성 권한 — Domain `chapter-one.test.ts` |
+| B-CHAPTER | 네 보상 체크포인트·완료 덱 SQLite close/reopen/Resume — Integration `contracts/chapter-one.test.ts` |
+| U-CHAPTER | 추가 전장 안내·입장, 최종 보상 ACK/snapshot→엔딩→Shield 준비 저장 — Interaction `chapter-one.spec.ts`, 1024×768 |

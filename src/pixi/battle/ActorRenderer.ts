@@ -24,8 +24,8 @@ function standeeBase(style: StandeeBaseStyle): Graphics {
 }
 
 /**
- * Two drawings cover four facings: north shows the back, and east, south and west share
- * the front pose with west mirrored. Mirroring is a scale on the body alone — the base
+ * Two drawings cover four facings: north/west show the back, east/south the front,
+ * with west/south mirrored. Mirroring is a scale on the body alone — the base
  * under it and the badge above it are screen furniture and stay as they are.
  */
 function standeeBody(catalog: AssetCatalog, actor: ActorState): { body: Sprite; height: number } {
@@ -45,7 +45,7 @@ function actorVisual(
   catalog: AssetCatalog,
   actor: ActorState,
   config: BoardViewConfig,
-): { display: Container; badge: Container } {
+): { display: Container; badge: Container; body: Sprite } {
   const display = new Container({ label: actor.id });
   const base = standeeBase(config.standeeBase);
   base.scale.y = config.boardSquashY;
@@ -66,7 +66,7 @@ function actorVisual(
   hp.eventMode = "none";
   display.alpha = actor.defeated ? 0.5 : 1;
   display.addChild(base, body, hp);
-  return { display, badge: hp };
+  return { display, badge: hp, body };
 }
 
 export class ActorRenderer {
@@ -80,6 +80,7 @@ export class ActorRenderer {
       const visual = actorVisual(this.catalog, actor, this.config);
       return {
         display: visual.display,
+        standeeBody: visual.body,
         screenSpace: visual.badge,
         position: actor.position,
         layerPriority: 30,

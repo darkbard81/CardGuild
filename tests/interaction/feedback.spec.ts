@@ -63,7 +63,7 @@ for (const phase of ["failed", "complete"] as const) {
     const backend = await controlledSession(page, state);
     await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeEnabled();
     backend.publish({ ...state, revision: state.revision + 1, combat: null, adventure: { ...state.adventure!, phase, pendingReward: null, currentEncounterId: null } });
-    await expect(page.getByRole("heading", { name: phase === "failed" ? "The party was defeated" : "Goblin Trouble resolved", exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: phase === "failed" ? "The party was defeated" : "챕터 1 완료 · 윌로우브룩에 돌아온 불빛", exact: true })).toBeVisible();
     await expect(page.getByRole("button", { name: "End Turn", exact: true })).toBeHidden();
     await page.getByRole("button", { name: "시작 화면으로", exact: true }).click();
     await expect(page.getByRole("button", { name: "새 모험 시작", exact: true })).toBeVisible();

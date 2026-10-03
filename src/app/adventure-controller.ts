@@ -1,5 +1,5 @@
 import { SceneDialogueUi } from "../dom/scene-dialogue-ui";
-import { KNOWLEDGE_TRAINING_SCENE, FLANKING_TRAINING_SCENE, FIRST_BATTLE_SCENE, PRONE_RECOVERY_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
+import { CHAPTER_ONE_BRIEFINGS, KNOWLEDGE_TRAINING_SCENE, FLANKING_TRAINING_SCENE, FIRST_BATTLE_SCENE, PRONE_RECOVERY_SCENE, SCENE_CATALOG, WELCOME_SCENE } from "../scene/catalog";
 import { CoopPreparationUi } from "../dom/coop-preparation-ui";
 import { waitingGuests } from "../session";
 import type { CharacterSheetDestination } from "../dom/character-workspace";
@@ -715,12 +715,13 @@ export class AdventureController {
   private departureBriefingKey(): string | null {
     const state = this.snapshot?.state;
     const adventure = state?.adventure;
+    const forest = !!CHAPTER_ONE_BRIEFINGS[adventure?.currentEncounterId ?? ""];
     if (!state || state.lifecycle !== "active" || state.combat ||
         state.hostPlayerId !== this.client?.credential.playerId ||
         adventure?.phase !== "between-encounters" ||
-        (adventure.completedEncounterIds.length > 0 && !["encounter.flanking-training", "encounter.knowledge-training"].includes(adventure.currentEncounterId ?? "")) ||
+        (adventure.completedEncounterIds.length > 0 && !["encounter.flanking-training", "encounter.knowledge-training", ...Object.keys(CHAPTER_ONE_BRIEFINGS)].includes(adventure.currentEncounterId ?? "")) ||
         !adventure.currentEncounterId ||
-        PRODUCTION_CONTENT.pack.scenarios[adventure.currentEncounterId]?.partyHpFloor !== 1) return null;
+        (!forest && PRODUCTION_CONTENT.pack.scenarios[adventure.currentEncounterId]?.partyHpFloor !== 1)) return null;
     return `${state.sessionId}:${adventure.currentEncounterId}`;
   }
 
@@ -729,10 +730,11 @@ export class AdventureController {
     const key = this.departureBriefingKey();
     if (key && key !== this.completedBriefingKey) {
       this.briefingKey = key;
+      const forest = CHAPTER_ONE_BRIEFINGS[this.snapshot?.state.adventure?.currentEncounterId ?? ""];
       const flanking = this.snapshot?.state.adventure?.currentEncounterId === "encounter.flanking-training";
       const knowledge = this.snapshot?.state.adventure?.currentEncounterId === "encounter.knowledge-training";
-      this.sceneUi.open(knowledge ? KNOWLEDGE_TRAINING_SCENE : flanking ? FLANKING_TRAINING_SCENE : FIRST_BATTLE_SCENE, SCENE_CATALOG, {
-        title: knowledge ? "미네르바의 지식 회상 안내" : flanking ? "미네르바의 협공 안내" : "미네르바의 첫 전투 안내", finishLabel: "연습 전투 시작",
+      this.sceneUi.open(forest ? forest : knowledge ? KNOWLEDGE_TRAINING_SCENE : flanking ? FLANKING_TRAINING_SCENE : FIRST_BATTLE_SCENE, SCENE_CATALOG, {
+        title: forest ? "챕터 1 · Aerin의 고향" : knowledge ? "미네르바의 지식 회상 안내" : flanking ? "미네르바의 협공 안내" : "미네르바의 첫 전투 안내", finishLabel: forest ? (forest.id === "willow-rescue-briefing" ? "숲길로 출발" : "전장으로 출발") : "연습 전투 시작",
         onFinish: result => {
           if (this.briefingKey !== key || this.departureBriefingKey() !== key) return;
           this.briefingKey = null;

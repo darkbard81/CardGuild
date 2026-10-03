@@ -279,6 +279,8 @@ const combat = {
     rules: {
       type: "object", additionalProperties: false,
       properties: {
+        victory: { type: "object", additionalProperties: false, required: ["enemyIds", "objectIds"],
+          properties: { enemyIds: { type: "array", uniqueItems: true, items: nonEmptyString }, objectIds: { type: "array", uniqueItems: true, items: nonEmptyString } } },
         innateActionOverride: { type: "object", additionalProperties: false, required: ["actorId", "actionIds"],
           properties: { actorId: nonEmptyString, actionIds: { type: "array", uniqueItems: true, items: nonEmptyString } } },
         guaranteedCheck: { type: "object", additionalProperties: false, required: ["actionId", "targetActorId", "degree", "uses"],
@@ -403,7 +405,7 @@ const combat = {
                 type: "object",
                 additionalProperties: false,
                 required: ["kind", "targetTileId"],
-                properties: { kind: { const: "open-gate" }, targetTileId: nonEmptyString },
+                properties: { kind: { enum: ["open-gate", "destroy-obstacle"] }, targetTileId: nonEmptyString },
               },
               used: { type: "boolean" },
             },

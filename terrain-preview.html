@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CardGuild 높이 맵 미리보기</title>
+<style>body{margin:0;background:#111820;color:#ece7da;font:15px system-ui;display:grid;grid-template-columns:1fr 280px;height:100vh}#board{min-width:0;position:relative}canvas{display:block}aside{padding:18px;overflow:auto;background:#20272d}h1{font-size:20px}label{display:block;margin:14px 0}select,input,button,textarea{font:inherit;max-width:100%;box-sizing:border-box;background:#303b44;color:inherit;border:1px solid #596674;border-radius:5px;padding:7px}button{margin:4px 0}textarea{width:100%;height:180px}p{line-height:1.5}.hint{color:#b4c2ca;font-size:13px}#status{min-height:3em}@media(max-width:700px){body{grid-template-columns:1fr 230px}}</style></head>
+<body><div id="board" aria-label="높이 맵 전장"></div><aside><h1>높이 맵 미리보기</h1><p class="hint">개발용 · 전투 데이터와 개발 DB는 변경하지 않습니다.</p><p id="renderer" class="hint"></p>
+<label>맵 <select id="scenario"></select></label><p id="status" role="status">불러오는 중…</p>
+<label>선택 타일 높이 <input id="height" type="number" min="0" max="8" step="1" value="0" disabled></label>
+<label><input id="transparency" type="checkbox" checked> 캐릭터 앞 지형 투명화</label>
+<button id="occlusion">모든 캐릭터 가림 예제</button>
+<label>예제 캐릭터 방향 <select id="facing"><option value="south">정면</option><option value="north">후면</option><option value="west">후면 반전</option><option value="east">정면</option></select></label>
+<button id="sample">높이 0·1·2·4 예제</button><button id="reset">모두 높이 0</button>
+<p class="hint">타일 클릭으로 선택 · 휠 확대 · Alt+드래그 또는 가운데 버튼으로 이동. 측면은 선택되지 않습니다.</p>
+<button id="export">높이 JSON 내보내기</button><button id="import">높이 JSON 불러오기</button><label>높이 파일 <textarea id="json" spellcheck="false"></textarea></label><p id="message" role="alert"></p>
+<p class="hint">JSON의 maps 항목을 presentation/m3/terrain-elevations.json에 저장하면 게임에 적용됩니다. 빈 maps는 모든 기존 맵을 그대로 유지합니다. 상단 재질은 기존 타일맵을 따릅니다.</p></aside>
+<script type="module" src="/src/dev/terrain-preview.ts"></script></body></html>

@@ -2737,6 +2737,420 @@
         }
       ],
       "prompt": "Create one production CardGuild full-body FRONT standee, one character only. Follow art/STYLE.md: upright 2D hyper detailed Japanese anime / cel-painted game character; crisp dark inner linework, thick pure white cutout outline around entire silhouette; upper-left lighting, NO ground shadow, no floor, no perspective, transparent alpha background. Adult female guild training android, clearly adult face and proportions, very large massive bust under fully covering ivory and dark-green mechanical training armor, articulated brass joints and hands, short silver bob, teal eyes, small gold guild emblem, sturdy boots, padded articulated gloves for grappling. Nonsexual neutral ready stance, both feet visible on same baseline, hands separated readable. Front-facing full body head to boots entirely inside portrait canvas with generous transparent margin. No text, no frame, no watermark, no second view. Consistent CardGuild restrained ivory/brass/forest-green palette. Intended normalized size256x384 anchored bottom center. Generate FRONT only, later back must match this exact character. Back: Reference art/STYLE.md CardGuild. Use attached front image as exact identity/costume/proportions reference. Generate ONE matching fullbody true BACK view of this same adult female guild training android, silver bob, ivory/forest-green/brass articulated armor, sturdy boots, same silhouette and feet baseline, arms relaxed hands separated. Rear of head/armor/boots, no face looking back, no chest insignia on back. Upright 2D detailed Japanese anime cel-painted standee, thick pure white cutout outline, upper-left light. Full figure visible inside portrait 2:3 frame generous margins. IMPORTANT genuine transparent RGBA background: no black gradient, no checkerboard image, no glow, no floor shadows, no scenery. Back only, no text."
+    },
+    {
+      "input": "art/source/terrain/forest-grass.png",
+      "mode": "square-terrain",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "terrain.forest-grass",
+          "kind": "terrain",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 128,
+            "height": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. Original generated 2×2 top-down fullbleed woodland atlas; forest-grass quadrant, no perspective or props."
+    },
+    {
+      "input": "art/source/terrain/forest-dirt.png",
+      "mode": "square-terrain",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "terrain.forest-dirt",
+          "kind": "terrain",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 128,
+            "height": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. Original generated 2×2 top-down fullbleed woodland atlas; forest-dirt quadrant, no perspective or props."
+    },
+    {
+      "input": "art/source/terrain/forest-leaves.png",
+      "mode": "square-terrain",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "terrain.forest-leaves",
+          "kind": "terrain",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 128,
+            "height": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. Original generated 2×2 top-down fullbleed woodland atlas; forest-leaves quadrant, no perspective or props."
+    },
+    {
+      "input": "art/source/terrain/pond-water.png",
+      "mode": "square-terrain",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "terrain.pond-water",
+          "kind": "terrain",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "width": 128,
+            "height": 128
+          },
+          "footprint": {
+            "width": 128,
+            "height": 128
+          }
+        }
+      ],
+      "prompt": "Reference art/STYLE.md. Original generated 2×2 top-down fullbleed woodland atlas; pond-water quadrant, no perspective or props."
+    },
+    {
+      "input": "art/source/objects/woodland-tree.png",
+      "mode": "grounded-object",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "object.woodland-tree",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 210
+          }
+        }
+      ],
+      "prompt": "Follow CardGuild art/STYLE.md. One isolated broadleaf woodland tree as an upright paper-standee game prop, straight-on slightly elevated view, soft detailed cel-painted fantasy game art, moss greens #33472B #5E7040, warm brown trunk #6C452B, light from upper-left. A sturdy but compact young oak with an asymmetric readable leafy crown and visible trunk, suitable as a breakable obstacle. No surroundings, no ground plane, no grass base, no cast floor shadow. Full tree entirely inside the image with generous transparent padding on all sides, bottom-center trunk contact point. Crisp dark contour, painterly readable foliage rather than photorealism, no text, no UI. Transparent background, single tree only. Match restrained natural moss greens of the visible terrain materials."
+    },
+    {
+      "input": "art/source/objects/woodland-rock.png",
+      "mode": "grounded-object",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "object.woodland-rock",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 78
+          }
+        }
+      ],
+      "prompt": "Follow CardGuild art/STYLE.md. One isolated breakable mossy woodland boulder as an upright paper-standee game prop, straight-on slightly elevated view, detailed cel-painted fantasy game art, upper-left illumination, stone gray #77756E and #AAA38F with small moss #33472B patches and naturally fractured planes. Rounded angular rock, broad grounded bottom and clear central contact point. Full rock entirely inside the image with generous transparent padding. No surrounding terrain, no ground plane, no grass, no shadow outside its silhouette. Crisp dark contour, readable at small game scale, no text, no UI. Transparent background, exactly one boulder. Match the natural muted palette of the visible terrain materials."
+    },
+    {
+      "input": "art/source/actors/dark-elf-warrior-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.dark-elf-warrior",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.dark-elf-warrior.front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 144
+          },
+          "side": "front"
+        },
+        {
+          "assetId": "actor.dark-elf-warrior.back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 144
+          },
+          "side": "back"
+        }
+      ],
+      "prompt": "Edit only the warrior character in the reference images, output exactly one full body FRONT standee of that same adult woman, not a lineup. Follow CardGuild art/STYLE.md. Preserve her mature face, gray-violet skin, pointed ears, silver hair, class identity, equipment and weapon hands, thick pure white cutout border, anatomy and neutral stance. User-requested costume revision: a voluptuous mature adult with unmistakably MASSIVE BUST, more pronounced than before, in a fantasy TWO-PIECE costume with moderate tasteful exposure: fitted opaque supportive bodice with a low neckline showing upper cleavage and shoulders, a small band of bare midriff, and separate fitted trousers or a short armored overskirt over fitted shorts with upper thighs visible. Breasts remain fully covered by opaque fabric/armor; no nipples, no nudity, no explicit pose. Keep class-specific colors and protective equipment: burgundy/iron plate armor, sword and shield. Outfit should visibly read as two separate garments. Entire figure, hair, weapon and boots inside frame with generous padding. Remove ALL gray glow, vignette, drop shadows and background gradients: the outer white border must end sharply into completely transparent alpha, with no halo beyond the border. No text. BACK: Using ONLY the revised warrior FRONT standee in the provided reference image(s) as the identity and costume reference, generate exactly one matching full-body BACK standee. Follow CardGuild art/STYLE.md. Same clearly adult dark-elf woman, same curvy massive-bust body proportions, gray-violet skin, hairstyle, class outfit, exposed shoulders and small waist gap, separate top and bottom, white cutout border, weapon scale, and boots. Actual rear view: face points away and no face looking back. Preserve anatomical hands: sword in anatomical right hand (now image right), round shield on anatomical left arm (now image left). Bottom garment completely covers buttocks; not underwear or nude. Neutral standing pose, matching front-view feet line and camera distance, full body and complete weapons contained with clear margins. Transparent background, NO background gradients or glow, no floor shadow, no text. Output only this one character's back view."
+    },
+    {
+      "input": "art/source/actors/dark-elf-rogue-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.dark-elf-rogue",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.dark-elf-rogue.front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 144
+          },
+          "side": "front"
+        },
+        {
+          "assetId": "actor.dark-elf-rogue.back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 144
+          },
+          "side": "back"
+        }
+      ],
+      "prompt": "Edit only the rogue character in the reference images, output exactly one full body FRONT standee of that same adult woman, not a lineup. Follow CardGuild art/STYLE.md. Preserve her mature face, gray-violet skin, pointed ears, silver hair, class identity, equipment and weapon hands, thick pure white cutout border, anatomy and neutral stance. User-requested costume revision: a voluptuous mature adult with unmistakably MASSIVE BUST, more pronounced than before, in a fantasy TWO-PIECE costume with moderate tasteful exposure: fitted opaque supportive bodice with a low neckline showing upper cleavage and shoulders, a small band of bare midriff, and separate fitted trousers or a short armored overskirt over fitted shorts with upper thighs visible. Breasts remain fully covered by opaque fabric/armor; no nipples, no nudity, no explicit pose. Keep class-specific colors and protective equipment: plum leather, daggers. Outfit should visibly read as two separate garments. Entire figure, hair, weapon and boots inside frame with generous padding. Remove ALL gray glow, vignette, drop shadows and background gradients: the outer white border must end sharply into completely transparent alpha, with no halo beyond the border. No text. BACK: Using ONLY the revised rogue FRONT standee in the provided reference image(s) as the identity and costume reference, generate exactly one matching full-body BACK standee. Follow CardGuild art/STYLE.md. Same clearly adult dark-elf woman, same curvy massive-bust body proportions, gray-violet skin, hairstyle, class outfit, exposed shoulders and small waist gap, separate top and bottom, white cutout border, weapon scale, and boots. Actual rear view: face points away and no face looking back. Preserve anatomical hands: daggers in both hands. Bottom garment completely covers buttocks; not underwear or nude. Neutral standing pose, matching front-view feet line and camera distance, full body and complete weapons contained with clear margins. Transparent background, NO background gradients or glow, no floor shadow, no text. Output only this one character's back view."
+    },
+    {
+      "input": "art/source/actors/dark-elf-archer-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.dark-elf-archer",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.dark-elf-archer.front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 144
+          },
+          "side": "front"
+        },
+        {
+          "assetId": "actor.dark-elf-archer.back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 144
+          },
+          "side": "back"
+        }
+      ],
+      "prompt": "Edit only the archer character in the reference images, output exactly one full body FRONT standee of that same adult woman, not a lineup. Follow CardGuild art/STYLE.md. Preserve her mature face, gray-violet skin, pointed ears, silver hair, class identity, equipment and weapon hands, thick pure white cutout border, anatomy and neutral stance. User-requested costume revision: a voluptuous mature adult with unmistakably MASSIVE BUST, more pronounced than before, in a fantasy TWO-PIECE costume with moderate tasteful exposure: fitted opaque supportive bodice with a low neckline showing upper cleavage and shoulders, a small band of bare midriff, and separate fitted trousers or a short armored overskirt over fitted shorts with upper thighs visible. Breasts remain fully covered by opaque fabric/armor; no nipples, no nudity, no explicit pose. Keep class-specific colors and protective equipment: forest green leather, bow and quiver. Outfit should visibly read as two separate garments. Entire figure, hair, weapon and boots inside frame with generous padding. Remove ALL gray glow, vignette, drop shadows and background gradients: the outer white border must end sharply into completely transparent alpha, with no halo beyond the border. No text. BACK: Using ONLY the revised archer FRONT standee in the provided reference image(s) as the identity and costume reference, generate exactly one matching full-body BACK standee. Follow CardGuild art/STYLE.md. Same clearly adult dark-elf woman, same curvy massive-bust body proportions, gray-violet skin, hairstyle, class outfit, exposed shoulders and small waist gap, separate top and bottom, white cutout border, weapon scale, and boots. Actual rear view: face points away and no face looking back. Preserve anatomical hands: bow in anatomical left hand (now image left), quiver on back. Bottom garment completely covers buttocks; not underwear or nude. Neutral standing pose, matching front-view feet line and camera distance, full body and complete weapons contained with clear margins. Transparent background, NO background gradients or glow, no floor shadow, no text. Output only this one character's back view."
+    },
+    {
+      "input": "art/source/actors/dark-elf-mage-front-back.png",
+      "mode": "two-sided-actor",
+      "definitionId": "enemy.dark-elf-mage",
+      "grid": {
+        "rows": 1,
+        "cols": 2
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "actor.dark-elf-mage.front",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 144
+          },
+          "side": "front"
+        },
+        {
+          "assetId": "actor.dark-elf-mage.back",
+          "kind": "actor",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 144
+          },
+          "side": "back"
+        }
+      ],
+      "prompt": "Edit only the mage character in the reference images, output exactly one full body FRONT standee of that same adult woman, not a lineup. Follow CardGuild art/STYLE.md. Preserve her mature face, gray-violet skin, pointed ears, silver hair, class identity, equipment and weapon hands, thick pure white cutout border, anatomy and neutral stance. User-requested costume revision: a voluptuous mature adult with unmistakably MASSIVE BUST, more pronounced than before, in a fantasy TWO-PIECE costume with moderate tasteful exposure: fitted opaque supportive bodice with a low neckline showing upper cleavage and shoulders, a small band of bare midriff, and separate fitted trousers or a short armored overskirt over fitted shorts with upper thighs visible. Breasts remain fully covered by opaque fabric/armor; no nipples, no nudity, no explicit pose. Keep class-specific colors and protective equipment: midnight blue/plum embroidered mage costume, staff and spellbook. Outfit should visibly read as two separate garments. Entire figure, hair, weapon and boots inside frame with generous padding. Remove ALL gray glow, vignette, drop shadows and background gradients: the outer white border must end sharply into completely transparent alpha, with no halo beyond the border. No text. BACK: Using ONLY the revised mage FRONT standee in the provided reference image(s) as the identity and costume reference, generate exactly one matching full-body BACK standee. Follow CardGuild art/STYLE.md. Same clearly adult dark-elf woman, same curvy massive-bust body proportions, gray-violet skin, hairstyle, class outfit, exposed shoulders and small waist gap, separate top and bottom, white cutout border, weapon scale, and boots. Actual rear view: face points away and no face looking back. Preserve anatomical hands: staff in anatomical right hand (now image right), spellbook at anatomical left hip (now image left). Bottom garment completely covers buttocks; not underwear or nude. Neutral standing pose, matching front-view feet line and camera distance, full body and complete weapons contained with clear margins. Transparent background, NO background gradients or glow, no floor shadow, no text. Output only this one character's back view."
+    },
+    {
+      "input": "art/source/ui/sickle.png",
+      "mode": "ui-icon",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "ui.equipment.sickle",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "height": 64
+          }
+        }
+      ],
+      "prompt": "Production fantasy equipment icon. One short wooden-handled sickle with a curved sharpened dark-steel blade, a small green ribbon tied to the handle. Clearly a one-handed farming knife, not a long scythe. Detailed cel-painted anime board game style matching CardGuild art/STYLE.md, strong clean silhouette, upper-left light, centered diagonal item fully visible with generous clear padding. No hands or characters, no text or frame. True transparent background. Square 1024x1024."
+    },
+    {
+      "input": "art/source/ui/dueling-cape.png",
+      "mode": "ui-icon",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 256
+      },
+      "frames": [
+        {
+          "assetId": "ui.equipment.dueling-cape",
+          "kind": "ui",
+          "anchor": {
+            "x": 0.5,
+            "y": 0.5
+          },
+          "displaySize": {
+            "height": 64
+          }
+        }
+      ],
+      "prompt": "Production fantasy equipment icon. One wine-red dueling cape with antique gold edging and a simple brass clasp, loosely folded around an empty arm-shaped curve to suggest a parrying cloak; no arm or person is present. Clearly soft rich cloth, not a metal shield. Detailed cel-painted anime board game style matching CardGuild art/STYLE.md, upper-left light, strong clear silhouette, centered full object with padding. No text, no frame. True transparent background. Square 1024x1024."
+    },
+    {
+      "input": "art/source/objects/willow-cottage.png",
+      "mode": "grounded-object",
+      "grid": {
+        "rows": 1,
+        "cols": 1
+      },
+      "canvas": {
+        "width": 256,
+        "height": 384
+      },
+      "frames": [
+        {
+          "assetId": "object.willow-cottage",
+          "kind": "object",
+          "anchor": {
+            "x": 0.5,
+            "y": 1
+          },
+          "displaySize": {
+            "height": 170
+          }
+        }
+      ],
+      "prompt": "Single production board-game point prop: a small welcoming timber-and-pale-plaster woodland cottage with moss green pitched roof, low stone foundation, warm amber square windows and a brown wooden front door. Three-quarter view with front and right walls visible, orthographic projection, no ground plane, no terrain diamond, no shadow patch, no people, no text. CardGuild detailed cel-painted fantasy boardgame style, thick clean silhouette, restrained colors, light from upper left. Full building and base visible, centered with transparent padding. True transparent background. Square 1024x1024.\nPipeline normalization style reference: art/STYLE.md."
     }
   ],
   "presentation": {
@@ -2751,7 +3165,10 @@
     },
     "objectVisuals": {
       "chest": "object.chest",
-      "lever": "object.lever"
+      "lever": "object.lever",
+      "tree": "object.woodland-tree",
+      "rock": "object.woodland-rock",
+      "cottage": "object.willow-cottage"
     },
     "equipmentVisuals": {
       "halberd": "ui.equipment.halberd",
@@ -2780,7 +3197,9 @@
       "warding-charm": "ui.equipment.warding-charm",
       "hexers-focus": "ui.equipment.hexers-focus",
       "bloodied-talisman": "ui.equipment.bloodied-talisman",
-      "staff": "ui.equipment.staff"
+      "staff": "ui.equipment.staff",
+      "sickle": "ui.equipment.sickle",
+      "dueling-cape": "ui.equipment.dueling-cape"
     },
     "cardVisuals": {
       "card.trip": "ui.card.trip",
@@ -2819,7 +3238,9 @@
       "card.heavy-blow": "ui.card.heavy-blow",
       "card.guarding-blow": "ui.card.guarding-blow",
       "card.piercing-shot": "ui.card.piercing-shot",
-      "card.hooking-cut": "ui.card.hooking-cut"
+      "card.hooking-cut": "ui.card.hooking-cut",
+      "card.needle-darts": "ui.card.needle-darts",
+      "card.shield-spell": "ui.card.shield-spell"
     },
     "scenery": [
       {
@@ -2835,7 +3256,51 @@
             3
           ]
         ]
+      },
+      {
+        "scenarioId": "encounter.willow-square",
+        "visual": "cottage",
+        "cells": [
+          [
+            3,
+            3
+          ],
+          [
+            5,
+            3
+          ],
+          [
+            14,
+            3
+          ],
+          [
+            16,
+            3
+          ],
+          [
+            3,
+            7
+          ],
+          [
+            16,
+            7
+          ],
+          [
+            3,
+            11
+          ],
+          [
+            16,
+            11
+          ]
+        ]
       }
-    ]
+    ],
+    "groundMaterials": {
+      "forest-grass": "terrain.forest-grass",
+      "forest-dirt": "terrain.forest-dirt",
+      "forest-leaves": "terrain.forest-leaves",
+      "pond-water": "terrain.pond-water"
+    }
   }
 }

@@ -1,8 +1,8 @@
 [
   {
     "id": "adventure.goblin-trouble",
-    "name": "Goblin Trouble",
-    "description": "길드 훈련 안드로이드와 네 번의 보호 훈련으로 기본 전투, 상태 회복, 협공과 지식 회상을 익힌 뒤 Aerin과 실제 모험을 시작합니다.",
+    "name": "Aerin과 윌로우브룩",
+    "description": "길드의 네 가지 보호 훈련을 마친 뒤 Aerin과 함께 고향 윌로우브룩의 피난길을 되찾습니다.",
     "partySize": {
       "min": 1,
       "max": 3
@@ -12,6 +12,7 @@
       "encounter.prone-training",
       "encounter.flanking-training",
       "encounter.knowledge-training",
+      "encounter.willow-rescue",
       "encounter.spear-line",
       "encounter.ruined-gate",
       "encounter.goblin-chief",
@@ -218,6 +219,10 @@
         "amount": 50
       },
       {
+        "afterEncounterId": "encounter.willow-rescue",
+        "amount": 100
+      },
+      {
         "afterEncounterId": "encounter.spear-line",
         "amount": 250
       },
@@ -281,5 +286,140 @@
         "amount": 250
       }
     ]
+  },
+  {
+    "id": "adventure.willowbrook",
+    "name": "Aerin과 윌로우브룩",
+    "description": "네 가지 길드 훈련 뒤, 숲길·연못 둑·피난문·마을 광장의 네 전투로 Aerin의 고향을 구합니다.",
+    "partySize": {
+      "min": 1,
+      "max": 3
+    },
+    "encounterIds": [
+      "encounter.guild-practice",
+      "encounter.prone-training",
+      "encounter.flanking-training",
+      "encounter.knowledge-training",
+      "encounter.willow-rescue",
+      "encounter.willow-dike",
+      "encounter.willow-gate",
+      "encounter.willow-square"
+    ],
+    "rewards": [
+      {
+        "id": "reward.road-ambush",
+        "afterEncounterId": "encounter.guild-practice",
+        "choices": [
+          {
+            "kind": "card",
+            "definitionId": "card.brace-behind-cover"
+          },
+          {
+            "kind": "card",
+            "definitionId": "card.careful-advance"
+          },
+          {
+            "kind": "card",
+            "definitionId": "card.force-barrage"
+          },
+          {
+            "kind": "card",
+            "definitionId": "card.daze"
+          },
+          {
+            "kind": "card",
+            "definitionId": "card.telekinetic-projectile"
+          }
+        ]
+      },
+      {
+        "id": "reward.training-aerin",
+        "afterEncounterId": "encounter.prone-training",
+        "choices": [
+          {
+            "kind": "companion",
+            "definitionId": "companion.aerin"
+          }
+        ]
+      },
+      {
+        "id": "reward.willow-rescue",
+        "afterEncounterId": "encounter.willow-rescue",
+        "choices": [
+          {
+            "kind": "equipment",
+            "definitionId": "sickle"
+          }
+        ]
+      },
+      {
+        "id": "reward.willow-dike",
+        "afterEncounterId": "encounter.willow-dike",
+        "choices": [
+          {
+            "kind": "card",
+            "definitionId": "card.needle-darts"
+          }
+        ]
+      },
+      {
+        "id": "reward.willow-gate",
+        "afterEncounterId": "encounter.willow-gate",
+        "choices": [
+          {
+            "kind": "equipment",
+            "definitionId": "dueling-cape"
+          }
+        ]
+      },
+      {
+        "id": "reward.willow-square",
+        "afterEncounterId": "encounter.willow-square",
+        "choices": [
+          {
+            "kind": "card",
+            "definitionId": "card.shield-spell"
+          }
+        ]
+      }
+    ],
+    "experienceAwards": [
+      {
+        "afterEncounterId": "encounter.guild-practice",
+        "amount": 200
+      },
+      {
+        "afterEncounterId": "encounter.prone-training",
+        "amount": 50
+      },
+      {
+        "afterEncounterId": "encounter.flanking-training",
+        "amount": 50
+      },
+      {
+        "afterEncounterId": "encounter.knowledge-training",
+        "amount": 50
+      },
+      {
+        "afterEncounterId": "encounter.willow-rescue",
+        "amount": 100
+      },
+      {
+        "afterEncounterId": "encounter.willow-dike",
+        "amount": 100
+      },
+      {
+        "afterEncounterId": "encounter.willow-gate",
+        "amount": 100
+      },
+      {
+        "afterEncounterId": "encounter.willow-square",
+        "amount": 100
+      }
+    ],
+    "ending": {
+      "title": "챕터 1 완료 · 윌로우브룩에 돌아온 불빛",
+      "description": "두 피난길이 열리고 황동잎 용병대의 지휘부가 무너졌습니다. 남은 용병은 물러나고 주민들이 광장으로 돌아옵니다. Aerin은 고향의 문을 다시 열며 감사를 전합니다. 마을이 전한 Shield 카드와 이번 여정의 보상은 Collection에 남습니다. 보상·장비 정리에서 새 카드를 준비하고 저장할 수 있습니다."
+    }
   }
 ]

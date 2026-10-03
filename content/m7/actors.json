@@ -1777,5 +1777,233 @@
       "trip"
     ],
     "baseCardGrants": []
+  },
+  {
+    "id": "enemy.dark-elf-warrior",
+    "name": "황동잎 전사",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "level": 1,
+        "ac": 15,
+        "maxHp": 14,
+        "strike": {
+          "name": "Longsword",
+          "attackModifier": 4,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 6,
+            "modifier": 1,
+            "damageType": "piercing"
+          },
+          "traits": []
+        },
+        "perception": 4,
+        "saves": {
+          "fortitude": 5,
+          "reflex": 5,
+          "will": 3
+        },
+        "skills": {
+          "athletics": 6
+        }
+      }
+    },
+    "speedFeet": 25,
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "elf"
+      },
+      {
+        "id": "fighter"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [],
+    "baseCardGrants": []
+  },
+  {
+    "id": "enemy.dark-elf-rogue",
+    "name": "황동잎 척후병",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "level": 1,
+        "ac": 14,
+        "maxHp": 10,
+        "strike": {
+          "name": "Twin Daggers",
+          "attackModifier": 4,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 4,
+            "modifier": 1,
+            "damageType": "piercing"
+          },
+          "traits": [
+            {
+              "id": "agile"
+            }
+          ]
+        },
+        "perception": 3,
+        "saves": {
+          "fortitude": 3,
+          "reflex": 6,
+          "will": 5
+        },
+        "skills": {
+          "stealth": 6,
+          "athletics": 3
+        }
+      }
+    },
+    "speedFeet": 25,
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "elf"
+      },
+      {
+        "id": "rogue"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [],
+    "baseCardGrants": []
+  },
+  {
+    "id": "enemy.dark-elf-archer",
+    "name": "황동잎 궁수",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "level": 1,
+        "ac": 14,
+        "maxHp": 10,
+        "strike": {
+          "name": "Longbow",
+          "attackModifier": 4,
+          "rangeFeet": 30,
+          "damage": {
+            "count": 1,
+            "sides": 4,
+            "modifier": 1,
+            "damageType": "piercing"
+          },
+          "traits": []
+        },
+        "perception": 5,
+        "saves": {
+          "fortitude": 3,
+          "reflex": 6,
+          "will": 2
+        },
+        "skills": {
+          "athletics": 3,
+          "stealth": 6
+        }
+      }
+    },
+    "speedFeet": 25,
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "elf"
+      },
+      {
+        "id": "ranger"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [],
+    "baseCardGrants": []
+  },
+  {
+    "id": "enemy.dark-elf-mage",
+    "name": "황동잎 마법사",
+    "statProfile": {
+      "kind": "creature",
+      "stats": {
+        "level": 1,
+        "ac": 13,
+        "maxHp": 8,
+        "strike": {
+          "name": "Arcane Staff",
+          "attackModifier": 4,
+          "rangeFeet": 5,
+          "damage": {
+            "count": 1,
+            "sides": 4,
+            "modifier": 0,
+            "damageType": "bludgeoning"
+          },
+          "traits": []
+        },
+        "perception": 3,
+        "saves": {
+          "fortitude": 3,
+          "reflex": 3,
+          "will": 5
+        },
+        "skills": {
+          "arcana": 6
+        }
+      }
+    },
+    "speedFeet": 25,
+    "initialConditions": [],
+    "traits": [
+      {
+        "id": "actor"
+      },
+      {
+        "id": "elf"
+      },
+      {
+        "id": "wizard"
+      }
+    ],
+    "loadoutProfile": {
+      "preparedCardCapacity": 0
+    },
+    "starterLoadout": {
+      "equipment": {},
+      "preparedCards": []
+    },
+    "innateActionIds": [
+      "hex-bolt"
+    ],
+    "baseCardGrants": []
   }
 ]

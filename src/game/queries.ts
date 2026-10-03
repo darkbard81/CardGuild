@@ -52,11 +52,11 @@ export function getContextActionOptions(
     options.push({ source: { kind: "context", id: grant.actionId }, group: grant.contextGroup });
   }
 
-  const hasAdjacentObject = Object.values(state.map.objects).some(
-    (object) => !object.used && gridDistance(actor.position, object.position) === 5,
-  );
-  if (hasAdjacentObject) {
-    options.push({ source: { kind: "context", id: "interact-lever" }, group: "interact" });
+  for (const [kind, id] of [["open-gate", "interact-lever"], ["destroy-obstacle", "destroy-obstacle"]] as const) {
+    if (Object.values(state.map.objects).some(object => !object.used && object.interaction.kind === kind &&
+      gridDistance(actor.position, object.position) === 5)) {
+      options.push({ source: { kind: "context", id }, group: "interact" });
+    }
   }
 
   for (const grant of getEquipmentActionGrants(actor, content)) {
@@ -235,7 +235,8 @@ function listCandidateTargets(
   }
   if (definition.targeting === "object") {
     return Object.values(state.map.objects)
-      .filter((object) => !object.used && gridDistance(actor.position, object.position) === 5)
+      .filter((object) => !object.used && gridDistance(actor.position, object.position) === 5 &&
+        object.interaction.kind === (definition.id === "destroy-obstacle" ? "destroy-obstacle" : "open-gate"))
       .sort((left, right) => left.id.localeCompare(right.id))
       .map((object) => ({ kind: "object" as const, objectId: object.id, label: object.name }));
   }

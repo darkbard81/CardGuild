@@ -1,4 +1,4 @@
-import { gridDistance } from "./grid";
+import { approachAlongPath, gridDistance } from "./grid";
 import { listLegalActions, listLegalTargets } from "./queries";
 import { facingToward } from "./rules";
 import type {
@@ -179,12 +179,16 @@ export function chooseAiCommand(state: CombatState, content: CombatContent): Com
     if (target) return useActionCommand(state, actor.id, strike.source, { kind: "actor", actorId: target.actorId });
   }
 
-  // 4. Close on the first surviving hero, but only if the step actually shortens the gap.
+  // 4. Follow a walkable route toward the first surviving hero. Keeping the route
+  // ahead of the greedy fallback prevents stepping back into a concave dead end.
   const stride = enabled(actions, "basic", BASIC_STRIDE_ID);
   const hero = Object.values(state.actors)
     .filter((candidate) => candidate.team === "heroes" && !candidate.defeated)
     .sort((left, right) => left.id.localeCompare(right.id))[0];
   if (stride && hero) {
+    const detour = approachAlongPath(state.map, state.actors, actor.id, hero.position,
+      listLegalTargets(state, actor.id, stride.source, content).flatMap(target => target.kind === "tile" ? [target.position] : []));
+    if (detour) return useActionCommand(state, actor.id, stride.source, { kind: "tile", position: detour });
     const destination = listLegalTargets(state, actor.id, stride.source, content)
       .filter((candidate): candidate is Extract<LegalTarget, { kind: "tile" }> => candidate.kind === "tile")
       .sort(
@@ -200,6 +204,7 @@ export function chooseAiCommand(state: CombatState, content: CombatContent): Com
         position: destination.position,
       });
     }
+
   }
 
   // Final orientation is an explicit tactical choice; ordinary actions derive theirs in GameCore.

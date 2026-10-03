@@ -1,3 +1,4 @@
+import { TERRAIN_ELEVATION_STEP } from "../../presentation/terrain-elevation";
 import { Point } from "pixi.js";
 
 import type { BoardViewConfig } from "./BoardViewConfig";
@@ -35,6 +36,55 @@ export class BoardProjection {
   private columns = 1;
   private rows = 1;
   private placement: BoardPlacement = IDENTITY_PLACEMENT;
+  private elevations: readonly number[] = [];
+
+  public setElevations(values: readonly number[] = []): void { this.elevations = values; }
+
+  public elevationAt(col: number, row: number): number {
+    if (col < 0 || row < 0 || col >= this.columns || row >= this.rows) return 0;
+    return this.elevations[Math.floor(row) * this.columns + Math.floor(col)] ?? 0;
+  }
+
+  public interpolatedElevation(col: number, row: number): number {
+    const x = Math.floor(col), y = Math.floor(row), fx = col - x, fy = row - y;
+    return this.elevationAt(x, y) * (1 - fx) * (1 - fy) + this.elevationAt(x + 1, y) * fx * (1 - fy)
+      + this.elevationAt(x, y + 1) * (1 - fx) * fy + this.elevationAt(x + 1, y + 1) * fx * fy;
+  }
+
+  public screenToSurfaceGrid(x: number, y: number): Point {
+    const tile = this.pickSurface(x, y);
+    return this.screenToGrid(x, y + (tile ? this.elevationAt(tile.x, tile.y) : 0) * TERRAIN_ELEVATION_STEP * this.placement.scale);
+  }
+
+  public surfaceToScreen(col: number, row: number, elevation = this.elevationAt(col, row)): Point {
+    const point = this.gridToScreen(col, row);
+    point.y -= elevation * TERRAIN_ELEVATION_STEP * this.placement.scale;
+    return point;
+  }
+
+  /** Frontmost visible surface wins; exposed sides occlude surfaces behind them. */
+  public pickSurface(x: number, y: number): { x: number; y: number } | null {
+    const cells = Array.from({ length: this.columns * this.rows }, (_, index) => ({ x: index % this.columns, y: Math.floor(index / this.columns) }));
+    cells.sort((a, b) => b.x + b.y - a.x - a.y || b.y - a.y);
+    const inside = (points: readonly Point[]): boolean => {
+      let result = false;
+      for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+        const a = points[i]!; const b = points[j]!;
+        if ((a.y > y) !== (b.y > y) && x < (b.x - a.x) * (y - a.y) / (b.y - a.y) + a.x) result = !result;
+      }
+      return result;
+    };
+    for (const cell of cells) {
+      const corners = this.getCellCorners(cell.x, cell.y);
+      if (inside(corners)) return cell;
+      const height = this.elevationAt(cell.x, cell.y);
+      for (const [a, b, neighbour] of [[3, 2, this.elevationAt(cell.x, cell.y + 1)], [2, 1, this.elevationAt(cell.x + 1, cell.y)]] as const) {
+        const drop = Math.max(0, height - neighbour) * TERRAIN_ELEVATION_STEP * this.placement.scale;
+        if (drop > 0 && inside([corners[a]!, corners[b]!, new Point(corners[b]!.x, corners[b]!.y + drop), new Point(corners[a]!.x, corners[a]!.y + drop)])) return null;
+      }
+    }
+    return null;
+  }
 
   public constructor(private readonly config: BoardViewConfig = DEFAULT_BOARD_VIEW_CONFIG) {}
 
@@ -72,10 +122,10 @@ export class BoardProjection {
 
   public getCellCorners(col: number, row: number): Point[] {
     return [
-      this.gridToScreen(col, row),
-      this.gridToScreen(col + 1, row),
-      this.gridToScreen(col + 1, row + 1),
-      this.gridToScreen(col, row + 1),
+      this.surfaceToScreen(col, row, this.elevationAt(col, row)),
+      this.surfaceToScreen(col + 1, row, this.elevationAt(col, row)),
+      this.surfaceToScreen(col + 1, row + 1, this.elevationAt(col, row)),
+      this.surfaceToScreen(col, row + 1, this.elevationAt(col, row)),
     ];
   }
 

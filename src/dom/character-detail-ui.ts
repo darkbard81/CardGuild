@@ -248,8 +248,8 @@ export class CharacterDetailUi {
   }
   public updateAdventure(state: AdventureState, editableMemberIds: ReadonlySet<string>): void {
     if (!this.adventure) return;
-    const wasPreparing = this.adventure.phase === "ready" || this.adventure.phase === "between-encounters";
-    const preparing = state.phase === "ready" || state.phase === "between-encounters";
+    const wasPreparing = this.adventure.phase === "ready" || this.adventure.phase === "between-encounters" || this.adventure.phase === "complete";
+    const preparing = state.phase === "ready" || state.phase === "between-encounters" || state.phase === "complete";
     if (wasPreparing && !preparing) { this.close(); return; }
     this.adventure = state; this.editableMemberIds = editableMemberIds; this.renderAdventure();
   }
@@ -262,7 +262,7 @@ export class CharacterDetailUi {
     updateCharacterPicker(this.select, members.map(m => ({ id: m.id, definitionId: m.actorDefinitionId, appearanceKey: resolvePartyMemberDefinition(m, this.pack).appearanceKey, name: resolvePartyMemberDefinition(m, this.pack)?.name ?? m.id })), member.id, this.catalog, id => {
       this.selectedMemberId = id; this.renderAdventure();
     }, this.panel.workspace.busy);
-    const editable = (state.phase === "ready" || state.phase === "between-encounters") && this.editableMemberIds.has(member.id);
+    const editable = (state.phase === "ready" || state.phase === "between-encounters" || state.phase === "complete") && this.editableMemberIds.has(member.id);
     this.panel.update(preparationDetailActor(definition, this.pack, member), member, this.handlers ? {
       pack: this.pack, state, editable, connection: this.connection, onSetLoadout: this.handlers.onSetLoadout,
     } : undefined);

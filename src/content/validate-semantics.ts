@@ -581,6 +581,21 @@ export function validateContentPackSemantics(
 
   source.scenarios.forEach((scenario, scenarioIndex) => {
     const prefix = `[${scenarioIndex}]`;
+    const goal = scenario.rules?.victory;
+    if ((scenario.objective.kind === "resolve-objectives") !== Boolean(goal)) {
+      addIssue(context, "scenarios", `${prefix}.rules.victory`, "INVALID_VICTORY_OBJECTIVE", "Objective kind and victory targets must agree.", scenario.id);
+    }
+    if (goal) {
+      const invalidEnemy = goal.enemyIds.some(id => {
+        const placement = scenario.placements.find(actor => actor.instanceId === id);
+        return !placement || placement.team !== "enemies" || (placement.partySize?.min ?? 1) > (scenario.rules?.partySize?.min ?? 1)
+          || (placement.partySize?.max ?? 3) < (scenario.rules?.partySize?.max ?? 3);
+      });
+      const invalidObject = goal.objectIds.some(id => !scenario.map.objects.some(object => object.id === id && object.interaction.kind === "destroy-obstacle" && !object.used));
+      if (goal.enemyIds.length + goal.objectIds.length === 0 || invalidEnemy || invalidObject) {
+        addIssue(context, "scenarios", `${prefix}.rules.victory`, "INVALID_VICTORY_TARGET", "Victory requires nonempty targets available at every allowed party size; objects must be unused destructible obstacles.", scenario.id);
+      }
+    }
     const override = scenario.rules?.partyWeaponOverride;
     if (override) {
       const weapon = source.equipment.find(item => item.id === override.equipmentId);
@@ -639,6 +654,13 @@ export function validateContentPackSemantics(
       }
       if (!tileIds.has(object.interaction.targetTileId)) {
         addIssue(context, "scenarios", `${prefix}.map.objects[${index}].interaction.targetTileId`, "UNKNOWN_TARGET_TILE", `Interaction target tile "${object.interaction.targetTileId}" is not defined.`, object.id);
+      }
+      if (object.interaction.kind === "destroy-obstacle") {
+        const tile = map.tiles.find(tile => tile.id === object.interaction.targetTileId);
+        if (!tile || tile.position.x !== object.position.x || tile.position.y !== object.position.y ||
+            !tile.traits.some(t => t.id === "blocked") || !tile.traits.some(t => t.id === "obstacle") || object.used) {
+          addIssue(context, "scenarios", `${prefix}.map.objects[${index}]`, "INVALID_DESTRUCTIBLE", "A destructible must start unused on its own blocked obstacle tile.", object.id);
+        }
       }
       objectIds.add(object.id);
       validateTraits(context, knownTraits, "scenarios", object.id, `${prefix}.map.objects[${index}].traits`, object.traits);

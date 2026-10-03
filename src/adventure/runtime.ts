@@ -290,8 +290,8 @@ export function dispatchAdventureCommand(
       };
     }
     case "set-member-loadout": {
-      if (state.phase !== "ready" && state.phase !== "between-encounters") {
-        return reject(state, "Loadout can only change while ready or between encounters.");
+      if (state.phase !== "ready" && state.phase !== "between-encounters" && state.phase !== "complete") {
+        return reject(state, "Loadout can only change while ready, between encounters, or after completion.");
       }
       const member = state.party.members[command.memberId];
       if (!member) return reject(state, `Party member "${command.memberId}" is missing.`);

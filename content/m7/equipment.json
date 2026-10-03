@@ -604,5 +604,49 @@
       },
       "traits": []
     }
+  },
+  {
+    "id": "sickle",
+    "name": "Sickle · 버드나무 낫",
+    "slot": "weapon",
+    "traits": [
+      {
+        "id": "weapon"
+      },
+      {
+        "id": "agile"
+      },
+      {
+        "id": "finesse"
+      },
+      {
+        "id": "trip"
+      }
+    ],
+    "statModifiers": [],
+    "weaponProfile": {
+      "name": "Sickle",
+      "category": "simple",
+      "attackMode": "melee",
+      "rangeFeet": 5,
+      "damage": {
+        "count": 1,
+        "sides": 4,
+        "damageType": "slashing"
+      },
+      "traits": []
+    }
+  },
+  {
+    "id": "dueling-cape",
+    "name": "Dueling Cape · 피난민의 망토",
+    "slot": "shield",
+    "traits": [
+      {
+        "id": "shield"
+      }
+    ],
+    "statModifiers": [],
+    "shieldBonus": 1
   }
 ]

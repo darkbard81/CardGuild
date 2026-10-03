@@ -2,7 +2,7 @@ import { test, expect, signIn, endTurn } from "../support/journey";
 import { register } from "../support/network";
 import { nearVictorySave, recruitedSave } from "../support/checkpoints";
 
-test("J-PROGRESS Prone recovery, recruitment, real Flanking victory and unprotected Spear Line preparation", async ({ page, server }) => {
+test("J-PROGRESS Prone recovery, recruitment, real Flanking victory and unprotected Willow rescue entry", async ({ page, server }) => {
   const snapshots: import("../../src/protocol").ServerSnapshot[] = [];
   page.on("websocket", socket => socket.on("framereceived", frame => {
     const message = JSON.parse(String(frame.payload));
@@ -139,10 +139,11 @@ test("J-PROGRESS Prone recovery, recruitment, real Flanking victory and unprotec
     await expect.poll(async () => await departure.isVisible() || await end.isEnabled()).toBe(true);
   }
   await expect(departure).toBeVisible();
-  expect(snapshots.at(-1)!.state.adventure!.currentEncounterId).toBe("encounter.spear-line");
-  await expect(page.getByRole("heading", { name: "Spear Line", exact: true })).toBeVisible();
+  expect(snapshots.at(-1)!.state.adventure!.currentEncounterId).toBe("encounter.willow-rescue");
+  await expect(page.getByRole("heading", { name: "챕터 1-1 · 버드나무 숲길", exact: true })).toBeVisible();
   await departure.click();
-  await expect.poll(() => snapshots.at(-1)?.state.combat?.scenarioId).toBe("encounter.spear-line");
+  await page.getByRole("dialog", { name: "챕터 1 · Aerin의 고향", exact: true }).getByRole("button", { name: "건너뛰기", exact: true }).click();
+  await expect.poll(() => snapshots.at(-1)?.state.combat?.scenarioId).toBe("encounter.willow-rescue");
   expect(snapshots.at(-1)!.state.combat!.partyHpFloor).toBeUndefined();
   expect(snapshots.at(-1)!.state.combat!.rules).toBeUndefined();
 });

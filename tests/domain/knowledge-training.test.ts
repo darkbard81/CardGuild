@@ -13,7 +13,7 @@ const action = { kind: "basic", id: "recall-knowledge" } as const;
 it("G-KNOWLEDGE-TRAINING four Android encounters bound protection, capabilities and temporary weapons", () => {
   const pack = context.pack;
   const ids = pack.adventures[context.adventureId]!.encounterIds;
-  expect(ids.slice(0, 5)).toEqual(["encounter.guild-practice", "encounter.prone-training", "encounter.flanking-training", "encounter.knowledge-training", "encounter.spear-line"]);
+  expect(ids.slice(0, 5)).toEqual(["encounter.guild-practice", "encounter.prone-training", "encounter.flanking-training", "encounter.knowledge-training", "encounter.willow-rescue"]);
   for (const [index, id] of ids.entries()) {
     const s = pack.scenarioSources[id]!;
     expect(s.partyHpFloor).toBe(index < 4 ? 1 : undefined);
@@ -31,7 +31,7 @@ it("G-KNOWLEDGE-TRAINING four Android encounters bound protection, capabilities 
   expect(started.combat!.actors[HERO]!.equipmentIds).toContain(ready.adventure!.party.members[HERO]!.loadout.equipment.weapon);
   expect(started.combat!.actors[HERO]!.equipmentIds).not.toContain("training-dagger");
   const next = act(tutorialWin(started), { type: "start-encounter" });
-  expect(next.combat!.scenarioId).toBe("encounter.spear-line");
+  expect(next.combat!.scenarioId).toBe("encounter.willow-rescue");
   expect(next.combat!.partyHpFloor).toBeUndefined();
   expect(next.combat!.rules).toBeUndefined();
 });
@@ -69,7 +69,7 @@ it("G-KNOWLEDGE-TRAINING all presets roll naturally, consume one guarantee, unlo
   expect(rolls.size).toBeGreaterThan(5);
 });
 
-it("G-KNOWLEDGE-TRAINING generic guarantee expires after one failed check; Spear Line checks remain natural", async () => {
+it("G-KNOWLEDGE-TRAINING generic guarantee expires after one failed check; Willow rescue checks remain natural", async () => {
   const { createCombat } = await import("../../src/game");
   const ready = tutorialWin(recruitedParty(15, "human.wizard"));
   const started = act(ready, { type: "start-encounter" });
@@ -95,7 +95,8 @@ it("G-KNOWLEDGE-TRAINING generic guarantee expires after one failed check; Spear
   const normal = buildAdventureEncounter(context.pack, ordinary.adventure!).definition;
   let combat = ordinary.combat!;
   for (let i = 0; i < 6 && combat.turn.activeActorId !== HERO; i++) combat = play(combat, { type: "end-turn", actorId: combat.turn.activeActorId, facing: combat.actors[combat.turn.activeActorId]!.facing }, normal);
-  const enemy = Object.values(combat.actors).find(a => a.team === "enemies")!;
+  combat = play(combat, { type: "use-action", actorId: HERO, action: { kind: "basic", id: "stride" }, target: { kind: "tile", position: { x: 10, y: 14 } } }, normal);
+  const enemy = Object.values(combat.actors).find(a => a.definitionId === "enemy.dark-elf-warrior")!;
   const result = dispatchCombatCommand(combat, command(combat, { type: "use-action", actorId: HERO, action, target: { kind: "actor", actorId: enemy.id } }), normal.content);
   expect(result.accepted).toBe(true);
   expect(result.events.find(e => e.type === "CHECK_ROLLED")!.rolledDegree).toBeUndefined();

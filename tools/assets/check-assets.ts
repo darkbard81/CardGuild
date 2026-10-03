@@ -1,3 +1,5 @@
+import { applyTerrainElevations, terrainSideMaterials } from "../../src/presentation/terrain-elevation";
+import type { PresentationTilemapPack } from "../../src/presentation/presentation-types";
 import { checkSceneAssets } from "./check-scene-assets";
 import { access, readFile } from "node:fs/promises";
 import path from "node:path";
@@ -378,9 +380,28 @@ async function main(): Promise<void> {
       }
     }
   }
+  for (const actor of Object.values(PRODUCTION_CONTENT.pack.actorDefinitions)) {
+    if (!actor.character && !manifest.actorVisuals[actor.id]) throw new Error(`Actor ${actor.id} has no standee.`);
+  }
+  for (const key of ["tree", "rock"]) {
+    if (manifest.assets[manifest.objectVisuals[key] ?? ""]?.kind !== "object") throw new Error(`Missing woodland ${key} prop.`);
+  }
+  const backgrounds = await readJson<Record<string, string>>(path.join(presentationRoot, "encounter-backgrounds.json"));
+  for (const [id, href] of Object.entries(backgrounds)) {
+    if (!tilemaps.maps[id] || !/^\/assets\/backgrounds\/[a-z0-9-]+\.webp$/.test(href)) throw new Error(`Invalid encounter background ${id}.`);
+    const metadata = await sharp(path.join(root, "public", href)).metadata();
+    if (!metadata.width || !metadata.height) throw new Error(`Empty background ${id}.`);
+  }
   assertVisualMap("Equipment", equipment, manifest.equipmentVisuals, manifest);
   assertVisualMap("Card", cards, manifest.cardVisuals, manifest);
   assertTilemapPack(tilemaps, manifest);
+  applyTerrainElevations(tilemaps as unknown as PresentationTilemapPack, await readJson<unknown>(path.join(presentationRoot, "terrain-elevations.json")));
+  const sides = terrainSideMaterials(await readJson<unknown>(path.join(presentationRoot, "terrain-sides.json")), manifest.assets);
+  for (const [id, href] of Object.entries(sides)) {
+    const metadata = await sharp(path.join(root, "public", href)).metadata();
+    if (metadata.width !== 128 || metadata.height !== 256 || !["png", "webp"].includes(metadata.format ?? ""))
+      throw new Error(`Terrain side ${id} must be a 128x256 PNG/WebP sheet.`);
+  }
   process.stdout.write(
     `Assets OK: ${atlasIds.length} atlas frames, ${actorIds.length} standalone actor images, ${cardEntries.size} standalone card images, ` +
     `${Object.keys(manifest.actorVisuals).length} two-sided actors, ${Object.keys(tilemaps.maps).length} layered tilemaps\n`,

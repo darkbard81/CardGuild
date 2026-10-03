@@ -2,6 +2,10 @@ import { Assets, type Spritesheet, type Texture } from "pixi.js";
 
 import atlasMapJson from "../../presentation/m3/atlas-map.json";
 import manifestJson from "../../presentation/m3/asset-manifest.json";
+import backgroundsJson from "../../presentation/m3/encounter-backgrounds.json";
+import sidesJson from "../../presentation/m3/terrain-sides.json";
+import elevationsJson from "../../presentation/m3/terrain-elevations.json";
+import { applyTerrainElevations, terrainSideMaterials } from "./terrain-elevation";
 import tilemapsJson from "../../presentation/m3/tilemaps.json";
 import type {
   ActorVisualDefinition,
@@ -48,9 +52,12 @@ export class AssetCatalog {
     public readonly manifest: PresentationAssetManifest,
     public readonly tilemaps: PresentationTilemapPack,
     private readonly atlasMap: PresentationAtlasMap,
+    private readonly sideMaterials: Readonly<Record<string, string>> = {},
+    private readonly backgrounds: Readonly<Record<string, string>> = {},
   ) {
     this.cardAssetIds = new Set(Object.values(manifest.cardVisuals));
     validatePresentationTilemaps(tilemaps, manifest);
+    terrainSideMaterials({ version: 1, materials: sideMaterials }, manifest.assets);
   }
 
   /** DOM card images must not become unused Pixi textures or block encounter entry. */
@@ -74,7 +81,9 @@ export class AssetCatalog {
         bundles: [
           {
             name: this.manifest.bundle,
-            assets: [{ alias: atlasAlias, src: this.manifest.atlas.path }, ...imageAssets],
+            assets: [{ alias: atlasAlias, src: this.manifest.atlas.path }, ...imageAssets,
+              ...Object.entries(this.sideMaterials).map(([id, src]) => ({ alias: `side:${id}`, src })),
+              ...Object.entries(this.backgrounds).map(([id, src]) => ({ alias: `background:${id}`, src }))],
           },
         ],
       },
@@ -94,6 +103,16 @@ export class AssetCatalog {
       if (!texture) throw new Error(`Presentation image "${asset.source.path}" did not load.`);
       this.textures.set(id, texture);
     }
+    for (const id of Object.keys(this.sideMaterials)) {
+      const texture = loaded[`side:${id}`] as Texture | undefined;
+      if (!texture || texture.width !== 128 || texture.height !== 256) throw new Error(`Terrain side ${id} must be 128x256 pixels.`);
+      this.textures.set(`side:${id}`, texture);
+    }
+    for (const id of Object.keys(this.backgrounds)) {
+      const texture = loaded[`background:${id}`] as Texture | undefined;
+      if (!texture) throw new Error(`Encounter background ${id} did not load.`);
+      this.textures.set(`background:${id}`, texture);
+    }
     this.initialized = true;
   }
 
@@ -108,6 +127,10 @@ export class AssetCatalog {
     if (!texture) throw new Error(`Presentation asset "${id}" has not been loaded.`);
     return texture;
   }
+
+  public backgroundTexture(scenarioId: string): Texture | null { return this.textures.get(`background:${scenarioId}`) ?? null; }
+
+  public terrainSideTexture(material: string): Texture | null { return this.textures.get(`side:${material}`) ?? null; }
 
   public actorVisual(definitionId: string): ActorVisualDefinition {
     const visual = this.manifest.actorVisuals[definitionId];
@@ -242,7 +265,9 @@ export async function loadPresentationPack(): Promise<AssetCatalog> {
 export function createPresentationCatalog(): AssetCatalog {
   return new AssetCatalog(
     manifestJson as unknown as PresentationAssetManifest,
-    tilemapsJson as unknown as PresentationTilemapPack,
+    applyTerrainElevations(tilemapsJson as unknown as PresentationTilemapPack, elevationsJson),
     atlasMapJson as unknown as PresentationAtlasMap,
+    terrainSideMaterials(sidesJson, manifestJson.assets),
+    backgroundsJson,
   );
 }

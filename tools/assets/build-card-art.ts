@@ -31,7 +31,7 @@ for (const { entry, source, output } of outputs) {
   await rename(`${destination}.tmp`, destination);
   entry.sourceSha256 = sha256(source);
   entry.outputSha256 = sha256(output);
-  entry.generatedWith = "built-in image_gen via luna-gen";
+  entry.generatedWith ??= "built-in image_gen";
   process.stdout.write(`${entry.cardId}: 1024x1536 -> 512x768 WebP (${output.length} bytes)\n`);
 }
 const planPath = path.join(root, CARD_ART_PLAN_PATH);
