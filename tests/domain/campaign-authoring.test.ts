@@ -6,6 +6,8 @@ import { campaignObjectVisual } from "../../src/presentation/campaign-objects";
 import { createCombat } from "../../src/game";
 import { play } from "../support/combat";
 import { compileContentPack, getContentIdentity } from "../../src/content/compile-content";
+import { previewCampaignEncounter } from "../../src/authoring/preview";
+import { duplicateCampaign } from "../../src/authoring/duplicate";
 
 it("G-AUTHOR production export round-trips maps, dialogues, rewards, presentation and stable revision", () => {
   const project = createCampaignProject();
@@ -32,6 +34,51 @@ it("G-AUTHOR rejects malformed documents before semantics and reports dangling d
   expect(issues.some(i => i.path.startsWith("/dialogue/"))).toBe(true);
   expect(issues.some(i => i.path.startsWith("/presentation/elevations/"))).toBe(true);
   expect(issues.some(i => i.message.includes("missing-card"))).toBe(true);
+  const missingCell = { ...project, content: { ...project.content, scenarios: project.content.scenarios.map(s =>
+    s.id !== "encounter.guild-practice" ? s : { ...s, map: { ...s.map, tiles: s.map.tiles.filter(t => t.position.x !== 1 || t.position.y !== 0) } }) } };
+  // A sparse rules map is legal, but cannot be edited/rendered as a rectangle.
+  expect(() => compileContentPack(missingCell.content)).not.toThrow();
+  expect(validateCampaignProject(missingCell, context)).toContainEqual({
+    path: "/content/scenarios/encounter.guild-practice/map/tiles", message: "편집 맵은 모든 좌표의 타일을 정의해야 합니다.",
+  });
+});
+
+it("G-AUTHOR preview uses draft placements and real party-size composition without changing the project", () => {
+  const project = createCampaignProject();
+  const pack = compileContentPack(project.content);
+  const before = JSON.stringify(project);
+  const solo = previewCampaignEncounter(pack, project.activeAdventureId, "encounter.willow-rescue", 1);
+  const trio = previewCampaignEncounter(pack, project.activeAdventureId, "encounter.willow-rescue", 3);
+  expect(solo.definition.scenario.actors.filter(a => a.team === "heroes")).toHaveLength(1);
+  expect(solo.definition.scenario.actors.filter(a => a.team === "enemies")).toHaveLength(2);
+  expect(trio.definition.scenario.actors.filter(a => a.team === "heroes")).toHaveLength(3);
+  expect(trio.definition.scenario.actors.filter(a => a.team === "enemies")).toHaveLength(4);
+  expect(() => previewCampaignEncounter(pack, project.activeAdventureId, "encounter.flanking-training", 1)).toThrow("Party size");
+  expect(JSON.stringify(project)).toBe(before);
+});
+
+it("G-AUTHOR new campaigns own copied maps, object links, dialogue, scenery and reward progression", () => {
+  const original = createCampaignProject();
+  const revision = campaignRevision(original);
+  const next = duplicateCampaign(original, original.activeAdventureId, "adventure.new-story", "새 모험");
+  expect(validateCampaignProject(next, context)).toEqual([]);
+  const source = original.content.adventures.find(a => a.id === original.activeAdventureId)!;
+  const copy = next.content.adventures.at(-1)!;
+  expect(next.activeAdventureId).toBe(original.activeAdventureId);
+  expect(copy.encounterIds).toHaveLength(source.encounterIds.length);
+  expect(copy.encounterIds.every(id => !source.encounterIds.includes(id))).toBe(true);
+  expect(copy.rewards.map(r => r.choices)).toEqual(source.rewards.map(r => r.choices));
+  expect(copy.rewards.every(r => copy.encounterIds.includes(r.afterEncounterId))).toBe(true);
+  expect(copy.experienceAwards.map(r => r.amount)).toEqual(source.experienceAwards.map(r => r.amount));
+  const field = copy.encounterIds[source.encounterIds.indexOf("encounter.willow-rescue")]!;
+  const scenario = next.content.scenarios.find(s => s.id === field)!;
+  expect(scenario.map.objects.every(o => scenario.map.tiles.some(t => t.id === o.interaction.targetTileId))).toBe(true);
+  expect(next.presentation.elevations.maps[field]).toEqual(original.presentation.elevations.maps["encounter.willow-rescue"]);
+  expect(next.presentation.scenery.filter(s => s.scenarioId === field).map(s => s.cells))
+    .toEqual(original.presentation.scenery.filter(s => s.scenarioId === "encounter.willow-rescue").map(s => s.cells));
+  expect(next.dialogue.bindings.encounters[field]!.sceneId).not.toBe(original.dialogue.bindings.encounters["encounter.willow-rescue"]!.sceneId);
+  expect(campaignRevision(original)).toBe(revision);
+  expect(() => duplicateCampaign(next, original.activeAdventureId, copy.id, "다시")).toThrow("중복");
 });
 
 it("G-AUTHOR custom object template places a real destructible and resolves its image without a renderer branch", () => {

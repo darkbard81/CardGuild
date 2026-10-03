@@ -17,7 +17,8 @@ import {
  * the shipped bundle.
  *
  * Changing the production pack means changing the loader imported below and
- * nothing else. This is deliberately not a dynamic selector — no environment
+ * nothing else. Within M7, content/m7/campaign.json selects the authored default
+ * Adventure at build time. This is deliberately not a dynamic selector — no environment
  * switch, no runtime branching, no mod loading.
  */
 export interface ProductionContent {

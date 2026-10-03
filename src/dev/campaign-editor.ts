@@ -1,6 +1,7 @@
 import "./campaign-editor.css";
 import { createCampaignProject, CAMPAIGN_VALIDATION_CONTEXT as context } from "../authoring/default-project";
 import { assertCampaignProject, campaignRevision, validateCampaignProject } from "../authoring/project";
+import { duplicateCampaign, duplicateCampaignEncounter } from "../authoring/duplicate";
 import { placeCampaignObject, resizeCampaignMap } from "../authoring/edit-map";
 import type { CampaignProject } from "../authoring/types";
 import type { AdventureDefinition, ScenarioSource, RewardGrant } from "../content/content-types";
@@ -14,7 +15,7 @@ const STORAGE = "cardguild.authoring.draft.v1";
 const initial = createCampaignProject();
 let project = initial;
 let adventureId = project.activeAdventureId;
-let scenarioId = project.content.adventures.find(a => a.id === adventureId)!.encounterIds.at(-4)!;
+let scenarioId = project.content.adventures.find(a => a.id === adventureId)!.encounterIds.at(-4) ?? project.content.adventures.find(a => a.id === adventureId)!.encounterIds[0]!;
 let tab = "map";
 let selected = { x: 0, y: 0 };
 let notice = "게임 원본을 불러왔습니다. 편집은 이 브라우저의 초안에만 반영됩니다.";
@@ -47,26 +48,36 @@ function bind(id: string, action: () => void): void { document.getElementById(id
 function select(id: string, action: () => void): void { document.getElementById(id)?.addEventListener("change", () => { try { action(); } catch (error) { report(error); } }); }
 function normaliseSelection(): void {
   if (!project.content.adventures.some(a => a.id === adventureId)) adventureId = project.activeAdventureId;
-  if (!project.content.scenarios.some(s => s.id === scenarioId)) scenarioId = adventure().encounterIds[0]!;
+  if (!adventure().encounterIds.includes(scenarioId)) chooseScenario(adventure().encounterIds[0]!);
   selected = { x: Math.min(selected.x, scenario().map.width - 1), y: Math.min(selected.y, scenario().map.height - 1) };
 }
+function chooseScenario(id: string): void { scenarioId = id; sceneIndex = 0; editingEnemyId = ""; selected = { x: 0, y: 0 }; }
 function render(): void {
   normaliseSelection();
+  const campaign = adventure();
+  const encounters = campaign.encounterIds.map(id => project.content.scenarios.find(s => s.id === id)!);
+  const unlinked = project.content.scenarios.filter(s => !project.content.adventures.some(a => a.encounterIds.includes(s.id)));
+  const stageIndex = campaign.encounterIds.indexOf(scenarioId);
   root.innerHTML = `<header><h1>캠페인 제작</h1><p class="muted">맵부터 전투·대사·보상까지 · 게임 DB와 실행 중인 캠페인은 변경하지 않습니다.</p>
   <div class="bar"><button id="export">JSON 내보내기</button><label style="margin:0">JSON 불러오기 <input id="import" type="file" accept="application/json,.json" style="display:inline;width:200px"></label><button id="restore">저장한 초안 복원</button><button id="undo" ${undo.length ? "" : "disabled"}>실행 취소</button><button id="redo" ${redo.length ? "" : "disabled"}>다시 실행</button><button id="validate">검증</button></div></header>
   <p id="status" role="status" class="status ${failed ? "error" : ""}">${escape(notice)}</p><div class="shell"><aside>
   <div class="field"><label for="adventure">편집 캠페인</label><select id="adventure">${options(project.content.adventures, adventureId)}</select></div>
-  <div class="field"><label for="scenario">인카운터</label><select id="scenario">${options(project.content.scenarios, scenarioId)}</select></div>
-  <h2>진행 순서</h2><ol>${adventure().encounterIds.map(id => `<li><button data-stage="${escape(id)}" ${id === scenarioId ? 'aria-current="step"' : ""}>${escape(project.content.scenarios.find(s => s.id === id)!.name)}</button></li>`).join("")}</ol>
-  <div class="bar"><button id="up">위로</button><button id="down">아래로</button></div>
+  <section class="campaign-scope" aria-labelledby="campaign-title"><h2 id="campaign-title">${escape(campaign.name)}</h2><p class="muted campaign-id">${escape(campaign.id)}</p>
+  <div class="field"><label for="scenario">인카운터</label><select id="scenario">${options(encounters, scenarioId)}</select></div>
+  <h3>인카운터 연결</h3><p class="muted">이 캠페인의 마지막 단계에 추가합니다.</p>
   <details><summary>인카운터 복제</summary><div class="field"><label for="new-id">새 인카운터 ID</label><input id="new-id" placeholder="encounter.my-field"></div><div class="field"><label for="new-name">새 인카운터 이름</label><input id="new-name" placeholder="새 전장"></div><button id="duplicate">현재 전장 복제·연결</button></details>
+  <details><summary>미연결 인카운터 추가</summary><p class="muted">아직 어느 캠페인에도 연결하지 않은 전장입니다.</p><div class="field"><label for="unlinked-scenario">연결할 인카운터</label><select id="unlinked-scenario" ${unlinked.length ? "" : "disabled"}>${unlinked.length ? options(unlinked, unlinked[0]!.id) : '<option value="">미연결 인카운터 없음</option>'}</select></div><button id="link-scenario" ${unlinked.length ? "" : "disabled"}>이 캠페인에 연결</button></details>
+  <nav class="campaign-order" aria-label="${escape(campaign.name)} 진행 순서"><h3>진행 순서</h3><ol>${encounters.map(s => `<li><button data-stage="${escape(s.id)}" ${s.id === scenarioId ? 'aria-current="step"' : ""}>${escape(s.name)}</button></li>`).join("")}</ol>
+  <div class="bar"><button id="up" ${stageIndex === 0 ? "disabled" : ""}>위로</button><button id="down" ${stageIndex === encounters.length - 1 ? "disabled" : ""}>아래로</button></div></nav>
+  <p class="muted">기본 실행: ${escape(project.content.adventures.find(a => a.id === project.activeAdventureId)!.name)}</p><button id="campaign-activate" ${adventureId === project.activeAdventureId ? "disabled" : ""}>이 캠페인을 기본 실행으로 지정</button>
   <details><summary>캠페인 설정</summary><div class="field"><label for="campaign-name">캠페인 이름</label><input id="campaign-name" value="${escape(adventure().name)}"></div><div class="field"><label for="campaign-description">소개</label><textarea id="campaign-description">${escape(adventure().description)}</textarea></div><div class="field"><label for="ending-title">엔딩 제목</label><input id="ending-title" value="${escape(adventure().ending?.title)}"></div><div class="field"><label for="ending-text">엔딩 본문</label><textarea id="ending-text">${escape(adventure().ending?.description)}</textarea></div><button id="campaign-save">캠페인 저장</button></details>
+  </section><details><summary>새 캠페인 만들기</summary><p class="muted">선택한 캠페인의 전장·대사·보상을 독립된 복사본으로 만듭니다.</p><div class="field"><label for="new-campaign-id">새 캠페인 ID</label><input id="new-campaign-id" placeholder="adventure.my-campaign"></div><div class="field"><label for="new-campaign-name">새 캠페인 이름</label><input id="new-campaign-name"></div><button id="campaign-create">캠페인 복제 생성</button></details>
   <p class="muted">초안 자동 저장 · JSON 파일은 Codex와 함께 편집할 수 있습니다. 게임 반영은 CLI의 plan → apply를 사용합니다.</p></aside>
-  <main><nav aria-label="편집 영역">${[["map", "맵"], ["encounter", "인카운터"], ["dialogue", "다이얼로그"], ["reward", "보상"], ["objects", "오브젝트"]].map(([id, title]) => `<button data-tab="${id}" aria-pressed="${tab === id}">${title}</button>`).join("")}</nav><section id="panel"></section>
+  <main><p class="editing-path" aria-label="편집 경로">${escape(campaign.name)} › ${stageIndex + 1}. ${escape(scenario().name)}</p><nav aria-label="편집 영역">${[["map", "맵"], ["encounter", "인카운터"], ["dialogue", "다이얼로그"], ["reward", "보상"], ["objects", "오브젝트"]].map(([id, title]) => `<button data-tab="${id}" aria-pressed="${tab === id}">${title}</button>`).join("")}</nav><button id="board-preview">전장 미리보기</button><section id="panel"></section>
   <details><summary>전체 프로젝트 JSON</summary><p class="muted">캠페인 추가, 고급 규칙, Trait·에셋 연결을 편집할 수 있습니다. 검증 실패 시 현재 초안은 보존됩니다.</p><textarea id="project-json" style="height:300px">${escape(JSON.stringify(project, null, 2))}</textarea><button id="project-apply">프로젝트 JSON 적용</button></details></main></div>`;
-  select("adventure", () => { adventureId = value("adventure"); scenarioId = adventure().encounterIds[0]!; sceneIndex = 0; render(); });
-  select("scenario", () => { scenarioId = value("scenario"); sceneIndex = 0; render(); });
-  root.querySelectorAll<HTMLButtonElement>("[data-stage]").forEach(button => button.onclick = () => { scenarioId = button.dataset.stage!; sceneIndex = 0; render(); });
+  select("adventure", () => { adventureId = value("adventure"); chooseScenario(adventure().encounterIds[0]!); render(); });
+  select("scenario", () => { chooseScenario(value("scenario")); render(); });
+  root.querySelectorAll<HTMLButtonElement>("[data-stage]").forEach(button => button.onclick = () => { chooseScenario(button.dataset.stage!); render(); });
   root.querySelectorAll<HTMLButtonElement>("[data-tab]").forEach(button => button.onclick = () => { tab = button.dataset.tab!; render(); });
   bind("undo", () => { redo.push(project); project = undo.pop()!; notice = "이전 편집으로 되돌렸습니다."; persist(); render(); });
   bind("redo", () => { undo.push(project); project = redo.pop()!; notice = "편집을 다시 적용했습니다."; persist(); render(); });
@@ -78,24 +89,48 @@ function render(): void {
   bind("campaign-save", () => changeAdventure({ ...adventure(), name: value("campaign-name"), description: value("campaign-description"),
     ...(value("ending-title").trim() ? { ending: { title: value("ending-title"), description: value("ending-text") } } : {}) }));
   for (const [id, delta] of [["up", -1], ["down", 1]] as const) bind(id, () => { const ids = [...adventure().encounterIds]; const at = ids.indexOf(scenarioId); if (at < 0 || at + delta < 0 || at + delta >= ids.length) return; [ids[at], ids[at + delta]] = [ids[at + delta]!, ids[at]!]; changeAdventure({ ...adventure(), encounterIds: ids }); });
+  bind("campaign-activate", () => commit({ ...project, activeAdventureId: adventureId,
+    authoredAdventureIds: project.authoredAdventureIds.includes(adventureId) || adventureId === initial.activeAdventureId ? project.authoredAdventureIds : [...project.authoredAdventureIds, adventureId],
+  }, "초안의 기본 실행 캠페인을 지정했습니다. JSON을 내보내고 CLI로 반영한 뒤 새 모험에 적용됩니다."));
+  bind("campaign-create", () => {
+    const id = value("new-campaign-id").trim();
+    const next = duplicateCampaign(project, adventureId, id, value("new-campaign-name").trim());
+    assertCampaignProject(next, context); adventureId = id;
+    scenarioId = next.content.adventures.find(a => a.id === id)!.encounterIds[0]!;
+    sceneIndex = 0; selected = { x: 0, y: 0 };
+    commit(next, "새 캠페인을 만들었습니다. 전장·대사·보상을 원본과 독립적으로 편집할 수 있습니다.");
+  });
   bind("duplicate", duplicateEncounter);
+  bind("link-scenario", () => linkEncounter(project, value("unlinked-scenario"), "전장을 캠페인 마지막에 연결했습니다. 보상은 새로 지정하세요."));
+  bind("board-preview", previewBoard);
   if (tab === "map") mapPanel(); else if (tab === "encounter") encounterPanel(); else if (tab === "dialogue") dialoguePanel(); else if (tab === "reward") rewardPanel(); else objectPanel();
+}
+function previewBoard(): void {
+  assertCampaignProject(project, context);
+  const dialog = document.createElement("dialog");
+  dialog.className = "board-preview";
+  dialog.setAttribute("aria-label", "전장 미리보기");
+  const close = document.createElement("button"); close.textContent = "전장 미리보기 닫기";
+  const frame = document.createElement("iframe");
+  frame.title = "초안 전장"; frame.src = "/campaign-preview.html";
+  const snapshot = structuredClone({ type: "campaign-preview", project, adventureId, scenarioId });
+  frame.onload = () => frame.contentWindow?.postMessage(snapshot, location.origin);
+  close.onclick = () => dialog.close();
+  dialog.onclose = () => { dialog.remove(); document.getElementById("board-preview")?.focus(); };
+  dialog.append(close, frame); document.body.append(dialog); dialog.showModal();
 }
 function duplicateEncounter(): void {
   const id = value("new-id").trim(), name = value("new-name").trim();
-  if (!id || !name || project.content.scenarios.some(s => s.id === id)) throw new Error("중복되지 않는 ID와 이름을 입력하세요.");
-  const source = scenario();
-  const tileIds = new Map(source.map.tiles.map(t => [t.id, `${id}.tile.${t.position.x}.${t.position.y}`]));
-  const copy = { ...source, id, name, map: { ...source.map, tiles: source.map.tiles.map(t => ({ ...t, id: tileIds.get(t.id)! })),
-    objects: source.map.objects.map(o => ({ ...o, interaction: { ...o.interaction, targetTileId: tileIds.get(o.interaction.targetTileId)! } })) } };
-  const oldBinding = project.dialogue.bindings.encounters[source.id];
-  const newScene = oldBinding ? { ...project.dialogue.scenes[oldBinding.sceneId]!, id: `${id}.briefing` } : null;
-  const next: CampaignProject = { ...project, content: { ...project.content, scenarios: [...project.content.scenarios, copy], adventures: project.content.adventures.map(a => a.id !== adventureId ? a : { ...a,
-    encounterIds: [...a.encounterIds, id], experienceAwards: [...a.experienceAwards, { afterEncounterId: id, amount: 0 }] }) },
-    dialogue: newScene ? { scenes: { ...project.dialogue.scenes, [newScene.id]: newScene }, bindings: { ...project.dialogue.bindings, encounters: { ...project.dialogue.bindings.encounters, [id]: { ...oldBinding!, sceneId: newScene.id } } } } : project.dialogue,
-    presentation: { ...project.presentation, scenery: [...project.presentation.scenery, ...project.presentation.scenery.filter(entry => entry.scenarioId === source.id).map(entry => ({ ...entry, scenarioId: id }))], elevations: { version: 1, maps: { ...project.presentation.elevations.maps, [id]: [...(project.presentation.elevations.maps[source.id] ?? new Array(source.map.width * source.map.height).fill(0))] } },
-      backgrounds: { ...project.presentation.backgrounds, ...(project.presentation.backgrounds[source.id] ? { [id]: project.presentation.backgrounds[source.id]! } : {}) } } };
-  assertCampaignProject(next, context); scenarioId = id; commit(next, "전장을 복제하고 캠페인 마지막에 연결했습니다. 보상은 새로 지정하세요.");
+  const copied = duplicateCampaignEncounter(project, scenarioId, id, name);
+  linkEncounter(copied, id, "전장을 복제하고 캠페인 마지막에 연결했습니다. 보상은 새로 지정하세요.");
+}
+function linkEncounter(copied: CampaignProject, id: string, message: string): void {
+  if (!copied.content.scenarios.some(s => s.id === id) || copied.content.adventures.some(a => a.encounterIds.includes(id)))
+    throw new Error("아직 캠페인에 연결하지 않은 인카운터를 선택하세요.");
+  const next = { ...copied, content: { ...copied.content, adventures: copied.content.adventures.map(a => a.id !== adventureId ? a : {
+    ...a, encounterIds: [...a.encounterIds, id], experienceAwards: [...a.experienceAwards, { afterEncounterId: id, amount: 0 }],
+  }) } };
+  assertCampaignProject(next, context); chooseScenario(id); commit(next, message);
 }
 function mapPanel(): void {
   const s = scenario(), tile = s.map.tiles.find(t => t.position.x === selected.x && t.position.y === selected.y)!;
@@ -104,7 +139,7 @@ function mapPanel(): void {
     const { x, y } = t.position; const tags = t.traits.map(t => t.id); const spawn = s.partySpawnSlots.find(p => p.position.x === x && p.position.y === y); const enemy = s.placements.some(p => p.position.x === x && p.position.y === y); const object = s.map.objects.find(p => p.position.x === x && p.position.y === y);
     return `<button class="cell ${tags.includes("pond-water") ? "water" : tags.includes("forest-dirt") ? "dirt" : tags.includes("forest-leaves") ? "leaves" : "grass"} ${tags.includes("blocked") ? "blocked" : ""}" role="gridcell" aria-label="타일 ${x},${y}" aria-selected="${selected.x === x && selected.y === y}" tabindex="${selected.x === x && selected.y === y ? 0 : -1}" data-x="${x}" data-y="${y}" style="height:28px"><small>${project.presentation.elevations.maps[s.id]?.[y*s.map.width+x] ?? 0}</small>${spawn ? spawn.seat : enemy ? "적" : object ? "◆" : ""}</button>`;
   }).join("")}</div></div><p class="muted">숫자 1~3: 파티 시작 · 적: 적 배치 · ◆: 오브젝트 · 오른쪽 위 숫자: 높이. 방향키로 선택하고 오른쪽에서 적용하세요.</p></div>
-  <div class="panel"><h2>타일 ${selected.x},${selected.y}</h2><p>${escape(tile.traits.map(t => t.id).join(", "))}</p><div class="field"><label for="ground">지면</label><select id="ground">${options([{id:"forest-grass",name:"풀"},{id:"forest-dirt",name:"흙길"},{id:"forest-leaves",name:"낙엽"},{id:"pond-water",name:"물"},{id:"open",name:"석재 바닥"},{id:"difficult",name:"험지"},{id:"blocked",name:"벽"},{id:"gate",name:"닫힌 성문"}], tile.traits.find(t => ["forest-grass","forest-dirt","forest-leaves","pond-water"].includes(t.id))?.id ?? tile.traits[0]!.id)}</select></div><button id="paint">지면 적용</button>
+  <div class="panel"><h2>타일 ${selected.x},${selected.y}</h2><p>${escape(tile.traits.map(t => t.id).join(", "))}</p><div class="field"><label for="ground">지면</label><select id="ground">${options([{id:"forest-grass",name:"풀"},{id:"forest-dirt",name:"흙길"},{id:"forest-leaves",name:"낙엽"},{id:"pond-water",name:"물"},{id:"open",name:"석재 바닥"},{id:"difficult",name:"험지"},{id:"blocked",name:"벽"},{id:"gate",name:"닫힌 성문"}], tile.traits.find(t => ["forest-grass","forest-dirt","forest-leaves","pond-water"].includes(t.id))?.id ?? tile.traits[0]?.id ?? "open")}</select></div><button id="paint">지면 적용</button>
   <div class="field"><label for="height">높이</label><input id="height" type="number" min="0" max="8" value="${height}"></div><button id="height-save">높이 적용</button>
   <div class="field"><label for="object-template">오브젝트</label><select id="object-template">${options(project.presentation.objects, project.presentation.objects[0]?.id ?? "")}</select></div><div class="field"><label for="gate-target">연결 성문 타일 ID</label><input id="gate-target" placeholder="레버에만 필요"></div><button id="place-object">오브젝트 배치</button>
   <div class="pair"><div class="field"><label for="width">너비</label><input id="width" type="number" min="3" max="40" value="${s.map.width}"></div><div class="field"><label for="map-height">높이(칸)</label><input id="map-height" type="number" min="3" max="40" value="${s.map.height}"></div></div><button id="resize">맵 크기 적용</button></div></div>`;

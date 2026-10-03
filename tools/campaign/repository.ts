@@ -22,6 +22,7 @@ export async function readCampaignRepository(root: string): Promise<{ project: C
   ]);
   const generation = await json(root, "art/source/generation-plan.json") as { presentation: TilemapBuildStyle };
   const body = { version: 1 as const, activeAdventureId: (campaign as { adventureId: string }).adventureId,
+    authoredAdventureIds: (campaign as { authoredAdventureIds: readonly string[] }).authoredAdventureIds,
     content, dialogue, presentation: { elevations, backgrounds, objects, scenery: generation.presentation.scenery ?? [] } } as Omit<CampaignProject, "baseRevision">;
   const project = { ...body, baseRevision: campaignRevision(body) };
   const context = { sceneCatalog: SCENE_CATALOG, objectVisuals: generation.presentation.objectVisuals, assets: (manifest as CampaignValidationContext).assets };
@@ -34,7 +35,7 @@ export async function planCampaignApply(root: string, candidate: unknown): Promi
   if (candidate.baseRevision !== current.baseRevision) throw new Error("STALE_PROJECT: 저장소가 바뀌었습니다. 다시 내보낸 프로젝트에 변경을 병합하세요.");
   const outputs: Record<string, unknown> = Object.fromEntries(CONTENT_FILES.map(key => [`content/m7/${key}.json`, candidate.content[key] ?? []]));
   Object.assign(outputs, {
-    [AUXILIARY_FILES.campaign]: { adventureId: candidate.activeAdventureId },
+    [AUXILIARY_FILES.campaign]: { adventureId: candidate.activeAdventureId, authoredAdventureIds: candidate.authoredAdventureIds },
     [AUXILIARY_FILES.dialogue]: candidate.dialogue,
     [AUXILIARY_FILES.elevations]: candidate.presentation.elevations,
     [AUXILIARY_FILES.backgrounds]: candidate.presentation.backgrounds,

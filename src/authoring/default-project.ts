@@ -12,7 +12,7 @@ import type { CampaignProject } from "./types";
 
 export const CAMPAIGN_VALIDATION_CONTEXT: CampaignValidationContext = { assets: manifest.assets, sceneCatalog: SCENE_CATALOG, objectVisuals: generation.presentation.objectVisuals };
 export function createCampaignProject(): CampaignProject {
-  const body = { version: 1, activeAdventureId: campaign.adventureId, content: M7_CONTENT_SOURCE,
+  const body = { version: 1, activeAdventureId: campaign.adventureId, authoredAdventureIds: campaign.authoredAdventureIds, content: M7_CONTENT_SOURCE,
     dialogue, presentation: { elevations, backgrounds, objects, scenery: generation.presentation.scenery } } as unknown as Omit<CampaignProject, "baseRevision">;
   return structuredClone({ ...body, baseRevision: campaignRevision(body) });
 }

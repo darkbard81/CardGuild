@@ -1,3 +1,5 @@
+import campaign from "../../content/m7/campaign.json";
+import { pathToFileURL } from "node:url";
 import { isAuthoredPlayable } from "../../src/character/member";
 import { deriveLoadoutSnapshot } from "../../src/loadout";
 import { rewardAvailability } from "./reward-availability";
@@ -12,12 +14,13 @@ import { getContentIdentity } from "../../src/content/compile-content";
 import { PARTY_SIZES } from "../../src/content/content-types";
 import type {
   ActorDefinition,
+  AdventureDefinition,
   CompiledContentPack,
   ContentValidationIssue,
   PartySizeNumber,
   ScenarioSource,
 } from "../../src/content/content-types";
-import { PRODUCTION_CONTENT } from "../../src/content/production-content";
+import { PRODUCTION_CONTENT, type ProductionContent } from "../../src/content/production-content";
 import { formatContentValidationIssue } from "../../src/content/validate-semantics";
 import { createCombat } from "../../src/game/engine";
 import type { ActorState } from "../../src/game/types";
@@ -107,8 +110,7 @@ function deckCardIds(
     .contributions.map((contribution) => contribution.cardDefinitionId);
 }
 
-function collectReachable(pack: CompiledContentPack, reporter: Reporter): ReachableContent {
-  const adventure = PRODUCTION_CONTENT.adventure;
+function collectReachable(pack: CompiledContentPack, reporter: Reporter, adventure: AdventureDefinition): ReachableContent {
   const starters = sortedById(Object.values(pack.actorDefinitions).filter(isPlayable));
   const scenarios = adventure.encounterIds
     .map((scenarioId) => pack.scenarioSources[scenarioId])
@@ -239,7 +241,7 @@ function soloParty(starter: ActorDefinition, loadout: PartyMemberLoadout): Party
   };
 }
 
-function checkIdentity(pack: CompiledContentPack, reporter: Reporter): void {
+function checkIdentity(pack: CompiledContentPack, reporter: Reporter, production: ProductionContent, authoredIds: readonly string[]): void {
   const policy = M7_PRODUCTION_POLICY;
   if (pack.manifest.id !== policy.packId) {
     reporter.issue(
@@ -249,33 +251,28 @@ function checkIdentity(pack: CompiledContentPack, reporter: Reporter): void {
       `PRODUCTION_CONTENT ships "${pack.manifest.id}" but the release policy describes "${policy.packId}".`,
     );
   }
-  if (PRODUCTION_CONTENT.adventureId !== policy.adventureId) {
-    reporter.issue(
-      PACK_SOURCE,
-      "adventureId",
-      "PRODUCTION_ADVENTURE_MISMATCH",
-      `PRODUCTION_CONTENT selects "${PRODUCTION_CONTENT.adventureId}" but the release policy describes "${policy.adventureId}".`,
-    );
+  if (production.adventureId !== policy.adventureId && !authoredIds.includes(production.adventureId)) {
+    reporter.issue(PACK_SOURCE, "adventureId", "PRODUCTION_ADVENTURE_UNREGISTERED", "The selected Adventure must be the protected release or explicitly registered in campaign.json.", production.adventureId);
   }
+  for (const id of authoredIds) if (!pack.adventures[id])
+    reporter.issue(PACK_SOURCE, "authoredAdventureIds", "PRODUCTION_ADVENTURE_MISSING", `Registered Adventure "${id}" is missing.`, id);
+  if (new Set(authoredIds).size !== authoredIds.length)
+    reporter.issue(PACK_SOURCE, "authoredAdventureIds", "PRODUCTION_ADVENTURE_DUPLICATE", "Authored Adventure registrations must be unique.");
   const adventureIds = Object.keys(pack.adventures);
-  if (JSON.stringify(adventureIds.sort()) !== JSON.stringify([PRODUCTION_CONTENT.adventureId, ...policy.stagedAdventureIds].sort())) {
-    reporter.issue(
-      PACK_SOURCE,
-      "adventures",
-      "PRODUCTION_ADVENTURE_NOT_SINGULAR",
-      `The release must contain the selected Adventure and explicitly staged integration slices; the pack holds [${adventureIds.join(", ")}].`,
-    );
+  const expected = [...new Set([policy.adventureId, ...policy.stagedAdventureIds, ...authoredIds])];
+  if (JSON.stringify(adventureIds.sort()) !== JSON.stringify(expected.sort())) {
+    reporter.issue(PACK_SOURCE, "adventures", "PRODUCTION_ADVENTURE_UNREGISTERED", "The pack must contain the protected release, staged slices and explicitly registered authored Adventures.");
   }
-  if (pack.adventures[PRODUCTION_CONTENT.adventureId] !== PRODUCTION_CONTENT.adventure) {
+  if (pack.adventures[production.adventureId] !== production.adventure) {
     reporter.issue(
       PACK_SOURCE,
       "adventure",
       "PRODUCTION_ADVENTURE_DETACHED",
-      "PRODUCTION_CONTENT.adventure is not the Adventure its own pack compiled.",
+      "production.adventure is not the Adventure its own pack compiled.",
     );
   }
   const identity = getContentIdentity(pack);
-  const shipped = PRODUCTION_CONTENT.contentIdentity;
+  const shipped = production.contentIdentity;
   if (
     identity.packId !== shipped.packId ||
     identity.packVersion !== shipped.packVersion ||
@@ -329,13 +326,13 @@ function checkReserve(lists: readonly ReserveList[], reporter: Reporter): void {
         reporter.issue(POLICY_SOURCE, at, "RESERVE_TUTORIAL_CONFLICT", `"${entry.id}" is reserved and also part of the tutorial prefix.`, entry.id);
       }
       if (list.reachable.has(entry.id)) {
-        reporter.issue(POLICY_SOURCE, at, "RESERVE_STALE", `Reserved ${list.label} "${entry.id}" is reachable in the shipped Adventure. Retire the reserve entry rather than keeping it as an exemption.`, entry.id);
+        reporter.issue(POLICY_SOURCE, at, "RESERVE_STALE", `Reserved ${list.label} "${entry.id}" is reachable in the protected Adventure. Retire the reserve entry rather than keeping it as an exemption.`, entry.id);
       }
     });
   }
 }
 
-/** Everything the pack authors but nothing reaches, minus what the policy owns up to. */
+/** Everything the pack authors but no protected or registered campaign reaches, minus explicit reserves. */
 function checkOrphans(lists: readonly ReserveList[], reporter: Reporter): void {
   for (const list of lists) {
     const reserved = new Set(list.entries.map((entry) => entry.id));
@@ -345,7 +342,7 @@ function checkOrphans(lists: readonly ReserveList[], reporter: Reporter): void {
         PACK_SOURCE,
         list.field,
         "PRODUCTION_ORPHAN",
-        `${list.label} "${id}" is unreachable from the shipped Adventure. Give it a path or reserve it in ${POLICY_SOURCE}.`,
+        `${list.label} "${id}" is unreachable from protected or registered Adventures. Give it a path or reserve it in ${POLICY_SOURCE}.`,
         id,
       );
     }
@@ -371,9 +368,9 @@ function checkReachableMinimum(reachable: ReachableContent, reporter: Reporter):
   }
 }
 
-function checkTutorialPrefix(reporter: Reporter): void {
+function checkTutorialPrefix(adventure: AdventureDefinition, reporter: Reporter): void {
   const tutorial = M7_PRODUCTION_POLICY.tutorialEncounterIds;
-  const encounterIds = PRODUCTION_CONTENT.adventure.encounterIds;
+  const encounterIds = adventure.encounterIds;
   tutorial.forEach((encounterId, index) => {
     const actual = encounterIds[index];
     if (actual === encounterId) return;
@@ -475,11 +472,12 @@ function checkPartySizeCoverage(
   pack: CompiledContentPack,
   reachable: ReachableContent,
   reporter: Reporter,
+  adventure: AdventureDefinition,
+  requireAllSizes = false,
 ): void {
-  const adventure = PRODUCTION_CONTENT.adventure;
   for (const partySize of PARTY_SIZES) {
     if (partySize < adventure.partySize.min || partySize > adventure.partySize.max) {
-      reporter.issue(
+      if (requireAllSizes) reporter.issue(
         PACK_SOURCE,
         "adventure.partySize",
         "PRODUCTION_PARTY_SIZE_UNSUPPORTED",
@@ -582,9 +580,7 @@ interface AssetVisuals {
  * there is which *Actors* the release has to be able to draw, which is a release question and
  * so is asked here.
  */
-async function checkVisualCoverage(pack: CompiledContentPack, reachable: ReachableContent, reporter: Reporter): Promise<void> {
-  const manifestPath = path.join(process.cwd(), "presentation", "m3", "asset-manifest.json");
-  const manifest = JSON.parse(await readFile(manifestPath, "utf8")) as AssetVisuals;
+function checkVisualCoverage(pack: CompiledContentPack, reachable: ReachableContent, reporter: Reporter, manifest: AssetVisuals): void {
   for (const actorId of [...reachable.actorIds].sort()) {
     if (Object.values(pack.creationPresets ?? {}).some(preset => preset.actorDefinitionId === actorId)) continue;
     const visual = manifest.actorVisuals[actorId];
@@ -608,8 +604,7 @@ async function checkVisualCoverage(pack: CompiledContentPack, reachable: Reachab
  * an explicit 0. What only the shipped Adventure has to satisfy is that every battle pays
  * something, and that a party that wins straight through reaches the authored milestones.
  */
-function checkExperienceAwards(pack: CompiledContentPack, reporter: Reporter): void {
-  const adventure = PRODUCTION_CONTENT.adventure;
+function checkExperienceAwards(pack: CompiledContentPack, reporter: Reporter, adventure: AdventureDefinition, milestones: Readonly<Record<string, number>> = {}): void {
   const amounts = new Map(adventure.experienceAwards.map((award) => [award.afterEncounterId, award.amount]));
   adventure.encounterIds.forEach((encounterId, index) => {
     const amount = amounts.get(encounterId);
@@ -628,7 +623,6 @@ function checkExperienceAwards(pack: CompiledContentPack, reporter: Reporter): v
   let progression = createCharacterProgression(starter);
   adventure.encounterIds.forEach((encounterId, index) => {
     progression = applyExperience(progression, amounts.get(encounterId) ?? 0).progression;
-    const milestones: Readonly<Record<string, number>> = M7_PRODUCTION_POLICY.levelMilestones;
     const expected = milestones[String(index + 1)];
     if (expected !== undefined && progression.level !== expected) {
       reporter.issue(
@@ -664,13 +658,18 @@ async function checkPolicyIsolation(reporter: Reporter): Promise<void> {
   }
 }
 
-async function main(): Promise<void> {
-  const pack = PRODUCTION_CONTENT.pack;
+/** Preserve the protected campaign's release promises while admitting registered authoring work. */
+export async function validateProductionRelease(production: ProductionContent, authoredIds: readonly string[]): Promise<readonly ContentValidationIssue[]> {
+  const pack = production.pack;
   const issues: ContentValidationIssue[] = [];
   const reporter = createReporter(issues, pack.manifest.id);
 
-  checkIdentity(pack, reporter);
-  const reachable = collectReachable(pack, reporter);
+  checkIdentity(pack, reporter, production, authoredIds);
+  const baseline = pack.adventures[M7_PRODUCTION_POLICY.adventureId];
+  if (!baseline) return issues;
+  const reachable = collectReachable(pack, reporter, baseline);
+  const authored = authoredIds.filter(id => id !== baseline.id).flatMap(id => pack.adventures[id] ? [pack.adventures[id]!] : []);
+  const added = authored.map(adventure => ({ adventure, reachable: collectReachable(pack, reporter, adventure) }));
   const lists: readonly ReserveList[] = [
     {
       label: "card",
@@ -702,16 +701,37 @@ async function main(): Promise<void> {
     },
   ];
   checkReserve(lists, reporter);
-  checkOrphans(lists, reporter);
+  // Reserve status and minimum floors still describe the protected campaign.
+  // Orphan detection also counts explicit paths through registered new campaigns.
+  const extra = {
+    card: added.flatMap(entry => [...entry.reachable.usedCardIds]),
+    equipment: added.flatMap(entry => [...entry.reachable.usedEquipmentIds]),
+    actor: added.flatMap(entry => [...entry.reachable.actorIds]),
+    scenario: added.flatMap(entry => entry.reachable.scenarios.map(s => s.id)),
+  };
+  checkOrphans(lists.map(list => ({ ...list, reachable: new Set([...list.reachable, ...extra[list.label as keyof typeof extra]]) })), reporter);
   checkReachableMinimum(reachable, reporter);
-  checkTutorialPrefix(reporter);
+  checkTutorialPrefix(baseline, reporter);
   checkStarterLoadouts(pack, reachable, reporter);
-  checkPartySizeCoverage(pack, reachable, reporter);
+  checkPartySizeCoverage(pack, reachable, reporter, baseline, true);
   checkAiCoverage(pack, reachable, reporter);
-  checkExperienceAwards(pack, reporter);
+  checkExperienceAwards(pack, reporter, baseline, M7_PRODUCTION_POLICY.levelMilestones);
   checkCreationStarters(pack, reporter);
-  await checkVisualCoverage(pack, reachable, reporter);
+  const manifest = JSON.parse(await readFile(path.join(process.cwd(), ASSET_MANIFEST_SOURCE), "utf8")) as AssetVisuals;
+  checkVisualCoverage(pack, reachable, reporter, manifest);
+  for (const entry of added) {
+    checkPartySizeCoverage(pack, entry.reachable, reporter, entry.adventure);
+    checkAiCoverage(pack, entry.reachable, reporter);
+    checkExperienceAwards(pack, reporter, entry.adventure);
+    checkVisualCoverage(pack, entry.reachable, reporter, manifest);
+  }
   await checkPolicyIsolation(reporter);
+  return issues;
+}
+
+async function main(): Promise<void> {
+  const pack = PRODUCTION_CONTENT.pack;
+  const issues = await validateProductionRelease(PRODUCTION_CONTENT, campaign.authoredAdventureIds);
 
   if (issues.length > 0) {
     for (const issue of issues) process.stderr.write(`${formatContentValidationIssue(issue)}\n\n`);
@@ -721,19 +741,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  const reserved =
-    M7_PRODUCTION_POLICY.reserveCards.length +
-    M7_PRODUCTION_POLICY.reserveEquipment.length +
-    M7_PRODUCTION_POLICY.reserveActors.length +
-    M7_PRODUCTION_POLICY.reserveScenarios.length;
-  process.stdout.write(
-    `Production OK: ${pack.manifest.id}@${pack.manifest.version} ${pack.fingerprint}\n` +
-      `  Adventure ${PRODUCTION_CONTENT.adventureId}: ${String(PRODUCTION_CONTENT.adventure.encounterIds.length)} encounters ` +
-      `(${String(M7_PRODUCTION_POLICY.tutorialEncounterIds.length)} tutorial), authored party-size coverage within ${PARTY_SIZES.map(String).join("P/")}P\n` +
-      `  Reachable: ${String(reachable.starters.length)} starters, ${String(reachable.enemyIds.size)} enemies, ` +
-      `${String(reachable.playerCardIds.size)} player cards, ${String(reachable.playerEquipmentIds.size)} player equipment\n` +
-      `  Reserved: ${String(reserved)} definitions, each with a reason and a follow-up\n`,
-  );
+  process.stdout.write(`Production OK: ${pack.manifest.id}@${pack.manifest.version} ${pack.fingerprint}\n` +
+    `  Selected: ${PRODUCTION_CONTENT.adventureId}; protected: ${M7_PRODUCTION_POLICY.adventureId}; authored: ${campaign.authoredAdventureIds.length}\n`);
+
 }
 
-await main();
+if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) await main();

@@ -1,4 +1,7 @@
 import { Assets, type Spritesheet, type Texture } from "pixi.js";
+import type { CampaignObjectTemplate } from "../authoring/types";
+import type { MapObjectState } from "../game/types";
+import { CAMPAIGN_OBJECTS, campaignObjectVisual } from "./campaign-objects";
 
 import atlasMapJson from "../../presentation/m3/atlas-map.json";
 import manifestJson from "../../presentation/m3/asset-manifest.json";
@@ -54,10 +57,15 @@ export class AssetCatalog {
     private readonly atlasMap: PresentationAtlasMap,
     private readonly sideMaterials: Readonly<Record<string, string>> = {},
     private readonly backgrounds: Readonly<Record<string, string>> = {},
+    private readonly objects: readonly CampaignObjectTemplate[] = CAMPAIGN_OBJECTS,
   ) {
     this.cardAssetIds = new Set(Object.values(manifest.cardVisuals));
     validatePresentationTilemaps(tilemaps, manifest);
     terrainSideMaterials({ version: 1, materials: sideMaterials }, manifest.assets);
+  }
+
+  public objectVisual(object: MapObjectState): string {
+    return campaignObjectVisual(object, this.objects);
   }
 
   /** DOM card images must not become unused Pixi textures or block encounter entry. */
@@ -262,12 +270,17 @@ export async function loadPresentationPack(): Promise<AssetCatalog> {
   return catalog;
 }
 
-export function createPresentationCatalog(): AssetCatalog {
+export function createPresentationCatalog(overrides: {
+  readonly tilemaps?: PresentationTilemapPack;
+  readonly backgrounds?: Readonly<Record<string, string>>;
+  readonly objects?: readonly CampaignObjectTemplate[];
+} = {}): AssetCatalog {
   return new AssetCatalog(
     manifestJson as unknown as PresentationAssetManifest,
-    applyTerrainElevations(tilemapsJson as unknown as PresentationTilemapPack, elevationsJson),
+    overrides.tilemaps ?? applyTerrainElevations(tilemapsJson as unknown as PresentationTilemapPack, elevationsJson),
     atlasMapJson as unknown as PresentationAtlasMap,
     terrainSideMaterials(sidesJson, manifestJson.assets),
-    backgroundsJson,
+    overrides.backgrounds ?? backgroundsJson,
+    overrides.objects,
   );
 }

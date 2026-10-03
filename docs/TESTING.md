@@ -12,7 +12,7 @@ Use Node 24 and npm 11+. In a fresh checkout run `npm ci` and `npx playwright in
 | `npm run test:domain` | Pure rules, commands, legality, progression, authority and save validation |
 | `npm run test:integration` | Services, HTTP/WS, commit/publication, real file SQLite and built-process restart |
 | `npm run test:interaction` | Real UI/controller/client with only backend responses controlled |
-| `npm run test:journey` | Four real built-app/server journeys with production content and isolated disk DBs |
+| `npm run test:journey` | Real built-app/server journeys with production content and isolated disk DBs; J-AUTHOR additionally builds an edited project in a temporary checkout |
 | `npm test` | Domain then Integration; no browser |
 | `npm run test:all` | The four leaf suites in order, each once |
 
@@ -22,7 +22,7 @@ The full local and CI gate is:
 CI=true npm run check && CI=true npm run test:all
 ```
 
-`check` now includes build; do not add another build between these commands. Standalone Integration restart, Interaction and Journey runs require `npm run build` after product source changes. None silently rebuilds or accesses the development DB. Only the development-only terrain editor uses a Vite development server. `CI Contracts / Contracts` runs only on PRs targeting main. `CI Quick / Quick` runs `check` followed by `test:domain` on pushes to branches other than main, with no Chromium installation. Main pushes run neither test workflow. A feature push to an open PR intentionally runs Quick and the PR gate independently; only Contracts is the required full gate. Repository branch protection must select `Contracts` instead of the removed `Full` check; repository settings are external to this change.
+`check` now includes build; do not add another build between these commands. Standalone Integration restart, Interaction and Journey runs require `npm run build` after product source changes. No test accesses the development DB. J-AUTHOR explicitly builds its distinct authored content in a disposable checkout; other tests reuse the preceding build. Development-only terrain and campaign editor cases use a separate Vite development server. `CI Contracts / Contracts` runs only on PRs targeting main. `CI Quick / Quick` runs `check` followed by `test:domain` on pushes to branches other than main, with no Chromium installation. Main pushes run neither test workflow. A feature push to an open PR intentionally runs Quick and the PR gate independently; only Contracts is the required full gate. Repository branch protection must select `Contracts` instead of the removed `Full` check; repository settings are external to this change.
 
 ## Focused reproduction
 

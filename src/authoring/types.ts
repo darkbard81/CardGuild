@@ -31,6 +31,8 @@ export interface CampaignProject {
   /** Revision of repository inputs at export; edits keep this value until applied. */
   readonly baseRevision: string;
   readonly activeAdventureId: string;
+  /** Explicitly registered authored campaigns, in addition to the protected release. */
+  readonly authoredAdventureIds: readonly string[];
   readonly content: ContentPackSource;
   readonly dialogue: CampaignDialogue;
   readonly presentation: {

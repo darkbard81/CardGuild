@@ -17,7 +17,7 @@ async function availablePort() {
 }
 
 /** Each lifecycle owns a disk file and OS-assigned port. Readiness comes from the built server. */
-export async function productProcess() {
+export async function productProcess(root = process.cwd()) {
   const directory = await mkdtemp(path.join(os.tmpdir(), "cardguild-process-contract-"));
   const databasePath = path.join(directory, "campaign.sqlite");
   const port = await availablePort();
@@ -38,7 +38,7 @@ export async function productProcess() {
     if (child) throw new Error("Server is already started");
     log = "";
     const current = spawn(process.execPath, ["dist-server/main.js"], {
-      cwd: process.cwd(), env: { ...process.env, CARDGUILD_HOST: "127.0.0.1", CARDGUILD_PORT: String(port),
+      cwd: root, env: { ...process.env, CARDGUILD_HOST: "127.0.0.1", CARDGUILD_PORT: String(port),
         CARDGUILD_DB_PATH: databasePath, CARDGUILD_ALLOWED_ORIGINS: `${origin},${TEST_ORIGIN}`,
         CARDGUILD_COOKIE_SECURE: "false", CARDGUILD_ADVENTURE_SEED: "60" },
       stdio: ["ignore", "pipe", "pipe"],

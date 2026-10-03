@@ -1,6 +1,8 @@
 /**
  * Release QA configuration for the authoritative M7 production pack.
  *
+ * Authored campaigns are registered separately in content/m7/campaign.json.
+ * Reserve lists and reachable floors below describe this protected campaign.
  * This is not gameplay content and not a runtime selector. Nothing under `src/`
  * may import it — `check-production-content.ts` fails if anything does.
  * The generic validator (`check-content.ts`) keeps owning what makes *any*
@@ -42,7 +44,7 @@ export interface ReserveEntry {
 export const M7_PRODUCTION_POLICY = {
   /** The pack `PRODUCTION_CONTENT` is expected to select. */
   packId: "cardguild.m7",
-  /** The single authoritative Adventure. */
+  /** Protected campaign: its release promises remain checked even when an authored campaign is selected. */
   adventureId: "adventure.willowbrook",
   /** Authored recruitment integration slice; not a selectable production start. Cutover is #67. */
   stagedAdventureIds: ["adventure.recruitment-tutorial", "adventure.goblin-trouble"],

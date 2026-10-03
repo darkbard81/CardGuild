@@ -23,7 +23,7 @@ export interface CampaignValidationContext {
 }
 export function campaignRevision(project: Omit<CampaignProject, "baseRevision">): string {
   return fingerprintValue({ version: project.version, activeAdventureId: project.activeAdventureId,
-    content: project.content, dialogue: project.dialogue, presentation: project.presentation });
+    authoredAdventureIds: project.authoredAdventureIds, content: project.content, dialogue: project.dialogue, presentation: project.presentation });
 }
 export function validateCampaignProject(input: unknown, context: CampaignValidationContext): readonly CampaignIssue[] {
   const structure = projectStructure();
@@ -47,7 +47,13 @@ export function validateCampaignReferences(project: CampaignProject, context: Ca
   const issue = (path: string, message: string): void => { issues.push({ path, message }); };
   if (!project.content.adventures.some(a => a.id === project.activeAdventureId))
     issue("/activeAdventureId", "실행할 캠페인을 찾을 수 없습니다.");
+  for (const id of project.authoredAdventureIds) if (!project.content.adventures.some(a => a.id === id))
+    issue("/authoredAdventureIds", `등록한 캠페인을 찾을 수 없습니다: ${id}`);
   const scenarios = new Map(project.content.scenarios.map(s => [s.id, s]));
+  // Runtime packs can describe sparse maps. The rectangular editor and tilemap
+  // pipeline require every cell; reject holes at import instead of crashing on selection.
+  for (const scenario of scenarios.values()) if (scenario.map.tiles.length !== scenario.map.width * scenario.map.height)
+    issue(`/content/scenarios/${scenario.id}/map/tiles`, "편집 맵은 모든 좌표의 타일을 정의해야 합니다.");
   for (const [id, heights] of Object.entries(project.presentation.elevations.maps)) {
     const map = scenarios.get(id)?.map;
     if (!map || heights.length !== map.width * map.height)

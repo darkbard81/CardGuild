@@ -9,7 +9,8 @@
     "activeAdventureId",
     "content",
     "dialogue",
-    "presentation"
+    "presentation",
+    "authoredAdventureIds"
   ],
   "properties": {
     "version": {
@@ -275,6 +276,14 @@
             }
           }
         }
+      }
+    },
+    "authoredAdventureIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1
       }
     }
   }
