@@ -1,4 +1,8 @@
 {
   "version": 1,
-  "materials": {}
+  "materials": {
+    "terrain.forest-grass": "/assets/terrain-sides/forest-grass.webp",
+    "terrain.forest-dirt": "/assets/terrain-sides/forest-dirt.webp",
+    "terrain.forest-leaves": "/assets/terrain-sides/forest-leaves.webp"
+  }
 }
