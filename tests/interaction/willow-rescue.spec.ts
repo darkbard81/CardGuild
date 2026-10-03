@@ -13,7 +13,7 @@ test("U-WILLOW hometown briefing cancels safely, enters the forest and confirms 
   for (let i = 0; i < 6 && combat.turn.activeActorId !== HERO; i++) combat = play(combat, { type: "end-turn", actorId: combat.turn.activeActorId, facing: combat.actors[combat.turn.activeActorId]!.facing }, definition);
   combat = play(combat, { type: "use-action", actorId: HERO, action: { kind: "basic", id: "step" }, target: { kind: "tile", position: { x: 9, y: 16 } } }, definition);
   const active = { ...started, combat };
-  const backend = await controlledSession(page, ready, "join", "host", "skip", context);
+  const backend = await controlledSession(page, ready, "resume", "host", "skip", context);
   const depart = page.getByRole("button", { name: "전투 시작", exact: true });
   const scene = page.getByRole("dialog", { name: "챕터 1 · Aerin의 고향", exact: true });
   await depart.click(); await expect(scene).toContainText("윌로우브룩");

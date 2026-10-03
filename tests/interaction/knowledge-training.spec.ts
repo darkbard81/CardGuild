@@ -20,7 +20,7 @@ for (const viewer of ["host", "guest"]) test(`U-KNOWLEDGE-TRAINING ${viewer}: br
   const active = { ...started, combat: { ...started.combat!, turn: { ...started.combat!.turn,
     activeActorId: actorId, activeIndex: started.combat!.turn.initiativeOrder.indexOf(actorId),
   } } };
-  const backend = await controlledSession(page, viewer === "host" ? ready : active, "join", viewer, "skip", context);
+  const backend = await controlledSession(page, viewer === "host" ? ready : active, "resume", viewer, "skip", context);
   const scene = page.getByRole("dialog", { name: "미네르바의 지식 회상 안내", exact: true });
   if (viewer === "host") {
     await page.getByRole("button", { name: "전투 시작", exact: true }).click();

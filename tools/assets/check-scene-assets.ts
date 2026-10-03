@@ -21,6 +21,9 @@ export async function checkSceneAssets(): Promise<void> {
     if (png.format !== "png" || png.width !== set.width || png.height !== set.height || !png.hasAlpha) throw new Error(`${id}: incorrect processed PNG`);
     const frames = Object.entries(set.frames);
     if (id === "minerva" && frames.length !== 16) throw new Error("Minerva needs sixteen expressions");
+    // Decode the immutable sheet once. Every frame still owns its pixel checks;
+    // extracting through sharp in the loop decoded the same WebP sixteen times.
+    const { data, info } = await sharp(file).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
     const occupied = new Set<string>();
     for (const [expression, frame] of frames) {
       const { x, y, width, height } = frame;
@@ -28,12 +31,14 @@ export async function checkSceneAssets(): Promise<void> {
       if (id === "minerva" && (width !== 512 || height !== 512 || x % 512 || y % 512)) throw new Error("Minerva frames must retain the fixed 512px grid");
       if (occupied.has(`${x},${y}`)) throw new Error(`${id}: duplicate face frame`);
       occupied.add(`${x},${y}`);
-      const data = await sharp(file).extract({ left: x, top: y, width, height }).ensureAlpha().raw().toBuffer();
       let empty = 0, visible = 0;
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i]!, g = data[i + 1]!, b = data[i + 2]!, a = data[i + 3]!;
-        if (a === 0) empty++; else visible++;
-        if (a > 30 && ((b > r + 70 && b > g + 70) || (Math.min(r, b) > g + 70))) throw new Error(`${id}/${expression}: chroma background remains`);
+      for (let row = y; row < y + height; row++) {
+        for (let column = x; column < x + width; column++) {
+          const i = (row * info.width + column) * info.channels;
+          const r = data[i]!, g = data[i + 1]!, b = data[i + 2]!, a = data[i + 3]!;
+          if (a === 0) empty++; else visible++;
+          if (a > 30 && ((b > r + 70 && b > g + 70) || (Math.min(r, b) > g + 70))) throw new Error(`${id}/${expression}: chroma background remains`);
+        }
       }
       if (empty < width * height * .1 || visible < width * height * .2) throw new Error(`${id}/${expression}: empty or opaque face frame`);
     }

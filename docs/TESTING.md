@@ -22,7 +22,7 @@ The full local and CI gate is:
 CI=true npm run check && CI=true npm run test:all
 ```
 
-`check` now includes build; do not add another build between these commands. Standalone Integration restart and Journey runs require `npm run build` after product source changes. Neither leaf silently builds, uses a development server, or accesses the development DB. `CI Contracts / Contracts` runs only on PRs targeting main. `CI Quick / Quick` runs `check` followed by `test:domain` on pushes to branches other than main, with no Chromium installation. Main pushes run neither test workflow. A feature push to an open PR intentionally runs Quick and the PR gate independently; only Contracts is the required full gate. Repository branch protection must select `Contracts` instead of the removed `Full` check; repository settings are external to this change.
+`check` now includes build; do not add another build between these commands. Standalone Integration restart, Interaction and Journey runs require `npm run build` after product source changes. None silently rebuilds or accesses the development DB. Only the development-only terrain editor uses a Vite development server. `CI Contracts / Contracts` runs only on PRs targeting main. `CI Quick / Quick` runs `check` followed by `test:domain` on pushes to branches other than main, with no Chromium installation. Main pushes run neither test workflow. A feature push to an open PR intentionally runs Quick and the PR gate independently; only Contracts is the required full gate. Repository branch protection must select `Contracts` instead of the removed `Full` check; repository settings are external to this change.
 
 ## Focused reproduction
 
@@ -33,13 +33,17 @@ npm run test:interaction -- tests/interaction/battle.spec.ts --grep 'pinch/pan r
 npm run test:journey -- tests/journeys/start-continue.spec.ts --grep 'J-CONTINUE'
 ```
 
-Omit `-t` / `--grep` to run a whole file. Vitest uses `run`, never watch. Browser scripts load `tsx` so product JSON imports behave in the Node test harness. Browser application code still loads normally through Vite or the deployment bundle.
+Omit `-t` / `--grep` to run a whole file. Vitest uses `run`, never watch. Browser scripts load `tsx` so product JSON imports behave in the Node test harness. Browser application code loads through the deployment bundle; development-only terrain tests load source modules through Vite.
 
 Discovery is explicitly disjoint: `tests/domain/**/*.test.ts`, `tests/integration/contracts/**/*.test.ts`, `tests/interaction/**/*.spec.ts`, `tests/journeys/**/*.spec.ts`. Support files are outside every include. There is no default runner config that accidentally collects another layer. Empty filtered suites and failed cases must exit nonzero. `test:all` invokes leaves directly, not nested aggregates.
 
 ## Isolation and cost
 
-Domain has up to four Node workers and no external I/O. Integration files run serially; only the HTTP/WS/disk/process cases open those resources. Both Playwright suites use one Chromium worker at 1024×768 and no automatic retries. They run serially after the Node layers. Interaction owns a strict Vite port (4191, override with `CARDGUILD_INTERACTION_PORT`), refuses to reuse a server, and creates fresh browser contexts. Built-server cases reserve a local ephemeral port and create a fresh temporary directory and SQLite file; cleanup runs in `finally`/fixture teardown. Test accounts and browser storage are disposable. No test uses `.data/cardguild.dev.sqlite` or `tools/dev-coop.ts`.
+Domain has up to four Node workers and no external I/O. Integration files run serially; only the HTTP/WS/disk/process cases open those resources. Both Playwright suites use one Chromium worker at 1024×768 and no automatic retries. They run serially after the Node layers. Interaction uses two disjoint projects with one global worker: `ui` loads the existing build from Vite preview (4191, `CARDGUILD_INTERACTION_PORT`); `terrain` owns only `terrain-elevation.spec.ts` and `standee-occlusion.spec.ts` on the Vite development server (4192, `CARDGUILD_TERRAIN_TEST_PORT`). Neither server is reused, and each case gets a fresh browser context. No file runs in both projects. The normal full gate reuses the build from `check`, so it pays no additional build cost. Built-server cases reserve a local ephemeral port and create a fresh temporary directory and SQLite file; cleanup runs in `finally`/fixture teardown. Test accounts and browser storage are disposable. No test uses `.data/cardguild.dev.sqlite` or `tools/dev-coop.ts`.
+
+`controlledSession` defaults to reconnecting with a seeded disposable credential. It waits for the real hello/snapshot exchange; gameplay is never seeded in browser storage. Only tests whose risk includes entry use `join` or `create`. The one-time seed marker survives page reload so product exit/retirement can actually clear the credential. `Prepare controlled session: <entry>` is a separate Playwright step for timing/trace diagnosis. Page navigation waits for DOM content, and each case waits for its actual UI completion condition rather than every unrelated resource.
+
+Chapter field-map briefing bindings are checked in Domain; one objective-map Interaction covers their shared departure flow, with the forest cancellation/destruction and final reward/ending flows retaining their separate owners. Exact authored content totals are not gates; tutorial order, selected class roster, reachability floors and missing/stale references remain enforced. Scene asset validation decodes each sheet once and checks every frame's original pixels. It has no cross-run cache or stale validation result.
 
 Seed 60 is the shared reproducible production-content checkpoint. Small pure combat cases use their declared seed. Deferred adapters control commit delay/failure; actual restart tests use actual SIGTERM and SIGKILL. Browser long press advances a virtual clock; ordinary interactions wait for real DOM/client state. General actions have a 5-second failure ceiling; Journey navigation 10 seconds, assertions 8 seconds, whole Journey 60 seconds. These are failure limits, not fixed waits.
 
@@ -55,6 +59,24 @@ Baseline on 2026-09-17, Node 24.18.1 / npm 11.16.0, local Linux, installed depen
 These are measurements of the replacement suite, not a speedup against the removed suite. The budgets include startup headroom for CI hardware. `test:all` has a five-minute CI step ceiling; installation is outside it. Slowest baseline Journey was J-COOP (8.5 s): two real contexts must reach a guest turn, disconnect and regain control. J-CONTINUE (5.8 s) pays for process restart and fresh authentication. Interaction's slowest case was board facing (3.6 s); actual Chromium/Pixi bootstrap dominates, so rule tables remain in Domain. Integration's disk/process/auth cases justify real I/O; publication faults use a cheap deferred adapter. No baseline case retried or skipped.
 
 Budgets cover warm installed dependencies, not npm/browser installation. Exceeding a budget requires investigating the slow owner, shrinking the precondition or moving detailed assertions down a layer before changing the allowance. Core risks cannot be skipped or hidden behind retries. A flaky failure blocks the gate until its cause is fixed; if unresolved, record risk ID, owner and deadline in an issue and report the gate incomplete.
+
+### 2026-10-03 cost reduction
+
+The final configuration passed `CI=true npm run check && CI=true npm run test:all` in one uninterrupted run, exit 0: **162 Domain + 28 Integration + 78 Interaction + 4 Journey = 272 passed**, no failures/skips/retries. Only documentation/evidence changed afterward. Node 24.18.1 / npm 11.16.0, same local Linux machine, one global browser worker and unchanged failure limits. [Structured measurements](test-cost-evidence.json).
+
+The following comparison holds the **same 272 cases** fixed: after simplifying ownership/setup, all ordinary UI still used the development server; the final configuration serves that UI from the existing deployment build. The terrain cases continue using source modules. Times include process/server startup and teardown.
+
+| Measured interval | Development UI | Final built UI |
+| --- | ---: | ---: |
+| `check` + `test:all` wall time | 329.6 s | 224.4 s |
+| `test:all` wall time | 300.9 s | 197.2 s |
+| Interaction phase wall time | 255.2 s | 151.8 s |
+
+This is a **34.5% reduction in local `test:all` time**, leaving about 103 seconds under the existing five-minute step limit on this machine. It is not a GitHub CI timing guarantee; these changes have not been published or run in GitHub CI.
+
+Earlier focused measurements of battle/chapter/feedback went from 21 cases / 76.3 s to 19 cases / 66.4 s after moving the two duplicate departures into a Domain binding check and reconnecting directly. With those same 19 cases, summed case time (excluding runner startup) then fell from 62.7 s to 37.0 s on the deployment bundle. Entry/create forms, ACK/snapshot ordering, rejection, ownership and reload-after-exit remain exercised. Discovery found 78 cases in 16 files, with disjoint `ui` and `terrain` assignments; the final gate executed all 78.
+
+Asset validation measured 4.0 s before and 3.1 s after decoding the scene sheet once. A byte-for-byte comparison matched all 16 original RGBA frame extractions. Every alpha/chroma/geometry check remains; persistent cache/invalidation machinery was not warranted by this measured cost. Authored min/max totals were removed while tutorial order, class roster, reachable minimums, reference validity and stale reserve checks remain.
 
 ## Diagnostics and visual review
 

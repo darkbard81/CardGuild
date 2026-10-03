@@ -3,11 +3,12 @@ import { controlledSession } from "../support/browser-backend";
 import { chapterAt, chapterReward } from "../support/chapter-one";
 import { tutorialContext as context } from "../support/tutorial";
 
-for (const index of [1, 2, 3]) test(`U-CHAPTER briefing ${index + 1} opens the authored objective map`, async ({ page }, info) => {
-  const backend = await controlledSession(page, chapterAt(index), "join", "host", "skip", context);
+test("U-CHAPTER an objective briefing departs into the displayed battlefield", async ({ page }, info) => {
+  const index = 1; // Per-map authored bindings belong to G-CHAPTER, not repeated browser flows.
+  const backend = await controlledSession(page, chapterAt(index), "resume", "host", "skip", context);
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   const scene = page.getByRole("dialog", { name: "챕터 1 · Aerin의 고향", exact: true });
-  await expect(scene).toContainText(index === 1 ? "두 궁수" : index === 2 ? "피난문" : "광장");
+  await expect(scene).toContainText("두 궁수");
   await scene.getByRole("button", { name: "건너뛰기", exact: true }).click();
   await expect.poll(() => backend.requests.length).toBe(1);
   const started = backend.candidate(); backend.ack(true,started.revision); backend.publish(started);
@@ -17,7 +18,7 @@ for (const index of [1, 2, 3]) test(`U-CHAPTER briefing ${index + 1} opens the a
 });
 
 test("U-CHAPTER final reward commits ending and Shield remains preparable after completion", async ({ page }, info) => {
-  const backend = await controlledSession(page,chapterReward(chapterAt(3)),"join","host","skip",context);
+  const backend = await controlledSession(page,chapterReward(chapterAt(3)),"resume","host","skip",context);
   await page.getByRole("button",{name:/Shield/}).filter({hasText:"Shield"}).first().click();
   await page.getByRole("button",{name:"이 보상 획득",exact:true}).click();
   await expect.poll(()=>backend.requests.length).toBe(1);

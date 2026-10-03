@@ -14,7 +14,7 @@
 | Interaction | `npm run test:interaction -- tests/interaction/<file>.spec.ts --grep '<case>'` |
 | Journey | `npm run test:journey -- tests/journeys/<file>.spec.ts --grep '<case>'` |
 
-파일 전체를 실행하려면 case filter를 생략한다. Integration의 프로세스 재시작과 Journey는 현재 코드의 `npm run build` 결과가 먼저 있어야 한다. `npm test`는 비브라우저 Domain + Integration이다.
+파일 전체를 실행하려면 case filter를 생략한다. Integration의 프로세스 재시작, Interaction, Journey는 현재 코드의 `npm run build` 결과가 먼저 있어야 한다. `check` 직후에는 build를 반복하지 않는다. `npm test`는 비브라우저 Domain + Integration이다.
 
 ## 수정 완료 후 로컬 전체 gate
 
@@ -22,7 +22,7 @@
 
 - Node.js 24와 npm 11 이상을 사용한다. 새 환경이나 의존성/lockfile 변경 시 `npm ci`로 설치한다.
 - Chromium과 시스템 의존성이 없으면 `npx playwright install --with-deps chromium`을 실행한다.
-- Interaction은 전용 Vite 포트를 사용하고 기존 서버를 재사용하지 않는다. Integration/Journey는 필요한 사례마다 임시 파일 DB·계정·서버 포트를 격리하고 성공·실패 모두 정리한다.
+- Interaction의 일반 UI는 전용 Vite preview(4191)에서 배포 build를, 개발 전용 지형 검사는 별도 Vite 개발 서버(4192)를 사용한다. 파일 집합은 겹치지 않으며 기존 서버를 재사용하지 않는다. Integration/Journey는 필요한 사례마다 임시 파일 DB·계정·서버 포트를 격리하고 성공·실패 모두 정리한다.
 - `.data/cardguild.dev.sqlite`를 테스트에 사용하거나 기존 개발 데이터를 임의로 삭제하지 않는다.
 
 ```sh

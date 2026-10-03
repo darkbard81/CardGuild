@@ -20,7 +20,7 @@ for (const viewer of ["host", "guest"]) test(`U-FLANK ${viewer}: real party, Min
   const active = { ...started, combat: { ...started.combat!, turn: { ...started.combat!.turn,
     activeActorId: SECOND, activeIndex: started.combat!.turn.initiativeOrder.indexOf(SECOND),
   } } };
-  const backend = await controlledSession(page, viewer === "host" ? ready : active, "join", viewer, "skip", context);
+  const backend = await controlledSession(page, viewer === "host" ? ready : active, "resume", viewer, "skip", context);
   const scene = page.getByRole("dialog", { name: "미네르바의 협공 안내", exact: true });
   if (viewer === "host") {
     await expect(page.getByRole("button", { name: "Aerin Co-op 허용", exact: true })).toBeVisible();
@@ -75,7 +75,7 @@ for (const viewer of ["host", "guest"]) test(`U-FLANK ${viewer}: real party, Min
 
 
 test("U-FLANK Ranger departs with the saved bow and borrows a combat-only training dagger", async ({ page }) => {
-  const backend = await controlledSession(page, recruitedParty(69, "human.ranger"), "join", "host", "skip", context);
+  const backend = await controlledSession(page, recruitedParty(69, "human.ranger"), "resume", "host", "skip", context);
   const original = structuredClone(backend.state.adventure!.party.members[HERO]!.loadout);
   const departure = page.getByRole("button", { name: "전투 시작", exact: true });
   await expect(departure).toBeEnabled();

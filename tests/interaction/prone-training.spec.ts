@@ -4,7 +4,7 @@ import { trainingReady, resolveOpening, tutorialContext } from "../support/tutor
 import { HERO } from "../support/session";
 
 for (const method of ["skip", "escape", "complete"] as const) test(`U-PRONE ${method}: authoritative Trip precedes dialogue; persisted completion then one Ring Stand`, async ({ page }) => {
-  const backend = await controlledSession(page, trainingReady(), "join", "host", "skip", tutorialContext);
+  const backend = await controlledSession(page, trainingReady(), "resume", "host", "skip", tutorialContext);
   const scene = page.getByRole("dialog", { name: "미네르바의 상태 회복 안내", exact: true });
   await page.getByRole("button", { name: "전투 시작", exact: true }).click();
   await expect.poll(() => backend.requests.length).toBe(1);

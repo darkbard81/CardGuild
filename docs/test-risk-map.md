@@ -184,6 +184,6 @@ J-COOP uses a production recruitment-complete checkpoint and the explicit prepar
 
 | Risk | Contract / owner |
 | --- | --- |
-| G-CHAPTER | 네 필드 맵 연결성·목표 참조, 목표 AND/잔여 적 생존, 실제 두 장애물 파괴·리플레이, 보상 중복 거부·완료 단계 편성 권한 — Domain `chapter-one.test.ts` |
+| G-CHAPTER | 네 필드 맵 연결성·목표 참조·각 안내의 유효 참조와 목표 문구 연결, 목표 AND/잔여 적 생존, 실제 두 장애물 파괴·리플레이, 보상 중복 거부·완료 단계 편성 권한 — Domain `chapter-one.test.ts` |
 | B-CHAPTER | 네 보상 체크포인트·완료 덱 SQLite close/reopen/Resume — Integration `contracts/chapter-one.test.ts` |
-| U-CHAPTER | 추가 전장 안내·입장, 최종 보상 ACK/snapshot→엔딩→Shield 준비 저장 — Interaction `chapter-one.spec.ts`, 1024×768 |
+| U-CHAPTER | 대표 목표 전장의 안내→입장 공통 경로, 최종 보상 ACK/snapshot→엔딩→Shield 준비 저장 — Interaction `chapter-one.spec.ts`, 1024×768. 개별 안내 데이터는 G-CHAPTER, 첫 숲길 취소/파괴는 U-WILLOW 소유 |

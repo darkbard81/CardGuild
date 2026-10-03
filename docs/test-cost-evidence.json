@@ -1,0 +1,86 @@
+{
+  "date": "2026-10-03",
+  "baseCommit": "5893c0820eaa203e756eb386f21770ea5f2fff12",
+  "environment": {
+    "node": "24.18.1",
+    "npm": "11.16.0",
+    "os": "local Linux",
+    "browserWorkers": 1,
+    "retries": 0
+  },
+  "command": "CI=true npm run check && CI=true npm run test:all",
+  "comparison": "Same 272 cases, after ownership/setup simplification; Vite development UI versus deployment bundle UI. Terrain stays on Vite development server.",
+  "before": {
+    "exitCode": 0,
+    "elapsedSeconds": 329.59,
+    "phaseStartSeconds": {
+      "check": 0.158,
+      "test:all": 28.678,
+      "test:domain": 28.796,
+      "test:integration": 35.23,
+      "test:interaction": 49.072,
+      "test:journey": 304.289
+    },
+    "durationsSeconds": {
+      "checkAndAll": 329.59,
+      "testAll": 300.912,
+      "interaction": 255.217
+    }
+  },
+  "after": {
+    "exitCode": 0,
+    "elapsedSeconds": 224.368,
+    "phaseStartSeconds": {
+      "check": 0.198,
+      "test:all": 27.158,
+      "test:domain": 27.277,
+      "test:integration": 33.61,
+      "test:interaction": 47.218,
+      "test:journey": 198.998
+    },
+    "durationsSeconds": {
+      "checkAndAll": 224.368,
+      "testAll": 197.21,
+      "interaction": 151.78
+    }
+  },
+  "passed": {
+    "domain": 162,
+    "integration": 28,
+    "interaction": 78,
+    "journey": 4
+  },
+  "failed": 0,
+  "skipped": 0,
+  "contentIdentity": "cardguild.m7@0.15.0 fnv1a64:7e76bb1c603c45da",
+  "focusedComparison": {
+    "files": [
+      "battle.spec.ts",
+      "chapter-one.spec.ts",
+      "feedback.spec.ts"
+    ],
+    "before": {
+      "cases": 21,
+      "runnerSeconds": 76.258
+    },
+    "afterOwnershipAndReconnect": {
+      "cases": 19,
+      "runnerSeconds": 66.416
+    },
+    "same19CaseDurationSumSeconds": {
+      "sourceModules": 62.719,
+      "deploymentBundle": 37.021
+    },
+    "movedAssertions": "Two repeated browser departures replaced by one Domain case covering all four authored briefing bindings."
+  },
+  "assets": {
+    "beforeSeconds": 3.957,
+    "afterSeconds": 3.098,
+    "pixelEquivalence": "All RGBA bytes in all 16 frames match the old extraction. Every frame still checked; no persistent cache."
+  },
+  "limits": [
+    "Single sequential local measurement per configuration, not a CI performance guarantee.",
+    "New changes have not run on GitHub CI.",
+    "Only documentation/evidence written after the final gate."
+  ]
+}

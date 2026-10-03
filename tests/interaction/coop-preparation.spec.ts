@@ -34,7 +34,7 @@ test("U-COOP Host explicitly shares an existing companion; invitation waits for 
 
 for (const order of ["ack-first", "snapshot-first"] as const) {
   test(`U-COOP Guest inspection is inert and claim needs ${order} ACK plus snapshot; rejection retains selection`, async ({ page }) => {
-    const backend = await controlledSession(page, admitted(), "join", "guest");
+    const backend = await controlledSession(page, admitted(), "resume", "guest");
     const panel = page.getByRole("region", { name: "Co-op 준비", exact: true });
     await expect(panel.getByText("하늘", { exact: true })).toHaveCount(0);
     await panel.getByRole("button", { name: "Aerin 정보", exact: true }).click();

@@ -28,7 +28,7 @@ import {
   validatePartyLoadout,
 } from "../../src/loadout";
 import type { PartyMemberLoadout } from "../../src/loadout";
-import { M7_PRODUCTION_POLICY, type ReserveEntry, type VolumeRange } from "./m7-production-policy";
+import { M7_PRODUCTION_POLICY, type ReserveEntry } from "./m7-production-policy";
 
 /**
  * The release gate for the pack `PRODUCTION_CONTENT` actually ships.
@@ -37,7 +37,7 @@ import { M7_PRODUCTION_POLICY, type ReserveEntry, type VolumeRange } from "./m7-
  * pack under `content/` and says whether each one is a valid pack at all. This
  * command asks a different question — whether the *current M7 release* is
  * complete — and it asks it of the authoritative pack only, so the M3 and M6
- * regression fixtures are never held to M7 volume or reachability targets.
+ * regression fixtures are never held to M7 release or reachability targets.
  *
  * It deliberately owns no rules of its own. Loadouts are judged by
  * `validatePartyLoadout`, decks by `deriveTacticalDeck`, encounters by the real
@@ -73,10 +73,6 @@ function isPlayable(actor: ActorDefinition): boolean {
 
 function sortedById<T extends { readonly id: string }>(values: readonly T[]): readonly T[] {
   return [...values].sort((left, right) => left.id.localeCompare(right.id));
-}
-
-function withinRange(count: number, range: VolumeRange): boolean {
-  return count >= range.min && count <= range.max;
 }
 
 /**
@@ -356,29 +352,8 @@ function checkOrphans(lists: readonly ReserveList[], reporter: Reporter): void {
   }
 }
 
-function checkVolume(pack: CompiledContentPack, reachable: ReachableContent, reporter: Reporter): void {
+function checkReachableMinimum(reachable: ReachableContent, reporter: Reporter): void {
   const policy = M7_PRODUCTION_POLICY;
-  const actors = Object.values(pack.actorDefinitions);
-  const counts: readonly (readonly [string, number, VolumeRange])[] = [
-    ["authored starters", actors.filter(actor => isAuthoredPlayable(actor, pack)).length, policy.volume.starters],
-    ["creation templates", new Set(Object.values(pack.creationPresets ?? {}).map(preset => preset.actorDefinitionId)).size, policy.volume.creationTemplates],
-    ["player cards", Object.keys(pack.combatContent.cards).length, policy.volume.playerCards],
-    ["enemies", actors.filter((actor) => actor.statProfile.kind === "creature").length, policy.volume.enemies],
-    ["scenario sources", Object.keys(pack.scenarioSources).length, policy.volume.scenarios],
-    ["equipment", Object.keys(pack.combatContent.equipment).length, policy.volume.equipment],
-    ["adventure encounters", PRODUCTION_CONTENT.adventure.encounterIds.length, policy.volume.adventureEncounters],
-    ["tutorial encounters", policy.tutorialEncounterIds.length, policy.volume.tutorialPrefix],
-  ];
-  for (const [label, count, range] of counts) {
-    if (withinRange(count, range)) continue;
-    reporter.issue(
-      PACK_SOURCE,
-      "volume",
-      "PRODUCTION_VOLUME",
-      `The release ships ${count} ${label}; the M7 target is ${range.min}-${range.max}.`,
-    );
-  }
-
   const floors: readonly (readonly [string, number, number])[] = [
     ["player cards", reachable.playerCardIds.size, policy.reachableMinimum.playerCards],
     ["equipment", reachable.playerEquipmentIds.size, policy.reachableMinimum.equipment],
@@ -728,7 +703,7 @@ async function main(): Promise<void> {
   ];
   checkReserve(lists, reporter);
   checkOrphans(lists, reporter);
-  checkVolume(pack, reachable, reporter);
+  checkReachableMinimum(reachable, reporter);
   checkTutorialPrefix(reporter);
   checkStarterLoadouts(pack, reachable, reporter);
   checkPartySizeCoverage(pack, reachable, reporter);

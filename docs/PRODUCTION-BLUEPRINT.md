@@ -116,35 +116,30 @@ content/m7/*.json → load-m7-content.ts → PRODUCTION_CONTENT
 production 코드는 barrel(`src/content/index.ts`)이 아니라 `production-content.ts`를 직접
 import합니다. fixture를 production 코드에서 import하는 것은 ESLint가 막습니다.
 
-### 1.3 현재 release envelope
+### 1.3 현재 release 계약
 
-| Category | 현재 | M7 contract | machine owner |
-|---|---:|---|---|
-| playable Character | 4 | 정확히 4 | `M7_PRODUCTION_POLICY.volume.starters` |
-| Player Card | 32 authored / 26 player-reachable | 24–32 / reachable ≥ 26 | `volume.playerCards`, `reachableMinimum.playerCards` |
-| Creature | 18 authored / 14 배치됨 | 15–20 / used ≥ 14 | `volume.enemies`, `reachableMinimum.enemies` |
-| Scenario | 10 authored / 8 사용됨 | 8–12 / used ≥ 8 | `volume.scenarios`, `reachableMinimum.scenarios` |
-| Equipment | 25 authored / 21 player-reachable | 20–30 / reachable ≥ 21 | `volume.equipment`, `reachableMinimum.equipment` |
-| production Adventure | 1 | 정확히 1 | `check-production-content.ts` `PRODUCTION_ADVENTURE_NOT_SINGULAR` |
-| Adventure encounters | 8 | 6–8 | `volume.adventureEncounters` |
-| tutorial prefix | 4 | 3–4, 연속 prefix | `volume.tutorialPrefix`, `tutorialEncounterIds` |
-| reserve | 16 | 각 항목에 reason + `#issue` | `reserveCards/Equipment/Actors/Scenarios` |
+현재 출시 범위는 [챕터 1](chapter1-complete.md)이다. authored 카드·적·시나리오·장비의
+현재 개수를 min/max로 고정하는 `volume` 검사는 제거했다. 정상적인 콘텐츠 추가에
+숫자 상한 수정이 따라붙지 않으며, 아래 플레이어 계약을 검증한다.
 
-전부 `tools/content/m7-production-policy.ts` 한 파일에 있습니다. 현재 값은
-`npx tsx tools/content/check-production-content.ts` 출력이 그대로 보여 줍니다.
+| Contract | machine owner |
+|---|---|
+| 선택된 단일 production Adventure, 명시된 staged Adventure | `packId`, `adventureId`, `stagedAdventureIds` |
+| 생성 가능한 클래스 목록과 정상 starter/loadout | `creationClasses`, `check-production-content.ts` |
+| 튜토리얼의 연속 순서와 성장 시점 | `tutorialEncounterIds`, `levelMilestones` |
+| 플레이어가 도달 가능한 콘텐츠의 하한 | `reachableMinimum` |
+| 미사용 콘텐츠의 이유·후속 이슈·잘못되거나 오래된 참조 | `reserveCards/Equipment/Actors/Scenarios` |
+| 네 필드 전투·보상·안내·완료 흐름 | G-CHAPTER, B-CHAPTER, U-CHAPTER |
 
-**여유 공간**: Equipment +5, Creature +2, Scenario +2, Card 0, Adventure encounter 0.
+정책은 `tools/content/m7-production-policy.ts`에서 확인한다. 실제 도달 수량은
+`npx tsx tools/content/check-production-content.ts`가 보고한다.
 
-### 1.4 routine addition이 아닌 것
+### 1.4 routine addition과 출시 변경
 
-| 요구 | 왜 routine이 아닌가 | 필요한 것 |
-|---|---|---|
-| **33번째 Card** | authored 상한이 32. 정책을 조용히 올리면 gate가 `PRODUCTION_VOLUME`으로 실패 | 기존 Card 교체/삭제, 또는 envelope 상향에 대한 명시적 release 결정 |
-| **5번째 playable Character** | 정확히 4 정책 + Party Builder/seat/asset/starter 계약이 4에 맞춰짐 | product 결정 + policy 변경 + asset + regression |
-| **두 번째 production Adventure** | `PRODUCTION_CONTENT`가 단일 authoritative adventure를 고르고 gate가 pack에 Adventure 1개만 허용 | selector/정책/UI 설계 결정 |
-
-envelope을 넘기고 싶다면 policy 파일을 먼저 고치고, **그 변경 자체를 리뷰 대상으로 올립니다.**
-gate를 우회하는 flag는 없습니다.
+새 카드·적·시나리오·장비는 참조·규칙·에셋을 갖추고 도달 경로 또는 명시된 reserve
+항목을 제공하면 된다. 현재 총개수 자체는 출시 변경 사유가 아니다.
+클래스 목록, 튜토리얼 순서, 성장 시점, 도달성 하한, 선택 가능한 모험을 바꾸는 것은
+플레이어 계약 변경이므로 정책과 해당 검증을 함께 리뷰한다.
 
 ---
 
@@ -871,9 +866,9 @@ issue(`RESERVE_MISSING_FOLLOW_UP`), tutorial prefix와 충돌 없음(`RESERVE_TU
 | used | release가 사용하는 정의 (enemy가 착용한 장비 포함) | orphan / stale / visual coverage |
 | player-ownable | 플레이어가 가질 수 있는 것 (starter kit + Adventure 보상) | `reachableMinimum` floor |
 
-새 정의를 바로 reserve에 넣는 것은 자동 통과가 아닙니다. authored 총량은 `volume` 상한에
-걸리고, 목록 자체가 리뷰 대상입니다. 이미 도달 가능한 것을 reserve로 내리면
-`reachableMinimum` floor에 걸립니다.
+새 정의를 바로 reserve에 넣으면 이유·후속 이슈·실제 비도달성을 검증하며 목록 자체가
+리뷰 대상입니다. authored 총량의 상한은 없습니다. 이미 도달 가능한 것을 reserve로 내려
+출시 하한보다 줄이면 `reachableMinimum` floor에 걸립니다.
 
 **policy는 QA 설정이지 gameplay가 아닙니다.** `src/` 어느 파일도 `m7-production-policy`를
 import할 수 없습니다(`POLICY_LEAKED_INTO_RUNTIME`).

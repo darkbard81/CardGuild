@@ -5,7 +5,7 @@
  * may import it — `check-production-content.ts` fails if anything does.
  * The generic validator (`check-content.ts`) keeps owning what makes *any*
  * pack valid; this file only states what the *current* release ships, so the M3
- * and M6 regression fixtures are never measured against M7 volume targets.
+ * and M6 regression fixtures are never measured against M7 release targets.
  *
  * The design rationale lives in issues #15-#17 and #19 and in the commits that
  * set these numbers. Those are written for people. CI reads this file, so a
@@ -24,8 +24,8 @@
  * release: moving a definition a player can currently get to into reserve drops
  * the reachable count under its floor, so that move costs a reviewed edit to the
  * floor itself. It is not a reserve budget. Authoring *new* content straight into
- * reserve leaves the reachable counts alone and is bounded only by the `volume`
- * ceiling and by review of the list itself, which is what #20 asked for: explicit,
+ * reserve leaves the reachable counts alone and requires review of the list
+ * itself: explicit,
  * reviewable, stale-detectable entries rather than a wildcard exemption.
  */
 
@@ -37,12 +37,6 @@ export interface ReserveEntry {
   readonly reason: string;
   /** The issue that decides whether it gets exposed or cut, as `#<number>`. */
   readonly followUp: string;
-}
-
-/** An inclusive count range the current release has to sit inside. */
-export interface VolumeRange {
-  readonly min: number;
-  readonly max: number;
 }
 
 export const M7_PRODUCTION_POLICY = {
@@ -73,24 +67,11 @@ export const M7_PRODUCTION_POLICY = {
   /** Explicit launch roster; rules-registry additions do not automatically become selectable. */
   creationClasses: ["bard", "champion", "cleric", "druid", "fighter", "ranger", "rogue", "witch", "wizard"],
 
-  /** How much content the M7 release authors. */
-  volume: {
-    starters: { min: 4, max: 4 }, // Existing authored companions, independent of gender visuals.
-    creationTemplates: { min: 9, max: 9 },
-    // #67 adds five one-card starting weapon attacks; prior cards remain post-battle rewards.
-    playerCards: { min: 39, max: 39 },
-    enemies: { min: 15, max: 24 },
-    scenarios: { min: 18, max: 18 },
-    equipment: { min: 20, max: 30 },
-    adventureEncounters: { min: 8, max: 8 },
-    tutorialPrefix: { min: 4, max: 4 },
-  },
-
   /**
    * How much of that content a player can actually get to: what the four starters
    * walk in with, and what the Adventure hands out. Set to what the current release
    * reaches, so retiring reachable content into reserve fails the gate instead of
-   * hiding inside the volume ranges. #21 raised these when a fourth choice on each
+   * silently reducing the playable release. #21 raised these when a fourth choice on each
    * reward offer opened the last two #17 build directions.
    */
   reachableMinimum: {
@@ -233,7 +214,6 @@ export const M7_PRODUCTION_POLICY = {
   readonly stagedAdventureIds: readonly string[];
   readonly tutorialEncounterIds: readonly string[];
   readonly levelMilestones: Readonly<Record<string, number>>;
-  readonly volume: Readonly<Record<string, VolumeRange>>;
   readonly reachableMinimum: Readonly<Record<string, number>>;
   readonly reserveCards: readonly ReserveEntry[];
   readonly reserveEquipment: readonly ReserveEntry[];

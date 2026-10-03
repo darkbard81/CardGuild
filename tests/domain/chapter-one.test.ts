@@ -11,6 +11,27 @@ import { chapterAt, chapterReady, chapterReward, chapterComplete } from "../supp
 import { tutorialAct as act, tutorialContext as context } from "../support/tutorial";
 import { HERO } from "../support/session";
 import { command } from "../support/combat";
+import { CHAPTER_ONE_BRIEFINGS, SCENE_CATALOG } from "../../src/scene/catalog";
+import { assertScene } from "../../src/scene/validation";
+
+it("G-CHAPTER every field encounter has its own valid objective briefing", () => {
+  const expected = [
+    ["encounter.willow-rescue", "윌로우브룩"],
+    ["encounter.willow-dike", "두 궁수"],
+    ["encounter.willow-gate", "피난문"],
+    ["encounter.willow-square", "광장"],
+  ] as const;
+  expect(context.pack.adventures[context.adventureId]!.encounterIds.slice(4)).toEqual(expected.map(([id]) => id));
+  const sceneIds = new Set<string>();
+  for (const [id, objective] of expected) {
+    const scene = CHAPTER_ONE_BRIEFINGS[id]!;
+    expect(scene, id).toBeDefined();
+    expect(() => assertScene(scene, SCENE_CATALOG), id).not.toThrow();
+    expect(scene.lines.map(line => line.text).join(" "), id).toContain(objective);
+    expect(sceneIds.has(scene.id), id).toBe(false);
+    sceneIds.add(scene.id);
+  }
+});
 
 it("G-CHAPTER four field maps retain terrain, level-1 foes and reachable mandatory targets", () => {
   expect(context.pack.adventures[context.adventureId]!.encounterIds).toHaveLength(8);
