@@ -187,3 +187,11 @@ J-COOP uses a production recruitment-complete checkpoint and the explicit prepar
 | G-CHAPTER | 네 필드 맵 연결성·목표 참조·각 안내의 유효 참조와 목표 문구 연결, 목표 AND/잔여 적 생존, 실제 두 장애물 파괴·리플레이, 보상 중복 거부·완료 단계 편성 권한 — Domain `chapter-one.test.ts` |
 | B-CHAPTER | 네 보상 체크포인트·완료 덱 SQLite close/reopen/Resume — Integration `contracts/chapter-one.test.ts` |
 | U-CHAPTER | 대표 목표 전장의 안내→입장 공통 경로, 최종 보상 ACK/snapshot→엔딩→Shield 준비 저장 — Interaction `chapter-one.spec.ts`, 1024×768. 개별 안내 데이터는 G-CHAPTER, 첫 숲길 취소/파괴는 U-WILLOW 소유 |
+
+## Campaign authoring
+
+| Risk | Contract / owner |
+| --- | --- |
+| G-AUTHOR | 프로젝트 JSON 왕복·reference 오류, 높이 좌표 보존, 새 오브젝트 Trait/이미지 연결과 실제 파괴 행동·통행 해제 — Domain `campaign-authoring.test.ts` |
+| B-AUTHOR | 임시 저장소 plan/apply·바이트 보존·오래된 revision 거부·lock 소유권·새 맵 배포 데이터 동시 생성 — Integration `contracts/campaign-authoring.test.ts`. 개발 DB 접근 없음 |
+| U-AUTHOR | 그리드/높이·새 오브젝트·import 오류·초안 복원·export, 대사 재생·보상·복제, 배치 오류 복구·목표·시작 위치 — Interaction `campaign-authoring.spec.ts`, dev project 4192, 1024×768. 프로젝트 baseRevision과 오류 경로가 재현 기준 |

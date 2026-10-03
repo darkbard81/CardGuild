@@ -1,4 +1,5 @@
 import { Container, Sprite } from "pixi.js";
+import { campaignObjectVisual } from "../../presentation/campaign-objects";
 
 import type { CombatState } from "../../game";
 import type { AssetCatalog } from "../../presentation";
@@ -9,9 +10,7 @@ export class ObjectRenderer {
 
   public render(state: CombatState): readonly SortableVisual[] {
     return Object.values(state.map.objects).filter(object => !(object.used && object.interaction.kind === "destroy-obstacle")).map((object) => {
-      const visuals = this.catalog.manifest.objectVisuals;
-      const assetId = object.traits.some(trait => trait.id === "woodland-tree") ? visuals.tree!
-        : object.traits.some(trait => trait.id === "woodland-rock") ? visuals.rock! : visuals.lever;
+      const assetId = campaignObjectVisual(object);
       const asset = this.catalog.asset(assetId);
       const display = new Container({ label: object.id });
       const sprite = new Sprite(this.catalog.texture(assetId));

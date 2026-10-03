@@ -1,3 +1,4 @@
+import { buildPresentationTilemaps } from "../../src/presentation/build-tilemaps";
 import { access, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 
@@ -119,28 +120,6 @@ interface ProcessedAsset {
   readonly height: number;
   readonly sourceBox: PixelBox;
   readonly processingScale: number;
-}
-
-interface ScenarioTile {
-  readonly id: string;
-  readonly position: Point;
-  readonly traits: readonly { readonly id: string }[];
-}
-
-interface ScenarioObject {
-  readonly id: string;
-  readonly position: Point;
-  readonly traits: readonly { readonly id: string }[];
-}
-
-interface ScenarioSource {
-  readonly id: string;
-  readonly map: {
-    readonly width: number;
-    readonly height: number;
-    readonly tiles: readonly ScenarioTile[];
-    readonly objects: readonly ScenarioObject[];
-  };
 }
 
 const ALPHA_VISIBLE_THRESHOLD = 8;
@@ -703,89 +682,10 @@ async function buildManifest(
   await writeJson(path.join(root, "presentation", "m3", "asset-sources.json"), sourceMap);
 }
 
-function traitSet(tile: ScenarioTile): ReadonlySet<string> {
-  return new Set(tile.traits.map((trait) => trait.id));
-}
-
-function semanticType(traits: ReadonlySet<string>): string {
-  if (traits.has("gate") || traits.has("gate-open")) return "gate";
-  if (traits.has("blocked")) return "blocked";
-  if (traits.has("impassable")) return "impassable";
-  if (traits.has("web")) return "web";
-  if (traits.has("difficult")) return "difficult";
-  return "open";
-}
-
 async function buildTilemaps(root: string, plan: GenerationPlan): Promise<void> {
-  // Tilemaps follow the pack the game actually ships (#12), so every production Scenario
-  // gets one. The legacy fixture path was left behind when the runtime moved.
-  const scenarios: readonly ScenarioSource[] = Object.values(PRODUCTION_CONTENT.pack.scenarioSources);
-  const groundPalette = ["terrain.stone-floor", "terrain.rubble", "terrain.chasm", ...Object.values(plan.presentation.groundMaterials ?? {})];
-  const transitionPalette = ["transition.web"];
-  // Point props only. A wall or a gate is the tile's own state, drawn as board surface
-  // from the tile's traits at runtime, so neither takes a slot on the object layer.
-  const objectPalette = ["object.lever", "object.chest", ...(plan.presentation.objectVisuals.cottage ? [plan.presentation.objectVisuals.cottage] : [])];
-  const maps: Record<string, unknown> = {};
-  for (const scenario of scenarios) {
-    const { width, height } = scenario.map;
-    const length = width * height;
-    const ground = new Array<number>(length).fill(-1);
-    const transitions = new Array<number>(length).fill(-1);
-    const objects = new Array<number>(length).fill(-1);
-    const tileIds = new Array<string | null>(length).fill(null);
-    const objectIds = new Array<string | null>(length).fill(null);
-    const types = new Array<string>(length).fill("missing");
-    const walkable = new Array<boolean>(length).fill(false);
-    const costs = new Array<number | null>(length).fill(null);
-    for (const tile of scenario.map.tiles) {
-      const { x, y } = tile.position;
-      if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
-        throw new Error(`${scenario.id} tile ${tile.id} is outside ${width}x${height}.`);
-      }
-      const index = y * width + x;
-      if (tileIds[index] !== null) throw new Error(`${scenario.id} has duplicate tile position ${x},${y}.`);
-      const traits = traitSet(tile);
-      const material = Object.entries(plan.presentation.groundMaterials ?? {}).find(([trait]) => traits.has(trait))?.[1];
-      ground[index] = material ? groundPalette.indexOf(material) : traits.has("impassable") ? 2 : traits.has("difficult") ? 1 : 0;
-      if (traits.has("web")) transitions[index] = 0;
-      tileIds[index] = tile.id;
-      objectIds[index] = (objects[index] ?? -1) >= 0 ? tile.id : null;
-      types[index] = semanticType(traits);
-      const isWalkable = !traits.has("blocked") && !traits.has("impassable") && !traits.has("gate");
-      walkable[index] = isWalkable;
-      costs[index] = isWalkable ? (traits.has("difficult") ? 2 : 1) : null;
-    }
-    for (const object of scenario.map.objects) {
-      const index = object.position.y * width + object.position.x;
-      if (index < 0 || index >= length) throw new Error(`${scenario.id} object ${object.id} is outside the map.`);
-      if (object.traits.some((trait) => trait.id === "lever")) objects[index] = 0;
-      objectIds[index] = object.id;
-    }
-    for (const dressing of plan.presentation.scenery ?? []) {
-      if (dressing.scenarioId !== scenario.id) continue;
-      const assetId = plan.presentation.objectVisuals[dressing.visual];
-      const paletteIndex = assetId === undefined ? -1 : objectPalette.indexOf(assetId);
-      if (paletteIndex < 0) throw new Error(`Scenery visual "${dressing.visual}" is not a placeable object.`);
-      for (const [x, y] of dressing.cells) {
-        if (!Number.isInteger(x) || !Number.isInteger(y) || x < 0 || y < 0 || x >= width || y >= height) {
-          throw new Error(`Scenery for ${scenario.id} sits outside ${width}x${height}.`);
-        }
-        const index = y * width + x;
-        // Dressing never covers something the scenario itself put there.
-        if (objects[index] === -1) objects[index] = paletteIndex;
-      }
-    }
-    if (tileIds.some((id) => id === null)) throw new Error(`${scenario.id} does not define every tile.`);
-    maps[scenario.id] = {
-      width,
-      height,
-      palettes: { ground: groundPalette, transitions: transitionPalette, objects: objectPalette },
-      layers: { ground, transitions, objects },
-      meta: { tileIds, objectIds, type: types, walkable, cost: costs },
-    };
-  }
-  await writeJson(path.join(root, "presentation", "m3", "tilemaps.json"), { version: 1, maps });
-  process.stdout.write(`Built ${Object.keys(maps).length} layered tilemaps\n`);
+  const pack = buildPresentationTilemaps(Object.values(PRODUCTION_CONTENT.pack.scenarioSources), plan.presentation);
+  await writeJson(path.join(root, "presentation", "m3", "tilemaps.json"), pack);
+  process.stdout.write(`Built ${Object.keys(pack.maps).length} layered tilemaps\n`);
 }
 
 async function writePipelineMetadata(

@@ -1,3 +1,5 @@
+import { createCampaignProject, CAMPAIGN_VALIDATION_CONTEXT } from "../../src/authoring/default-project";
+import { validateCampaignReferences } from "../../src/authoring/project";
 import { applyTerrainElevations, terrainSideMaterials } from "../../src/presentation/terrain-elevation";
 import type { PresentationTilemapPack } from "../../src/presentation/presentation-types";
 import { checkSceneAssets } from "./check-scene-assets";
@@ -395,6 +397,8 @@ async function main(): Promise<void> {
   assertVisualMap("Equipment", equipment, manifest.equipmentVisuals, manifest);
   assertVisualMap("Card", cards, manifest.cardVisuals, manifest);
   assertTilemapPack(tilemaps, manifest);
+  const campaignIssues = validateCampaignReferences(createCampaignProject(), CAMPAIGN_VALIDATION_CONTEXT);
+  if (campaignIssues.length) throw new Error(campaignIssues.map(issue => `${issue.path}: ${issue.message}`).join("\n"));
   applyTerrainElevations(tilemaps as unknown as PresentationTilemapPack, await readJson<unknown>(path.join(presentationRoot, "terrain-elevations.json")));
   const sides = terrainSideMaterials(await readJson<unknown>(path.join(presentationRoot, "terrain-sides.json")), manifest.assets);
   for (const [id, href] of Object.entries(sides)) {

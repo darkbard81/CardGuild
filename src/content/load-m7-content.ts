@@ -1,3 +1,4 @@
+import campaign from "../../content/m7/campaign.json";
 import companions from "../../content/m7/companions.json";
 import creationPresets from "../../content/m7/creationPresets.json";
 import actions from "../../content/m7/actions.json";
@@ -15,7 +16,7 @@ import { getCombatDefinition, getContentIdentity, compileContentPack } from "./c
 import type { AdventureDefinition, ContentPackSource } from "./content-types";
 
 export const M7_DEFAULT_SEED = 1;
-export const M7_ADVENTURE_ID = "adventure.willowbrook";
+export const M7_ADVENTURE_ID = campaign.adventureId;
 export const M7_ROAD_AMBUSH_ID = "encounter.road-ambush";
 export const M7_RUINED_GATE_ID = "encounter.ruined-gate";
 export const M7_GOBLIN_CHIEF_ID = "encounter.goblin-chief";

@@ -1,0 +1,281 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "CardGuild Campaign Project v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "baseRevision",
+    "activeAdventureId",
+    "content",
+    "dialogue",
+    "presentation"
+  ],
+  "properties": {
+    "version": {
+      "const": 1
+    },
+    "baseRevision": {
+      "type": "string",
+      "minLength": 1
+    },
+    "activeAdventureId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "content": {
+      "$ref": "content"
+    },
+    "dialogue": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenes",
+        "bindings"
+      ],
+      "properties": {
+        "scenes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "lines"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "lines": {
+                "type": "array",
+                "minItems": 1,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "text"
+                  ],
+                  "properties": {
+                    "text": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "speakerId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "expressionId": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "audio": {
+                      "type": "object",
+                      "additionalProperties": false,
+                      "properties": {
+                        "bgm": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "voice": {
+                          "type": "string",
+                          "minLength": 1
+                        },
+                        "sfx": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "bindings": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "welcome",
+            "firstBattle",
+            "proneRecovery",
+            "flankingTraining",
+            "knowledgeTraining",
+            "encounters"
+          ],
+          "properties": {
+            "welcome": {
+              "type": "string",
+              "minLength": 1
+            },
+            "firstBattle": {
+              "type": "string",
+              "minLength": 1
+            },
+            "proneRecovery": {
+              "type": "string",
+              "minLength": 1
+            },
+            "flankingTraining": {
+              "type": "string",
+              "minLength": 1
+            },
+            "knowledgeTraining": {
+              "type": "string",
+              "minLength": 1
+            },
+            "encounters": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": [
+                  "sceneId",
+                  "title",
+                  "finishLabel"
+                ],
+                "properties": {
+                  "sceneId": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1
+                  },
+                  "finishLabel": {
+                    "type": "string",
+                    "minLength": 1
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "presentation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "elevations",
+        "backgrounds",
+        "objects",
+        "scenery"
+      ],
+      "properties": {
+        "elevations": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "version",
+            "maps"
+          ],
+          "properties": {
+            "version": {
+              "const": 1
+            },
+            "maps": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 8
+                }
+              }
+            }
+          }
+        },
+        "backgrounds": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "pattern": "^/assets/[a-zA-Z0-9_/-]+\\.(png|webp)$"
+          }
+        },
+        "objects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "name",
+              "visual",
+              "interaction"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "name": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visual": {
+                "type": "string",
+                "minLength": 1
+              },
+              "interaction": {
+                "enum": [
+                  "destroy-obstacle",
+                  "open-gate"
+                ]
+              }
+            }
+          }
+        },
+        "scenery": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "scenarioId",
+              "visual",
+              "cells"
+            ],
+            "properties": {
+              "scenarioId": {
+                "type": "string",
+                "minLength": 1
+              },
+              "visual": {
+                "type": "string",
+                "minLength": 1
+              },
+              "cells": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    },
+                    {
+                      "type": "integer",
+                      "minimum": 0
+                    }
+                  ],
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

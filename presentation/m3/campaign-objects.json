@@ -1,0 +1,5 @@
+[
+  { "id": "woodland-tree", "name": "나무", "visual": "object.woodland-tree", "interaction": "destroy-obstacle" },
+  { "id": "woodland-rock", "name": "바위", "visual": "object.woodland-rock", "interaction": "destroy-obstacle" },
+  { "id": "lever", "name": "레버", "visual": "object.lever", "interaction": "open-gate" }
+]
