@@ -360,6 +360,9 @@
   margin: 0;
 }
 
+.objective-copy { display: grid; gap: 0.2rem; min-width: 0; }
+.objective-progress { color: var(--ui-color-text); font-size: 0.82rem; font-weight: 700; }
+
 .objective-card strong {
   font-size: 0.82rem;
   line-height: 1.35;

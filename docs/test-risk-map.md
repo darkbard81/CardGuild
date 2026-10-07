@@ -196,3 +196,10 @@ J-COOP uses a production recruitment-complete checkpoint and the explicit prepar
 | B-AUTHOR | 임시 저장소 plan/apply·바이트 보존·오래된 revision 거부·lock 소유권·새 맵 배포 데이터 동시 생성 — Integration `contracts/campaign-authoring.test.ts`. 등록한 캠페인의 선택 허용·고유 인원 범위·EXP 검사와 보호 캠페인 계약 보존은 `contracts/campaign-release.test.ts`. 개발 DB 접근 없음 |
 | U-AUTHOR | 그리드/높이·새 오브젝트·import 오류·초안 복원·export, 대사 재생·보상·복제, 배치 오류 복구·목표·시작 위치, 신규 캠페인 생성·선택·취소, 캠페인별 인카운터 선택·연결·순서 및 import/취소 후 소속 유지, 실제 초안 BattleView의 새 오브젝트·높이 선택·인원 변경·재열기 — Interaction `campaign-authoring.spec.ts`, dev project 4192, 1024×768. 프로젝트 baseRevision과 오류 경로가 재현 기준 |
 | J-AUTHOR | seed 60, 임시 저장소의 편집 프로젝트 apply → 별도 배포 build/서버/DB → 새 출발 대사 → 커스텀 오브젝트 승리 → EXP/카드 보상 → 새 엔딩. `journeys/campaign-authoring.spec.ts`, 성공/실패 모두 프로세스·파일 정리 |
+
+## Destruction objective visibility
+
+| Risk | Contract / owner |
+| --- | --- |
+| G-DESTRUCTION-UI | 승리 조건의 지정 objectIds만 표시·집계, 일반 장애물 파괴 제외, used에 따른 완료·번호 유지, save/Resume 후 동일 표시 — Domain `destruction-objectives.test.ts` |
+| U-DESTRUCTION-UI | 배포 빌드에서 목표/일반 오브젝트 호버 구분, 실제 목표 링 입력, ACK만으로 미변경·snapshot 이후 HUD/Canvas 표식 제거, reload/Resume 후 남은 표식 픽셀 및 이름 — Interaction `destruction-objectives.spec.ts`, seed 60, 1024×768. 임시 테스트 저장을 사용하고 개발 DB 접근 없음 |

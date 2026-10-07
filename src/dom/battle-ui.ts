@@ -1,3 +1,4 @@
+import { destructionObjectives } from "../presentation/destruction-objectives";
 import { updateCharacterPicker } from "./character-picker";
 import { CombatActorSummary } from "./combat-actor-summary";
 import { canInspectActor } from "../game/knowledge";
@@ -92,6 +93,7 @@ function actorName(state: CombatState, actorId: string): string {
 export class BattleUi {
   private endConfirmation: HTMLDialogElement | null = null;
   private readonly abortController = new AbortController();
+  private readonly objectiveProgress = required<HTMLElement>("#objective-progress");
   private readonly objective = required<HTMLElement>("#objective-text");
   private readonly round = required<HTMLElement>("#round-value");
   private readonly initiative = required<HTMLOListElement>("#initiative-list");
@@ -212,6 +214,11 @@ export class BattleUi {
     const activeActor = state.actors[state.turn.activeActorId];
 
     this.objective.textContent = this.scenario.objective.description;
+    const targets = destructionObjectives(state);
+    const completed = targets.filter(target => target.complete).length;
+    const progress = targets.length ? `파괴 목표 ${completed}/${targets.length} 완료 · 남은 ${targets.length - completed}` : "";
+    this.objectiveProgress.hidden = targets.length === 0;
+    if (this.objectiveProgress.textContent !== progress) this.objectiveProgress.textContent = progress;
     this.round.textContent = String(state.round);
     this.state = state;
     this.members = presentation.members ?? [];
@@ -383,9 +390,9 @@ export class BattleUi {
   }
 
   /** Replaces the inspector with one line, for a phase that has nothing to inspect. */
-  public renderHint(text: string): void {
+  public renderHint(text: string, summary = "행동 상세"): void {
     this.actionTraits.clear();
-    required<HTMLElement>("#action-preview-summary").textContent = "행동 상세";
+    required<HTMLElement>("#action-preview-summary").textContent = summary;
     this.selectedDetail.replaceChildren(element("p", "detail-hint", text));
   }
 

@@ -1,5 +1,6 @@
-import { Container, Graphics, Point } from "pixi.js";
+import { Container, Graphics, Point, Text } from "pixi.js";
 
+import { destructionObjectives } from "../../presentation/destruction-objectives";
 import type { CombatState, Direction, GridPosition } from "../../game";
 import { DIRECTION_VECTORS } from "../../game";
 import type { BoardHighlights, MoveBand } from "./BattleView";
@@ -92,11 +93,33 @@ export class TacticalOverlayRenderer {
       if (object) this.cell(layer, projection, object.position, 0xd49b3a, 0.24, 0xffdc83, 3);
     }
     if (hover) this.cell(layer, projection, hover, 0xffd76a, 0.16, 0xffe99e, 2);
+    this.destructionMarkers(state, projection, aimLayer);
     // The turning actor's own square is marked so the player knows who is being aimed;
     // the direction itself is read from wherever they aim next.
     if (highlights.facingPosition) {
       this.cell(layer, projection, highlights.facingPosition, 0xffd76a, 0.15, 0xffdc71, 3);
       this.facingArrows(aimLayer, projection, highlights.facingPosition, highlights.aimedFacing);
+    }
+  }
+
+  private destructionMarkers(state: CombatState, projection: BoardProjection, layer: Container): void {
+    for (const { object, number, complete } of destructionObjectives(state)) {
+      if (complete) continue;
+      const centre = projection.surfaceToScreen(object.position.x + 0.5, object.position.y + 0.5);
+      const corners = flat(projection.getCellCorners(object.position.x, object.position.y));
+      // Screen-space callouts stay legible at fit zoom. They are annotations, not hit targets.
+      const marker = new Container({ label: `destruction-objective-${object.id}`, eventMode: "none" });
+      marker.addChild(new Graphics().poly(corners, true).stroke({ width: 5, color: 0x151b22 })
+        .poly(corners, true).stroke({ width: 2, color: 0xffdc83 }));
+      const badge = new Container({ eventMode: "none" });
+      badge.position.set(centre.x, centre.y - 30);
+      badge.addChild(new Graphics().moveTo(0, 10).lineTo(0, 25).stroke({ width: 3, color: 0x151b22 })
+        .moveTo(0, 10).lineTo(0, 25).stroke({ width: 1, color: 0xffdc83 })
+        .roundRect(-34, -11, 68, 22, 4).fill(0x151b22).stroke({ width: 1.5, color: 0xffdc83 })
+        .poly([-27, 0, -23, -5, -19, 0, -23, 5], true).fill(0xffdc83));
+      const label = new Text({ text: `파괴 ${number}`, style: { fontFamily: "sans-serif", fontSize: 12, fontWeight: "bold", fill: 0xffffff }, resolution: 2 });
+      label.anchor.set(0.5); label.position.set(5, 0); label.eventMode = "none";
+      badge.addChild(label); marker.addChild(badge); layer.addChild(marker);
     }
   }
 

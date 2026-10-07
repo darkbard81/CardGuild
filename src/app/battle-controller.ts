@@ -1,3 +1,4 @@
+import { destructionObjectiveLabel } from "../presentation/destruction-objectives";
 import { canInspectActor, recallKnowledgeSkill } from "../game/knowledge";
 import { validateActionIntent } from "../game/queries";
 import type { LoadoutPartyMember } from "../loadout";
@@ -366,6 +367,15 @@ export class BattleController {
         return;
       }
     }
+    const objectPosition = interaction.kind === "ring" ? interaction.position : this.hoverCell;
+    const object = objectPosition && Object.values(this.state.map.objects).find(object =>
+      samePosition(object.position, objectPosition) && !(object.used && object.interaction.kind === "destroy-obstacle"));
+    if (object) {
+      const objective = destructionObjectiveLabel(this.state, object.id);
+      const label = objective ?? object.name;
+      this.ui.renderHint(objective ? `${label} · 인접한 칸에서 장애물 파괴를 사용하세요. (1행동)` : label, label);
+      return;
+    }
     const hoveredActor = this.hoverCell
       ? Object.values(this.state.actors).find(
           (actor) => this.hoverCell && samePosition(actor.position, this.hoverCell),
@@ -455,7 +465,7 @@ export class BattleController {
 
   private pickLabel(pick: BoardPick): string {
     if (pick.kind === "actor") return this.state.actors[pick.actorId]?.name ?? pick.actorId;
-    if (pick.kind === "object") return this.state.map.objects[pick.objectId]?.name ?? pick.objectId;
+    if (pick.kind === "object") return destructionObjectiveLabel(this.state, pick.objectId) ?? this.state.map.objects[pick.objectId]?.name ?? pick.objectId;
     return `Tile ${pick.position.x},${pick.position.y}`;
   }
 
